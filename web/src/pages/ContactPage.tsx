@@ -23,7 +23,7 @@ export default function ContactPage() {
     configApi.getConfig().then(setAppConfig).catch(console.error);
   }, []);
 
-  const storeEmail = appConfig?.store_info?.email || 'info@hafaloha.com';
+  const storeEmail = appConfig?.store_info?.email || 'sales@bgpacific.com';
   const storePhone = appConfig?.store_info?.phone || '671-777-1234';
   const storePhoneTel = `tel:${storePhone.replace(/[^\d+]/g, '')}`;
 
@@ -84,14 +84,14 @@ export default function ContactPage() {
             <FadeIn>
               {submitted ? (
                 <div className="rounded-lg p-8 bg-warm text-center">
-                  <div className="mb-4"><svg className="w-12 h-12 mx-auto text-hafalohaRed" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg></div>
+                  <div className="mb-4"><svg className="w-12 h-12 mx-auto text-tsPrimary" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg></div>
                   <h2 className="text-2xl font-bold text-warm-900 mb-2">Mahalo for reaching out!</h2>
                   <p className="text-warm-600 mb-6">
                     We've received your message and will get back to you as soon as possible.
                   </p>
                   <button
                     onClick={() => { setSubmitted(false); setFormData({ name: '', email: '', subject: '', message: '' }); }}
-                    className="text-hafalohaRed hover:text-red-700 font-medium transition"
+                    className="text-tsPrimary hover:text-red-700 font-medium transition"
                   >
                     Send another message
                   </button>
@@ -110,7 +110,7 @@ export default function ContactPage() {
                         required
                         value={formData.name}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 rounded-lg border border-warm-200 focus:outline-none focus:ring-2 focus:ring-hafalohaRed/20 focus:border-hafalohaRed transition text-warm-900"
+                        className="w-full px-4 py-3 rounded-lg border border-warm-200 focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary transition text-warm-900"
                         placeholder="John Doe"
                       />
                     </div>
@@ -125,7 +125,7 @@ export default function ContactPage() {
                         required
                         value={formData.email}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 rounded-lg border border-warm-200 focus:outline-none focus:ring-2 focus:ring-hafalohaRed/20 focus:border-hafalohaRed transition text-warm-900"
+                        className="w-full px-4 py-3 rounded-lg border border-warm-200 focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary transition text-warm-900"
                         placeholder="you@example.com"
                       />
                     </div>
@@ -140,7 +140,7 @@ export default function ContactPage() {
                       required
                       value={formData.subject}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg border border-warm-200 focus:outline-none focus:ring-2 focus:ring-hafalohaRed/20 focus:border-hafalohaRed transition text-warm-900 bg-white"
+                      className="w-full px-4 py-3 rounded-lg border border-warm-200 focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary transition text-warm-900 bg-white"
                     >
                       <option value="">Select a subject...</option>
                       <option value="general">General Inquiry</option>
@@ -162,7 +162,7 @@ export default function ContactPage() {
                       rows={6}
                       value={formData.message}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg border border-warm-200 focus:outline-none focus:ring-2 focus:ring-hafalohaRed/20 focus:border-hafalohaRed transition text-warm-900 resize-none"
+                      className="w-full px-4 py-3 rounded-lg border border-warm-200 focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary transition text-warm-900 resize-none"
                       placeholder="How can we help you?"
                     />
                   </div>
@@ -191,13 +191,13 @@ export default function ContactPage() {
                 <div className="rounded-lg p-6 bg-warm">
                   <div className="flex items-start gap-4">
                     <div className="shrink-0 w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                      <svg className="w-5 h-5 text-hafalohaRed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-tsPrimary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
                     </div>
                     <div>
                       <h3 className="font-medium text-warm-900 mb-1">Email</h3>
-                      <a href={`mailto:${storeEmail}`} className="text-warm-600 hover:text-hafalohaRed transition text-sm">
+                      <a href={`mailto:${storeEmail}`} className="text-warm-600 hover:text-tsPrimary transition text-sm">
                         {storeEmail}
                       </a>
                     </div>
@@ -210,13 +210,13 @@ export default function ContactPage() {
                 <div className="rounded-lg p-6 bg-warm">
                   <div className="flex items-start gap-4">
                     <div className="shrink-0 w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                      <svg className="w-5 h-5 text-hafalohaRed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-tsPrimary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                       </svg>
                     </div>
                     <div>
                       <h3 className="font-medium text-warm-900 mb-1">Phone</h3>
-                      <a href={storePhoneTel} className="text-warm-600 hover:text-hafalohaRed transition text-sm">
+                      <a href={storePhoneTel} className="text-warm-600 hover:text-tsPrimary transition text-sm">
                         {storePhone}
                       </a>
                     </div>
@@ -229,7 +229,7 @@ export default function ContactPage() {
                 <div className="rounded-lg p-6 bg-warm">
                   <div className="flex items-start gap-4">
                     <div className="shrink-0 w-10 h-10 bg-white rounded-lg flex items-center justify-center">
-                      <svg className="w-5 h-5 text-hafalohaRed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5 text-tsPrimary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
@@ -252,10 +252,10 @@ export default function ContactPage() {
                   <h3 className="font-medium text-warm-900 mb-4">Follow Us</h3>
                   <div className="flex gap-3">
                     <a
-                      href="https://www.instagram.com/hafaloha"
+                      href="https://www.instagram.com/threesquaresguam"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-warm-500 hover:text-hafalohaRed transition"
+                      className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-warm-500 hover:text-tsPrimary transition"
                       aria-label="Instagram"
                     >
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -263,10 +263,10 @@ export default function ContactPage() {
                       </svg>
                     </a>
                     <a
-                      href="https://www.facebook.com/hafaloha"
+                      href="https://www.facebook.com/threesquaresguam"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-warm-500 hover:text-hafalohaRed transition"
+                      className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-warm-500 hover:text-tsPrimary transition"
                       aria-label="Facebook"
                     >
                       <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">

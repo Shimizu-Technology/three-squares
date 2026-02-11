@@ -230,7 +230,7 @@ export function AdminPagination({
                   onClick={() => onPageChange(p)}
                   className={`px-3 py-2 rounded-lg transition text-sm ${
                     page === p
-                      ? 'bg-hafalohaRed text-white'
+                      ? 'bg-tsPrimary text-white'
                       : 'border border-gray-300 hover:bg-gray-50'
                   }`}
                 >

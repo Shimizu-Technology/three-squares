@@ -54,18 +54,18 @@ const REQUIRED_ORIGIN_FIELDS: Array<keyof SiteSettings['shipping_origin_address'
   'phone'
 ];
 
-const DEFAULT_PLACEHOLDER_IMAGE = '/images/hafaloha-logo.png';
+const DEFAULT_PLACEHOLDER_IMAGE = '/images/three-squares-logo.svg';
 const DEFAULT_ACAI_GALLERY_IMAGE_A = '/images/acai-cake-set-a.webp';
 const DEFAULT_ACAI_GALLERY_IMAGE_B = '/images/acai-cake-set-b.webp';
 const DEFAULT_ACAI_GALLERY_HEADING = 'Featured Sets';
 const DEFAULT_ACAI_GALLERY_SUBTEXT = 'Seasonal & special requests';
-const DEFAULT_HOMEPAGE_HERO_IMAGE = '/images/hafaloha-hero-v2.jpg';
+const DEFAULT_HOMEPAGE_HERO_IMAGE = '/images/three-squares-hero.jpg';
 const DEFAULT_HERO_BADGE_TEXT = 'Island Living Apparel';
 const DEFAULT_HERO_SECONDARY_TEXT = 'Browse Collections';
 const DEFAULT_HERO_SECONDARY_LINK = '/collections';
 const DEFAULT_CATEGORY_CARD_IMAGES: Record<number, string> = {
-  0: '/images/hafaloha-womens-img.webp',
-  1: '/images/hafaloha-mens-img.webp',
+  0: '/images/three-squares-menu.jpg',
+  1: '/images/three-squares-catering.jpg',
 };
 const DEFAULT_CATEGORY_CARD_LINKS: Record<number, string> = {
   0: '/products?collection=womens',
@@ -548,7 +548,7 @@ export default function AdminSettingsPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hafalohaRed mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary mx-auto mb-4"></div>
           <p className="text-gray-600">Loading settings...</p>
         </div>
       </div>
@@ -562,7 +562,7 @@ export default function AdminSettingsPage() {
           <p className="text-red-600 mb-4">Failed to load settings</p>
           <button
             onClick={fetchSettings}
-            className="bg-hafalohaRed text-white px-4 py-2 rounded-lg hover:bg-red-700"
+            className="bg-tsPrimary text-white px-4 py-2 rounded-lg hover:bg-primary-dark"
           >
             Retry
           </button>
@@ -578,7 +578,7 @@ export default function AdminSettingsPage() {
         <div className="mb-6">
           <button
             onClick={() => navigate('/admin')}
-            className="text-hafalohaRed hover:underline mb-4 flex items-center"
+            className="text-tsPrimary hover:underline mb-4 flex items-center"
           >
             <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -598,7 +598,7 @@ export default function AdminSettingsPage() {
                 onClick={() => handleTabChange(tab.id)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
                   activeTab === tab.id
-                    ? 'border-hafalohaRed text-hafalohaRed'
+                    ? 'border-tsPrimary text-tsPrimary'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -744,8 +744,8 @@ function GeneralSettingsTab({
             <button
               onClick={onToggleTestMode}
               disabled={saving}
-              className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hafalohaRed focus:ring-offset-2 ml-4 ${
-                settings.payment_test_mode ? 'bg-hafalohaRed' : 'bg-gray-200'
+              className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ml-4 ${
+                settings.payment_test_mode ? 'bg-tsPrimary' : 'bg-gray-200'
               } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
               <span
@@ -800,7 +800,7 @@ function GeneralSettingsTab({
             <button
               onClick={() => onToggleEmailSetting('send_retail_emails')}
               disabled={saving}
-              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hafalohaRed focus:ring-offset-2 ${
+              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ${
                 settings.send_retail_emails ? 'bg-green-500' : 'bg-gray-200'
               } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
@@ -821,7 +821,7 @@ function GeneralSettingsTab({
             <button
               onClick={() => onToggleEmailSetting('send_acai_emails')}
               disabled={saving}
-              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hafalohaRed focus:ring-offset-2 ${
+              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ${
                 settings.send_acai_emails ? 'bg-green-500' : 'bg-gray-200'
               } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
@@ -842,7 +842,7 @@ function GeneralSettingsTab({
             <button
               onClick={() => onToggleEmailSetting('send_wholesale_emails')}
               disabled={saving}
-              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-hafalohaRed focus:ring-offset-2 ${
+              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ${
                 settings.send_wholesale_emails ? 'bg-green-500' : 'bg-gray-200'
               } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
@@ -906,7 +906,7 @@ function GeneralSettingsTab({
               id="store_name"
               value={settings.store_name}
               onChange={(e) => onUpdateSettings({ store_name: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               required
             />
           </div>
@@ -921,7 +921,7 @@ function GeneralSettingsTab({
               id="store_email"
               value={settings.store_email}
               onChange={(e) => onUpdateSettings({ store_email: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               required
             />
             <p className="mt-1 text-sm text-gray-500">
@@ -939,7 +939,7 @@ function GeneralSettingsTab({
               id="store_phone"
               value={settings.store_phone}
               onChange={(e) => onUpdateSettings({ store_phone: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               required
             />
           </div>
@@ -973,7 +973,7 @@ function GeneralSettingsTab({
                     className={`px-4 py-2 rounded-lg text-sm font-medium border ${
                       saving || placeholderUploading
                         ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-hafalohaRed hover:text-hafalohaRed cursor-pointer'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-tsPrimary hover:text-tsPrimary cursor-pointer'
                     }`}
                   >
                     {placeholderUploading ? 'Uploading...' : 'Upload Custom Placeholder'}
@@ -984,7 +984,7 @@ function GeneralSettingsTab({
                     type="button"
                     onClick={() => onUpdatePlaceholderImage(DEFAULT_PLACEHOLDER_IMAGE)}
                     disabled={saving || placeholderUploading}
-                    className="text-sm text-gray-600 hover:text-hafalohaRed underline disabled:text-gray-400"
+                    className="text-sm text-gray-600 hover:text-tsPrimary underline disabled:text-gray-400"
                   >
                     Reset to default logo
                   </button>
@@ -1005,7 +1005,7 @@ function GeneralSettingsTab({
                   id="placeholder_image_url"
                   value={isDefaultPlaceholder ? '' : settings.placeholder_image_url || ''}
                   onChange={(e) => onUpdateSettings({ placeholder_image_url: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="https://... or /images/..."
                 />
                 <p className="mt-1 text-xs text-gray-500">
@@ -1028,7 +1028,7 @@ function GeneralSettingsTab({
                 type="text"
                 value={settings.acai_gallery_heading || DEFAULT_ACAI_GALLERY_HEADING}
                 onChange={(e) => onUpdateSettings({ acai_gallery_heading: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 placeholder={DEFAULT_ACAI_GALLERY_HEADING}
               />
               <p className="mt-1 text-xs text-gray-500">Example: Valentine’s Special Sets</p>
@@ -1039,7 +1039,7 @@ function GeneralSettingsTab({
                 type="text"
                 value={settings.acai_gallery_subtext || DEFAULT_ACAI_GALLERY_SUBTEXT}
                 onChange={(e) => onUpdateSettings({ acai_gallery_subtext: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 placeholder={DEFAULT_ACAI_GALLERY_SUBTEXT}
               />
               <p className="mt-1 text-xs text-gray-500">Example: Limited time • Feb 1–14</p>
@@ -1083,7 +1083,7 @@ function GeneralSettingsTab({
                           onUpdateSettings({ [showField]: !isVisible } as Partial<SiteSettings>)
                         }
                         className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                          isVisible ? 'bg-hafalohaRed' : 'bg-gray-200'
+                          isVisible ? 'bg-tsPrimary' : 'bg-gray-200'
                         }`}
                         aria-pressed={isVisible}
                       >
@@ -1108,7 +1108,7 @@ function GeneralSettingsTab({
                         className={`px-4 py-2 rounded-lg text-sm font-medium border ${
                           saving || acaiGalleryUploading[field]
                             ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                            : 'bg-white text-gray-700 border-gray-300 hover:border-hafalohaRed hover:text-hafalohaRed cursor-pointer'
+                            : 'bg-white text-gray-700 border-gray-300 hover:border-tsPrimary hover:text-tsPrimary cursor-pointer'
                         }`}
                       >
                         {acaiGalleryUploading[field] ? 'Uploading...' : 'Upload New Image'}
@@ -1119,7 +1119,7 @@ function GeneralSettingsTab({
                         type="button"
                         onClick={() => onUpdateAcaiGalleryImage(field, defaultUrl)}
                         disabled={saving || acaiGalleryUploading[field]}
-                        className="text-sm text-gray-600 hover:text-hafalohaRed underline disabled:text-gray-400"
+                        className="text-sm text-gray-600 hover:text-tsPrimary underline disabled:text-gray-400"
                       >
                         Reset to default image
                       </button>
@@ -1139,7 +1139,7 @@ function GeneralSettingsTab({
                       type="text"
                       value={isDefault ? '' : settings[field] || ''}
                       onChange={(e) => onUpdateSettings({ [field]: e.target.value } as Partial<SiteSettings>)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                       placeholder="https://... or /images/..."
                     />
                     <p className="mt-1 text-xs text-gray-500">
@@ -1176,7 +1176,7 @@ function GeneralSettingsTab({
                   id="company"
                   value={settings.shipping_origin_address.company}
                   onChange={(e) => onUpdateShippingAddress({ company: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   required
                 />
               </div>
@@ -1190,7 +1190,7 @@ function GeneralSettingsTab({
                   id="street1"
                   value={settings.shipping_origin_address.street1}
                   onChange={(e) => onUpdateShippingAddress({ street1: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   required
                 />
               </div>
@@ -1204,7 +1204,7 @@ function GeneralSettingsTab({
                   id="street2"
                   value={settings.shipping_origin_address.street2 || ''}
                   onChange={(e) => onUpdateShippingAddress({ street2: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 />
               </div>
 
@@ -1218,7 +1218,7 @@ function GeneralSettingsTab({
                     id="city"
                     value={settings.shipping_origin_address.city}
                     onChange={(e) => onUpdateShippingAddress({ city: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     required
                   />
                 </div>
@@ -1232,7 +1232,7 @@ function GeneralSettingsTab({
                     id="state"
                     value={settings.shipping_origin_address.state}
                     onChange={(e) => onUpdateShippingAddress({ state: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     required
                   />
                 </div>
@@ -1248,7 +1248,7 @@ function GeneralSettingsTab({
                     id="zip"
                     value={settings.shipping_origin_address.zip}
                     onChange={(e) => onUpdateShippingAddress({ zip: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     required
                   />
                 </div>
@@ -1262,7 +1262,7 @@ function GeneralSettingsTab({
                     id="country"
                     value={settings.shipping_origin_address.country}
                     onChange={(e) => onUpdateShippingAddress({ country: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     required
                   />
                 </div>
@@ -1277,7 +1277,7 @@ function GeneralSettingsTab({
                   id="address_phone"
                   value={settings.shipping_origin_address.phone}
                   onChange={(e) => onUpdateShippingAddress({ phone: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   required
                 />
               </div>
@@ -1305,7 +1305,7 @@ function GeneralSettingsTab({
                 type="button"
                 onClick={onSaveSiteSettings}
                 disabled={saving}
-                className={`px-5 py-2 rounded-lg text-sm font-medium text-white bg-hafalohaRed hover:bg-red-700 transition ${
+                className={`px-5 py-2 rounded-lg text-sm font-medium text-white bg-tsPrimary hover:bg-primary-dark transition ${
                   saving ? 'opacity-50 cursor-not-allowed' : ''
                 }`}
               >
@@ -1365,7 +1365,7 @@ function HomepageSettingsTab({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hafalohaRed"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tsPrimary"></div>
       </div>
     );
   }
@@ -1471,7 +1471,7 @@ function HomepageSettingsTab({
                       </button>
                       <button
                         onClick={() => onSetEditingSection(section)}
-                        className="px-3 py-1 text-sm bg-hafalohaRed/10 text-hafalohaRed rounded-lg hover:bg-hafalohaRed/15"
+                        className="px-3 py-1 text-sm bg-tsPrimary/10 text-tsPrimary rounded-lg hover:bg-tsPrimary/15"
                       >
                         Edit
                       </button>
@@ -1682,7 +1682,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
             type="text"
             value={formData.title || ''}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
             placeholder="Enter section title"
           />
         </div>
@@ -1696,7 +1696,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
             value={formData.subtitle || ''}
             onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
             rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
             placeholder="Enter subtitle or description"
           />
         </div>
@@ -1722,7 +1722,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                     },
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 placeholder={DEFAULT_HERO_BADGE_TEXT}
               />
             </div>
@@ -1744,7 +1744,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                     },
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 placeholder={DEFAULT_HERO_SECONDARY_TEXT}
               />
             </div>
@@ -1766,7 +1766,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                     },
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 placeholder={DEFAULT_HERO_SECONDARY_LINK}
               />
               <p className="mt-1 text-xs text-gray-500">Example: /collections</p>
@@ -1805,7 +1805,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                     className={`px-4 py-2 rounded-lg text-sm font-medium border ${
                       saving || imageUploading
                         ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-hafalohaRed hover:text-hafalohaRed cursor-pointer'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-tsPrimary hover:text-tsPrimary cursor-pointer'
                     }`}
                   >
                     {imageUploading ? 'Uploading...' : 'Upload New Image'}
@@ -1835,7 +1835,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                   type="text"
                   value={formData.background_image_url || ''}
                   onChange={(e) => setFormData({ ...formData, background_image_url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="https://... or /images/..."
                 />
                 <p className="mt-1 text-xs text-gray-500">Paste a public image URL.</p>
@@ -1872,7 +1872,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                     className={`px-4 py-2 rounded-lg text-sm font-medium border ${
                       saving || imageUploading
                         ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-hafalohaRed hover:text-hafalohaRed cursor-pointer'
+                        : 'bg-white text-gray-700 border-gray-300 hover:border-tsPrimary hover:text-tsPrimary cursor-pointer'
                     }`}
                   >
                     {imageUploading ? 'Uploading...' : 'Upload New Image'}
@@ -1902,7 +1902,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                   type="text"
                   value={formData.image_url || ''}
                   onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="https://... or /images/..."
                 />
                 <p className="mt-1 text-xs text-gray-500">Paste a public image URL.</p>
@@ -1921,7 +1921,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
               type="text"
               value={formData.button_text || ''}
               onChange={(e) => setFormData({ ...formData, button_text: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               placeholder="Shop Now"
             />
           </div>
@@ -1932,7 +1932,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
             <select
               value={linkType}
               onChange={(e) => setLinkType(e.target.value as 'collection' | 'page' | 'custom')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent bg-white"
             >
               <option value="page">Page</option>
               <option value="collection">Collection</option>
@@ -1970,7 +1970,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
             <select
               value={selectedCollection}
               onChange={(e) => setSelectedCollection(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent bg-white"
             >
               <option value="">Select a collection</option>
               {collections.map((collection) => (
@@ -1995,7 +1995,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
             <select
               value={selectedPage}
               onChange={(e) => setSelectedPage(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent bg-white"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent bg-white"
             >
               <option value="/products">Shop</option>
               <option value="/collections">Collections</option>
@@ -2018,7 +2018,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
               type="text"
               value={formData.button_link || ''}
               onChange={(e) => setFormData({ ...formData, button_link: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               placeholder="https://... or /products"
             />
             <p className="mt-1 text-xs text-gray-500">Use a full URL or a site path.</p>
@@ -2034,7 +2034,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
             id="active"
             checked={formData.active}
             onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-            className="w-4 h-4 text-hafalohaRed focus:ring-hafalohaRed border-gray-300 rounded"
+            className="w-4 h-4 text-tsPrimary focus:ring-tsPrimary border-gray-300 rounded"
           />
           <label htmlFor="active" className="text-sm text-gray-700">
             Active (visible on homepage)
@@ -2046,7 +2046,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
           <button
             type="submit"
             disabled={saving}
-            className="px-4 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+            className="px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition disabled:opacity-50"
           >
             {saving ? 'Saving...' : section ? 'Save Changes' : 'Create Section'}
           </button>

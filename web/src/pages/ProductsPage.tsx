@@ -140,7 +140,7 @@ export default function ProductsPage() {
         <div className="bg-white shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <h1 className="text-3xl sm:text-4xl font-bold text-warm-900 mb-2">
-              Shop <span className="text-hafalohaRed">Hafaloha</span>
+              Shop <span className="text-tsPrimary">Three Squares</span>
             </h1>
             <p className="text-warm-600 text-sm sm:text-base">
               Chamorro pride. Island style. Premium quality.
@@ -150,7 +150,7 @@ export default function ProductsPage() {
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
           <div className="max-w-md mx-auto">
-            <div className="mb-6"><svg className="w-16 h-16 mx-auto text-hafalohaRed" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg></div>
+            <div className="mb-6"><svg className="w-16 h-16 mx-auto text-tsPrimary" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg></div>
             <h2 className="text-2xl font-bold text-warm-900 mb-4">Coming Soon!</h2>
             <p className="text-warm-600 mb-8">
               We're preparing our collection of premium Chamorro pride apparel. 
@@ -158,7 +158,7 @@ export default function ProductsPage() {
             </p>
             <button
               onClick={fetchProducts}
-              className="bg-hafalohaRed text-white px-6 py-3 rounded-lg hover:bg-red-700 transition"
+              className="bg-tsPrimary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition"
             >
               Refresh
             </button>
@@ -178,7 +178,7 @@ export default function ProductsPage() {
           <FadeIn>
             <div className="text-center">
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-warm-900 mb-3 tracking-tight">
-                Shop Hafaloha
+                Browse Menu
               </h1>
               <p className="text-warm-500 text-base sm:text-lg max-w-2xl mx-auto">
                 Chamorro pride. Island style. Premium quality apparel for the whole ohana.
@@ -199,7 +199,7 @@ export default function ProductsPage() {
                 placeholder="Search products..."
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
-                className="w-full px-4 py-3 pl-11 text-sm sm:text-base bg-warm-50 border border-warm-200 rounded-full focus:ring-2 focus:ring-hafalohaRed focus:border-transparent focus:bg-white transition"
+                className="w-full px-4 py-3 pl-11 text-sm sm:text-base bg-warm-50 border border-warm-200 rounded-full focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
               />
               <svg
                 className="absolute left-4 top-3.5 h-5 w-5 text-warm-400"
@@ -225,7 +225,7 @@ export default function ProductsPage() {
               <select
                 value={collection}
                 onChange={(e) => handleFilterChange('collection', e.target.value)}
-                className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent hover:border-warm-300 transition"
+                className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
               >
                 <option value="">All Collections</option>
                 {collections.map((c) => (
@@ -242,7 +242,7 @@ export default function ProductsPage() {
               <select
                 value={productType}
                 onChange={(e) => handleFilterChange('type', e.target.value)}
-                className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent hover:border-warm-300 transition"
+                className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
               >
                 <option value="">All Types</option>
                 <option value="T-Shirt">T-Shirt</option>
@@ -263,7 +263,7 @@ export default function ProductsPage() {
               <select
                 value={sort}
                 onChange={(e) => handleFilterChange('sort', e.target.value)}
-                className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent hover:border-warm-300 transition"
+                className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
               >
                 <option value="">Featured</option>
                 <option value="price_asc">Price: Low to High</option>
@@ -422,7 +422,7 @@ export default function ProductsPage() {
                         onClick={() => handlePageChange(pageNum)}
                         className={`min-w-[40px] px-3 py-2 text-sm font-medium rounded-lg transition ${
                           page === pageNum
-                            ? 'bg-hafalohaRed text-white shadow-md'
+                            ? 'bg-tsPrimary text-white shadow-md'
                             : 'bg-white border border-warm-200 hover:bg-warm-50 hover:border-warm-300'
                         }`}
                       >

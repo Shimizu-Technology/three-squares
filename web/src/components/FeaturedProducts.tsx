@@ -116,7 +116,7 @@ export default function FeaturedProducts() {
 
                 {/* Content */}
                 <div className="pt-4 flex flex-col grow">
-                  <h3 className="font-medium text-sm sm:text-base text-warm-900 mb-2 line-clamp-2 group-hover:text-hafalohaRed transition">
+                  <h3 className="font-medium text-sm sm:text-base text-warm-900 mb-2 line-clamp-2 group-hover:text-tsPrimary transition">
                     {product.name}
                   </h3>
 

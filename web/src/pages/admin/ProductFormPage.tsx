@@ -384,7 +384,7 @@ export default function ProductFormPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hafalohaRed"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary"></div>
       </div>
     );
   }
@@ -490,7 +490,7 @@ export default function ProductFormPage() {
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 placeholder="e.g., Hafaloha Championship T-Shirt"
               />
             </div>
@@ -506,7 +506,7 @@ export default function ProductFormPage() {
                 value={formData.description}
                 onChange={handleChange}
                 rows={4}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 placeholder="Describe your product..."
               />
             </div>
@@ -521,7 +521,7 @@ export default function ProductFormPage() {
                 name="product_type"
                 value={formData.product_type}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               >
                 <option value="apparel">Apparel</option>
                 <option value="accessories">Accessories</option>
@@ -546,7 +546,7 @@ export default function ProductFormPage() {
                   step="0.01"
                   min="0"
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="29.99"
                 />
               </div>
@@ -564,7 +564,7 @@ export default function ProductFormPage() {
                   step="0.1"
                   min="0.1"
                   required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="8.0"
                 />
                 <p className="text-xs text-gray-500 mt-1">Required for shipping calculations</p>
@@ -580,7 +580,7 @@ export default function ProductFormPage() {
                   name="published"
                   checked={formData.published}
                   onChange={handleChange}
-                  className="w-4 h-4 text-hafalohaRed border-gray-300 rounded focus:ring-hafalohaRed"
+                  className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
                 />
                 <label htmlFor="published" className="ml-2 text-sm font-medium text-gray-700">
                   Published (visible in store)
@@ -594,7 +594,7 @@ export default function ProductFormPage() {
                   name="featured"
                   checked={formData.featured}
                   onChange={handleChange}
-                  className="w-4 h-4 text-hafalohaRed border-gray-300 rounded focus:ring-hafalohaRed"
+                  className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
                 />
                 <label htmlFor="featured" className="ml-2 text-sm font-medium text-gray-700">
                   Featured (show on homepage)
@@ -622,7 +622,7 @@ export default function ProductFormPage() {
                   value="none"
                   checked={formData.inventory_level === 'none'}
                   onChange={handleChange}
-                  className="mt-1 w-4 h-4 text-hafalohaRed border-gray-300 focus:ring-hafalohaRed"
+                  className="mt-1 w-4 h-4 text-tsPrimary border-gray-300 focus:ring-tsPrimary"
                 />
                 <label htmlFor="inventory_none" className="ml-3">
                   <span className="block text-sm font-medium text-gray-900">
@@ -642,7 +642,7 @@ export default function ProductFormPage() {
                   value="product"
                   checked={formData.inventory_level === 'product'}
                   onChange={handleChange}
-                  className="mt-1 w-4 h-4 text-hafalohaRed border-gray-300 focus:ring-hafalohaRed"
+                  className="mt-1 w-4 h-4 text-tsPrimary border-gray-300 focus:ring-tsPrimary"
                 />
                 <label htmlFor="inventory_product" className="ml-3">
                   <span className="block text-sm font-medium text-gray-900">
@@ -662,7 +662,7 @@ export default function ProductFormPage() {
                   value="variant"
                   checked={formData.inventory_level === 'variant'}
                   onChange={handleChange}
-                  className="mt-1 w-4 h-4 text-hafalohaRed border-gray-300 focus:ring-hafalohaRed"
+                  className="mt-1 w-4 h-4 text-tsPrimary border-gray-300 focus:ring-tsPrimary"
                 />
                 <label htmlFor="inventory_variant" className="ml-3">
                   <span className="block text-sm font-medium text-gray-900">
@@ -690,7 +690,7 @@ export default function ProductFormPage() {
                       value={formData.product_stock_quantity || ''}
                       onChange={handleChange}
                       min="0"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                       placeholder="0"
                     />
                   </div>
@@ -706,7 +706,7 @@ export default function ProductFormPage() {
                       value={formData.product_low_stock_threshold || 5}
                       onChange={handleChange}
                       min="0"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                       placeholder="5"
                     />
                     <p className="text-xs text-gray-500 mt-1">
@@ -757,7 +757,7 @@ export default function ProductFormPage() {
                       id={`collection_${collection.id}`}
                       checked={(formData.collection_ids || []).includes(collection.id)}
                       onChange={() => handleCollectionToggle(collection.id)}
-                      className="w-4 h-4 text-hafalohaRed border-gray-300 rounded focus:ring-hafalohaRed"
+                      className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
                     />
                     <label htmlFor={`collection_${collection.id}`} className="ml-2 text-sm text-gray-700 cursor-pointer select-none">
                       {collection.name}
@@ -844,7 +844,7 @@ export default function ProductFormPage() {
               </button>
               <button
                 type="submit"
-                className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
+                className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                 disabled={saving || deleting}
               >
                 {saving ? (
@@ -923,7 +923,7 @@ export default function ProductFormPage() {
               <button
                 type="button"
                 onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-primary-dark transition flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={deleting}
               >
                 <Archive className="w-4 h-4 mr-2" />
@@ -971,7 +971,7 @@ export default function ProductFormPage() {
             >
               {loadingAudits ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hafalohaRed"></div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tsPrimary"></div>
                 </div>
               ) : inventoryAudits.length === 0 ? (
                 <div className="text-center py-12">

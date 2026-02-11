@@ -159,7 +159,7 @@ export default function FundraiserPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-hafalohaRed border-t-transparent rounded-full"></div>
+        <div className="animate-spin w-8 h-8 border-4 border-tsPrimary border-t-transparent rounded-full"></div>
       </div>
     );
   }
@@ -169,7 +169,7 @@ export default function FundraiserPage() {
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <h1 className="text-2xl font-bold text-warm-900 mb-2">Fundraiser Not Found</h1>
         <p className="text-warm-600 mb-4">{error}</p>
-        <Link to="/" className="text-hafalohaRed hover:underline">
+        <Link to="/" className="text-tsPrimary hover:underline">
           Return to Home
         </Link>
       </div>
@@ -213,7 +213,7 @@ export default function FundraiserPage() {
 
             {/* Public Message */}
             {fundraiser.public_message && (
-              <div className="bg-hafalohaGold/10 border border-hafalohaGold rounded-lg p-6">
+              <div className="bg-tsGold/10 border border-tsGold rounded-lg p-6">
                 <p className="text-warm-800">{fundraiser.public_message}</p>
               </div>
             )}
@@ -247,7 +247,7 @@ export default function FundraiserPage() {
             {fundraiser.goal_amount_cents && (
               <div className="bg-white rounded-lg shadow p-6">
                 <h3 className="font-semibold mb-3">Fundraising Progress</h3>
-                <div className="text-3xl font-bold text-hafalohaRed mb-1">
+                <div className="text-3xl font-bold text-tsPrimary mb-1">
                   {formatPrice(fundraiser.raised_amount_cents || 0)}
                 </div>
                 <p className="text-sm text-warm-600 mb-3">
@@ -255,7 +255,7 @@ export default function FundraiserPage() {
                 </p>
                 <div className="h-3 bg-warm-200 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-hafalohaGold rounded-full transition-all"
+                    className="h-full bg-tsGold rounded-full transition-all"
                     style={{ width: `${Math.min(fundraiser.progress_percentage, 100)}%` }}
                   />
                 </div>
@@ -297,13 +297,13 @@ export default function FundraiserPage() {
                   <p className="text-warm-700 mb-2">{fundraiser.contact_name}</p>
                 )}
                 {fundraiser.contact_email && (
-                  <a href={`mailto:${fundraiser.contact_email}`} className="flex items-center gap-2 text-hafalohaRed hover:underline mb-2">
+                  <a href={`mailto:${fundraiser.contact_email}`} className="flex items-center gap-2 text-tsPrimary hover:underline mb-2">
                     <Mail className="w-4 h-4" />
                     {fundraiser.contact_email}
                   </a>
                 )}
                 {fundraiser.contact_phone && (
-                  <a href={`tel:${fundraiser.contact_phone}`} className="flex items-center gap-2 text-hafalohaRed hover:underline">
+                  <a href={`tel:${fundraiser.contact_phone}`} className="flex items-center gap-2 text-tsPrimary hover:underline">
                     <Phone className="w-4 h-4" />
                     {fundraiser.contact_phone}
                   </a>
@@ -321,7 +321,7 @@ export default function FundraiserPage() {
                 <select
                   value={selectedParticipant || ''}
                   onChange={(e) => setSelectedParticipant(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
                 >
                   <option value="">Select a participant (optional)</option>
                   {participants.map((p) => (
@@ -338,7 +338,7 @@ export default function FundraiserPage() {
       {cart.length > 0 && (
         <button
           onClick={() => setShowCart(true)}
-          className="fixed bottom-6 right-6 bg-hafalohaRed text-white px-6 py-4 rounded-full shadow-lg hover:bg-red-700 transition flex items-center gap-3 z-40"
+          className="fixed bottom-6 right-6 bg-tsPrimary text-white px-6 py-4 rounded-full shadow-lg hover:bg-primary-dark transition flex items-center gap-3 z-40"
         >
           <ShoppingCart className="w-6 h-6" />
           <span className="font-semibold">{cartCount} items</span>
@@ -406,7 +406,7 @@ function ProductCard({
           <div className="flex justify-between items-start">
             <div>
               <h3 className="font-semibold text-lg">{product.name}</h3>
-              <p className="text-2xl font-bold text-hafalohaRed mt-1">
+              <p className="text-2xl font-bold text-tsPrimary mt-1">
                 {formatPrice(product.price_cents)}
               </p>
             </div>
@@ -422,7 +422,7 @@ function ProductCard({
               <select
                 value={selectedVariant || ''}
                 onChange={(e) => setSelectedVariant(Number(e.target.value))}
-                className="w-full sm:w-auto px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full sm:w-auto px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
               >
                 <option value="">Select Size/Color</option>
                 {product.variants.map((v) => (
@@ -439,7 +439,7 @@ function ProductCard({
             <button
               onClick={() => selectedVariant && onAddToCart(product, selectedVariant)}
               disabled={!selectedVariant || !product.in_stock}
-              className="mt-3 w-full sm:w-auto px-6 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 disabled:bg-warm-300 disabled:cursor-not-allowed transition"
+              className="mt-3 w-full sm:w-auto px-6 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark disabled:bg-warm-300 disabled:cursor-not-allowed transition"
             >
               {!product.in_stock ? 'Out of Stock' : 'Add to Cart'}
             </button>
@@ -497,7 +497,7 @@ function CartModal({
           }}
         >
           {participant && (
-            <div className="bg-hafalohaGold/10 border border-hafalohaGold rounded-lg p-3">
+            <div className="bg-tsGold/10 border border-tsGold rounded-lg p-3">
               <p className="text-sm text-warm-700">
                 Supporting: <span className="font-semibold">{participant.display_name}</span>
               </p>
@@ -509,7 +509,7 @@ function CartModal({
               <div className="flex-1 min-w-0">
                 <h4 className="font-medium truncate">{item.name}</h4>
                 <p className="text-sm text-warm-600">{item.variant_name}</p>
-                <p className="font-semibold text-hafalohaRed">{formatPrice(item.price_cents)}</p>
+                <p className="font-semibold text-tsPrimary">{formatPrice(item.price_cents)}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -539,11 +539,11 @@ function CartModal({
         <div className="p-4 border-t space-y-4">
           <div className="flex justify-between text-lg font-bold">
             <span>Total</span>
-            <span className="text-hafalohaRed">{formatPrice(total)}</span>
+            <span className="text-tsPrimary">{formatPrice(total)}</span>
           </div>
           <button
             onClick={onCheckout}
-            className="w-full py-3 bg-hafalohaRed text-white rounded-lg font-semibold hover:bg-red-700 transition"
+            className="w-full py-3 bg-tsPrimary text-white rounded-lg font-semibold hover:bg-primary-dark transition"
           >
             Proceed to Checkout
           </button>

@@ -110,7 +110,7 @@ export default function AdminFundraiserProductFormPage() {
       <div className="flex items-center gap-4">
         <Link
           to={`/admin/fundraisers/${fundraiserId}`}
-          className="btn-icon hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2"
+          className="btn-icon hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
@@ -138,7 +138,7 @@ export default function AdminFundraiserProductFormPage() {
                 required
                 value={formData.name}
                 onChange={(e) => handleNameChange(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                 placeholder="e.g., Fundraiser T-Shirt"
               />
             </div>
@@ -151,7 +151,7 @@ export default function AdminFundraiserProductFormPage() {
                 type="text"
                 value={formData.slug}
                 onChange={(e) => setFormData({ ...formData, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                 placeholder="auto-generated-from-name"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -167,7 +167,7 @@ export default function AdminFundraiserProductFormPage() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 rows={4}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                 placeholder="Describe this product..."
               />
             </div>
@@ -192,7 +192,7 @@ export default function AdminFundraiserProductFormPage() {
                     ...formData, 
                     base_price_cents: Math.round(parseFloat(e.target.value || '0') * 100) 
                   })}
-                  className="w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                  className="w-full pl-8 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                 />
               </div>
             </div>
@@ -213,7 +213,7 @@ export default function AdminFundraiserProductFormPage() {
                   inventory_level: e.target.value as 'none' | 'product' | 'variant',
                   product_stock_quantity: e.target.value === 'product' ? (formData.product_stock_quantity || 0) : undefined
                 })}
-                className="w-full max-w-xs px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                className="w-full max-w-xs px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
               >
                 <option value="none">Don't track inventory</option>
                 <option value="product">Track at product level</option>
@@ -234,7 +234,7 @@ export default function AdminFundraiserProductFormPage() {
                     ...formData, 
                     product_stock_quantity: parseInt(e.target.value) || 0 
                   })}
-                  className="w-full max-w-xs px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                  className="w-full max-w-xs px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                 />
               </div>
             )}
@@ -250,7 +250,7 @@ export default function AdminFundraiserProductFormPage() {
                   type="checkbox"
                   checked={formData.published}
                   onChange={(e) => setFormData({ ...formData, published: e.target.checked })}
-                  className="w-5 h-5 rounded border-gray-300 text-hafalohaRed focus:ring-hafalohaRed"
+                  className="w-5 h-5 rounded border-gray-300 text-tsPrimary focus:ring-tsPrimary"
                 />
                 <div>
                   <span className="font-medium text-gray-900">Published</span>
@@ -263,7 +263,7 @@ export default function AdminFundraiserProductFormPage() {
                   type="checkbox"
                   checked={formData.featured}
                   onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-                  className="w-5 h-5 rounded border-gray-300 text-hafalohaRed focus:ring-hafalohaRed"
+                  className="w-5 h-5 rounded border-gray-300 text-tsPrimary focus:ring-tsPrimary"
                 />
                 <div>
                   <span className="font-medium text-gray-900">Featured</span>
@@ -285,7 +285,7 @@ export default function AdminFundraiserProductFormPage() {
           <button
             type="submit"
             disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+            className="flex items-center gap-2 px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             {saving ? 'Creating...' : 'Create Product'}

@@ -165,7 +165,7 @@ export default function OrderConfirmationPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-hafalohaRed border-t-transparent mb-4"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-tsPrimary border-t-transparent mb-4"></div>
           <p className="text-gray-600">Loading your order...</p>
         </div>
       </div>
@@ -181,7 +181,7 @@ export default function OrderConfirmationPage() {
           <p className="text-gray-600 mb-6">{error || 'Unable to load order details'}</p>
           <button
             onClick={() => navigate('/products')}
-            className="bg-hafalohaRed text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 transition"
+            className="bg-tsPrimary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-dark transition"
           >
             Continue Shopping
           </button>
@@ -312,7 +312,7 @@ export default function OrderConfirmationPage() {
               {order.pickup_phone && (
                 <div>
                   <p className="text-sm text-gray-600 font-medium mb-1">Phone</p>
-                  <a href={`tel:${order.pickup_phone}`} className="font-semibold text-hafalohaRed hover:underline">
+                  <a href={`tel:${order.pickup_phone}`} className="font-semibold text-tsPrimary hover:underline">
                     {order.pickup_phone}
                   </a>
                 </div>
@@ -338,7 +338,7 @@ export default function OrderConfirmationPage() {
         {/* Order Details */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-6 print:shadow-none print:border print:p-4 print:mb-4 print:break-inside-avoid">
           <h2 className="text-xl font-bold text-gray-900 mb-4 pb-4 border-b border-gray-100 flex items-center">
-            <svg className="w-6 h-6 text-hafalohaRed mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-6 h-6 text-tsPrimary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
             Order Details
@@ -418,7 +418,7 @@ export default function OrderConfirmationPage() {
             )}
             <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
               <span>Total</span>
-              <span className="text-hafalohaRed">{formatPrice(order.total_cents)}</span>
+              <span className="text-tsPrimary">{formatPrice(order.total_cents)}</span>
             </div>
           </div>
         </div>
@@ -559,13 +559,13 @@ export default function OrderConfirmationPage() {
 
         {/* Help Text - Hidden when printing */}
         <div className="mt-8 text-center print:hidden">
-          <div className="bg-hafalohaCream rounded-xl p-6">
+          <div className="bg-tsSurface rounded-xl p-6">
             <p className="text-gray-700 mb-2 font-medium">
               Questions about your order?
             </p>
             <a 
               href={storePhoneTel}
-              className="inline-flex items-center gap-2 text-hafalohaRed font-bold hover:underline"
+              className="inline-flex items-center gap-2 text-tsPrimary font-bold hover:underline"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />

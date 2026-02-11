@@ -294,7 +294,7 @@ function CheckoutForm() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hafalohaRed mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary mx-auto mb-4"></div>
           <p className="text-gray-600">Loading checkout...</p>
         </div>
       </div>
@@ -306,7 +306,7 @@ function CheckoutForm() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8 text-center sm:text-left">
-          <span className="inline-block text-hafalohaRed font-semibold text-sm uppercase tracking-wider mb-2">
+          <span className="inline-block text-tsPrimary font-semibold text-sm uppercase tracking-wider mb-2">
             Secure Checkout
           </span>
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Complete Your Order</h1>
@@ -338,8 +338,8 @@ function CheckoutForm() {
               {/* Contact Information */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-hafalohaCream rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-hafalohaRed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-10 h-10 bg-tsSurface rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-tsPrimary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
@@ -356,7 +356,7 @@ function CheckoutForm() {
                       required
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent focus:bg-white transition"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="John Doe"
                     />
                   </div>
@@ -370,7 +370,7 @@ function CheckoutForm() {
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent focus:bg-white transition"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="your@email.com"
                     />
                   </div>
@@ -384,7 +384,7 @@ function CheckoutForm() {
                       required
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent focus:bg-white transition"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="(555) 123-4567"
                     />
                   </div>
@@ -394,8 +394,8 @@ function CheckoutForm() {
               {/* Delivery Method */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="w-10 h-10 bg-hafalohaCream rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-hafalohaRed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="w-10 h-10 bg-tsSurface rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-tsPrimary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                     </svg>
                   </div>
@@ -411,7 +411,7 @@ function CheckoutForm() {
                     }}
                     className={`p-5 border-2 rounded-xl transition-all ${
                       deliveryMethod === 'shipping'
-                        ? 'border-hafalohaRed bg-red-50 ring-4 ring-hafalohaRed/10'
+                        ? 'border-tsPrimary bg-red-50 ring-4 ring-tsPrimary/10'
                         : 'border-gray-200 hover:border-gray-300 bg-white'
                     }`}
                   >
@@ -420,7 +420,7 @@ function CheckoutForm() {
                         <p className="font-bold text-gray-900">Ship to Address</p>
                         <p className="text-sm text-gray-500 mt-1">Delivered to your door</p>
                       </div>
-                      <svg className={`w-6 h-6 ${deliveryMethod === 'shipping' ? 'text-hafalohaRed' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className={`w-6 h-6 ${deliveryMethod === 'shipping' ? 'text-tsPrimary' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
@@ -434,7 +434,7 @@ function CheckoutForm() {
                     }}
                     className={`p-5 border-2 rounded-xl transition-all ${
                       deliveryMethod === 'pickup'
-                        ? 'border-hafalohaRed bg-red-50 ring-4 ring-hafalohaRed/10'
+                        ? 'border-tsPrimary bg-red-50 ring-4 ring-tsPrimary/10'
                         : 'border-gray-200 hover:border-gray-300 bg-white'
                     }`}
                   >
@@ -443,7 +443,7 @@ function CheckoutForm() {
                         <p className="font-bold text-gray-900">Pickup</p>
                         <p className="text-sm text-gray-500 mt-1">Free — Pickup at store</p>
                       </div>
-                      <svg className={`w-6 h-6 ${deliveryMethod === 'pickup' ? 'text-hafalohaRed' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className={`w-6 h-6 ${deliveryMethod === 'pickup' ? 'text-tsPrimary' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                       </svg>
                     </div>
@@ -488,8 +488,8 @@ function CheckoutForm() {
                 >
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 bg-hafalohaCream rounded-full flex items-center justify-center">
-                      <svg className="w-5 h-5 text-hafalohaRed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="w-10 h-10 bg-tsSurface rounded-full flex items-center justify-center">
+                      <svg className="w-5 h-5 text-tsPrimary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                       </svg>
@@ -507,7 +507,7 @@ function CheckoutForm() {
                       required
                       value={shippingAddress.street1}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, street1: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent focus:bg-white transition"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="123 Main St"
                     />
                   </div>
@@ -520,7 +520,7 @@ function CheckoutForm() {
                       id="street2"
                       value={shippingAddress.street2 || ''}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, street2: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent focus:bg-white transition"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="Apt, suite, etc. (optional)"
                     />
                   </div>
@@ -534,7 +534,7 @@ function CheckoutForm() {
                       required
                       value={shippingAddress.city}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent focus:bg-white transition"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                     />
                   </div>
                   <div>
@@ -547,7 +547,7 @@ function CheckoutForm() {
                       required
                       value={shippingAddress.state}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent focus:bg-white transition"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="CA"
                       maxLength={2}
                     />
@@ -562,7 +562,7 @@ function CheckoutForm() {
                       required
                       value={shippingAddress.zip}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, zip: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent focus:bg-white transition"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="12345"
                     />
                   </div>
@@ -575,7 +575,7 @@ function CheckoutForm() {
                       required
                       value={shippingAddress.country}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, country: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent focus:bg-white transition"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                     >
                       <option value="US">United States</option>
                       <option value="GU">Guam</option>
@@ -589,7 +589,7 @@ function CheckoutForm() {
                     type="button"
                     onClick={handleCalculateShipping}
                     disabled={calculatingShipping || !shippingAddress.street1 || !shippingAddress.city || !shippingAddress.state || !shippingAddress.zip}
-                    className="w-full bg-hafalohaRed text-white py-3 px-4 rounded-lg font-medium hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition"
+                    className="w-full bg-tsPrimary text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-dark disabled:bg-gray-300 disabled:cursor-not-allowed transition"
                   >
                     {calculatingShipping ? 'Calculating...' : 'Calculate Shipping Rates'}
                   </button>
@@ -611,7 +611,7 @@ function CheckoutForm() {
                           onClick={() => setShippingMethod(rate)}
                           className={`w-full p-4 border-2 rounded-xl text-left transition-all ${
                             shippingMethod?.carrier === rate.carrier && shippingMethod?.service === rate.service
-                              ? 'border-hafalohaRed bg-red-50 ring-4 ring-hafalohaRed/10'
+                              ? 'border-tsPrimary bg-red-50 ring-4 ring-tsPrimary/10'
                               : 'border-gray-200 hover:border-gray-300'
                           }`}
                         >
@@ -698,7 +698,7 @@ function CheckoutForm() {
               <button
                 type="submit"
                 disabled={loading || !isFormValid()}
-                className="w-full bg-hafalohaRed text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                className="w-full bg-tsPrimary text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 {loading ? (
                   <>
@@ -771,7 +771,7 @@ function CheckoutForm() {
                 </div>
                 <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
                   <span className="text-gray-900">Total</span>
-                  <span className="text-hafalohaRed">{formatPrice(totalCents)}</span>
+                  <span className="text-tsPrimary">{formatPrice(totalCents)}</span>
                 </div>
               </div>
               

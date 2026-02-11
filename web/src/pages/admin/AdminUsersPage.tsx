@@ -147,11 +147,11 @@ export default function AdminUsersPage() {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               />
               <button
                 onClick={handleSearch}
-                className="px-6 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition font-medium"
+                className="px-6 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition font-medium"
               >
                 Search
               </button>
@@ -162,7 +162,7 @@ export default function AdminUsersPage() {
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
           >
             <option value="all">All Roles</option>
             <option value="admin">Admins Only</option>
@@ -174,7 +174,7 @@ export default function AdminUsersPage() {
       {/* Users List */}
       {loading ? (
         <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-hafalohaRed"></div>
+          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary"></div>
         </div>
       ) : users.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
@@ -243,7 +243,7 @@ export default function AdminUsersPage() {
                       <button
                         onClick={() => toggleUserRole(user)}
                         disabled={updatingUserId === user.id}
-                        className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2 ${
+                        className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
                           user.is_admin
                             ? 'bg-red-100 text-red-700 hover:bg-red-200'
                             : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
@@ -298,7 +298,7 @@ export default function AdminUsersPage() {
                 <button
                   onClick={() => toggleUserRole(user)}
                   disabled={updatingUserId === user.id}
-                  className={`w-full py-2.5 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2 ${
+                  className={`w-full py-2.5 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
                     user.is_admin
                       ? 'bg-red-100 text-red-700 hover:bg-red-200'
                       : 'bg-indigo-600 text-white hover:bg-indigo-700'

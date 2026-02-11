@@ -12,7 +12,7 @@ export default function ReturnsPage() {
     configApi.getConfig().then(setAppConfig).catch(console.error);
   }, []);
 
-  const storeEmail = appConfig?.store_info?.email || 'info@hafaloha.com';
+  const storeEmail = appConfig?.store_info?.email || 'sales@bgpacific.com';
 
   return (
     <div className="min-h-screen bg-white">
@@ -48,7 +48,7 @@ export default function ReturnsPage() {
             <div className="rounded-lg p-8 bg-warm">
               <div className="flex items-center gap-4 mb-4">
                 <div className="w-12 h-12 bg-white rounded-lg flex items-center justify-center">
-                  <svg className="w-6 h-6 text-hafalohaRed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-6 h-6 text-tsPrimary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </div>
@@ -215,7 +215,7 @@ export default function ReturnsPage() {
             <div className="prose prose-lg max-w-none">
               <p className="text-lg text-warm-700 leading-relaxed mb-4">
                 Need a different size or color? We're happy to help with exchanges! Simply email us at{' '}
-                <a href={`mailto:${storeEmail}`} className="text-hafalohaRed hover:text-red-700 transition font-medium">
+                <a href={`mailto:${storeEmail}`} className="text-tsPrimary hover:text-red-700 transition font-medium">
                   {storeEmail}
                 </a>{' '}
                 with your order number and the item you'd like instead.

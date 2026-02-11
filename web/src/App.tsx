@@ -130,9 +130,9 @@ function AppContent() {
       }
     };
 
-    window.addEventListener('hafaloha:auth-error', handleAuthError as EventListener);
+    window.addEventListener('threesquares:auth-error', handleAuthError as EventListener);
     return () => {
-      window.removeEventListener('hafaloha:auth-error', handleAuthError as EventListener);
+      window.removeEventListener('threesquares:auth-error', handleAuthError as EventListener);
     };
   }, [location.pathname, navigate]);
 
@@ -245,8 +245,8 @@ function AppContent() {
               {/* Logo */}
               <Link to="/" className="flex items-center group" onClick={handleNavClick}>
                 <img 
-                  src="/images/hafaloha-red-logo.webp" 
-                  alt="Hafaloha" 
+                  src="/images/three-squares-logo.svg" 
+                  alt="Three Squares" 
                   className="h-8 sm:h-10 w-auto"
                 />
               </Link>
@@ -256,25 +256,25 @@ function AppContent() {
                 {/* Shop Dropdown */}
                 <NavDropdown onItemClick={handleNavClick} darkMode={false} />
                 <Link
-                  to="/acai-cakes"
-                  className="text-warm-700 hover:text-hafalohaRed font-medium transition py-2"
+                  to="/catering"
+                  className="text-warm-700 hover:text-tsPrimary font-medium transition py-2"
                   onClick={handleNavClick}
                 >
-                  Açaí Cakes
+                  Catering
                 </Link>
                 <Link
-                  to="/fundraisers"
-                  className="text-warm-700 hover:text-hafalohaRed font-medium transition py-2"
+                  to="/locations"
+                  className="text-warm-700 hover:text-tsPrimary font-medium transition py-2"
                   onClick={handleNavClick}
                 >
-                  Fundraisers
+                  Locations
                 </Link>
                 <Link
                   to="/about"
-                  className="text-warm-700 hover:text-hafalohaRed font-medium transition py-2"
+                  className="text-warm-700 hover:text-tsPrimary font-medium transition py-2"
                   onClick={handleNavClick}
                 >
-                  Our Story
+                  About Us
                 </Link>
               </div>
 
@@ -287,8 +287,8 @@ function AppContent() {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search products..."
-                      className="pl-10 pr-4 py-2.5 bg-warm-50 border border-warm-200 rounded-full focus:outline-none focus:ring-2 focus:ring-hafalohaRed/20 focus:border-hafalohaRed w-56 xl:w-64 transition-all text-sm text-warm-900 placeholder-warm-400"
+                      placeholder="Search menu..."
+                      className="pl-10 pr-4 py-2.5 bg-warm-50 border border-warm-200 rounded-full focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary w-56 xl:w-64 transition-all text-sm text-warm-900 placeholder-warm-400"
                     />
                     <svg
                       className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-warm-400"
@@ -309,9 +309,9 @@ function AppContent() {
                 {/* Search Icon - Tablet */}
                 <button
                   type="button"
-                  className="hidden md:flex lg:hidden p-2.5 min-w-[44px] min-h-[44px] items-center justify-center text-warm-600 hover:text-hafalohaRed transition rounded-lg"
+                  className="hidden md:flex lg:hidden p-2.5 min-w-[44px] min-h-[44px] items-center justify-center text-warm-600 hover:text-tsPrimary transition rounded-lg"
                   onClick={() => {
-                    const input = document.querySelector('input[placeholder="Search products..."]') as HTMLInputElement;
+                    const input = document.querySelector('input[placeholder="Search menu..."]') as HTMLInputElement;
                     if (input) input.focus();
                   }}
                   aria-label="Search"
@@ -328,7 +328,7 @@ function AppContent() {
                 <div className="hidden md:flex items-center">
                   <SignedOut>
                     <SignInButton mode="modal">
-                      <button className="text-sm px-5 py-2.5 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition font-medium">
+                      <button className="text-sm px-5 py-2.5 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition font-medium">
                         Log In
                       </button>
                     </SignInButton>
@@ -342,7 +342,7 @@ function AppContent() {
                 {/* Mobile Menu Button */}
                 <button
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="md:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-warm-600 hover:text-hafalohaRed transition rounded-lg"
+                  className="md:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-warm-600 hover:text-tsPrimary transition rounded-lg"
                   aria-label="Toggle menu"
                 >
                   {mobileMenuOpen ? (
@@ -370,8 +370,8 @@ function AppContent() {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Search products..."
-                      className="w-full pl-10 pr-4 py-3 bg-warm-50 border border-warm-200 rounded-full focus:outline-none focus:ring-2 focus:ring-hafalohaRed/20 focus:border-hafalohaRed text-warm-900 placeholder-warm-400 transition text-sm"
+                      placeholder="Search menu..."
+                      className="w-full pl-10 pr-4 py-3 bg-warm-50 border border-warm-200 rounded-full focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary text-warm-900 placeholder-warm-400 transition text-sm"
                     />
                     <svg
                       className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-warm-400"
@@ -394,41 +394,42 @@ function AppContent() {
                 
                 {/* Other Nav Links */}
                 <Link
-                  to="/acai-cakes"
-                  className="flex items-center gap-3 text-warm-700 hover:text-hafalohaRed font-medium py-2"
+                  to="/catering"
+                  className="flex items-center gap-3 text-warm-700 hover:text-tsPrimary font-medium py-2"
                   onClick={handleNavClick}
                 >
                   <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.87c1.355 0 2.697.055 4.024.165C17.155 8.51 18 9.473 18 10.608v2.513m-3-4.87v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0L3 16.5m15-3.38a48.474 48.474 0 00-6-.37c-2.032 0-4.034.126-6 .37m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.17c0 .62-.504 1.124-1.125 1.124H4.125A1.125 1.125 0 013 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 016 13.12M12.265 3.11a.375.375 0 11-.53 0L12 2.845l.265.265z" />
                   </svg>
-                  Açaí Cakes
+                  Catering
                 </Link>
                 <Link
-                  to="/fundraisers"
-                  className="flex items-center gap-3 text-warm-700 hover:text-hafalohaRed font-medium py-2"
+                  to="/locations"
+                  className="flex items-center gap-3 text-warm-700 hover:text-tsPrimary font-medium py-2"
                   onClick={handleNavClick}
                 >
                   <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
                   </svg>
-                  Fundraisers
+                  Locations
                 </Link>
                 <Link
                   to="/about"
-                  className="flex items-center gap-3 text-warm-700 hover:text-hafalohaRed font-medium py-2"
+                  className="flex items-center gap-3 text-warm-700 hover:text-tsPrimary font-medium py-2"
                   onClick={handleNavClick}
                 >
                   <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                   </svg>
-                  Our Story
+                  About Us
                 </Link>
                 
                 {/* Auth Section */}
                 <div className="pt-4 border-t border-warm-100">
                   <SignedOut>
                     <SignInButton mode="modal">
-                      <button className="w-full py-3 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition font-medium">
+                      <button className="w-full py-3 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition font-medium">
                         Log In
                       </button>
                     </SignInButton>
@@ -437,7 +438,7 @@ function AppContent() {
                     <div className="flex items-center justify-between py-2">
                       <Link
                         to="/account"
-                        className="text-warm-700 hover:text-hafalohaRed font-medium transition"
+                        className="text-warm-700 hover:text-tsPrimary font-medium transition"
                         onClick={handleNavClick}
                       >
                         My Account
@@ -519,17 +520,17 @@ function AppContent() {
               {/* Brand */}
               <div className="sm:col-span-2 md:col-span-1">
                 <img 
-                  src="/images/hafaloha-red-logo.webp" 
-                  alt="Hafaloha" 
+                  src="/images/three-squares-logo.svg" 
+                  alt="Three Squares" 
                   className="h-8 w-auto"
                 />
                 <p className="text-warm-500 text-sm mt-4 leading-relaxed">
-                  Island Living Apparel for All<br />
-                  Celebrating Chamorro and Hawaiian heritage
+                  Good Food, Good Mood, Good Service<br />
+                  Guam-style comfort food & catering
                 </p>
                 <div className="flex space-x-4 mt-4">
                   <a 
-                    href="https://www.facebook.com/hafaloha" 
+                    href="https://www.facebook.com/threesquaresguam" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-warm-400 hover:text-warm-600 transition p-1.5 -m-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
@@ -540,7 +541,7 @@ function AppContent() {
                     </svg>
                   </a>
                   <a 
-                    href="https://www.instagram.com/hafaloha" 
+                    href="https://www.instagram.com/threesquaresguam" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-warm-400 hover:text-warm-600 transition p-1.5 -m-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
@@ -555,26 +556,26 @@ function AppContent() {
 
               {/* Footer Navigation */}
               <div>
-                <h4 className="font-medium text-warm-900 mb-4">Shop</h4>
+                <h4 className="font-medium text-warm-900 mb-4">Menu</h4>
                 <ul className="space-y-2">
                   <li>
                     <Link to="/products" className="text-warm-500 hover:text-warm-900 transition text-sm">
-                      All Products
+                      Full Menu
                     </Link>
                   </li>
                   <li>
-                    <Link to="/products?collection=mens" className="text-warm-500 hover:text-warm-900 transition text-sm">
-                      Mens
+                    <Link to="/products?category=breakfast" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                      Breakfast
                     </Link>
                   </li>
                   <li>
-                    <Link to="/products?collection=womens" className="text-warm-500 hover:text-warm-900 transition text-sm">
-                      Womens
+                    <Link to="/products?category=mains" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                      Main Dishes
                     </Link>
                   </li>
                   <li>
-                    <Link to="/collections" className="text-warm-500 hover:text-warm-900 transition text-sm">
-                      Collections
+                    <Link to="/catering" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                      Catering
                     </Link>
                   </li>
                 </ul>
@@ -585,7 +586,7 @@ function AppContent() {
                 <ul className="space-y-2">
                   <li>
                     <Link to="/about" className="text-warm-500 hover:text-warm-900 transition text-sm">
-                      Our Story
+                      About Us
                     </Link>
                   </li>
                   <li>
@@ -594,27 +595,29 @@ function AppContent() {
                     </Link>
                   </li>
                   <li>
-                    <Link to="/shipping" className="text-warm-500 hover:text-warm-900 transition text-sm">
-                      Shipping Info
+                    <Link to="/locations" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                      Locations
                     </Link>
                   </li>
                   <li>
-                    <Link to="/returns" className="text-warm-500 hover:text-warm-900 transition text-sm">
-                      Returns
-                    </Link>
+                    <a href="https://wa.me/16718646656" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                      WhatsApp Orders
+                    </a>
                   </li>
                 </ul>
               </div>
 
               <div>
-                <h4 className="font-medium text-warm-900 mb-4">Location</h4>
+                <h4 className="font-medium text-warm-900 mb-4">Main Location</h4>
                 <address className="text-warm-500 text-sm not-italic">
-                  121 E. Marine Corps Dr<br />
-                  Suite 1-103 & Suite 1-104<br />
-                  Hagåtña, Guam 96910<br />
+                  416 Chalan San Antonio<br />
+                  Tamuning, GU 96913<br />
                   <br />
-                  <a href={storePhoneTel} className="hover:text-warm-900 transition">
-                    {storePhone}
+                  <a href="tel:+16716462652" className="hover:text-warm-900 transition">
+                    (671) 646-2652
+                  </a><br />
+                  <a href="https://wa.me/16718646656" className="hover:text-warm-900 transition">
+                    WhatsApp: (671) 864-6656
                   </a>
                 </address>
               </div>
@@ -623,7 +626,7 @@ function AppContent() {
             <div className="border-t border-warm-200 mt-12 pt-8">
               <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
                 <p className="text-warm-400 text-sm text-center sm:text-left">
-                  &copy; 2026 Hafaloha. All rights reserved.
+                  &copy; 2026 Three Squares / B&G Pacific LLC. All rights reserved.
                 </p>
                 <div className="flex gap-6 text-sm">
                   <Link to="/privacy" className="text-warm-400 hover:text-warm-600 transition">

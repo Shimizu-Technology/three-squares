@@ -197,7 +197,7 @@ export default function AdminFundraiserFormPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-4 border-hafalohaRed border-t-transparent rounded-full"></div>
+        <div className="animate-spin w-8 h-8 border-4 border-tsPrimary border-t-transparent rounded-full"></div>
       </div>
     );
   }
@@ -238,7 +238,7 @@ export default function AdminFundraiserFormPage() {
                 required
                 value={form.name}
                 onChange={(e) => handleNameChange(e.target.value)}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
                 placeholder="e.g., Soccer Team Spring Fundraiser"
               />
             </div>
@@ -250,7 +250,7 @@ export default function AdminFundraiserFormPage() {
                 required
                 value={form.slug}
                 onChange={(e) => { setSlugManuallyEdited(true); setForm({ ...form, slug: e.target.value }); }}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
                 placeholder="soccer-team-spring"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -266,7 +266,7 @@ export default function AdminFundraiserFormPage() {
                 required
                 value={form.organization_name}
                 onChange={(e) => setForm({ ...form, organization_name: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
                 placeholder="e.g., Hagåtña Tigers Soccer Club"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -279,7 +279,7 @@ export default function AdminFundraiserFormPage() {
               <select
                 value={form.status}
                 onChange={(e) => setForm({ ...form, status: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
               >
                 <option value="draft">Draft</option>
                 <option value="active">Active</option>
@@ -294,7 +294,7 @@ export default function AdminFundraiserFormPage() {
                 type="date"
                 value={form.start_date}
                 onChange={(e) => setForm({ ...form, start_date: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
               />
             </div>
             
@@ -304,7 +304,7 @@ export default function AdminFundraiserFormPage() {
                 type="date"
                 value={form.end_date}
                 onChange={(e) => setForm({ ...form, end_date: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
               />
             </div>
             
@@ -316,7 +316,7 @@ export default function AdminFundraiserFormPage() {
                 min="0"
                 value={form.goal_amount_cents}
                 onChange={(e) => setForm({ ...form, goal_amount_cents: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
                 placeholder="1000.00"
               />
             </div>
@@ -331,7 +331,7 @@ export default function AdminFundraiserFormPage() {
                 max="100"
                 value={form.payout_percentage}
                 onChange={(e) => setForm({ ...form, payout_percentage: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
                 placeholder="10"
               />
               <p className="text-xs text-gray-500 mt-1">
@@ -345,7 +345,7 @@ export default function AdminFundraiserFormPage() {
                 type="url"
                 value={form.image_url}
                 onChange={(e) => setForm({ ...form, image_url: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
                 placeholder="https://..."
               />
             </div>
@@ -356,7 +356,7 @@ export default function AdminFundraiserFormPage() {
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 rows={3}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
                 placeholder="Tell supporters about this fundraiser..."
               />
             </div>
@@ -374,7 +374,7 @@ export default function AdminFundraiserFormPage() {
                 type="text"
                 value={form.contact_name}
                 onChange={(e) => setForm({ ...form, contact_name: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
               />
             </div>
             <div>
@@ -383,7 +383,7 @@ export default function AdminFundraiserFormPage() {
                 type="email"
                 value={form.contact_email}
                 onChange={(e) => setForm({ ...form, contact_email: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
               />
             </div>
             <div>
@@ -392,7 +392,7 @@ export default function AdminFundraiserFormPage() {
                 type="tel"
                 value={form.contact_phone}
                 onChange={(e) => setForm({ ...form, contact_phone: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
               />
             </div>
           </div>
@@ -409,7 +409,7 @@ export default function AdminFundraiserFormPage() {
                 type="text"
                 value={form.pickup_location}
                 onChange={(e) => setForm({ ...form, pickup_location: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
                 placeholder="e.g., Hafaloha Store, 123 Main St"
               />
             </div>
@@ -420,7 +420,7 @@ export default function AdminFundraiserFormPage() {
                 value={form.pickup_instructions}
                 onChange={(e) => setForm({ ...form, pickup_instructions: e.target.value })}
                 rows={2}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
                 placeholder="e.g., Available for pickup starting March 15th..."
               />
             </div>
@@ -431,7 +431,7 @@ export default function AdminFundraiserFormPage() {
                 id="allow_shipping"
                 checked={form.allow_shipping}
                 onChange={(e) => setForm({ ...form, allow_shipping: e.target.checked })}
-                className="w-4 h-4 text-hafalohaRed rounded focus:ring-hafalohaRed"
+                className="w-4 h-4 text-tsPrimary rounded focus:ring-tsPrimary"
               />
               <label htmlFor="allow_shipping" className="text-sm font-medium text-gray-700">
                 Allow shipping (in addition to pickup)
@@ -445,7 +445,7 @@ export default function AdminFundraiserFormPage() {
                   type="text"
                   value={form.shipping_note}
                   onChange={(e) => setForm({ ...form, shipping_note: e.target.value })}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
                   placeholder="e.g., Shipping rates calculated at checkout"
                 />
               </div>
@@ -464,7 +464,7 @@ export default function AdminFundraiserFormPage() {
                 value={form.public_message}
                 onChange={(e) => setForm({ ...form, public_message: e.target.value })}
                 rows={2}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
                 placeholder="Displayed on the public fundraiser page..."
               />
             </div>
@@ -475,7 +475,7 @@ export default function AdminFundraiserFormPage() {
                 value={form.thank_you_message}
                 onChange={(e) => setForm({ ...form, thank_you_message: e.target.value })}
                 rows={2}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
                 placeholder="Shown after order is placed..."
               />
             </div>
@@ -493,7 +493,7 @@ export default function AdminFundraiserFormPage() {
           <button
             type="submit"
             disabled={saving}
-            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition"
+            className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50 transition"
           >
             <Save className="w-5 h-5" />
             {saving ? 'Saving...' : (isEditing ? 'Save Changes' : 'Create Fundraiser')}

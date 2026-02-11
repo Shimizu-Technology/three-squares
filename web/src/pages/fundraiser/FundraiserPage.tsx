@@ -63,7 +63,7 @@ function FundraiserPageContent() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-hafalohaRed border-t-transparent rounded-full"></div>
+        <div className="animate-spin w-8 h-8 border-4 border-tsPrimary border-t-transparent rounded-full"></div>
       </div>
     );
   }
@@ -73,7 +73,7 @@ function FundraiserPageContent() {
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <h1 className="text-2xl font-bold text-warm-900 mb-2">Fundraiser Not Found</h1>
         <p className="text-warm-600 mb-4">{error}</p>
-        <Link to="/" className="text-hafalohaRed hover:underline">
+        <Link to="/" className="text-tsPrimary hover:underline">
           Return to Home
         </Link>
       </div>
@@ -109,7 +109,7 @@ function FundraiserPageContent() {
 
             {/* Public Message */}
             {fundraiser.public_message && (
-              <div className="bg-hafalohaGold/10 border border-hafalohaGold rounded-lg p-6">
+              <div className="bg-tsGold/10 border border-tsGold rounded-lg p-6">
                 <p className="text-warm-800">{fundraiser.public_message}</p>
               </div>
             )}
@@ -177,7 +177,7 @@ function FundraiserPageContent() {
                 {fundraiser.contact_email && (
                   <a
                     href={`mailto:${fundraiser.contact_email}`}
-                    className="flex items-center gap-2 text-hafalohaRed hover:underline mb-2"
+                    className="flex items-center gap-2 text-tsPrimary hover:underline mb-2"
                   >
                     <Mail className="w-4 h-4" />
                     {fundraiser.contact_email}
@@ -186,7 +186,7 @@ function FundraiserPageContent() {
                 {fundraiser.contact_phone && (
                   <a
                     href={`tel:${fundraiser.contact_phone}`}
-                    className="flex items-center gap-2 text-hafalohaRed hover:underline"
+                    className="flex items-center gap-2 text-tsPrimary hover:underline"
                   >
                     <Phone className="w-4 h-4" />
                     {fundraiser.contact_phone}
@@ -208,7 +208,7 @@ function FundraiserPageContent() {
                       setParticipant(participant.code, participant.display_name);
                     }
                   }}
-                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   defaultValue=""
                 >
                   <option value="">Select a participant (optional)</option>
@@ -228,7 +228,7 @@ function FundraiserPageContent() {
       {itemCount > 0 && (
         <Link
           to={`/f/${slug}/cart`}
-          className="fixed bottom-6 right-6 bg-hafalohaRed text-white px-6 py-4 rounded-full shadow-lg hover:bg-red-700 transition flex items-center gap-3 z-40"
+          className="fixed bottom-6 right-6 bg-tsPrimary text-white px-6 py-4 rounded-full shadow-lg hover:bg-primary-dark transition flex items-center gap-3 z-40"
         >
           <ShoppingCart className="w-6 h-6" />
           <span className="font-semibold">{itemCount} items</span>

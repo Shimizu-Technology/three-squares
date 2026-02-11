@@ -174,13 +174,13 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
         onDragLeave={handleDragLeave}
         className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
           dragOver
-            ? 'border-hafalohaRed bg-red-50'
+            ? 'border-tsPrimary bg-red-50'
             : 'border-gray-300 hover:border-gray-400'
         }`}
       >
         {uploading ? (
           <div className="flex flex-col items-center">
-            <Loader className="w-12 h-12 text-hafalohaRed animate-spin mb-3" />
+            <Loader className="w-12 h-12 text-tsPrimary animate-spin mb-3" />
             <p className="text-gray-600">Uploading...</p>
           </div>
         ) : (
@@ -192,7 +192,7 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
             <p className="text-sm text-gray-500 mb-4">
               PNG, JPG, GIF, WEBP up to 10MB
             </p>
-            <label className="inline-flex items-center px-4 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 cursor-pointer transition">
+            <label className="inline-flex items-center px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark cursor-pointer transition">
               <Upload className="w-5 h-5 mr-2" />
               Select Images
               <input

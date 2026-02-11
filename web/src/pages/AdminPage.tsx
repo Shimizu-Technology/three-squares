@@ -60,7 +60,7 @@ export default function AdminPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hafalohaRed mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary mx-auto mb-4"></div>
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -77,7 +77,7 @@ export default function AdminPage() {
       <div className="bg-white border-b shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-          <p className="text-gray-600 mt-1">Manage your Hafaloha store</p>
+          <p className="text-gray-600 mt-1">Manage your Three Squares restaurant</p>
         </div>
       </div>
 
@@ -87,17 +87,17 @@ export default function AdminPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-sm font-medium text-gray-500 mb-2">Products</h3>
-            <p className="text-3xl font-bold text-hafalohaRed">2</p>
+            <p className="text-3xl font-bold text-tsPrimary">2</p>
             <p className="text-sm text-gray-600 mt-1">Total products</p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-sm font-medium text-gray-500 mb-2">Collections</h3>
-            <p className="text-3xl font-bold text-hafalohaRed">2</p>
+            <p className="text-3xl font-bold text-tsPrimary">2</p>
             <p className="text-sm text-gray-600 mt-1">Total collections</p>
           </div>
           <div className="bg-white rounded-lg shadow-sm p-6">
             <h3 className="text-sm font-medium text-gray-500 mb-2">Orders</h3>
-            <p className="text-3xl font-bold text-hafalohaRed">0</p>
+            <p className="text-3xl font-bold text-tsPrimary">0</p>
             <p className="text-sm text-gray-600 mt-1">Total orders</p>
           </div>
         </div>
@@ -110,7 +110,7 @@ export default function AdminPage() {
               <h2 className="text-xl font-semibold text-gray-900">Products</h2>
               <button 
                 onClick={showComingSoon}
-                className="bg-hafalohaRed text-white px-4 py-2 rounded-lg hover:bg-red-700 transition text-sm font-medium"
+                className="bg-tsPrimary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition text-sm font-medium"
               >
                 Add Product
               </button>
@@ -132,7 +132,7 @@ export default function AdminPage() {
               <h2 className="text-xl font-semibold text-gray-900">Collections</h2>
               <button 
                 onClick={showComingSoon}
-                className="bg-hafalohaRed text-white px-4 py-2 rounded-lg hover:bg-red-700 transition text-sm font-medium"
+                className="bg-tsPrimary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition text-sm font-medium"
               >
                 Add Collection
               </button>
@@ -176,7 +176,7 @@ export default function AdminPage() {
               <h2 className="text-xl font-semibold text-gray-900">Settings</h2>
               <button 
                 onClick={() => navigate('/admin/settings')}
-                className="bg-hafalohaRed text-white px-4 py-2 rounded-lg hover:bg-red-700 transition text-sm font-medium"
+                className="bg-tsPrimary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition text-sm font-medium"
               >
                 Configure
               </button>

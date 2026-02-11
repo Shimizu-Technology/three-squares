@@ -220,7 +220,7 @@ export default function AdminFundraiserDetailPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin w-8 h-8 border-4 border-hafalohaRed border-t-transparent rounded-full"></div>
+        <div className="animate-spin w-8 h-8 border-4 border-tsPrimary border-t-transparent rounded-full"></div>
       </div>
     );
   }
@@ -240,7 +240,7 @@ export default function AdminFundraiserDetailPage() {
       <div className="flex items-center gap-4">
         <Link
           to="/admin/fundraisers"
-          className="btn-icon hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2"
+          className="btn-icon hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
@@ -280,9 +280,9 @@ export default function AdminFundraiserDetailPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-3 border-b-2 whitespace-nowrap transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2 ${
+              className={`flex items-center gap-2 px-4 py-3 border-b-2 whitespace-nowrap transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
                 activeTab === tab.id
-                  ? 'border-hafalohaRed text-hafalohaRed'
+                  ? 'border-tsPrimary text-tsPrimary'
                   : 'border-transparent text-gray-600 hover:text-gray-900'
               }`}
             >
@@ -310,7 +310,7 @@ export default function AdminFundraiserDetailPage() {
                 </div>
                 <div className="h-4 bg-gray-200 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-hafalohaGold rounded-full transition-all"
+                    className="h-full bg-tsGold rounded-full transition-all"
                     style={{ width: `${Math.min(fundraiser.progress_percentage, 100)}%` }}
                   />
                 </div>
@@ -383,7 +383,7 @@ export default function AdminFundraiserDetailPage() {
                 </button>
                 <button
                   onClick={() => setShowAddParticipant(true)}
-                  className="flex items-center gap-2 px-3 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition text-sm"
+                  className="flex items-center gap-2 px-3 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition text-sm"
                 >
                   <Plus className="w-4 h-4" />
                   Add Participant
@@ -447,7 +447,7 @@ export default function AdminFundraiserDetailPage() {
               <h3 className="font-medium text-gray-900">Products ({products.length})</h3>
               <Link
                 to={`/admin/fundraisers/${id}/products/new`}
-                className="flex items-center gap-2 px-3 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition text-sm"
+                className="flex items-center gap-2 px-3 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition text-sm"
               >
                 <Plus className="w-4 h-4" />
                 Create Product
@@ -475,7 +475,7 @@ export default function AdminFundraiserDetailPage() {
                     <div className="flex-1 min-w-0">
                       <h4 className="font-medium truncate">{fp.name}</h4>
                       <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <span className="font-medium text-hafalohaRed">{formatCurrency(fp.price_cents)}</span>
+                        <span className="font-medium text-tsPrimary">{formatCurrency(fp.price_cents)}</span>
                         {fp.price_cents !== fp.original_price_cents && (
                           <span className="line-through text-gray-400">{formatCurrency(fp.original_price_cents)}</span>
                         )}
@@ -680,7 +680,7 @@ function AddParticipantModal({
                 required
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
               />
             </div>
             <div>
@@ -689,7 +689,7 @@ function AddParticipantModal({
                 type="text"
                 value={form.participant_number}
                 onChange={(e) => setForm({ ...form, participant_number: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
                 placeholder="e.g., 001"
               />
             </div>
@@ -699,7 +699,7 @@ function AddParticipantModal({
                 type="email"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
               />
             </div>
             <div>
@@ -708,7 +708,7 @@ function AddParticipantModal({
                 type="tel"
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed"
+                className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary"
               />
             </div>
           </div>
@@ -723,7 +723,7 @@ function AddParticipantModal({
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 px-4 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              className="flex-1 px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50"
             >
               {saving ? 'Adding...' : 'Add Participant'}
             </button>
@@ -775,7 +775,7 @@ function CopyLinkButton({
       className={`p-1 rounded transition ${
         copied 
           ? 'text-green-600 bg-green-50' 
-          : 'text-gray-400 hover:text-hafalohaRed hover:bg-gray-100'
+          : 'text-gray-400 hover:text-tsPrimary hover:bg-gray-100'
       }`}
       title={copied ? 'Copied!' : 'Copy shareable link'}
     >

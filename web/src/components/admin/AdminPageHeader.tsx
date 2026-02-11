@@ -33,7 +33,7 @@ export default function AdminPageHeader({
                 {crumb.path && !isLast ? (
                   <Link
                     to={crumb.path}
-                    className="text-gray-500 hover:text-hafalohaRed transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2 rounded"
+                    className="text-gray-500 hover:text-tsPrimary transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 rounded"
                   >
                     {crumb.label}
                   </Link>

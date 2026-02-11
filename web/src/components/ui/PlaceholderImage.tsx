@@ -6,7 +6,7 @@ import useAppConfig from '../../hooks/useAppConfig';
 // Easy to swap: change the icon, colors, or opacity in one place.
 const PLACEHOLDER_DEFAULTS = {
   bgClass: 'bg-warm-100',
-  logoSrc: '/images/hafaloha-logo.png',
+  logoSrc: '/images/three-squares-logo.svg',
   textColor: 'text-warm-400',
   text: '',
 };
@@ -76,7 +76,7 @@ export default function PlaceholderImage({
       ) : (
         <img
           src={logoSrc}
-          alt="Hafaloha"
+          alt="Three Squares"
           className={`${logoClassName} ${iconClassName}`}
         />
       )}

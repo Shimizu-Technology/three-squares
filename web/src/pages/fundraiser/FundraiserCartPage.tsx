@@ -39,7 +39,7 @@ function FundraiserCartPageContent() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-hafalohaRed border-t-transparent rounded-full"></div>
+        <div className="animate-spin w-8 h-8 border-4 border-tsPrimary border-t-transparent rounded-full"></div>
       </div>
     );
   }
@@ -83,7 +83,7 @@ function FundraiserCartPageContent() {
             <p className="text-warm-600 mb-6">Add some items to get started!</p>
             <Link
               to={`/f/${slug}`}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition font-medium"
             >
               <ArrowLeft className="w-4 h-4" />
               Continue Shopping
@@ -125,7 +125,7 @@ function FundraiserCartPageContent() {
                 </div>
                 <div className="border-t border-warm-200 pt-3 flex justify-between text-lg font-bold">
                   <span>Estimated Total</span>
-                  <span className="text-hafalohaRed">{formatPrice(subtotal)}</span>
+                  <span className="text-tsPrimary">{formatPrice(subtotal)}</span>
                 </div>
               </div>
             </div>
@@ -141,7 +141,7 @@ function FundraiserCartPageContent() {
               <button
                 onClick={() => navigate(`/f/${slug}/checkout`)}
                 disabled={!fundraiser?.can_order}
-                className="flex-1 py-3 px-6 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 disabled:bg-warm-300 disabled:cursor-not-allowed transition font-semibold"
+                className="flex-1 py-3 px-6 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark disabled:bg-warm-300 disabled:cursor-not-allowed transition font-semibold"
               >
                 {fundraiser?.can_order ? 'Proceed to Checkout' : 'Fundraiser Ended'}
               </button>

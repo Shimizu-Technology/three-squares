@@ -237,7 +237,7 @@ export default function ProductDetailPage() {
     return (
       <div className="min-h-screen bg-warm-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hafalohaRed mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary mx-auto mb-4"></div>
           <p className="text-warm-600">Loading product...</p>
         </div>
       </div>
@@ -249,7 +249,7 @@ export default function ProductDetailPage() {
       <div className="min-h-screen bg-warm-50 flex items-center justify-center">
         <div className="text-center">
           <p className="text-red-600 mb-4">{error || 'Product not found'}</p>
-          <Link to="/products" className="text-hafalohaRed hover:underline">
+          <Link to="/products" className="text-tsPrimary hover:underline">
             Back to products
           </Link>
         </div>
@@ -342,9 +342,9 @@ export default function ProductDetailPage() {
               title={value + (!variantInStock ? ' (Out of Stock)' : '')}
               className={`relative w-10 h-10 rounded-full border-2 transition-all ${
                 isSelected
-                  ? 'border-hafalohaRed ring-2 ring-hafalohaRed/30 scale-110'
+                  ? 'border-tsPrimary ring-2 ring-tsPrimary/30 scale-110'
                   : isAvailable && variantInStock
-                    ? 'border-warm-300 hover:border-hafalohaRed hover:scale-105'
+                    ? 'border-warm-300 hover:border-tsPrimary hover:scale-105'
                     : 'border-warm-200 opacity-40 cursor-not-allowed'
               }`}
             >
@@ -406,9 +406,9 @@ export default function ProductDetailPage() {
               disabled={!isAvailable}
               className={`px-4 py-2.5 rounded-lg border-2 transition-all ${
                 isSelected
-                  ? 'border-hafalohaRed bg-red-50 text-hafalohaRed font-semibold'
+                  ? 'border-tsPrimary bg-red-50 text-tsPrimary font-semibold'
                   : isAvailable && variantInStock
-                    ? 'border-warm-300 hover:border-hafalohaRed text-warm-700'
+                    ? 'border-warm-300 hover:border-tsPrimary text-warm-700'
                     : isAvailable && !variantInStock
                       ? 'border-warm-200 bg-warm-50 text-warm-400 cursor-not-allowed'
                       : 'border-warm-200 bg-warm-50 text-warm-300 cursor-not-allowed'
@@ -485,7 +485,7 @@ export default function ProductDetailPage() {
                       key={image.id}
                       onClick={() => setSelectedImageIndex(index)}
                       className={`bg-white rounded-lg overflow-hidden border-2 transition-all hover:scale-105 shadow-sm ${
-                        selectedImageIndex === index ? 'border-hafalohaRed ring-2 ring-hafalohaRed/20' : 'border-warm-200 hover:border-warm-300'
+                        selectedImageIndex === index ? 'border-tsPrimary ring-2 ring-tsPrimary/20' : 'border-warm-200 hover:border-warm-300'
                       }`}
                       style={{ aspectRatio: '1/1' }}
                     >
@@ -511,7 +511,7 @@ export default function ProductDetailPage() {
                       <Link
                         key={collection.id}
                         to={`/collections/${collection.slug}`}
-                        className="inline-flex items-center text-xs font-semibold bg-hafalohaCream text-warm-700 px-3 py-1 rounded-full hover:bg-hafalohaGold/30 transition"
+                        className="inline-flex items-center text-xs font-semibold bg-tsSurface text-warm-700 px-3 py-1 rounded-full hover:bg-tsGold/30 transition"
                       >
                         {collection.name}
                       </Link>
@@ -523,7 +523,7 @@ export default function ProductDetailPage() {
               {/* Name & Price */}
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-warm-900 mb-3">{product.name}</h1>
               <div className="flex items-baseline gap-3 mb-6">
-                <span className="text-3xl sm:text-4xl font-bold text-hafalohaRed">
+                <span className="text-3xl sm:text-4xl font-bold text-tsPrimary">
                   {formatPrice(displayPrice)}
                 </span>
                 {product.sale_price_cents && product.sale_price_cents < product.base_price_cents && (
@@ -545,7 +545,7 @@ export default function ProductDetailPage() {
                   <button
                     type="button"
                     onClick={() => setShowSizeGuide(true)}
-                    className="inline-flex items-center px-4 py-2 border-2 border-hafalohaRed text-hafalohaRed hover:bg-hafalohaRed hover:text-white font-semibold rounded-lg transition-colors"
+                    className="inline-flex items-center px-4 py-2 border-2 border-tsPrimary text-tsPrimary hover:bg-tsPrimary hover:text-white font-semibold rounded-lg transition-colors"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -608,9 +608,9 @@ export default function ProductDetailPage() {
                               disabled={!variantAvailable}
                               className={`px-4 py-3 rounded-lg border-2 transition-all ${
                                 selectedVariant?.id === variant.id
-                                  ? 'border-hafalohaRed bg-red-50 text-hafalohaRed'
+                                  ? 'border-tsPrimary bg-red-50 text-tsPrimary'
                                   : variantAvailable
-                                  ? 'border-warm-300 hover:border-hafalohaRed'
+                                  ? 'border-warm-300 hover:border-tsPrimary'
                                   : 'border-warm-200 bg-warm-50 text-warm-400 cursor-not-allowed'
                               }`}
                             >
@@ -638,7 +638,7 @@ export default function ProductDetailPage() {
                   <div className="flex items-center gap-4">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      className="w-11 h-11 flex items-center justify-center border-2 border-warm-300 rounded-lg hover:border-hafalohaRed transition"
+                      className="w-11 h-11 flex items-center justify-center border-2 border-warm-300 rounded-lg hover:border-tsPrimary transition"
                       disabled={quantity <= 1}
                     >
                       −
@@ -656,7 +656,7 @@ export default function ProductDetailPage() {
                     />
                     <button
                       onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
-                      className="w-11 h-11 flex items-center justify-center border-2 border-warm-300 rounded-lg hover:border-hafalohaRed transition"
+                      className="w-11 h-11 flex items-center justify-center border-2 border-warm-300 rounded-lg hover:border-tsPrimary transition"
                       disabled={quantity >= maxQuantity}
                     >
                       +

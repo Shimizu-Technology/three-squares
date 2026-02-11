@@ -193,7 +193,7 @@ export default function AdminVariantPresetsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hafalohaRed"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary"></div>
       </div>
     );
   }
@@ -210,7 +210,7 @@ export default function AdminVariantPresetsPage() {
         </div>
         <button
           onClick={handleCreate}
-          className="px-5 py-2.5 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
+          className="px-5 py-2.5 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium flex items-center gap-2"
         >
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
             <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
@@ -233,7 +233,7 @@ export default function AdminVariantPresetsPage() {
           </p>
           <button
             onClick={handleCreate}
-            className="px-6 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition-colors"
+            className="px-6 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition-colors"
           >
             Create First Preset
           </button>
@@ -362,7 +362,7 @@ export default function AdminVariantPresetsPage() {
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="e.g., Adult Sizes Only"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                   />
                 </div>
                 <div>
@@ -375,7 +375,7 @@ export default function AdminVariantPresetsPage() {
                     onChange={(e) => setFormData(prev => ({ ...prev, option_type: e.target.value }))}
                     placeholder="e.g., Size, Color, Material"
                     list="option-types-list"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                   />
                   <datalist id="option-types-list">
                     <option value="Size" />
@@ -396,7 +396,7 @@ export default function AdminVariantPresetsPage() {
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="When to use this preset"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                 />
               </div>
 
@@ -420,7 +420,7 @@ export default function AdminVariantPresetsPage() {
                             min="0"
                             value={(value.price_adjustment_cents / 100).toFixed(2)}
                             onChange={(e) => updateValuePrice(index, e.target.value)}
-                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                           />
                         </div>
                         <button
@@ -444,7 +444,7 @@ export default function AdminVariantPresetsPage() {
                     onChange={(e) => setNewValueName(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addValue()}
                     placeholder="Value name (e.g., XL)"
-                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                    className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                   />
                   <div className="flex items-center gap-1">
                     <span className="text-gray-500 text-sm">+$</span>
@@ -455,7 +455,7 @@ export default function AdminVariantPresetsPage() {
                       value={newValuePrice}
                       onChange={(e) => setNewValuePrice(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && addValue()}
-                      className="w-20 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                      className="w-20 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                     />
                   </div>
                   <button
@@ -479,7 +479,7 @@ export default function AdminVariantPresetsPage() {
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-6 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-6 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 {saving ? (
                   <>

@@ -54,7 +54,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         {/* Content - minimal and clean */}
         <div className="pt-4 flex flex-col grow">
           {/* Product Name */}
-          <h3 className="font-medium text-base text-warm-900 group-hover:text-hafalohaRed transition-colors line-clamp-2 mb-2">
+          <h3 className="font-medium text-base text-warm-900 group-hover:text-tsPrimary transition-colors line-clamp-2 mb-2">
             {product.name}
           </h3>
 

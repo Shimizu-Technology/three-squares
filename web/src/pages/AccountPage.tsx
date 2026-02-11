@@ -83,7 +83,7 @@ export default function AccountPage() {
       <div className="min-h-screen bg-warm-50 py-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center py-16">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-hafalohaRed border-t-transparent"></div>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-tsPrimary border-t-transparent"></div>
             <p className="mt-4 text-warm-600">Loading...</p>
           </div>
         </div>
@@ -105,7 +105,7 @@ export default function AccountPage() {
               Sign in to view your profile, order history, and manage your account settings.
             </p>
             <SignInButton mode="modal">
-              <button className="w-full py-3 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition font-medium">
+              <button className="w-full py-3 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition font-medium">
                 Sign In
               </button>
             </SignInButton>
@@ -185,7 +185,7 @@ export default function AccountPage() {
                 </div>
                 <Link
                   to="/orders"
-                  className="text-sm text-hafalohaRed hover:text-red-700 font-medium flex items-center gap-1 transition"
+                  className="text-sm text-tsPrimary hover:text-red-700 font-medium flex items-center gap-1 transition"
                 >
                   View All
                   <ChevronRight className="w-4 h-4" />
@@ -194,7 +194,7 @@ export default function AccountPage() {
               <div className="p-6">
                 {ordersLoading && (
                   <div className="text-center py-8">
-                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-hafalohaRed border-t-transparent"></div>
+                    <div className="inline-block animate-spin rounded-full h-6 w-6 border-4 border-tsPrimary border-t-transparent"></div>
                     <p className="mt-3 text-sm text-warm-500">Loading orders...</p>
                   </div>
                 )}
@@ -217,7 +217,7 @@ export default function AccountPage() {
                     <p className="text-warm-600 mb-4">You haven&apos;t placed any orders yet.</p>
                     <Link
                       to="/products"
-                      className="inline-flex items-center px-5 py-2.5 bg-hafalohaRed text-white text-sm font-medium rounded-lg hover:bg-red-700 transition"
+                      className="inline-flex items-center px-5 py-2.5 bg-tsPrimary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition"
                     >
                       Start Shopping
                     </Link>
@@ -234,7 +234,7 @@ export default function AccountPage() {
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-warm-900 group-hover:text-hafalohaRed transition">
+                            <span className="font-medium text-warm-900 group-hover:text-tsPrimary transition">
                               {order.order_number}
                             </span>
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
@@ -249,7 +249,7 @@ export default function AccountPage() {
                         </div>
                         <div className="flex items-center gap-2 ml-4">
                           <span className="font-semibold text-warm-900">{order.total_formatted}</span>
-                          <ChevronRight className="w-4 h-4 text-warm-400 group-hover:text-hafalohaRed transition" />
+                          <ChevronRight className="w-4 h-4 text-warm-400 group-hover:text-tsPrimary transition" />
                         </div>
                       </Link>
                     ))}

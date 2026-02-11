@@ -111,7 +111,7 @@ function FundraiserProductPageContent() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-hafalohaRed border-t-transparent rounded-full"></div>
+        <div className="animate-spin w-8 h-8 border-4 border-tsPrimary border-t-transparent rounded-full"></div>
       </div>
     );
   }
@@ -121,7 +121,7 @@ function FundraiserProductPageContent() {
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <h1 className="text-2xl font-bold text-warm-900 mb-2">Product Not Found</h1>
         <p className="text-warm-600 mb-4">{error}</p>
-        <Link to={`/f/${slug}`} className="text-hafalohaRed hover:underline">
+        <Link to={`/f/${slug}`} className="text-tsPrimary hover:underline">
           Back to Fundraiser
         </Link>
       </div>
@@ -134,7 +134,7 @@ function FundraiserProductPageContent() {
       <div className="bg-white border-b border-warm-100">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <nav className="flex items-center gap-2 text-sm text-warm-600">
-            <Link to={`/f/${slug}`} className="hover:text-hafalohaRed transition">
+            <Link to={`/f/${slug}`} className="hover:text-tsPrimary transition">
               {fundraiser.name}
             </Link>
             <span>/</span>
@@ -206,7 +206,7 @@ function FundraiserProductPageContent() {
                     onClick={() => setCurrentImageIndex(idx)}
                     className={`w-20 h-20 rounded-lg overflow-hidden shrink-0 border-2 transition ${
                       idx === currentImageIndex
-                        ? 'border-hafalohaRed'
+                        ? 'border-tsPrimary'
                         : 'border-transparent hover:border-warm-300'
                     }`}
                   >
@@ -225,7 +225,7 @@ function FundraiserProductPageContent() {
           <div className="space-y-6">
             <div>
               <h1 className="text-3xl font-bold text-warm-900">{product.name}</h1>
-              <p className="text-3xl font-bold text-hafalohaRed mt-2">
+              <p className="text-3xl font-bold text-tsPrimary mt-2">
                 {formatPrice(product.price_cents)}
               </p>
             </div>
@@ -248,7 +248,7 @@ function FundraiserProductPageContent() {
                       disabled={!variant.in_stock}
                       className={`px-4 py-3 rounded-lg border text-sm font-medium transition ${
                         selectedVariantId === variant.id
-                          ? 'border-hafalohaRed bg-hafalohaRed/5 text-hafalohaRed'
+                          ? 'border-tsPrimary bg-tsPrimary/5 text-tsPrimary'
                           : variant.in_stock
                           ? 'border-warm-200 hover:border-warm-400 text-warm-700'
                           : 'border-warm-200 bg-warm-100 text-warm-400 cursor-not-allowed'
@@ -300,7 +300,7 @@ function FundraiserProductPageContent() {
             <button
               onClick={handleAddToCart}
               disabled={!fundraiser.can_order || !product.in_stock || !selectedVariantId}
-              className="w-full py-4 bg-hafalohaRed text-white rounded-lg font-semibold hover:bg-red-700 disabled:bg-warm-300 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
+              className="w-full py-4 bg-tsPrimary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-warm-300 disabled:cursor-not-allowed transition flex items-center justify-center gap-2"
             >
               <ShoppingCart className="w-5 h-5" />
               {!fundraiser.can_order
@@ -315,7 +315,7 @@ function FundraiserProductPageContent() {
             {/* Back Link */}
             <Link
               to={`/f/${slug}`}
-              className="inline-flex items-center gap-2 text-warm-600 hover:text-hafalohaRed transition"
+              className="inline-flex items-center gap-2 text-warm-600 hover:text-tsPrimary transition"
             >
               <ChevronLeft className="w-4 h-4" />
               Back to Fundraiser
@@ -328,7 +328,7 @@ function FundraiserProductPageContent() {
       {itemCount > 0 && (
         <Link
           to={`/f/${slug}/cart`}
-          className="fixed bottom-6 right-6 bg-hafalohaRed text-white px-6 py-4 rounded-full shadow-lg hover:bg-red-700 transition flex items-center gap-3 z-40"
+          className="fixed bottom-6 right-6 bg-tsPrimary text-white px-6 py-4 rounded-full shadow-lg hover:bg-primary-dark transition flex items-center gap-3 z-40"
         >
           <ShoppingCart className="w-6 h-6" />
           <span className="font-semibold">{itemCount} items</span>

@@ -80,7 +80,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-8">
       {/* Welcome Header */}
-      <div className="rounded-2xl p-6 sm:p-8 shadow-lg bg-hafalohaRed">
+      <div className="rounded-2xl p-6 sm:p-8 shadow-lg bg-tsPrimary">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#ffffff' }}>Welcome back!</h1>
         <p style={{ color: '#ffffff', opacity: 0.9 }}>Here's what's happening with your store today.</p>
       </div>
@@ -105,7 +105,7 @@ export default function AdminDashboardPage() {
           value={stats.pending_orders}
           icon={Clock}
           iconColor="bg-orange-50 text-orange-600"
-          valueColor="text-hafalohaRed"
+          valueColor="text-tsPrimary"
           link={
             stats.pending_orders > 0
               ? { text: 'View pending', to: '/admin/orders?status=pending' }
@@ -122,33 +122,33 @@ export default function AdminDashboardPage() {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-        <Link to="/admin/products/new" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-hafalohaRed transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2">
-          <div className="w-10 h-10 bg-hafalohaCream rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-hafalohaRed/10 transition">
-            <Plus className="w-5 h-5 text-gray-600 group-hover:text-hafalohaRed transition" />
+        <Link to="/admin/products/new" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-tsPrimary transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
+          <div className="w-10 h-10 bg-tsSurface rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-tsPrimary/10 transition">
+            <Plus className="w-5 h-5 text-gray-600 group-hover:text-tsPrimary transition" />
           </div>
           <p className="text-sm font-medium text-gray-700">Add Product</p>
         </Link>
-        <Link to="/admin/orders" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-hafalohaRed transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2">
-          <div className="w-10 h-10 bg-hafalohaCream rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-hafalohaRed/10 transition">
-            <ClipboardList className="w-5 h-5 text-gray-600 group-hover:text-hafalohaRed transition" />
+        <Link to="/admin/orders" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-tsPrimary transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
+          <div className="w-10 h-10 bg-tsSurface rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-tsPrimary/10 transition">
+            <ClipboardList className="w-5 h-5 text-gray-600 group-hover:text-tsPrimary transition" />
           </div>
           <p className="text-sm font-medium text-gray-700">View Orders</p>
         </Link>
-        <Link to="/admin/collections" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-hafalohaRed transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2">
-          <div className="w-10 h-10 bg-hafalohaCream rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-hafalohaRed/10 transition">
-            <FolderOpen className="w-5 h-5 text-gray-600 group-hover:text-hafalohaRed transition" />
+        <Link to="/admin/collections" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-tsPrimary transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
+          <div className="w-10 h-10 bg-tsSurface rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-tsPrimary/10 transition">
+            <FolderOpen className="w-5 h-5 text-gray-600 group-hover:text-tsPrimary transition" />
           </div>
           <p className="text-sm font-medium text-gray-700">Collections</p>
         </Link>
-        <Link to="/admin/analytics" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-hafalohaRed transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2">
-          <div className="w-10 h-10 bg-hafalohaCream rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-hafalohaRed/10 transition">
-            <BarChart3 className="w-5 h-5 text-gray-600 group-hover:text-hafalohaRed transition" />
+        <Link to="/admin/analytics" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-tsPrimary transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
+          <div className="w-10 h-10 bg-tsSurface rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-tsPrimary/10 transition">
+            <BarChart3 className="w-5 h-5 text-gray-600 group-hover:text-tsPrimary transition" />
           </div>
           <p className="text-sm font-medium text-gray-700">Analytics</p>
         </Link>
-        <Link to="/admin/settings" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-hafalohaRed transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2">
-          <div className="w-10 h-10 bg-hafalohaCream rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-hafalohaRed/10 transition">
-            <Settings className="w-5 h-5 text-gray-600 group-hover:text-hafalohaRed transition" />
+        <Link to="/admin/settings" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-tsPrimary transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
+          <div className="w-10 h-10 bg-tsSurface rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-tsPrimary/10 transition">
+            <Settings className="w-5 h-5 text-gray-600 group-hover:text-tsPrimary transition" />
           </div>
           <p className="text-sm font-medium text-gray-700">Settings</p>
         </Link>
@@ -175,7 +175,7 @@ export default function AdminDashboardPage() {
               <Link
                 key={order.id}
                 to={`/admin/orders?id=${order.id}`}
-                className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2 rounded"
+                className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 rounded"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-sm font-semibold text-gray-600">

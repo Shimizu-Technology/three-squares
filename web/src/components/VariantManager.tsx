@@ -493,7 +493,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
                       if (preset) applyPreset(typeIndex, preset);
                       e.target.value = '';
                     }}
-                    className="text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                    className="text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                   >
                     <option value="">Apply preset...</option>
                     {getPresetsForType(optionType.name).map(preset => (
@@ -545,7 +545,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
             <input
               type="text"
                 placeholder={`Add ${optionType.name.toLowerCase()} value...`}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed text-sm"
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary text-sm"
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
                     addValueToOptionType(typeIndex, (e.target as HTMLInputElement).value);
@@ -578,7 +578,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
             onKeyPress={(e) => e.key === 'Enter' && addOptionType()}
             placeholder="New option type (e.g., Size, Color, Material)"
             list="common-option-types"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
           />
           <datalist id="common-option-types">
             <option value="Size" />
@@ -590,7 +590,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
           </datalist>
           <button
             onClick={addOptionType}
-            className="px-4 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
+            className="px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium flex items-center gap-2"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
@@ -632,7 +632,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
           className={`w-full mt-4 py-3 rounded-lg font-semibold text-white flex items-center justify-center gap-2 transition ${
             generating || totalVariants === 0
               ? 'bg-gray-300 cursor-not-allowed'
-              : 'bg-hafalohaRed hover:bg-red-700'
+              : 'bg-tsPrimary hover:bg-primary-dark'
           }`}
         >
           {generating ? (
@@ -744,7 +744,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
                         </button>
                         <button
                           onClick={() => deleteVariant(variant.id, variant.display_name || variant.variant_name)}
-                          className="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition text-xs font-medium"
+                          className="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded hover:bg-primary-dark transition text-xs font-medium"
                         >
                           Delete
                         </button>
@@ -796,7 +796,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
                   min="0"
                   value={editPrice}
                   onChange={(e) => setEditPrice(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                 />
               </div>
 
@@ -809,7 +809,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
                       min="0"
                       value={editStock}
                       onChange={(e) => setEditStock(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                     />
                   </div>
 
@@ -820,7 +820,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
                       min="0"
                       value={editLowStockThreshold}
                       onChange={(e) => setEditLowStockThreshold(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-hafalohaRed"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                     />
                   </div>
                 </>
@@ -832,7 +832,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
                   id="edit-available"
                   checked={editAvailable}
                   onChange={(e) => setEditAvailable(e.target.checked)}
-                  className="h-4 w-4 text-hafalohaRed focus:ring-hafalohaRed border-gray-300 rounded"
+                  className="h-4 w-4 text-tsPrimary focus:ring-tsPrimary border-gray-300 rounded"
                 />
                 <label htmlFor="edit-available" className="ml-2 block text-sm text-gray-700">
                   Available for purchase
@@ -849,7 +849,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
               </button>
               <button
                 onClick={saveEdit}
-                className="px-4 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition-colors"
+                className="px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition-colors"
               >
                 Save Changes
               </button>

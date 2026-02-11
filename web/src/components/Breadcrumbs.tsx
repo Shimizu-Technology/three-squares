@@ -21,7 +21,7 @@ export default function Breadcrumbs({ items }: BreadcrumbsProps) {
             {item.path && !isLast ? (
               <Link
                 to={item.path}
-                className="text-warm-600 hover:text-hafalohaRed transition"
+                className="text-warm-600 hover:text-tsPrimary transition"
               >
                 {item.label}
               </Link>

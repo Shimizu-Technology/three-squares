@@ -18,7 +18,7 @@
       background-color: #ffffff;
     }
     .header {
-      background-color: #2D6A4F;
+      background-color: #1E3A5F;
       padding: 30px 40px;
       text-align: center;
     }
@@ -29,17 +29,22 @@
       font-weight: 700;
       letter-spacing: 1px;
     }
+    .header-accent {
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, #F5C518 0%, #4A7FB5 50%, #F5C518 100%);
+    }
     .content {
       padding: 40px;
     }
     .content h2 {
-      color: #2D6A4F;
+      color: #4A7FB5;
       margin-top: 0;
       font-size: 22px;
     }
     .refund-details {
-      background-color: #f8f9fa;
-      border-left: 4px solid #2D6A4F;
+      background-color: #F0EDE8;
+      border-left: 4px solid #4A7FB5;
       padding: 20px;
       margin: 24px 0;
       border-radius: 0 4px 4px 0;
@@ -63,41 +68,48 @@
     }
     .refund-amount {
       font-size: 24px;
-      color: #2D6A4F;
+      color: #4A7FB5;
       font-weight: 700;
     }
     .notice {
-      background-color: #FFF3CD;
-      border: 1px solid #FFEAA7;
+      background-color: #FFF8E7;
+      border: 1px solid #F5C518;
       padding: 16px 20px;
       border-radius: 4px;
       margin: 24px 0;
       font-size: 14px;
-      color: #856404;
+      color: #8B5E3C;
     }
     .notice strong {
       display: block;
       margin-bottom: 4px;
     }
     .footer {
-      background-color: #f8f9fa;
+      background-color: #F0EDE8;
       padding: 24px 40px;
       text-align: center;
       font-size: 13px;
-      color: #999999;
+      color: #666666;
       border-top: 1px solid #e9ecef;
     }
     .footer a {
-      color: #2D6A4F;
+      color: #4A7FB5;
       text-decoration: none;
+    }
+    .tagline {
+      color: #D4A030;
+      font-size: 12px;
+      margin-top: 4px;
     }
   </style>
 </head>
 <body>
   <div class="email-wrapper">
     <div class="header">
-      <h1>Hafaloha</h1>
+      <h1>Three Squares</h1>
+      <p class="tagline">Good Food, Good Mood, Good Service</p>
     </div>
+    <div class="header-accent"></div>
 
     <div class="content">
       <h2>Refund Processed</h2>
@@ -137,13 +149,14 @@
 
       <p>If you have any questions about this refund, please don't hesitate to reach out to us.</p>
 
-      <p>Thank you for shopping with Hafaloha!</p>
+      <p>Thank you for dining with Three Squares!</p>
     </div>
 
     <div class="footer">
-      <p>&copy; <%= Date.today.year %> Hafaloha. All rights reserved.</p>
+      <p>&copy; <%= Date.today.year %> Three Squares / B&G Pacific LLC. All rights reserved.</p>
       <p>
-        <a href="https://hafaloha.com">hafaloha.com</a>
+        <a href="https://bgpacific.com">bgpacific.com</a> &bull;
+        <a href="tel:+16716462652">(671) 646-2652</a>
       </p>
     </div>
   </div>

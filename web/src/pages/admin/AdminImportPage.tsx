@@ -416,7 +416,7 @@ export default function AdminImportPage() {
         {/* Upload Form */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
           <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-            <Upload className="w-6 h-6 mr-2 text-hafalohaRed" />
+            <Upload className="w-6 h-6 mr-2 text-tsPrimary" />
             Upload Files
           </h2>
 
@@ -428,7 +428,7 @@ export default function AdminImportPage() {
               </label>
               <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition ${
-                  isDragging ? 'border-hafalohaRed bg-red-50' : 'border-gray-300 hover:border-hafalohaRed'
+                  isDragging ? 'border-tsPrimary bg-red-50' : 'border-gray-300 hover:border-tsPrimary'
                 }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -485,7 +485,7 @@ export default function AdminImportPage() {
               </label>
               <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition ${
-                  isDragging ? 'border-hafalohaRed bg-red-50' : 'border-gray-300 hover:border-hafalohaRed'
+                  isDragging ? 'border-tsPrimary bg-red-50' : 'border-gray-300 hover:border-tsPrimary'
                 }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}

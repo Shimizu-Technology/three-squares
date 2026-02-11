@@ -19,8 +19,8 @@ export default function CartIcon({ darkMode = false }: CartIconProps) {
       onClick={toggleCart}
       className={`relative p-2 transition ${
         darkMode 
-          ? 'text-white hover:text-hafalohaGold' 
-          : 'text-warm-700 hover:text-hafalohaRed'
+          ? 'text-white hover:text-tsGold' 
+          : 'text-warm-700 hover:text-tsPrimary'
       }`}
       aria-label={`Shopping cart with ${count} item${count !== 1 ? 's' : ''}`}
     >
@@ -42,7 +42,7 @@ export default function CartIcon({ darkMode = false }: CartIconProps) {
 
       {/* Badge with item count */}
       {count > 0 && (
-        <span className="absolute -top-1 -right-1 bg-hafalohaRed text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+        <span className="absolute -top-1 -right-1 bg-tsPrimary text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
           {count > 99 ? '99+' : count}
         </span>
       )}

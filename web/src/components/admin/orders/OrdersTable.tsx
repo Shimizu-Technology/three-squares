@@ -79,14 +79,14 @@ export default function OrdersTable({
                             e.stopPropagation();
                             onQuickUpdateStatus(order.id, nextAction.status);
                           }}
-                          className={`inline-flex items-center px-3 py-1.5 text-white text-xs font-semibold rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2 ${nextAction.color}`}
+                          className={`inline-flex items-center px-3 py-1.5 text-white text-xs font-semibold rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${nextAction.color}`}
                         >
                           {nextAction.label}
                         </button>
                       )}
                       <button
                         onClick={() => onViewDetails(order.id)}
-                        className="inline-flex items-center px-3 py-1.5 text-gray-700 text-xs font-semibold bg-gray-100 hover:bg-gray-200 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2"
+                        className="inline-flex items-center px-3 py-1.5 text-gray-700 text-xs font-semibold bg-gray-100 hover:bg-gray-200 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
                       >
                         Details
                       </button>
@@ -135,17 +135,17 @@ export default function OrdersTable({
                 {nextAction && (
                   <button
                     onClick={() => onQuickUpdateStatus(order.id, nextAction.status)}
-                    className={`flex-1 px-4 py-2.5 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2 ${nextAction.color}`}
+                    className={`flex-1 px-4 py-2.5 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${nextAction.color}`}
                   >
                     {nextAction.label}
                   </button>
                 )}
                 <button
                   onClick={() => onViewDetails(order.id)}
-                  className={`${nextAction ? 'flex-1' : 'w-full'} px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2 ${
+                  className={`${nextAction ? 'flex-1' : 'w-full'} px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
                     nextAction
                       ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      : 'bg-hafalohaRed text-white hover:bg-red-700'
+                      : 'bg-tsPrimary text-white hover:bg-primary-dark'
                   }`}
                 >
                   {nextAction ? 'Details' : 'View Details'}
@@ -162,7 +162,7 @@ export default function OrdersTable({
           <button
             onClick={() => onPageChange(Math.max(1, page - 1))}
             disabled={page === 1}
-            className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2"
+            className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
           >
             Previous
           </button>
@@ -172,7 +172,7 @@ export default function OrdersTable({
           <button
             onClick={() => onPageChange(Math.min(totalPages, page + 1))}
             disabled={page === totalPages}
-            className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2"
+            className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
           >
             Next
           </button>

@@ -38,7 +38,7 @@ export default function FundraiserCartItem({
       <div className="flex-1 min-w-0">
         <h4 className="font-medium text-warm-900 truncate">{item.name}</h4>
         <p className="text-sm text-warm-600">{item.variantName}</p>
-        <p className="font-semibold text-hafalohaRed mt-1">
+        <p className="font-semibold text-tsPrimary mt-1">
           {formatPrice(item.priceCents)}
         </p>
       </div>

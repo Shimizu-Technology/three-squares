@@ -35,7 +35,7 @@ export default function FundraisersListPage() {
     configApi.getConfig().then(setAppConfig).catch(console.error);
   }, []);
 
-  const storeEmail = appConfig?.store_info?.email || 'info@hafaloha.com';
+  const storeEmail = appConfig?.store_info?.email || 'sales@bgpacific.com';
 
   const loadFundraisers = async () => {
     try {
@@ -96,7 +96,7 @@ export default function FundraisersListPage() {
           <p className="text-red-600 mb-4">{error}</p>
           <button
             onClick={loadFundraisers}
-            className="text-hafalohaRed hover:underline"
+            className="text-tsPrimary hover:underline"
           >
             Try again
           </button>
@@ -115,15 +115,15 @@ export default function FundraisersListPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">
           <FadeIn>
             <div className="text-center max-w-3xl mx-auto">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-hafalohaRed/10 mb-6">
-                <Heart className="w-8 h-8 text-hafalohaRed" />
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-tsPrimary/10 mb-6">
+                <Heart className="w-8 h-8 text-tsPrimary" />
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold text-warm-900 mb-4">
                 Support Our Fundraisers
               </h1>
               <p className="text-lg text-warm-500">
                 Help support local teams, schools, and organizations by purchasing 
-                Hafaloha merchandise. A portion of every sale goes directly to the cause.
+                Three Squares menu items. A portion of every sale goes directly to the cause.
               </p>
             </div>
           </FadeIn>
@@ -143,10 +143,10 @@ export default function FundraisersListPage() {
                 <StaggerItem key={fundraiser.id}>
                 <Link
                   to={`/fundraisers/${fundraiser.slug}`}
-                  className="group bg-white rounded-xl shadow-sm border border-warm-200 overflow-hidden hover:shadow-lg hover:border-hafalohaRed/30 transition-all duration-300 block"
+                  className="group bg-white rounded-xl shadow-sm border border-warm-200 overflow-hidden hover:shadow-lg hover:border-tsPrimary/30 transition-all duration-300 block"
                 >
                   {/* Image or Placeholder */}
-                  <div className="aspect-video bg-linear-to-br from-hafalohaRed/10 to-hafalohaRed/5 relative overflow-hidden">
+                  <div className="aspect-video bg-linear-to-br from-tsPrimary/10 to-tsPrimary/5 relative overflow-hidden">
                     {fundraiser.image_url ? (
                       <img
                         src={fundraiser.image_url}
@@ -156,7 +156,7 @@ export default function FundraisersListPage() {
                       />
                     ) : (
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <Heart className="w-16 h-16 text-hafalohaRed/30" />
+                        <Heart className="w-16 h-16 text-tsPrimary/30" />
                       </div>
                     )}
                     {/* Active Badge */}
@@ -168,7 +168,7 @@ export default function FundraisersListPage() {
                   </div>
 
                   <div className="p-5">
-                    <h3 className="text-lg font-semibold text-warm-900 group-hover:text-hafalohaRed transition-colors mb-2">
+                    <h3 className="text-lg font-semibold text-warm-900 group-hover:text-tsPrimary transition-colors mb-2">
                       {fundraiser.name}
                     </h3>
                     
@@ -191,7 +191,7 @@ export default function FundraisersListPage() {
                         </div>
                         <div className="h-2 bg-warm-100 rounded-full overflow-hidden">
                           <div
-                            className="h-full bg-hafalohaRed rounded-full transition-all duration-500"
+                            className="h-full bg-tsPrimary rounded-full transition-all duration-500"
                             style={{ width: `${Math.min(fundraiser.progress_percentage, 100)}%` }}
                           />
                         </div>
@@ -208,7 +208,7 @@ export default function FundraisersListPage() {
                           </span>
                         )}
                       </div>
-                      <ArrowRight className="w-4 h-4 text-hafalohaRed opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <ArrowRight className="w-4 h-4 text-tsPrimary opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </div>
                 </Link>
@@ -260,17 +260,17 @@ export default function FundraisersListPage() {
 
         {/* CTA for Organizations */}
         <section className="mt-16">
-          <div className="bg-linear-to-r from-hafalohaRed to-hafalohaRed/90 rounded-2xl p-8 sm:p-12 text-center text-white">
+          <div className="bg-linear-to-r from-tsPrimary to-tsPrimary/90 rounded-2xl p-8 sm:p-12 text-center text-white">
             <h2 className="text-2xl sm:text-3xl font-bold mb-4">
               Want to Start a Fundraiser?
             </h2>
             <p className="text-white/90 max-w-2xl mx-auto mb-6">
-              Partner with Hafaloha to raise funds for your team, school, or organization. 
+              Partner with Three Squares to raise funds for your team, school, or organization. 
               We'll help you set up a custom fundraising page with exclusive merchandise.
             </p>
             <a
               href={`mailto:${storeEmail}?subject=Fundraiser Inquiry`}
-              className="group inline-flex items-center px-6 py-3 bg-white text-hafalohaRed font-semibold rounded-lg hover:bg-warm-100 transition-colors"
+              className="group inline-flex items-center px-6 py-3 bg-white text-tsPrimary font-semibold rounded-lg hover:bg-warm-100 transition-colors"
             >
               Contact Us
               <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform duration-200" />

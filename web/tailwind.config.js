@@ -7,12 +7,19 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Hafaloha brand colors
-        'hafaloha-red': '#B31B1B',
-        'hafaloha-red-dark': '#8B1515',
-        'hafaloha-gold': '#FFD700',
-        'hafaloha-cream': '#FFF8E7',
-        'hafaloha-dark': '#1a1a2e',
+        // Three Squares brand colors
+        'ts-blue': '#4A7FB5',          // Pacific Blue - Primary
+        'ts-navy': '#1E3A5F',          // Navy - Primary Dark
+        'ts-gold': '#F5C518',          // Golden Sun - Accent
+        'ts-amber': '#D4A030',         // Amber - Warm accent
+        'ts-text': '#1A1A1A',          // Text
+        'ts-surface': '#F0EDE8',       // Surface
+        'ts-brown': '#8B5E3C',         // Rich Brown (food-inspired)
+        'ts-green': '#4A7C3F',         // Fresh Green (accents)
+        // Legacy aliases for easier migration
+        'primary': '#4A7FB5',
+        'primary-dark': '#1E3A5F',
+        'accent': '#F5C518',
       },
       fontFamily: {
         'sans': ['DM Sans', 'Inter', 'system-ui', 'sans-serif'],
@@ -36,4 +43,3 @@ export default {
   },
   plugins: [],
 }
-

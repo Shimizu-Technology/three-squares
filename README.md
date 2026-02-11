@@ -1,13 +1,18 @@
-# Hafaloha
+# Three Squares
 
-Monorepo containing the Hafaloha e-commerce platform.
+Online ordering platform for Three Squares restaurant and catering service.
+
+**"Good Food, Good Mood, Good Service"**
+
+A subsidiary of B&G Pacific LLC, Three Squares offers Guam-style comfort food and full-service catering.
 
 ## Structure
 
 ```
-hafaloha/
+three-squares/
 ├── api/          # Rails 8 API
 ├── web/          # React 19 + Vite Frontend
+├── docs/         # Documentation & data files
 └── README.md
 ```
 
@@ -35,15 +40,23 @@ npm run dev
 - **API** runs on `http://localhost:3000`
 - **Web** runs on `http://localhost:5173`
 
-## Deployment
+## Locations
 
-- **API**: Render (render.com)
-- **Web**: Netlify
+### Three Squares - Chalan San Antonio (Main)
+- **Address:** 416 Chalan San Antonio, Tamuning, GU 96913
+- **Hours:** Tue-Sat 8am-8pm, Sun 8am-5pm, Mon Closed
+- **Phone:** (671) 646-2652
+- **WhatsApp:** (671) 864-6656
+
+### Three Squares @ Donki
+- **Address:** Inside Don Quijote, Tamuning
+- **Hours:** 10am-10pm daily
+
+## Contact
+
+- **Email:** sales@bgpacific.com
+- **Website:** bgpacific.com
 
 ## History
 
-This monorepo was created by combining:
-- `hafaloha-api` (Rails backend)
-- `hafaloha-web` (React frontend)
-
-Full git history from both repos is preserved.
+This platform is forked from Hafaloha V2 (Shimizu Technology ordering platform).

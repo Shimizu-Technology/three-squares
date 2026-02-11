@@ -69,8 +69,8 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
         to="/products"
         className={`flex items-center font-semibold transition py-2 ${
           darkMode 
-            ? 'text-white hover:text-hafalohaGold' 
-            : 'text-warm-700 hover:text-hafalohaRed nav-link-hover'
+            ? 'text-white hover:text-tsGold' 
+            : 'text-warm-700 hover:text-tsPrimary nav-link-hover'
         }`}
         onClick={handleItemClick}
       >
@@ -94,7 +94,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
               <Link
                 key={col.id}
                 to={`/collections/${col.slug}`}
-                className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-hafalohaCream hover:text-hafalohaRed transition font-medium"
+                className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
                 onClick={handleItemClick}
               >
                 <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -109,7 +109,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
 
             <Link
               to="/products"
-              className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-hafalohaCream hover:text-hafalohaRed transition font-medium"
+              className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
               onClick={handleItemClick}
             >
               <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -119,7 +119,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
             </Link>
             <Link
               to="/collections"
-              className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-hafalohaCream hover:text-hafalohaRed transition font-medium"
+              className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
               onClick={handleItemClick}
             >
               <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,10 +132,10 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
 
             <Link
               to="/products?sale=true"
-              className="flex items-center gap-3 px-5 py-3 text-hafalohaRed hover:bg-red-50 transition font-semibold"
+              className="flex items-center gap-3 px-5 py-3 text-tsPrimary hover:bg-red-50 transition font-semibold"
               onClick={handleItemClick}
             >
-              <svg className="w-5 h-5 text-hafalohaRed" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
+              <svg className="w-5 h-5 text-tsPrimary" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
               </svg>

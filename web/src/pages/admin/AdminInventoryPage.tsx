@@ -168,7 +168,7 @@ export default function AdminInventoryPage() {
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-          <Package className="w-7 h-7 mr-3 text-hafalohaRed" />
+          <Package className="w-7 h-7 mr-3 text-tsPrimary" />
           Inventory History
         </h1>
         <p className="text-gray-600 mt-1">
@@ -212,7 +212,7 @@ export default function AdminInventoryPage() {
             <select
               value={auditType}
               onChange={(e) => { setAuditType(e.target.value); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-hafalohaRed/20 focus:border-hafalohaRed"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary"
             >
               <option value="">All Types</option>
               {Object.entries(AUDIT_TYPE_LABELS).map(([value, label]) => (
@@ -228,7 +228,7 @@ export default function AdminInventoryPage() {
               type="date"
               value={dateRange.start}
               onChange={(e) => { setDateRange(prev => ({ ...prev, start: e.target.value })); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-hafalohaRed/20 focus:border-hafalohaRed"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary"
             />
           </div>
           <div>
@@ -239,13 +239,13 @@ export default function AdminInventoryPage() {
               type="date"
               value={dateRange.end}
               onChange={(e) => { setDateRange(prev => ({ ...prev, end: e.target.value })); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-hafalohaRed/20 focus:border-hafalohaRed"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary"
             />
           </div>
           <div className="flex items-end">
             <button
               onClick={() => { setAuditType(''); setDateRange({ start: '', end: '' }); setPage(1); }}
-              className="w-full px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2"
+              className="w-full px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
             >
               Clear Filters
             </button>
@@ -263,7 +263,7 @@ export default function AdminInventoryPage() {
       {/* Loading State */}
       {loading && (
         <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hafalohaRed mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tsPrimary mx-auto mb-4"></div>
           <p className="text-gray-600">Loading inventory history...</p>
         </div>
       )}
@@ -354,7 +354,7 @@ export default function AdminInventoryPage() {
                 <button
                   onClick={() => setPage(page - 1)}
                   disabled={page === 1}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2"
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -364,7 +364,7 @@ export default function AdminInventoryPage() {
                 <button
                   onClick={() => setPage(page + 1)}
                   disabled={page >= pagination.total_pages}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2"
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>

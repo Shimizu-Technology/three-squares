@@ -23,8 +23,8 @@ export default function PaymentForm({ isTestMode, onPaymentReady }: PaymentFormP
     return (
       <div className="bg-white rounded-xl shadow-sm border border-warm-100 p-6 sm:p-8">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-hafalohaCream rounded-full flex items-center justify-center">
-            <svg className="w-5 h-5 text-hafalohaRed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-10 h-10 bg-tsSurface rounded-full flex items-center justify-center">
+            <svg className="w-5 h-5 text-tsPrimary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
             </svg>
           </div>
@@ -51,15 +51,15 @@ export default function PaymentForm({ isTestMode, onPaymentReady }: PaymentFormP
     return (
       <div className="bg-white rounded-xl shadow-sm border border-warm-100 p-6 sm:p-8">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-hafalohaCream rounded-full flex items-center justify-center">
-            <svg className="w-5 h-5 text-hafalohaRed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="w-10 h-10 bg-tsSurface rounded-full flex items-center justify-center">
+            <svg className="w-5 h-5 text-tsPrimary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
             </svg>
           </div>
           <h2 className="text-xl font-bold text-warm-900">Payment</h2>
         </div>
         <div className="flex items-center justify-center py-8">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hafalohaRed"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tsPrimary"></div>
           <span className="ml-3 text-warm-500">Loading payment form...</span>
         </div>
       </div>
@@ -69,8 +69,8 @@ export default function PaymentForm({ isTestMode, onPaymentReady }: PaymentFormP
   return (
     <div className="bg-white rounded-xl shadow-sm border border-warm-100 p-6 sm:p-8">
       <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 bg-hafalohaCream rounded-full flex items-center justify-center">
-          <svg className="w-5 h-5 text-hafalohaRed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="w-10 h-10 bg-tsSurface rounded-full flex items-center justify-center">
+          <svg className="w-5 h-5 text-tsPrimary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
           </svg>
         </div>
@@ -101,7 +101,7 @@ export default function PaymentForm({ isTestMode, onPaymentReady }: PaymentFormP
           <label className="block text-sm font-semibold text-warm-700 mb-2">
             Card Details *
           </label>
-          <div className="bg-warm-50 border border-warm-200 rounded-lg p-4 focus-within:ring-2 focus-within:ring-hafalohaRed focus-within:border-transparent focus-within:bg-white transition">
+          <div className="bg-warm-50 border border-warm-200 rounded-lg p-4 focus-within:ring-2 focus-within:ring-tsPrimary focus-within:border-transparent focus-within:bg-white transition">
             <CardElement
               options={{
                 style: {

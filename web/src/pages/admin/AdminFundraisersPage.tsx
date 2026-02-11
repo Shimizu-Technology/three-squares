@@ -123,13 +123,13 @@ export default function AdminFundraisersPage() {
               placeholder="Search fundraisers..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
             />
           </div>
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+            className="px-4 py-2 border rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
           >
             <option value="">All Statuses</option>
             <option value="draft">Draft</option>
@@ -143,7 +143,7 @@ export default function AdminFundraisersPage() {
       {/* Fundraisers List */}
       {loading ? (
         <div className="bg-white rounded-lg shadow p-8 text-center">
-          <div className="animate-spin w-8 h-8 border-4 border-hafalohaRed border-t-transparent rounded-full mx-auto"></div>
+          <div className="animate-spin w-8 h-8 border-4 border-tsPrimary border-t-transparent rounded-full mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading fundraisers...</p>
         </div>
       ) : fundraisers.length === 0 ? (
@@ -222,7 +222,7 @@ export default function AdminFundraisersPage() {
                       </div>
                       <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-hafalohaGold rounded-full transition-all"
+                          className="h-full bg-tsGold rounded-full transition-all"
                           style={{ width: `${Math.min(fundraiser.progress_percentage, 100)}%` }}
                         />
                       </div>
@@ -240,7 +240,7 @@ export default function AdminFundraisersPage() {
                   </Link>
                   <Link
                     to={`/admin/fundraisers/${fundraiser.id}/edit`}
-                    className="btn-icon text-gray-600 hover:text-hafalohaRed hover:bg-gray-100"
+                    className="btn-icon text-gray-600 hover:text-tsPrimary hover:bg-gray-100"
                     title="Edit"
                   >
                     <Edit className="w-5 h-5" />

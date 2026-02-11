@@ -57,7 +57,7 @@ const StepCard = memo(function StepCard({
     <div 
       className={`rounded-2xl border-2 transition-all duration-300 overflow-hidden ${
         isActive 
-          ? 'border-hafalohaRed shadow-lg bg-white' 
+          ? 'border-tsPrimary shadow-lg bg-white' 
           : isComplete 
             ? 'border-green-200 bg-green-50/50 hover:border-green-300 cursor-pointer' 
             : 'border-warm-100 bg-warm-50/50'
@@ -77,7 +77,7 @@ const StepCard = memo(function StepCard({
           isComplete 
             ? 'bg-green-500 text-white' 
             : isActive 
-              ? 'bg-hafalohaRed text-white shadow-md' 
+              ? 'bg-tsPrimary text-white shadow-md' 
               : 'bg-warm-200 text-warm-500'
         }`}>
           {isComplete && !isActive ? (
@@ -429,7 +429,7 @@ export default function AcaiCakesPage() {
     return (
       <div className="min-h-screen bg-warm-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hafalohaRed mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary mx-auto mb-4"></div>
           <p className="text-warm-600">Loading...</p>
         </div>
       </div>
@@ -448,7 +448,7 @@ export default function AcaiCakesPage() {
           </p>
           <a 
             href={`tel:${config?.settings.pickup_phone || appConfig?.store_info?.phone || '671-777-1234'}`}
-            className="inline-block bg-hafalohaRed text-white px-6 py-3 rounded-lg font-semibold hover:bg-red-700 transition"
+            className="inline-block bg-tsPrimary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-dark transition"
           >
             Call to Order
           </a>
@@ -497,13 +497,13 @@ export default function AcaiCakesPage() {
                   />
                 </div>
                 <div className="order-2 text-center md:text-left">
-                  <span className="inline-block text-sm font-medium text-hafalohaRed uppercase tracking-wider mb-2">
+                  <span className="inline-block text-sm font-medium text-tsPrimary uppercase tracking-wider mb-2">
                     Order Fresh
                   </span>
                   <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-3 text-warm-900">
                     {config.settings.name}
                   </h1>
-                  <p className="text-3xl font-bold mb-3 text-hafalohaRed">
+                  <p className="text-3xl font-bold mb-3 text-tsPrimary">
                     {config.settings.formatted_price}
                   </p>
                   {config.settings.description && (
@@ -515,13 +515,13 @@ export default function AcaiCakesPage() {
               </div>
             ) : (
               <div className="text-center max-w-2xl mx-auto">
-                <span className="inline-block text-sm font-medium text-hafalohaRed uppercase tracking-wider mb-2">
+                <span className="inline-block text-sm font-medium text-tsPrimary uppercase tracking-wider mb-2">
                   Order Fresh
                 </span>
                 <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-3 text-warm-900">
                   {config.settings.name}
                 </h1>
-                <p className="text-3xl font-bold mb-3 text-hafalohaRed">
+                <p className="text-3xl font-bold mb-3 text-tsPrimary">
                   {config.settings.formatted_price}
                 </p>
                 {config.settings.description && (
@@ -593,7 +593,7 @@ export default function AcaiCakesPage() {
           <div className="flex items-center gap-3">
             <div className="flex-1 h-2 bg-warm-100 rounded-full overflow-hidden">
               <div 
-                className="h-full bg-hafalohaRed rounded-full transition-all duration-500 ease-out"
+                className="h-full bg-tsPrimary rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -634,7 +634,7 @@ export default function AcaiCakesPage() {
                       onClick={() => handleDateSelect(dateInfo.date)}
                       className={`p-3 rounded-xl border-2 transition text-center ${
                         isSelected
-                          ? 'border-hafalohaRed bg-red-50 shadow-sm'
+                          ? 'border-tsPrimary bg-red-50 shadow-sm'
                           : 'border-warm-200 hover:border-warm-300 hover:bg-warm-50'
                       }`}
                     >
@@ -658,7 +658,7 @@ export default function AcaiCakesPage() {
               <p className="text-warm-500 italic">Please select a date first.</p>
             ) : loadingSlots ? (
               <div className="text-center py-6">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-hafalohaRed mx-auto"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tsPrimary mx-auto"></div>
               </div>
             ) : timeSlots.length === 0 ? (
               <p className="text-warm-500 italic">No time slots available for this date.</p>
@@ -677,7 +677,7 @@ export default function AcaiCakesPage() {
                         !slot.available
                           ? 'border-warm-200 bg-warm-100 text-warm-400 cursor-not-allowed'
                           : isSelected
-                          ? 'border-hafalohaRed bg-red-50 text-warm-900 shadow-sm'
+                          ? 'border-tsPrimary bg-red-50 text-warm-900 shadow-sm'
                           : 'border-warm-200 hover:border-warm-300 hover:bg-warm-50 text-warm-900'
                       }`}
                     >
@@ -705,12 +705,12 @@ export default function AcaiCakesPage() {
                     onClick={() => handleCrustSelect(crust.id)}
                     className={`w-full p-4 rounded-xl border-2 transition text-left flex items-center gap-4 ${
                       isSelected
-                        ? 'border-hafalohaRed bg-red-50 shadow-sm'
+                        ? 'border-tsPrimary bg-red-50 shadow-sm'
                         : 'border-warm-200 hover:border-warm-300 hover:bg-warm-50'
                     }`}
                   >
                     <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${
-                      isSelected ? 'border-hafalohaRed bg-hafalohaRed' : 'border-warm-300'
+                      isSelected ? 'border-tsPrimary bg-tsPrimary' : 'border-warm-300'
                     }`}>
                       {isSelected && (
                         <div className="w-2 h-2 bg-white rounded-full" />
@@ -722,7 +722,7 @@ export default function AcaiCakesPage() {
                         <div className="text-sm text-warm-500 mt-0.5">{crust.description}</div>
                       )}
                     </div>
-                    <div className={`font-medium shrink-0 ${crust.price_cents > 0 ? 'text-hafalohaRed' : 'text-green-600'}`}>
+                    <div className={`font-medium shrink-0 ${crust.price_cents > 0 ? 'text-tsPrimary' : 'text-green-600'}`}>
                       {crust.formatted_price}
                     </div>
                   </button>
@@ -737,7 +737,7 @@ export default function AcaiCakesPage() {
               <button
                 type="button"
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="w-14 h-14 rounded-full border-2 border-warm-300 flex items-center justify-center text-2xl font-bold hover:border-hafalohaRed hover:text-hafalohaRed transition"
+                className="w-14 h-14 rounded-full border-2 border-warm-300 flex items-center justify-center text-2xl font-bold hover:border-tsPrimary hover:text-tsPrimary transition"
               >
                 −
               </button>
@@ -745,7 +745,7 @@ export default function AcaiCakesPage() {
               <button
                 type="button"
                 onClick={() => setQuantity(Math.min(10, quantity + 1))}
-                className="w-14 h-14 rounded-full border-2 border-warm-300 flex items-center justify-center text-2xl font-bold hover:border-hafalohaRed hover:text-hafalohaRed transition"
+                className="w-14 h-14 rounded-full border-2 border-warm-300 flex items-center justify-center text-2xl font-bold hover:border-tsPrimary hover:text-tsPrimary transition"
               >
                 +
               </button>
@@ -758,7 +758,7 @@ export default function AcaiCakesPage() {
                   setCurrentStep(nextStep);
                   markStepVisited(nextStep);
                 }}
-                className="inline-flex items-center gap-2 text-sm font-medium text-hafalohaRed hover:text-red-700 transition"
+                className="inline-flex items-center gap-2 text-sm font-medium text-tsPrimary hover:text-red-700 transition"
               >
                 Continue
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -783,7 +783,7 @@ export default function AcaiCakesPage() {
                         setPlacardText('');
                       }
                     }}
-                    className="w-5 h-5 text-hafalohaRed border-warm-300 rounded focus:ring-hafalohaRed"
+                    className="w-5 h-5 text-tsPrimary border-warm-300 rounded focus:ring-tsPrimary"
                   />
                   <span className="text-warm-700 font-medium">
                     Yes, add a message placard
@@ -810,7 +810,7 @@ export default function AcaiCakesPage() {
                             }}
                             className={`p-3 rounded-xl border-2 transition text-left ${
                               isSelected
-                                ? 'border-hafalohaRed bg-red-50'
+                                ? 'border-tsPrimary bg-red-50'
                                 : 'border-warm-200 hover:border-warm-300'
                             }`}
                           >
@@ -834,7 +834,7 @@ export default function AcaiCakesPage() {
                           onChange={(e) => setPlacardText(e.target.value)}
                           placeholder={isCustomPlacard ? 'Enter your custom message' : `e.g., ${selectedPlacardOptionDetails?.name} to Mom!`}
                           maxLength={50}
-                          className="w-full px-4 py-3 border border-warm-300 rounded-xl focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                          className="w-full px-4 py-3 border border-warm-300 rounded-xl focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                         />
                         <p className="text-xs text-warm-500 mt-1">{placardText.length}/50 characters</p>
                       </div>
@@ -846,7 +846,7 @@ export default function AcaiCakesPage() {
                   <button
                     type="button"
                     onClick={() => { setCurrentStep('contact'); markStepVisited('contact'); }}
-                    className="inline-flex items-center gap-2 text-sm font-medium text-hafalohaRed hover:text-red-700 transition"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-tsPrimary hover:text-red-700 transition"
                   >
                     Continue
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -868,7 +868,7 @@ export default function AcaiCakesPage() {
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 border border-warm-300 rounded-xl focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-3 border border-warm-300 rounded-xl focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="John Doe"
                 />
               </div>
@@ -879,7 +879,7 @@ export default function AcaiCakesPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-4 py-3 border border-warm-300 rounded-xl focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-3 border border-warm-300 rounded-xl focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="you@email.com"
                 />
               </div>
@@ -890,7 +890,7 @@ export default function AcaiCakesPage() {
                   required
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-4 py-3 border border-warm-300 rounded-xl focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-3 border border-warm-300 rounded-xl focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="(671) 123-4567"
                 />
               </div>
@@ -900,7 +900,7 @@ export default function AcaiCakesPage() {
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   rows={2}
-                  className="w-full px-4 py-3 border border-warm-300 rounded-xl focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-3 border border-warm-300 rounded-xl focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="Any special requests..."
                 />
               </div>
@@ -939,7 +939,7 @@ export default function AcaiCakesPage() {
               <div className="border-t border-warm-200 pt-3 mt-3">
                 <div className="flex justify-between text-lg font-bold">
                   <span className="text-warm-900">Total</span>
-                  <span className="text-hafalohaRed">{formatPrice(calculateTotal())}</span>
+                  <span className="text-tsPrimary">{formatPrice(calculateTotal())}</span>
                 </div>
               </div>
             </div>
@@ -947,13 +947,13 @@ export default function AcaiCakesPage() {
             {selectedDate && selectedSlot && (
               <div className="mt-4 p-3 bg-blue-50 rounded-xl text-xs text-warm-700 border border-blue-100">
                 <div className="flex items-center gap-2 mb-1">
-                  <svg className="w-3.5 h-3.5 text-hafalohaRed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 text-tsPrimary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
                   {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })} at {getStepSummary('time')}
                 </div>
                 <div className="flex items-center gap-2">
-                  <svg className="w-3.5 h-3.5 text-hafalohaRed" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-3.5 h-3.5 text-tsPrimary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
@@ -974,7 +974,7 @@ export default function AcaiCakesPage() {
           <button
             type="submit"
             disabled={!isFormValid() || submitting}
-            className="w-full bg-hafalohaRed text-white py-4 px-6 rounded-2xl font-bold text-lg hover:bg-red-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-xl"
+            className="w-full bg-tsPrimary text-white py-4 px-6 rounded-2xl font-bold text-lg hover:bg-primary-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center shadow-xl"
           >
             {submitting ? (
               <>
@@ -996,7 +996,7 @@ export default function AcaiCakesPage() {
             <p className="text-warm-500 text-sm mb-1">Prefer to order by phone?</p>
             <a 
               href={`tel:${config.settings.pickup_phone}`}
-              className="inline-flex items-center gap-2 text-hafalohaRed font-semibold hover:text-red-700 transition text-sm"
+              className="inline-flex items-center gap-2 text-tsPrimary font-semibold hover:text-red-700 transition text-sm"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />

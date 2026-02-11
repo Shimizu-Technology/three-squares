@@ -126,7 +126,7 @@ export default function AdminLayout() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hafalohaRed mx-auto mb-4" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary mx-auto mb-4" />
           <p className="text-gray-600">Loading...</p>
         </div>
       </div>
@@ -167,9 +167,9 @@ export default function AdminLayout() {
               key={item.path}
               to={item.path}
               onClick={() => setSidebarOpen(false)}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2 ${
+              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
                 isActive
-                  ? 'bg-hafalohaRed text-white shadow-md'
+                  ? 'bg-tsPrimary text-white shadow-md'
                   : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
               }`}
             >
@@ -208,13 +208,13 @@ export default function AdminLayout() {
         }`}
       >
         {/* Logo */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 bg-gradient-to-r from-hafalohaRed to-hafalohaRed/90">
+        <div className="h-16 flex items-center justify-between px-6 border-b border-gray-100 bg-gradient-to-r from-tsPrimary to-tsPrimary/90">
           <Link to="/admin" className="flex items-center gap-2">
-            <span className="text-xl font-bold text-white">Hafaloha Admin</span>
+            <span className="text-xl font-bold text-white">Three Squares Admin</span>
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="md:hidden text-white/80 hover:text-white p-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-hafalohaRed"
+            className="md:hidden text-white/80 hover:text-white p-1 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-tsPrimary"
           >
             <X className="w-5 h-5" />
           </button>
@@ -240,7 +240,7 @@ export default function AdminLayout() {
         {/* Admin info */}
         <div className="mt-auto p-4 border-t border-gray-100 bg-gray-50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-linear-to-br from-hafalohaRed to-hafalohaRed/80 flex items-center justify-center text-white font-bold shadow-md">
+            <div className="w-10 h-10 rounded-full bg-linear-to-br from-tsPrimary to-tsPrimary/80 flex items-center justify-center text-white font-bold shadow-md">
               {user?.firstName?.charAt(0) || 'A'}
             </div>
             <div className="flex-1 min-w-0">
@@ -260,7 +260,7 @@ export default function AdminLayout() {
           {/* Mobile menu button */}
           <button
             onClick={() => setSidebarOpen(true)}
-            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2"
+            className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
           >
             <Menu className="w-6 h-6 text-gray-700" />
           </button>
@@ -275,7 +275,7 @@ export default function AdminLayout() {
                     {crumb.path ? (
                       <Link
                         to={crumb.path}
-                        className="text-sm text-gray-500 hover:text-hafalohaRed transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2 rounded"
+                        className="text-sm text-gray-500 hover:text-tsPrimary transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 rounded"
                       >
                         {crumb.label}
                       </Link>
@@ -297,7 +297,7 @@ export default function AdminLayout() {
           <div className="flex items-center gap-3">
             <Link
               to="/"
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-hafalohaRed bg-gray-50 hover:bg-gray-100 rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-600 hover:text-tsPrimary bg-gray-50 hover:bg-gray-100 rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
             >
               <ExternalLink className="w-4 h-4" />
               View Store

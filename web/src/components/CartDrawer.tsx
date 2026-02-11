@@ -70,7 +70,7 @@ export default function CartDrawer() {
       {/* Drawer */}
       <div className="fixed inset-y-0 right-0 w-full sm:w-[420px] bg-white shadow-2xl z-50 flex flex-col animate-slide-in-right">
         {/* Header with gradient */}
-        <div className="bg-linear-to-r from-hafalohaRed to-hafalohaRed/90 px-5 py-4">
+        <div className="bg-linear-to-r from-tsPrimary to-tsPrimary/90 px-5 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -100,7 +100,7 @@ export default function CartDrawer() {
           {isLoading ? (
             <div className="flex items-center justify-center h-32">
               <div className="text-center">
-                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-hafalohaRed mx-auto mb-3"></div>
+                <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-tsPrimary mx-auto mb-3"></div>
                 <p className="text-sm text-warm-500">Loading cart...</p>
               </div>
             </div>
@@ -201,7 +201,7 @@ export default function CartDrawer() {
                     <div className="flex items-center bg-warm-100 rounded-full">
                       <button
                         onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                        className="w-11 h-11 flex items-center justify-center text-warm-600 hover:text-hafalohaRed hover:bg-warm-200 rounded-full transition disabled:opacity-50"
+                        className="w-11 h-11 flex items-center justify-center text-warm-600 hover:text-tsPrimary hover:bg-warm-200 rounded-full transition disabled:opacity-50"
                         disabled={item.quantity <= 1 || isLoading}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -213,7 +213,7 @@ export default function CartDrawer() {
                       </span>
                       <button
                         onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                        className="w-11 h-11 flex items-center justify-center text-warm-600 hover:text-hafalohaRed hover:bg-warm-200 rounded-full transition disabled:opacity-50"
+                        className="w-11 h-11 flex items-center justify-center text-warm-600 hover:text-tsPrimary hover:bg-warm-200 rounded-full transition disabled:opacity-50"
                         disabled={
                           isLoading ||
                           (item.product.inventory_level !== 'none' && 
@@ -280,7 +280,7 @@ export default function CartDrawer() {
                 closeCart();
                 navigate('/checkout');
               }}
-              className="w-full bg-hafalohaRed text-white py-4 rounded-xl font-bold text-lg hover:bg-red-700 transition shadow-lg shadow-hafalohaRed/25 flex items-center justify-center gap-2"
+              className="w-full bg-tsPrimary text-white py-4 rounded-xl font-bold text-lg hover:bg-primary-dark transition shadow-lg shadow-tsPrimary/25 flex items-center justify-center gap-2"
               disabled={isLoading}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -292,7 +292,7 @@ export default function CartDrawer() {
             {/* Continue Shopping */}
             <button
               onClick={closeCart}
-              className="w-full text-sm font-medium text-warm-500 hover:text-hafalohaRed transition py-2"
+              className="w-full text-sm font-medium text-warm-500 hover:text-tsPrimary transition py-2"
             >
               ← Continue Shopping
             </button>

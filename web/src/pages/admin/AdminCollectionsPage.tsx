@@ -144,7 +144,7 @@ export default function AdminCollectionsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hafalohaRed"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary"></div>
       </div>
     );
   }
@@ -205,7 +205,7 @@ export default function AdminCollectionsPage() {
                         <div className="text-sm text-gray-500 line-clamp-1">{collection.description}</div>
                       )}
                       {collection.featured && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-hafalohaGold text-gray-900 mt-1">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-tsGold text-gray-900 mt-1">
                           Featured
                         </span>
                       )}
@@ -295,7 +295,7 @@ export default function AdminCollectionsPage() {
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="e.g., Summer Collection"
                 />
               </div>
@@ -309,7 +309,7 @@ export default function AdminCollectionsPage() {
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="Brief description of this collection"
                 />
               </div>
@@ -323,7 +323,7 @@ export default function AdminCollectionsPage() {
                   type="number"
                   value={formData.sort_order ?? 0}
                   onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="0"
                 />
                 <p className="text-xs text-gray-500 mt-1">Lower numbers appear first</p>
@@ -336,7 +336,7 @@ export default function AdminCollectionsPage() {
                     type="checkbox"
                     checked={formData.published}
                     onChange={(e) => setFormData({ ...formData, published: e.target.checked })}
-                    className="rounded border-gray-300 text-hafalohaRed focus:ring-hafalohaRed"
+                    className="rounded border-gray-300 text-tsPrimary focus:ring-tsPrimary"
                   />
                   <span className="ml-2 text-sm text-gray-700">Published (visible to customers)</span>
                 </label>
@@ -345,7 +345,7 @@ export default function AdminCollectionsPage() {
                     type="checkbox"
                     checked={formData.featured}
                     onChange={(e) => setFormData({ ...formData, featured: e.target.checked })}
-                    className="rounded border-gray-300 text-hafalohaRed focus:ring-hafalohaRed"
+                    className="rounded border-gray-300 text-tsPrimary focus:ring-tsPrimary"
                   />
                   <span className="ml-2 text-sm text-gray-700">Featured</span>
                 </label>
@@ -363,7 +363,7 @@ export default function AdminCollectionsPage() {
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+                className="px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition disabled:opacity-50"
                 disabled={saving}
               >
                 {saving ? 'Saving...' : selectedCollection ? 'Update' : 'Create'}
@@ -399,7 +399,7 @@ export default function AdminCollectionsPage() {
               </button>
               <button
                 onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition disabled:opacity-50"
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-primary-dark transition disabled:opacity-50"
                 disabled={deleting}
               >
                 {deleting ? 'Deleting...' : 'Delete'}

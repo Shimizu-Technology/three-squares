@@ -37,7 +37,7 @@ export default function StatCard({
           {link && (
             <Link
               to={link.to}
-              className="inline-block mt-3 text-xs font-medium text-hafalohaRed hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-hafalohaRed focus-visible:ring-offset-2 rounded"
+              className="inline-block mt-3 text-xs font-medium text-tsPrimary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 rounded"
             >
               {link.text} &rarr;
             </Link>

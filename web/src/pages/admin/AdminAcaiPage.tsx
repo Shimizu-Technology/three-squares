@@ -319,7 +319,7 @@ export default function AdminAcaiPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hafalohaRed"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary"></div>
       </div>
     );
   }
@@ -343,7 +343,7 @@ export default function AdminAcaiPage() {
               onClick={() => setActiveTab(tab.id as TabType)}
               className={`py-2 px-4 rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'bg-hafalohaRed text-white shadow-sm'
+                  ? 'bg-tsPrimary text-white shadow-sm'
                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
@@ -363,7 +363,7 @@ export default function AdminAcaiPage() {
                 type="checkbox"
                 checked={settings.active}
                 onChange={(e) => handleSettingsChange('active', e.target.checked)}
-                className="w-5 h-5 text-hafalohaRed border-gray-300 rounded focus:ring-hafalohaRed"
+                className="w-5 h-5 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
               />
               <span className="ml-2 font-medium text-gray-700">
                 {settings.active ? 'Ordering Enabled' : 'Ordering Disabled'}
@@ -378,7 +378,7 @@ export default function AdminAcaiPage() {
                 type="text"
                 value={settings.name}
                 onChange={(e) => handleSettingsChange('name', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               />
             </div>
 
@@ -389,7 +389,7 @@ export default function AdminAcaiPage() {
                 step="0.01"
                 value={(settings.base_price_cents / 100).toFixed(2)}
                 onChange={(e) => handleSettingsChange('base_price_cents', Math.round(parseFloat(e.target.value || '0') * 100))}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               />
             </div>
 
@@ -399,7 +399,7 @@ export default function AdminAcaiPage() {
                 value={settings.description || ''}
                 onChange={(e) => handleSettingsChange('description', e.target.value)}
                 rows={3}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               />
             </div>
 
@@ -409,7 +409,7 @@ export default function AdminAcaiPage() {
                 type="text"
                 value={settings.pickup_location || ''}
                 onChange={(e) => handleSettingsChange('pickup_location', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               />
             </div>
 
@@ -419,7 +419,7 @@ export default function AdminAcaiPage() {
                 type="tel"
                 value={settings.pickup_phone || ''}
                 onChange={(e) => handleSettingsChange('pickup_phone', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               />
             </div>
 
@@ -429,7 +429,7 @@ export default function AdminAcaiPage() {
                 type="number"
                 value={settings.advance_hours}
                 onChange={(e) => handleSettingsChange('advance_hours', parseInt(e.target.value) || 24)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               />
               <p className="text-xs text-gray-500 mt-1">Customers must order this many hours in advance</p>
             </div>
@@ -440,7 +440,7 @@ export default function AdminAcaiPage() {
                 type="number"
                 value={settings.max_per_slot}
                 onChange={(e) => handleSettingsChange('max_per_slot', parseInt(e.target.value) || 5)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               />
             </div>
 
@@ -450,7 +450,7 @@ export default function AdminAcaiPage() {
                 id="placard_enabled"
                 checked={settings.placard_enabled}
                 onChange={(e) => handleSettingsChange('placard_enabled', e.target.checked)}
-                className="w-5 h-5 text-hafalohaRed border-gray-300 rounded focus:ring-hafalohaRed"
+                className="w-5 h-5 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
               />
               <label htmlFor="placard_enabled" className="ml-2 text-sm font-medium text-gray-700">
                 Enable Message Placards
@@ -462,7 +462,7 @@ export default function AdminAcaiPage() {
             <button
               onClick={saveSettings}
               disabled={savingSettings}
-              className="bg-hafalohaRed text-white px-6 py-2 rounded-lg hover:bg-red-700 transition flex items-center disabled:opacity-50"
+              className="bg-tsPrimary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition flex items-center disabled:opacity-50"
             >
               <Save className="w-5 h-5 mr-2" />
               {savingSettings ? 'Saving...' : 'Save Settings'}
@@ -484,7 +484,7 @@ export default function AdminAcaiPage() {
                 setEditingCrust({ id: 0, name: '', description: '', price_cents: 0, available: true, position: crustOptions.length });
                 setShowCrustModal(true);
               }}
-              className="bg-hafalohaRed text-white px-4 py-2 rounded-lg hover:bg-red-700 transition flex items-center shadow-sm"
+              className="bg-tsPrimary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition flex items-center shadow-sm"
             >
               <Plus className="w-5 h-5 mr-2" />
               Add Option
@@ -503,7 +503,7 @@ export default function AdminAcaiPage() {
                   setEditingCrust({ id: 0, name: '', description: '', price_cents: 0, available: true, position: crustOptions.length });
                   setShowCrustModal(true);
                 }}
-                className="text-hafalohaRed hover:text-red-700 font-medium"
+                className="text-tsPrimary hover:text-red-700 font-medium"
               >
                 Add your first option →
               </button>
@@ -579,7 +579,7 @@ export default function AdminAcaiPage() {
                 setEditingPlacard({ id: 0, name: '', description: '', price_cents: 0, available: true, position: placardOptions.length });
                 setShowPlacardModal(true);
               }}
-              className="bg-hafalohaRed text-white px-4 py-2 rounded-lg hover:bg-red-700 transition flex items-center shadow-sm"
+              className="bg-tsPrimary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition flex items-center shadow-sm"
             >
               <Plus className="w-5 h-5 mr-2" />
               Add Placard
@@ -598,7 +598,7 @@ export default function AdminAcaiPage() {
                   setEditingPlacard({ id: 0, name: '', description: '', price_cents: 0, available: true, position: placardOptions.length });
                   setShowPlacardModal(true);
                 }}
-                className="text-hafalohaRed hover:text-red-700 font-medium"
+                className="text-tsPrimary hover:text-red-700 font-medium"
               >
                 Add your first placard →
               </button>
@@ -679,7 +679,7 @@ export default function AdminAcaiPage() {
                 setEditingWindow({ id: 0, day_of_week: 6, day_name: 'Saturday', start_time: '13:30', end_time: '15:30', capacity: 5, active: true, display_name: '' });
                 setShowWindowModal(true);
               }}
-              className="bg-hafalohaRed text-white px-4 py-2 rounded-lg hover:bg-red-700 transition flex items-center shadow-sm"
+              className="bg-tsPrimary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition flex items-center shadow-sm"
             >
               <Plus className="w-5 h-5 mr-2" />
               Add Window
@@ -698,7 +698,7 @@ export default function AdminAcaiPage() {
                   setEditingWindow({ id: 0, day_of_week: 6, day_name: 'Saturday', start_time: '13:30', end_time: '15:30', capacity: 5, active: true, display_name: '' });
                   setShowWindowModal(true);
                 }}
-                className="text-hafalohaRed hover:text-red-700 font-medium"
+                className="text-tsPrimary hover:text-red-700 font-medium"
               >
                 Add your first window →
               </button>
@@ -781,7 +781,7 @@ export default function AdminAcaiPage() {
                 });
                 setShowBlockedModal(true);
               }}
-              className="bg-hafalohaRed text-white px-4 py-2 rounded-lg hover:bg-red-700 transition flex items-center shadow-sm"
+              className="bg-tsPrimary text-white px-4 py-2 rounded-lg hover:bg-primary-dark transition flex items-center shadow-sm"
             >
               <Plus className="w-5 h-5 mr-2" />
               Block Date
@@ -899,7 +899,7 @@ export default function AdminAcaiPage() {
                   type="text"
                   value={editingCrust.name}
                   onChange={(e) => setEditingCrust({ ...editingCrust, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="e.g., Peanut Butter"
                 />
               </div>
@@ -910,7 +910,7 @@ export default function AdminAcaiPage() {
                   type="text"
                   value={editingCrust.description || ''}
                   onChange={(e) => setEditingCrust({ ...editingCrust, description: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="Optional description"
                 />
               </div>
@@ -922,7 +922,7 @@ export default function AdminAcaiPage() {
                   step="0.01"
                   value={(editingCrust.price_cents / 100).toFixed(2)}
                   onChange={(e) => setEditingCrust({ ...editingCrust, price_cents: Math.round(parseFloat(e.target.value || '0') * 100) })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 />
                 <p className="text-xs text-gray-500 mt-1">Use 0 for "included" options</p>
               </div>
@@ -933,7 +933,7 @@ export default function AdminAcaiPage() {
                   id="crust_available"
                   checked={editingCrust.available}
                   onChange={(e) => setEditingCrust({ ...editingCrust, available: e.target.checked })}
-                  className="w-5 h-5 text-hafalohaRed border-gray-300 rounded focus:ring-hafalohaRed"
+                  className="w-5 h-5 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
                 />
                 <label htmlFor="crust_available" className="ml-2 text-sm font-medium text-gray-700">
                   Available for ordering
@@ -950,7 +950,7 @@ export default function AdminAcaiPage() {
               </button>
               <button
                 onClick={saveCrustOption}
-                className="px-4 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700"
+                className="px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark"
               >
                 Save
               </button>
@@ -987,7 +987,7 @@ export default function AdminAcaiPage() {
                   type="text"
                   value={editingPlacard.name}
                   onChange={(e) => setEditingPlacard({ ...editingPlacard, name: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="e.g., Happy Birthday"
                 />
               </div>
@@ -998,7 +998,7 @@ export default function AdminAcaiPage() {
                   type="text"
                   value={editingPlacard.description || ''}
                   onChange={(e) => setEditingPlacard({ ...editingPlacard, description: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="Optional description"
                 />
               </div>
@@ -1010,7 +1010,7 @@ export default function AdminAcaiPage() {
                   step="0.01"
                   value={(editingPlacard.price_cents / 100).toFixed(2)}
                   onChange={(e) => setEditingPlacard({ ...editingPlacard, price_cents: Math.round(parseFloat(e.target.value || '0') * 100) })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 />
                 <p className="text-xs text-gray-500 mt-1">Use 0 for "included" options</p>
               </div>
@@ -1021,7 +1021,7 @@ export default function AdminAcaiPage() {
                   id="placard_available"
                   checked={editingPlacard.available}
                   onChange={(e) => setEditingPlacard({ ...editingPlacard, available: e.target.checked })}
-                  className="w-5 h-5 text-hafalohaRed border-gray-300 rounded focus:ring-hafalohaRed"
+                  className="w-5 h-5 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
                 />
                 <label htmlFor="placard_available" className="ml-2 text-sm font-medium text-gray-700">
                   Available for ordering
@@ -1038,7 +1038,7 @@ export default function AdminAcaiPage() {
               </button>
               <button
                 onClick={savePlacardOption}
-                className="px-4 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700"
+                className="px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark"
               >
                 Save
               </button>
@@ -1074,7 +1074,7 @@ export default function AdminAcaiPage() {
                 <select
                   value={editingWindow.day_of_week}
                   onChange={(e) => setEditingWindow({ ...editingWindow, day_of_week: parseInt(e.target.value) })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 >
                   {DAYS.map((day, index) => (
                     <option key={index} value={index}>{day}</option>
@@ -1088,7 +1088,7 @@ export default function AdminAcaiPage() {
                   <select
                     value={editingWindow.start_time}
                     onChange={(e) => setEditingWindow({ ...editingWindow, start_time: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   >
                     {TIME_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1100,7 +1100,7 @@ export default function AdminAcaiPage() {
                   <select
                     value={editingWindow.end_time}
                     onChange={(e) => setEditingWindow({ ...editingWindow, end_time: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   >
                     {TIME_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1115,7 +1115,7 @@ export default function AdminAcaiPage() {
                   type="number"
                   value={editingWindow.capacity}
                   onChange={(e) => setEditingWindow({ ...editingWindow, capacity: parseInt(e.target.value) || 5 })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 />
               </div>
 
@@ -1125,7 +1125,7 @@ export default function AdminAcaiPage() {
                   id="window_active"
                   checked={editingWindow.active}
                   onChange={(e) => setEditingWindow({ ...editingWindow, active: e.target.checked })}
-                  className="w-5 h-5 text-hafalohaRed border-gray-300 rounded focus:ring-hafalohaRed"
+                  className="w-5 h-5 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
                 />
                 <label htmlFor="window_active" className="ml-2 text-sm font-medium text-gray-700">
                   Active
@@ -1142,7 +1142,7 @@ export default function AdminAcaiPage() {
               </button>
               <button
                 onClick={savePickupWindow}
-                className="px-4 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700"
+                className="px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark"
               >
                 Save
               </button>
@@ -1179,7 +1179,7 @@ export default function AdminAcaiPage() {
                   type="date"
                   value={editingBlocked.blocked_date}
                   onChange={(e) => setEditingBlocked({ ...editingBlocked, blocked_date: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 />
               </div>
 
@@ -1195,7 +1195,7 @@ export default function AdminAcaiPage() {
                       setEditingBlocked({ ...editingBlocked, start_time: '09:00', end_time: '17:00' });
                     }
                   }}
-                  className="w-5 h-5 text-hafalohaRed border-gray-300 rounded focus:ring-hafalohaRed"
+                  className="w-5 h-5 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
                 />
                 <label htmlFor="block_all_day" className="ml-2 text-sm font-medium text-gray-700">
                   Block entire day
@@ -1209,7 +1209,7 @@ export default function AdminAcaiPage() {
                     <select
                       value={editingBlocked.start_time || '09:00'}
                       onChange={(e) => setEditingBlocked({ ...editingBlocked, start_time: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     >
                       {TIME_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1221,7 +1221,7 @@ export default function AdminAcaiPage() {
                     <select
                       value={editingBlocked.end_time || '17:00'}
                       onChange={(e) => setEditingBlocked({ ...editingBlocked, end_time: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     >
                       {TIME_OPTIONS.map((opt) => (
                         <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -1237,7 +1237,7 @@ export default function AdminAcaiPage() {
                   type="text"
                   value={editingBlocked.reason || ''}
                   onChange={(e) => setEditingBlocked({ ...editingBlocked, reason: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="e.g., Holiday, Fully booked"
                 />
               </div>
@@ -1252,7 +1252,7 @@ export default function AdminAcaiPage() {
               </button>
               <button
                 onClick={saveBlockedSlot}
-                className="px-4 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700"
+                className="px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark"
               >
                 Save
               </button>

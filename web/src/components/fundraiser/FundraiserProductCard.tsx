@@ -52,10 +52,10 @@ export default function FundraiserProductCard({
 
       {/* Content */}
       <div className="p-4">
-        <h3 className="font-semibold text-warm-900 group-hover:text-hafalohaRed transition line-clamp-2">
+        <h3 className="font-semibold text-warm-900 group-hover:text-tsPrimary transition line-clamp-2">
           {product.name}
         </h3>
-        <p className="text-xl font-bold text-hafalohaRed mt-2">
+        <p className="text-xl font-bold text-tsPrimary mt-2">
           {formatPrice(product.price_cents)}
         </p>
         {product.variants.length > 1 && (

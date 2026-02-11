@@ -258,7 +258,7 @@ function FundraiserCheckoutForm() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-hafalohaRed border-t-transparent rounded-full"></div>
+        <div className="animate-spin w-8 h-8 border-4 border-tsPrimary border-t-transparent rounded-full"></div>
       </div>
     );
   }
@@ -318,7 +318,7 @@ function FundraiserCheckoutForm() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                    className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     placeholder="John Doe"
                   />
                 </div>
@@ -332,7 +332,7 @@ function FundraiserCheckoutForm() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                      className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                       placeholder="john@example.com"
                     />
                   </div>
@@ -345,7 +345,7 @@ function FundraiserCheckoutForm() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       required
-                      className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                      className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                       placeholder="(671) 555-1234"
                     />
                   </div>
@@ -361,7 +361,7 @@ function FundraiserCheckoutForm() {
                   <label
                     className={`flex items-start gap-4 p-4 border rounded-lg cursor-pointer transition ${
                       deliveryMethod === 'pickup'
-                        ? 'border-hafalohaRed bg-hafalohaRed/5'
+                        ? 'border-tsPrimary bg-tsPrimary/5'
                         : 'border-warm-200 hover:border-warm-400'
                     }`}
                   >
@@ -395,7 +395,7 @@ function FundraiserCheckoutForm() {
                   <label
                     className={`flex items-start gap-4 p-4 border rounded-lg cursor-pointer transition ${
                       deliveryMethod === 'shipping'
-                        ? 'border-hafalohaRed bg-hafalohaRed/5'
+                        ? 'border-tsPrimary bg-tsPrimary/5'
                         : 'border-warm-200 hover:border-warm-400'
                     }`}
                   >
@@ -432,7 +432,7 @@ function FundraiserCheckoutForm() {
                         setShippingAddress({ ...shippingAddress, street1: e.target.value })
                       }
                       required={deliveryMethod === 'shipping'}
-                      className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                      className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                       placeholder="123 Main St"
                     />
                   </div>
@@ -446,7 +446,7 @@ function FundraiserCheckoutForm() {
                       onChange={(e) =>
                         setShippingAddress({ ...shippingAddress, street2: e.target.value })
                       }
-                      className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                      className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                       placeholder="Apt 4B"
                     />
                   </div>
@@ -462,7 +462,7 @@ function FundraiserCheckoutForm() {
                           setShippingAddress({ ...shippingAddress, city: e.target.value })
                         }
                         required={deliveryMethod === 'shipping'}
-                        className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                        className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                         placeholder="Hagåtña"
                       />
                     </div>
@@ -477,7 +477,7 @@ function FundraiserCheckoutForm() {
                           setShippingAddress({ ...shippingAddress, state: e.target.value })
                         }
                         required={deliveryMethod === 'shipping'}
-                        className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                        className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                         placeholder="GU"
                       />
                     </div>
@@ -492,7 +492,7 @@ function FundraiserCheckoutForm() {
                           setShippingAddress({ ...shippingAddress, zip: e.target.value })
                         }
                         required={deliveryMethod === 'shipping'}
-                        className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                        className="w-full px-4 py-2 border border-warm-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                         placeholder="96910"
                       />
                     </div>
@@ -503,7 +503,7 @@ function FundraiserCheckoutForm() {
                     type="button"
                     onClick={handleCalculateShipping}
                     disabled={calculatingShipping}
-                    className="w-full py-2 border border-hafalohaRed text-hafalohaRed rounded-lg hover:bg-hafalohaRed/5 disabled:opacity-50 transition font-medium"
+                    className="w-full py-2 border border-tsPrimary text-tsPrimary rounded-lg hover:bg-tsPrimary/5 disabled:opacity-50 transition font-medium"
                   >
                     {calculatingShipping ? 'Calculating...' : 'Calculate Shipping'}
                   </button>
@@ -523,7 +523,7 @@ function FundraiserCheckoutForm() {
                           key={idx}
                           className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition ${
                             selectedShippingRate === rate
-                              ? 'border-hafalohaRed bg-hafalohaRed/5'
+                              ? 'border-tsPrimary bg-tsPrimary/5'
                               : 'border-warm-200 hover:border-warm-400'
                           }`}
                         >
@@ -615,7 +615,7 @@ function FundraiserCheckoutForm() {
                 </div>
                 <div className="flex justify-between text-lg font-bold pt-2 border-t border-warm-200">
                   <span>Total</span>
-                  <span className="text-hafalohaRed">{formatPrice(totalCents)}</span>
+                  <span className="text-tsPrimary">{formatPrice(totalCents)}</span>
                 </div>
               </div>
 
@@ -623,7 +623,7 @@ function FundraiserCheckoutForm() {
               <button
                 type="submit"
                 disabled={!isFormValid() || submitting}
-                className="w-full mt-6 py-3 bg-hafalohaRed text-white rounded-lg font-semibold hover:bg-red-700 disabled:bg-warm-300 disabled:cursor-not-allowed transition"
+                className="w-full mt-6 py-3 bg-tsPrimary text-white rounded-lg font-semibold hover:bg-primary-dark disabled:bg-warm-300 disabled:cursor-not-allowed transition"
               >
                 {submitting ? 'Processing...' : `Pay ${formatPrice(totalCents)}`}
               </button>
@@ -645,7 +645,7 @@ function FundraiserCheckoutPageContent() {
   if (!appConfig) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-hafalohaRed border-t-transparent rounded-full"></div>
+        <div className="animate-spin w-8 h-8 border-4 border-tsPrimary border-t-transparent rounded-full"></div>
       </div>
     );
   }

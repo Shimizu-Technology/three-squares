@@ -35,8 +35,8 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
         onClick={() => setIsExpanded(!isExpanded)}
         className={`w-full flex items-center justify-between font-semibold py-2 ${
           darkMode 
-            ? 'text-white hover:text-hafalohaGold' 
-            : 'text-warm-700 hover:text-hafalohaRed'
+            ? 'text-white hover:text-tsGold' 
+            : 'text-warm-700 hover:text-tsPrimary'
         }`}
       >
         <span>Shop</span>
@@ -54,14 +54,14 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
       {isExpanded && (
         <div className="animate-slide-down">
           {/* Collections List */}
-          <div className={`pl-3 space-y-1 ml-1 ${darkMode ? 'border-l-2 border-white/20' : 'border-l-2 border-hafalohaRed/30'}`}>
+          <div className={`pl-3 space-y-1 ml-1 ${darkMode ? 'border-l-2 border-white/20' : 'border-l-2 border-tsPrimary/30'}`}>
             {/* All Products */}
             <Link
               to="/products"
               className={`flex items-center gap-2 py-2 font-medium ${
                 darkMode 
-                  ? 'text-white/90 hover:text-hafalohaGold' 
-                  : 'text-warm-700 hover:text-hafalohaRed'
+                  ? 'text-white/90 hover:text-tsGold' 
+                  : 'text-warm-700 hover:text-tsPrimary'
               }`}
               onClick={onItemClick}
             >
@@ -81,12 +81,12 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
                   to={`/collections/${collection.slug}`}
                   className={`flex items-center gap-2 py-2 ${
                     darkMode 
-                      ? 'text-white/70 hover:text-hafalohaGold' 
-                      : 'text-warm-600 hover:text-hafalohaRed'
+                      ? 'text-white/70 hover:text-tsGold' 
+                      : 'text-warm-600 hover:text-tsPrimary'
                   }`}
                   onClick={onItemClick}
                 >
-                  <span className="text-hafalohaGold text-xs">●</span>
+                  <span className="text-tsGold text-xs">●</span>
                   {collection.name}
                   {collection.product_count > 0 && (
                     <span className={`ml-auto text-xs ${darkMode ? 'text-white/40' : 'text-warm-400'}`}>
@@ -102,7 +102,7 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
               <Link
                 to="/collections"
                 className={`block py-2 font-medium hover:underline ${
-                  darkMode ? 'text-hafalohaGold' : 'text-hafalohaRed'
+                  darkMode ? 'text-tsGold' : 'text-tsPrimary'
                 }`}
                 onClick={onItemClick}
               >

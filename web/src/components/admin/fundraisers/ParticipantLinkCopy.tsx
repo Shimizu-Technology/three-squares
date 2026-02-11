@@ -51,7 +51,7 @@ export default function ParticipantLinkCopy({
       className={`inline-flex items-center gap-1 rounded transition ${
         copied 
           ? 'text-green-600 bg-green-50' 
-          : 'text-gray-500 hover:text-hafalohaRed hover:bg-gray-100'
+          : 'text-gray-500 hover:text-tsPrimary hover:bg-gray-100'
       } ${sizeClasses} ${className}`}
       title={copied ? 'Copied!' : 'Copy shareable link'}
     >

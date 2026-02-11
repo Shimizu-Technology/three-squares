@@ -23,7 +23,7 @@ export default function ProductBadge({ type, saveAmount, className = '' }: Produ
 
   if (type === 'new') {
     return (
-      <span className={`inline-block px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wide bg-hafalohaGold text-warm-900 ${className}`}>
+      <span className={`inline-block px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wide bg-tsGold text-warm-900 ${className}`}>
         New
       </span>
     );

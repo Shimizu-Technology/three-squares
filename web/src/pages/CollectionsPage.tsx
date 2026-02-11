@@ -75,7 +75,7 @@ export default function CollectionsPage() {
     return (
       <div className="min-h-screen bg-warm-50">
         <div className="relative bg-warm-100 overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--color-hafaloha-cream)_0%,transparent_50%)] opacity-60" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--color-ts-surface)_0%,transparent_50%)] opacity-60" />
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24">
             <PageHeaderSkeleton />
           </div>
@@ -97,7 +97,7 @@ export default function CollectionsPage() {
       <div className="min-h-screen bg-warm-50">
         {/* Header */}
         <div className="relative bg-warm-100 overflow-hidden">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--color-hafaloha-cream)_0%,transparent_50%)] opacity-60" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--color-ts-surface)_0%,transparent_50%)] opacity-60" />
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-gray-900 mb-4">Collections</h1>
             <p className="text-lg text-warm-500 max-w-2xl">
@@ -123,7 +123,7 @@ export default function CollectionsPage() {
               </button>
               <Link
                 to="/products"
-                className="px-6 py-3 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition inline-block"
+                className="px-6 py-3 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition inline-block"
               >
                 Browse All Products
               </Link>
@@ -144,7 +144,7 @@ export default function CollectionsPage() {
     <div className="min-h-screen bg-warm-50">
       {/* Themed Header */}
       <div className="relative bg-warm-100 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--color-hafaloha-cream)_0%,transparent_50%)] opacity-60" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,var(--color-ts-surface)_0%,transparent_50%)] opacity-60" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24">
           <FadeIn>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-gray-900 mb-4">
@@ -183,13 +183,13 @@ export default function CollectionsPage() {
                   )}
                 </div>
                 <div className="p-8 sm:p-10 lg:p-12 flex flex-col justify-center">
-                  <span className="inline-flex items-center gap-1.5 bg-hafalohaGold/20 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider w-fit mb-4">
+                  <span className="inline-flex items-center gap-1.5 bg-tsGold/20 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider w-fit mb-4">
                     <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                     </svg>
                     Featured Collection
                   </span>
-                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 mb-3 group-hover:text-hafalohaRed transition-colors">
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 mb-3 group-hover:text-tsPrimary transition-colors">
                     {featuredCollection.name}
                   </h2>
                   {featuredCollection.description && (
@@ -198,7 +198,7 @@ export default function CollectionsPage() {
                   <p className="text-sm text-warm-400">
                     {featuredCollection.product_count} {featuredCollection.product_count === 1 ? 'product' : 'products'}
                   </p>
-                  <span className="mt-6 inline-flex items-center gap-2 text-hafalohaRed font-semibold group-hover:gap-3 transition-all">
+                  <span className="mt-6 inline-flex items-center gap-2 text-tsPrimary font-semibold group-hover:gap-3 transition-all">
                     Shop Collection
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -221,7 +221,7 @@ export default function CollectionsPage() {
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search collections..."
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-warm-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent transition"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent transition"
               />
               <svg
                 className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-warm-400"
@@ -271,7 +271,7 @@ export default function CollectionsPage() {
             {searchQuery && (
               <button
                 onClick={handleClearSearch}
-                className="px-6 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition"
+                className="px-6 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition"
               >
                 Clear Search
               </button>
@@ -322,7 +322,7 @@ export default function CollectionsPage() {
                       </div>
                     )}
                     {collection.featured && (
-                      <div className="absolute top-3 right-3 inline-flex items-center gap-1 bg-hafalohaGold text-gray-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                      <div className="absolute top-3 right-3 inline-flex items-center gap-1 bg-tsGold text-gray-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                           <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                         </svg>
@@ -333,7 +333,7 @@ export default function CollectionsPage() {
 
                   {/* Collection Info */}
                   <div className="p-5 sm:p-6">
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 group-hover:text-hafalohaRed transition-colors">
+                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 group-hover:text-tsPrimary transition-colors">
                       {collection.name}
                     </h3>
                     {collection.description && (
@@ -345,7 +345,7 @@ export default function CollectionsPage() {
                       <p className="text-sm text-warm-400">
                         {collection.product_count} {collection.product_count === 1 ? 'product' : 'products'}
                       </p>
-                      <span className="text-hafalohaRed opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium flex items-center gap-1">
+                      <span className="text-tsPrimary opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium flex items-center gap-1">
                         Browse
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -388,7 +388,7 @@ export default function CollectionsPage() {
                         onClick={() => handlePageChange(pageNum)}
                         className={`px-3 sm:px-4 py-2 text-sm sm:text-base rounded-lg ${
                           currentPage === pageNum
-                            ? 'bg-hafalohaRed text-white'
+                            ? 'bg-tsPrimary text-white'
                             : 'border border-gray-300 hover:bg-gray-50'
                         }`}
                       >

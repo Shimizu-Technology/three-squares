@@ -22,7 +22,7 @@ export default function OrderDetailModal({
   onQuickUpdateStatus,
   onResendNotification,
   onOpenRefundModal,
-  storeEmail = 'info@hafaloha.com',
+  storeEmail = 'sales@bgpacific.com',
 }: OrderDetailModalProps) {
   useLockBodyScroll(true);
 
@@ -141,7 +141,7 @@ export default function OrderDetailModal({
                   <select
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   >
                     <option value="pending">Pending</option>
                     {order.order_type === 'retail' ? (
@@ -168,7 +168,7 @@ export default function OrderDetailModal({
                     value={editTracking}
                     onChange={(e) => setEditTracking(e.target.value)}
                     placeholder="Enter tracking number..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   />
                 </div>
 
@@ -179,7 +179,7 @@ export default function OrderDetailModal({
                     onChange={(e) => setEditAdminNotes(e.target.value)}
                     placeholder="Add internal notes about this order..."
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent resize-none"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent resize-none"
                   />
                 </div>
 
@@ -250,7 +250,7 @@ export default function OrderDetailModal({
               <p><span className="text-gray-600">Name:</span> <span className="font-medium">{order.customer_name}</span></p>
               <p>
                 <span className="text-gray-600">Email:</span>
-                <a href={`mailto:${order.customer_email}`} className="font-medium text-hafalohaRed hover:underline ml-1">
+                <a href={`mailto:${order.customer_email}`} className="font-medium text-tsPrimary hover:underline ml-1">
                   {order.customer_email}
                 </a>
               </p>
@@ -365,7 +365,7 @@ export default function OrderDetailModal({
               </div>
               <div className="flex justify-between font-bold text-lg pt-3 border-t border-gray-300">
                 <span>Total:</span>
-                <span className="text-hafalohaRed print:text-black">{formatCurrency(order.total_cents)}</span>
+                <span className="text-tsPrimary print:text-black">{formatCurrency(order.total_cents)}</span>
               </div>
             </div>
           </div>
@@ -405,7 +405,7 @@ export default function OrderDetailModal({
           {/* Print Thank You */}
           <div className="hidden print:block text-center pt-8 border-t border-gray-300 mt-4">
             <p className="text-lg font-semibold text-gray-800">Thank you for your order!</p>
-            <p className="text-sm text-gray-600 mt-2">Hafaloha - Chamorro Pride. Island Style.</p>
+            <p className="text-sm text-gray-600 mt-2">Three Squares - Good Food, Good Mood, Good Service</p>
             <p className="text-xs text-gray-500 mt-1">Questions? Contact us at {storeEmail}</p>
           </div>
 
@@ -438,7 +438,7 @@ export default function OrderDetailModal({
               <button
                 type="button"
                 onClick={onOpenRefundModal}
-                className="flex-1 min-w-[140px] px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium"
+                className="flex-1 min-w-[140px] px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-primary-dark transition font-medium"
               >
                 Refund Order
               </button>

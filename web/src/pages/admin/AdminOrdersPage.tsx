@@ -267,7 +267,7 @@ export default function AdminOrdersPage() {
   };
 
   // ── Render ────────────────────────────────────────────────────
-  const storeEmail = appConfig?.store_info?.email || 'info@hafaloha.com';
+  const storeEmail = appConfig?.store_info?.email || 'sales@bgpacific.com';
 
   return (
     <div className="space-y-6">

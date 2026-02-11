@@ -11,7 +11,7 @@ export default function TermsOfServicePage() {
     configApi.getConfig().then(setAppConfig).catch(console.error);
   }, []);
 
-  const storeEmail = appConfig?.store_info?.email || 'info@hafaloha.com';
+  const storeEmail = appConfig?.store_info?.email || 'sales@bgpacific.com';
   const storePhone = appConfig?.store_info?.phone || '671-777-1234';
   const storePhoneTel = `tel:${storePhone.replace(/[^\d+]/g, '')}`;
 
@@ -54,7 +54,7 @@ export default function TermsOfServicePage() {
           <section className="mb-12">
             <p className="text-lg text-warm-600 leading-relaxed">
               Welcome to Hafaloha. These Terms of Service (&quot;Terms&quot;) govern your use of our website
-              at hafaloha.com and any purchases you make through our online store. By accessing our website
+              at bgpacific.com and any purchases you make through our online store. By accessing our website
               or placing an order, you agree to be bound by these Terms.
             </p>
           </section>
@@ -76,7 +76,7 @@ export default function TermsOfServicePage() {
                 'Transmit any harmful code, viruses, or disruptive technologies',
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-warm-500">
-                  <span className="text-hafalohaRed font-bold leading-none mt-1">&bull;</span>
+                  <span className="text-tsPrimary font-bold leading-none mt-1">&bull;</span>
                   <span>{item}</span>
                 </li>
               ))}
@@ -133,7 +133,7 @@ export default function TermsOfServicePage() {
             <p className="text-warm-600 leading-relaxed">
               Risk of loss and title for items pass to you upon delivery to the carrier. For full details
               on shipping options and policies, please visit our{' '}
-              <a href="/shipping" className="text-hafalohaRed hover:text-red-700 transition">
+              <a href="/shipping" className="text-tsPrimary hover:text-red-700 transition">
                 Shipping Info
               </a>{' '}
               page.
@@ -149,7 +149,7 @@ export default function TermsOfServicePage() {
               <p className="text-warm-600 leading-relaxed mb-4">
                 We want you to love your Hafaloha gear. If you&apos;re not completely satisfied, please
                 review our{' '}
-                <a href="/returns" className="text-hafalohaRed hover:text-red-700 transition">
+                <a href="/returns" className="text-tsPrimary hover:text-red-700 transition">
                   Returns Policy
                 </a>{' '}
                 for details on eligibility, timeframes, and how to initiate a return or exchange.
@@ -239,13 +239,13 @@ export default function TermsOfServicePage() {
             <div className="space-y-2 text-warm-500">
               <p>
                 <span className="font-medium text-warm-800">Email:</span>{' '}
-                <a href={`mailto:${storeEmail}`} className="text-hafalohaRed hover:text-red-700 transition">
+                <a href={`mailto:${storeEmail}`} className="text-tsPrimary hover:text-red-700 transition">
                   {storeEmail}
                 </a>
               </p>
               <p>
                 <span className="font-medium text-warm-800">Phone:</span>{' '}
-                <a href={storePhoneTel} className="text-hafalohaRed hover:text-red-700 transition">
+                <a href={storePhoneTel} className="text-tsPrimary hover:text-red-700 transition">
                   {storePhone}
                 </a>
               </p>

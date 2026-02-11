@@ -148,7 +148,7 @@ export default function OrderHistoryPage() {
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-md border-warm-300 shadow-sm focus:border-hafalohaRed focus:ring-hafalohaRed text-sm"
+            className="rounded-md border-warm-300 shadow-sm focus:border-tsPrimary focus:ring-tsPrimary text-sm"
           >
             <option value="">All Orders</option>
             <option value="pending">Pending</option>
@@ -162,7 +162,7 @@ export default function OrderHistoryPage() {
         {/* Loading State */}
         {isLoading && (
           <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-hafalohaRed border-t-transparent"></div>
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-tsPrimary border-t-transparent"></div>
             <p className="mt-4 text-warm-600">Loading your orders...</p>
           </div>
         )}
@@ -192,7 +192,7 @@ export default function OrderHistoryPage() {
             </p>
             <Link
               to="/products"
-              className="inline-flex items-center px-6 py-3 bg-hafalohaRed text-white font-medium rounded-lg hover:bg-red-700 transition"
+              className="inline-flex items-center px-6 py-3 bg-tsPrimary text-white font-medium rounded-lg hover:bg-primary-dark transition"
             >
               Browse Products
             </Link>
@@ -274,7 +274,7 @@ export default function OrderHistoryPage() {
                     {order.can_track && (
                       <Link
                         to={`/orders/${order.id}#tracking`}
-                        className="inline-flex items-center px-4 py-2 bg-hafalohaRed text-white text-sm font-medium rounded-lg hover:bg-red-700 transition"
+                        className="inline-flex items-center px-4 py-2 bg-tsPrimary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition"
                       >
                         Track Order
                       </Link>
@@ -314,7 +314,7 @@ export default function OrderHistoryPage() {
           <div className="mt-8 text-center text-sm text-warm-500">
             <p>
               Need help with an order?{' '}
-              <Link to="/contact" className="text-hafalohaRed hover:underline">
+              <Link to="/contact" className="text-tsPrimary hover:underline">
                 Contact us
               </Link>
             </p>

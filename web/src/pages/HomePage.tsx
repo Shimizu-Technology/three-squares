@@ -19,7 +19,7 @@ const defaultHero = {
   button_link: "/products",
   secondary_button_text: "Browse Collections",
   secondary_button_link: "/collections",
-  background_image_url: "/images/hafaloha-hero-v2.jpg" as string | null,
+  background_image_url: "/images/three-squares-hero.jpg" as string | null,
   settings: {
     badge_text: "Island Living Apparel",
     secondary_button_text: "Browse Collections",
@@ -40,14 +40,14 @@ const defaultCategoryCards: Array<{
     subtitle: "Vibrant styles for island living",
     button_text: "Shop Now",
     button_link: "/products?collection=womens",
-    image_url: "/images/hafaloha-womens-img.webp"
+    image_url: "/images/three-squares-menu.jpg"
   },
   {
     title: "Shop Men's",
     subtitle: "Bold designs with island pride",
     button_text: "Shop Now",
     button_link: "/products?collection=mens",
-    image_url: "/images/hafaloha-mens-img.webp"
+    image_url: "/images/three-squares-catering.jpg"
   }
 ];
 
@@ -221,7 +221,7 @@ export default function HomePage() {
                 <h2 className="text-3xl sm:text-4xl font-bold text-warm-900 tracking-tight">
                   Shop by Category
                 </h2>
-                <div className="w-12 h-1 bg-hafalohaGold rounded-full mx-auto mt-4" />
+                <div className="w-12 h-1 bg-tsGold rounded-full mx-auto mt-4" />
               </div>
             </FadeIn>
 
@@ -295,7 +295,7 @@ export default function HomePage() {
             {/* Text — 5 columns */}
             <FadeIn direction="right" delay={0.1} className="md:col-span-5">
               <div>
-                <span className="text-sm font-medium text-hafalohaRed mb-3 block uppercase tracking-wider">
+                <span className="text-sm font-medium text-tsPrimary mb-3 block uppercase tracking-wider">
                   Our Story
                 </span>
                 <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-6 text-warm-900 tracking-tight">
@@ -305,14 +305,14 @@ export default function HomePage() {
                   Hafa Adai! We&apos;re Leonard and Tara Kaae, the founders of Hafaloha. What started as just
                   a few designs and a dream has grown into something we&apos;re incredibly proud of.
                 </p>
-                <blockquote className="mb-8 pl-5 border-l-4 border-hafalohaGold">
+                <blockquote className="mb-8 pl-5 border-l-4 border-tsGold">
                   <p className="text-lg sm:text-xl font-medium text-warm-800 italic leading-relaxed">
                     &ldquo;Hafaloha is more than just products or a brand—it&apos;s a lifestyle and a way of life.&rdquo;
                   </p>
                 </blockquote>
                 <Link
                   to="/about"
-                  className="group inline-flex items-center gap-2 text-warm-900 font-semibold hover:text-hafalohaRed transition-colors"
+                  className="group inline-flex items-center gap-2 text-warm-900 font-semibold hover:text-tsPrimary transition-colors"
                 >
                   Read Our Full Story
                   <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">

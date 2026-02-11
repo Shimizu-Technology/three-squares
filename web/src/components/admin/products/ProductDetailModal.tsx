@@ -29,7 +29,7 @@ export default function ProductDetailModal({ product, loading, onClose }: Produc
       >
         {loading ? (
           <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hafalohaRed mx-auto" />
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary mx-auto" />
             <p className="mt-4 text-gray-600">Loading product details...</p>
           </div>
         ) : (
@@ -88,7 +88,7 @@ export default function ProductDetailModal({ product, loading, onClose }: Produc
                               key={image.id}
                               onClick={() => setSelectedImageIndex(index)}
                               className={`bg-white rounded-lg overflow-hidden border-2 transition ${
-                                selectedImageIndex === index ? 'border-hafalohaRed' : 'border-gray-200 hover:border-gray-300'
+                                selectedImageIndex === index ? 'border-tsPrimary' : 'border-gray-200 hover:border-gray-300'
                               }`}
                               style={{ aspectRatio: '1/1' }}
                             >

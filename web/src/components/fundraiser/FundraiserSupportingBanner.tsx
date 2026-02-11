@@ -10,10 +10,10 @@ export default function FundraiserSupportingBanner({
   onClear,
 }: FundraiserSupportingBannerProps) {
   return (
-    <div className="bg-hafalohaGold/10 border border-hafalohaGold rounded-lg p-4">
+    <div className="bg-tsGold/10 border border-tsGold rounded-lg p-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Heart className="w-5 h-5 text-hafalohaRed fill-hafalohaRed" />
+          <Heart className="w-5 h-5 text-tsPrimary fill-tsPrimary" />
           <p className="text-warm-800">
             You're supporting:{' '}
             <span className="font-semibold">{participantName}</span>

@@ -14,7 +14,7 @@ export default function FundraiserGoalProgress({
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h3 className="font-semibold mb-3">Fundraising Progress</h3>
-      <div className="text-3xl font-bold text-hafalohaRed mb-1">
+      <div className="text-3xl font-bold text-tsPrimary mb-1">
         {formatPrice(raisedCents)}
       </div>
       <p className="text-sm text-warm-600 mb-3">

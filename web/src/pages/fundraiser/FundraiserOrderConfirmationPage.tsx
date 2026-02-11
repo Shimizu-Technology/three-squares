@@ -88,7 +88,7 @@ export default function FundraiserOrderConfirmationPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin w-8 h-8 border-4 border-hafalohaRed border-t-transparent rounded-full"></div>
+        <div className="animate-spin w-8 h-8 border-4 border-tsPrimary border-t-transparent rounded-full"></div>
       </div>
     );
   }
@@ -98,7 +98,7 @@ export default function FundraiserOrderConfirmationPage() {
       <div className="min-h-screen flex flex-col items-center justify-center p-4">
         <h1 className="text-2xl font-bold text-warm-900 mb-2">Order Not Found</h1>
         <p className="text-warm-600 mb-4">{error}</p>
-        <Link to={`/f/${slug}`} className="text-hafalohaRed hover:underline">
+        <Link to={`/f/${slug}`} className="text-tsPrimary hover:underline">
           Back to Fundraiser
         </Link>
       </div>
@@ -124,8 +124,8 @@ export default function FundraiserOrderConfirmationPage() {
       <div className="max-w-3xl mx-auto px-4 py-8 space-y-6">
         {/* Supporting Participant */}
         {order.participant_name && (
-          <div className="bg-hafalohaGold/10 border border-hafalohaGold rounded-lg p-4 flex items-center gap-3">
-            <Heart className="w-5 h-5 text-hafalohaRed fill-hafalohaRed" />
+          <div className="bg-tsGold/10 border border-tsGold rounded-lg p-4 flex items-center gap-3">
+            <Heart className="w-5 h-5 text-tsPrimary fill-tsPrimary" />
             <p className="text-warm-800">
               You supported <span className="font-semibold">{order.participant_name}</span> with
               this order!
@@ -241,7 +241,7 @@ export default function FundraiserOrderConfirmationPage() {
             </div>
             <div className="flex justify-between text-lg font-bold pt-2 border-t border-warm-200">
               <span>Total</span>
-              <span className="text-hafalohaRed">{formatPrice(order.total_cents)}</span>
+              <span className="text-tsPrimary">{formatPrice(order.total_cents)}</span>
             </div>
           </div>
         </div>
@@ -250,7 +250,7 @@ export default function FundraiserOrderConfirmationPage() {
         <div className="text-center">
           <Link
             to={`/f/${slug}`}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition font-medium"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition font-medium"
           >
             Back to Fundraiser
           </Link>

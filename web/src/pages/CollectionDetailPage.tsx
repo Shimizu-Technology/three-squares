@@ -109,7 +109,7 @@ export default function CollectionDetailPage() {
           <p className="text-red-600 mb-4">{error || 'Collection not found'}</p>
           <Link
             to="/collections"
-            className="px-6 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition inline-block"
+            className="px-6 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition inline-block"
           >
             Back to Collections
           </Link>
@@ -134,10 +134,10 @@ export default function CollectionDetailPage() {
       </div>
 
       {/* Hero Banner - Clean design with Hafaloha branding */}
-      <div className="relative overflow-hidden bg-hafalohaRed">
+      <div className="relative overflow-hidden bg-tsPrimary">
         {/* Subtle pattern overlay */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1)_0%,transparent_50%)]" />
-        <div className="absolute inset-0 bg-linear-to-r from-hafalohaRed via-red-700 to-hafalohaRed" />
+        <div className="absolute inset-0 bg-linear-to-r from-tsPrimary via-red-700 to-tsPrimary" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
           <FadeIn>
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mb-3 drop-shadow-md">
@@ -164,7 +164,7 @@ export default function CollectionDetailPage() {
                 placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white border border-warm-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent transition"
+                className="w-full px-4 py-2.5 bg-white border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent transition"
               />
             </form>
 
@@ -176,7 +176,7 @@ export default function CollectionDetailPage() {
                   setProductType(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="px-4 py-2 bg-white border border-warm-200 rounded-lg focus:ring-2 focus:ring-hafalohaRed focus:border-transparent transition"
+                className="px-4 py-2 bg-white border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent transition"
               >
                 <option value="">All Types</option>
                 {productTypes.map((type) => (
@@ -209,7 +209,7 @@ export default function CollectionDetailPage() {
             <p className="text-gray-600 mb-4">No products found in this collection.</p>
             <button
               onClick={handleClearFilters}
-              className="px-6 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 transition"
+              className="px-6 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition"
             >
               Clear Filters
             </button>

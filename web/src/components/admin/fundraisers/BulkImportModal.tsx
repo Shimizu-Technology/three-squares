@@ -139,7 +139,7 @@ export default function BulkImportModal({
           <button
             type="button"
             onClick={downloadTemplate}
-            className="text-sm text-hafalohaRed hover:underline flex items-center gap-1"
+            className="text-sm text-tsPrimary hover:underline flex items-center gap-1"
           >
             <FileText className="w-4 h-4" />
             Download CSV template
@@ -150,7 +150,7 @@ export default function BulkImportModal({
             onDragOver={(e) => e.preventDefault()}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-hafalohaRed transition"
+            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-tsPrimary transition"
           >
             <input
               ref={fileInputRef}
@@ -222,7 +222,7 @@ export default function BulkImportModal({
               type="button"
               onClick={handleImport}
               disabled={importing || !csvContent}
-              className="flex-1 px-4 py-2 bg-hafalohaRed text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+              className="flex-1 px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark disabled:opacity-50"
             >
               {importing ? 'Importing...' : 'Import'}
             </button>

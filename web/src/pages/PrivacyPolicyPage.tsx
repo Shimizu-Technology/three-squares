@@ -11,7 +11,7 @@ export default function PrivacyPolicyPage() {
     configApi.getConfig().then(setAppConfig).catch(console.error);
   }, []);
 
-  const storeEmail = appConfig?.store_info?.email || 'info@hafaloha.com';
+  const storeEmail = appConfig?.store_info?.email || 'sales@bgpacific.com';
   const storePhone = appConfig?.store_info?.phone || '671-777-1234';
   const storePhoneTel = `tel:${storePhone.replace(/[^\d+]/g, '')}`;
 
@@ -53,7 +53,7 @@ export default function PrivacyPolicyPage() {
         <FadeIn immediate>
           <section className="mb-12">
             <p className="text-lg text-warm-700 leading-relaxed">
-              Hafaloha ("we," "us," or "our") is committed to protecting your privacy. This Privacy Policy
+              Three Squares / B&G Pacific LLC ("we," "us," or "our") is committed to protecting your privacy. This Privacy Policy
               explains how we collect, use, disclose, and safeguard your information when you visit our website
               and make purchases from our online store. Please read this policy carefully.
             </p>
@@ -78,7 +78,7 @@ export default function PrivacyPolicyPage() {
                 'Payment information (processed securely via Stripe)',
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-warm-600">
-                  <span className="text-hafalohaRed font-bold leading-none mt-1">&bull;</span>
+                  <span className="text-tsPrimary font-bold leading-none mt-1">&bull;</span>
                   <span>{item}</span>
                 </li>
               ))}
@@ -117,7 +117,7 @@ export default function PrivacyPolicyPage() {
                 'Prevent fraud and ensure the security of our platform',
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-warm-600">
-                  <svg className="w-5 h-5 text-hafalohaRed shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
                   <span>{item}</span>
@@ -140,7 +140,7 @@ export default function PrivacyPolicyPage() {
                 <p className="text-warm-600 text-sm leading-relaxed">
                   Your payment information is processed securely through Stripe. We never store your full
                   credit card details on our servers. Stripe's privacy policy can be found at{' '}
-                  <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-hafalohaRed hover:text-red-700 transition">
+                  <a href="https://stripe.com/privacy" target="_blank" rel="noopener noreferrer" className="text-tsPrimary hover:text-red-700 transition">
                     stripe.com/privacy
                   </a>.
                 </p>
@@ -179,7 +179,7 @@ export default function PrivacyPolicyPage() {
                 'Limited employee access to personal information',
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-warm-600">
-                  <svg className="w-5 h-5 text-hafalohaRed shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                   <span>{item}</span>
@@ -209,7 +209,7 @@ export default function PrivacyPolicyPage() {
                 'Disable cookies through your browser settings',
               ].map((item, i) => (
                 <li key={i} className="flex items-start gap-2 text-warm-600">
-                  <span className="text-hafalohaRed font-bold leading-none mt-1">&bull;</span>
+                  <span className="text-tsPrimary font-bold leading-none mt-1">&bull;</span>
                   <span>{item}</span>
                 </li>
               ))}
@@ -239,13 +239,13 @@ export default function PrivacyPolicyPage() {
             <div className="space-y-2 text-warm-600">
               <p>
                 <span className="font-medium text-warm-900">Email:</span>{' '}
-                <a href={`mailto:${storeEmail}`} className="text-hafalohaRed hover:text-red-700 transition">
+                <a href={`mailto:${storeEmail}`} className="text-tsPrimary hover:text-red-700 transition">
                   {storeEmail}
                 </a>
               </p>
               <p>
                 <span className="font-medium text-warm-900">Phone:</span>{' '}
-                <a href={storePhoneTel} className="text-hafalohaRed hover:text-red-700 transition">
+                <a href={storePhoneTel} className="text-tsPrimary hover:text-red-700 transition">
                   {storePhone}
                 </a>
               </p>

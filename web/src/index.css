@@ -16,12 +16,21 @@
 }
 
 :root {
-  --color-hafaloha-red: #B31B1B;
-  --color-hafaloha-gold: #FFD700;
-  --color-hafaloha-cream: #FDFBF7;
-  --color-hafaloha-dark: #1a1a2e;
-  --color-hafaloha-navy: #1e293b;
-  --color-hafaloha-red-dark: #8B1515;
+  /* Three Squares Brand Colors */
+  --color-ts-blue: #4A7FB5;           /* Pacific Blue - Primary */
+  --color-ts-navy: #1E3A5F;           /* Navy - Primary Dark */
+  --color-ts-gold: #F5C518;           /* Golden Sun - Accent */
+  --color-ts-amber: #D4A030;          /* Amber - Warm accent */
+  --color-ts-text: #1A1A1A;           /* Text */
+  --color-ts-surface: #F0EDE8;        /* Surface */
+  --color-ts-brown: #8B5E3C;          /* Rich Brown */
+  --color-ts-green: #4A7C3F;          /* Fresh Green */
+  
+  /* Aliases for primary/accent usage */
+  --color-primary: #4A7FB5;
+  --color-primary-dark: #1E3A5F;
+  --color-accent: #F5C518;
+  --color-accent-warm: #D4A030;
 }
 
 /* Base Typography - Inter font family */
@@ -67,70 +76,86 @@ p {
   line-height: 1.5;
 }
 
-/* Custom Hafaloha brand colors */
-.bg-hafalohaRed {
-  background-color: var(--color-hafaloha-red);
+/* Three Squares Brand Color Utilities */
+.bg-tsPrimary {
+  background-color: var(--color-ts-blue);
 }
 
-.text-hafalohaRed {
-  color: var(--color-hafaloha-red);
+.text-tsPrimary {
+  color: var(--color-ts-blue);
 }
 
-.bg-hafalohaGold {
-  background-color: var(--color-hafaloha-gold);
+.bg-tsNavy {
+  background-color: var(--color-ts-navy);
 }
 
-.text-hafalohaGold {
-  color: var(--color-hafaloha-gold);
+.text-tsNavy {
+  color: var(--color-ts-navy);
 }
 
-.bg-hafalohaCream {
-  background-color: var(--color-hafaloha-cream);
+.bg-tsGold {
+  background-color: var(--color-ts-gold);
 }
 
-.text-hafalohaCream {
-  color: var(--color-hafaloha-cream);
+.text-tsGold {
+  color: var(--color-ts-gold);
 }
 
-.bg-hafalohaDark {
-  background-color: var(--color-hafaloha-dark);
+.bg-tsAmber {
+  background-color: var(--color-ts-amber);
 }
 
-.text-hafalohaDark {
-  color: var(--color-hafaloha-dark);
+.text-tsAmber {
+  color: var(--color-ts-amber);
 }
 
-.border-hafalohaRed {
-  border-color: var(--color-hafaloha-red);
+.bg-tsSurface {
+  background-color: var(--color-ts-surface);
 }
 
-.border-hafalohaGold {
-  border-color: var(--color-hafaloha-gold);
+.text-tsSurface {
+  color: var(--color-ts-surface);
 }
 
-.hover\:bg-red-700:hover {
-  background-color: var(--color-hafaloha-red-dark);
+.border-tsPrimary {
+  border-color: var(--color-ts-blue);
 }
 
-.hover\:text-hafalohaRed:hover {
-  color: var(--color-hafaloha-red);
+.border-tsGold {
+  border-color: var(--color-ts-gold);
 }
 
-.ring-hafalohaRed {
-  --tw-ring-color: var(--color-hafaloha-red);
+.hover\:bg-primary-dark:hover {
+  background-color: var(--color-ts-navy);
 }
 
-.focus\:ring-hafalohaRed:focus {
-  --tw-ring-color: var(--color-hafaloha-red);
+.hover\:text-tsPrimary:hover {
+  color: var(--color-ts-blue);
 }
 
-/* Hibiscus floral border pattern - inspired by hafaloha.com */
-.hibiscus-border {
+.ring-tsPrimary {
+  --tw-ring-color: var(--color-ts-blue);
+}
+
+.focus\:ring-tsPrimary:focus {
+  --tw-ring-color: var(--color-ts-blue);
+}
+
+/* Decorative border - Three Squares style (warm, approachable) */
+.decorative-border {
   height: 45px;
-  background-color: var(--color-hafaloha-navy);
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='45' viewBox='0 0 120 45'%3E%3C!-- Hibiscus flower left --%3E%3Cg transform='translate(30, 22)'%3E%3Cellipse cx='0' cy='-8' rx='4' ry='10' fill='%23C1191F' opacity='0.7' transform='rotate(-30)'/%3E%3Cellipse cx='0' cy='-8' rx='4' ry='10' fill='%23C1191F' opacity='0.7' transform='rotate(30)'/%3E%3Cellipse cx='0' cy='-8' rx='4' ry='10' fill='%23C1191F' opacity='0.7' transform='rotate(90)'/%3E%3Cellipse cx='0' cy='-8' rx='4' ry='10' fill='%23C1191F' opacity='0.7' transform='rotate(-90)'/%3E%3Cellipse cx='0' cy='-8' rx='4' ry='10' fill='%23C1191F' opacity='0.7' transform='rotate(150)'/%3E%3Ccircle cx='0' cy='0' r='4' fill='%23FFD700' opacity='0.8'/%3E%3C/g%3E%3C!-- Hibiscus flower right --%3E%3Cg transform='translate(90, 22)'%3E%3Cellipse cx='0' cy='-8' rx='4' ry='10' fill='%23C1191F' opacity='0.7' transform='rotate(-30)'/%3E%3Cellipse cx='0' cy='-8' rx='4' ry='10' fill='%23C1191F' opacity='0.7' transform='rotate(30)'/%3E%3Cellipse cx='0' cy='-8' rx='4' ry='10' fill='%23C1191F' opacity='0.7' transform='rotate(90)'/%3E%3Cellipse cx='0' cy='-8' rx='4' ry='10' fill='%23C1191F' opacity='0.7' transform='rotate(-90)'/%3E%3Cellipse cx='0' cy='-8' rx='4' ry='10' fill='%23C1191F' opacity='0.7' transform='rotate(150)'/%3E%3Ccircle cx='0' cy='0' r='4' fill='%23FFD700' opacity='0.8'/%3E%3C/g%3E%3C!-- Decorative vines --%3E%3Cpath d='M0 35 Q15 25, 30 30 T60 25 T90 30 T120 25' fill='none' stroke='%23C1191F' stroke-width='1' opacity='0.4'/%3E%3Cpath d='M0 40 Q15 32, 30 38 T60 32 T90 38 T120 32' fill='none' stroke='%23C1191F' stroke-width='0.5' opacity='0.3'/%3E%3C/svg%3E");
-  background-repeat: repeat-x;
-  background-position: center;
+  background-color: var(--color-ts-navy);
+  background-image: linear-gradient(
+    90deg,
+    var(--color-ts-gold) 0%,
+    var(--color-ts-blue) 25%,
+    var(--color-ts-gold) 50%,
+    var(--color-ts-blue) 75%,
+    var(--color-ts-gold) 100%
+  );
+  background-size: 200% 4px;
+  background-repeat: no-repeat;
+  background-position: bottom;
   position: fixed;
   top: 0;
   left: 0;
@@ -151,11 +176,11 @@ p {
   right: 0;
   height: 4px;
   background: linear-gradient(90deg, 
-    var(--color-hafaloha-red) 0%, 
-    var(--color-hafaloha-gold) 25%, 
-    var(--color-hafaloha-red) 50%, 
-    var(--color-hafaloha-gold) 75%, 
-    var(--color-hafaloha-red) 100%
+    var(--color-ts-blue) 0%, 
+    var(--color-ts-gold) 25%, 
+    var(--color-ts-blue) 50%, 
+    var(--color-ts-gold) 75%, 
+    var(--color-ts-blue) 100%
   );
 }
 
@@ -172,11 +197,11 @@ p {
   right: 0;
   height: 4px;
   background: linear-gradient(90deg, 
-    var(--color-hafaloha-gold) 0%, 
-    var(--color-hafaloha-red) 25%, 
-    var(--color-hafaloha-gold) 50%, 
-    var(--color-hafaloha-red) 75%, 
-    var(--color-hafaloha-gold) 100%
+    var(--color-ts-gold) 0%, 
+    var(--color-ts-blue) 25%, 
+    var(--color-ts-gold) 50%, 
+    var(--color-ts-blue) 75%, 
+    var(--color-ts-gold) 100%
   );
 }
 
@@ -185,11 +210,6 @@ p {
   -webkit-overflow-scrolling: touch;
   touch-action: pan-y;
   overscroll-behavior: contain;
-}
-
-/* Navy color utilities */
-.bg-hafalohaNavy {
-  background-color: var(--color-hafaloha-navy);
 }
 
 /* Smooth transitions */
@@ -204,7 +224,7 @@ p {
   left: 0;
   width: 0;
   height: 2px;
-  background-color: var(--color-hafaloha-red);
+  background-color: var(--color-ts-blue);
   transition: width 0.3s ease;
 }
 
@@ -224,7 +244,7 @@ p {
 
 /* Clean button styling */
 .btn-primary {
-  background-color: var(--color-hafaloha-red);
+  background-color: var(--color-ts-blue);
   color: white;
   font-weight: 600;
   padding: 0.875rem 2rem;
@@ -234,37 +254,37 @@ p {
 }
 
 .btn-primary:hover {
-  background-color: var(--color-hafaloha-red-dark);
-  box-shadow: 0 4px 12px rgba(179, 27, 27, 0.3);
+  background-color: var(--color-ts-navy);
+  box-shadow: 0 4px 12px rgba(74, 127, 181, 0.3);
   transform: translateY(-1px);
 }
 
 .btn-primary:active {
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(179, 27, 27, 0.2);
+  box-shadow: 0 2px 6px rgba(74, 127, 181, 0.2);
 }
 
 .btn-primary:focus-visible {
-  outline: 2px solid var(--color-hafaloha-red);
+  outline: 2px solid var(--color-ts-blue);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(193, 25, 31, 0.2);
+  box-shadow: 0 0 0 4px rgba(74, 127, 181, 0.2);
 }
 
 .btn-secondary {
   background-color: transparent;
-  color: var(--color-hafaloha-red);
+  color: var(--color-ts-blue);
   font-weight: 600;
   padding: 0.875rem 2rem;
   border-radius: 0.75rem;
-  border: 1px solid var(--color-hafaloha-red);
+  border: 1px solid var(--color-ts-blue);
   transition: all 0.2s ease;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .btn-secondary:hover {
-  background-color: var(--color-hafaloha-red);
+  background-color: var(--color-ts-blue);
   color: white;
-  box-shadow: 0 4px 12px rgba(179, 27, 27, 0.2);
+  box-shadow: 0 4px 12px rgba(74, 127, 181, 0.2);
   transform: translateY(-1px);
 }
 
@@ -274,29 +294,29 @@ p {
 }
 
 .btn-secondary:focus-visible {
-  outline: 2px solid var(--color-hafaloha-red);
+  outline: 2px solid var(--color-ts-blue);
   outline-offset: 2px;
-  box-shadow: 0 0 0 4px rgba(193, 25, 31, 0.15);
+  box-shadow: 0 0 0 4px rgba(74, 127, 181, 0.15);
 }
 
 /* Link + icon button styling */
 .link-primary {
-  color: var(--color-hafaloha-red);
+  color: var(--color-ts-blue);
   font-weight: 600;
   transition: color 0.2s ease, text-decoration-color 0.2s ease;
 }
 
 .link-primary:hover {
-  color: var(--color-hafaloha-red-dark);
+  color: var(--color-ts-navy);
   text-decoration: underline;
 }
 
 .link-primary:active {
-  color: var(--color-hafaloha-red-dark);
+  color: var(--color-ts-navy);
 }
 
 .link-primary:focus-visible {
-  outline: 2px solid var(--color-hafaloha-red);
+  outline: 2px solid var(--color-ts-blue);
   outline-offset: 2px;
   border-radius: 0.25rem;
 }
@@ -319,7 +339,7 @@ p {
 }
 
 .btn-icon:focus-visible {
-  outline: 2px solid var(--color-hafaloha-red);
+  outline: 2px solid var(--color-ts-blue);
   outline-offset: 2px;
 }
 
@@ -333,7 +353,7 @@ p {
 .admin-scope a:focus-visible,
 .admin-scope button:focus-visible,
 .admin-scope [role="button"]:focus-visible {
-  outline: 2px solid var(--color-hafaloha-red);
+  outline: 2px solid var(--color-ts-blue);
   outline-offset: 2px;
   border-radius: 0.25rem;
 }
