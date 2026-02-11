@@ -14,7 +14,7 @@ RSpec.describe SiteSetting, type: :model do
     end
 
     it 'requires complete shipping_origin_address fields' do
-      setting = build(:site_setting, shipping_origin_address: { company: 'Hafaloha' })
+      setting = build(:site_setting, shipping_origin_address: { company: 'Three Squares' })
 
       expect(setting).not_to be_valid
       expect(setting.errors[:shipping_origin_address].first).to include('missing required fields')
@@ -43,18 +43,13 @@ RSpec.describe SiteSetting, type: :model do
     end
   end
 
-  describe '#send_emails_for?' do
-    it 'uses order-type specific flags' do
-      setting = build(
-        :site_setting,
-        send_retail_emails: true,
-        send_acai_emails: false,
-        send_wholesale_emails: true
-      )
-
-      expect(setting.send_emails_for?('retail')).to be(true)
-      expect(setting.send_emails_for?('acai')).to be(false)
-      expect(setting.send_emails_for?('wholesale')).to be(true)
+  describe '#send_customer_emails' do
+    it 'can be toggled' do
+      setting = build(:site_setting, send_customer_emails: true)
+      expect(setting.send_customer_emails).to be(true)
+      
+      setting.send_customer_emails = false
+      expect(setting.send_customer_emails).to be(false)
     end
   end
 

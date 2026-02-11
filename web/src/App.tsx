@@ -16,29 +16,15 @@ import AdminProductsPage from './pages/admin/AdminProductsPage';
 import AdminCollectionsPage from './pages/admin/AdminCollectionsPage';
 import AdminImportPage from './pages/admin/AdminImportPage';
 import ProductFormPage from './pages/admin/ProductFormPage';
-import AdminAcaiPage from './pages/admin/AdminAcaiPage';
 import AdminInventoryPage from './pages/admin/AdminInventoryPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminVariantPresetsPage from './pages/admin/AdminVariantPresetsPage';
-import AdminFundraisersPage from './pages/admin/AdminFundraisersPage';
-import AdminFundraiserDetailPage from './pages/admin/AdminFundraiserDetailPage';
-import AdminFundraiserFormPage from './pages/admin/AdminFundraiserFormPage';
-import AdminFundraiserProductFormPage from './pages/admin/AdminFundraiserProductFormPage';
 import AdminCateringPage from './pages/admin/AdminCateringPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
 import AccountPage from './pages/AccountPage';
-import AcaiCakesPage from './pages/AcaiCakesPage';
-// OLD: import FundraiserPage from './pages/FundraiserPage'; // Replaced by FundraiserPublicPage
-import FundraisersListPage from './pages/FundraisersListPage';
 import NotFoundPage from './pages/NotFoundPage';
-// Fundraiser Public Storefront Pages
-import FundraiserPublicPage from './pages/fundraiser/FundraiserPage';
-import FundraiserProductPage from './pages/fundraiser/FundraiserProductPage';
-import FundraiserCartPage from './pages/fundraiser/FundraiserCartPage';
-import FundraiserCheckoutPage from './pages/fundraiser/FundraiserCheckoutPage';
-import FundraiserOrderConfirmationPage from './pages/fundraiser/FundraiserOrderConfirmationPage';
 import ContactPage from './pages/ContactPage';
 import ShippingInfoPage from './pages/ShippingInfoPage';
 import ReturnsPage from './pages/ReturnsPage';
@@ -457,20 +443,6 @@ function AppContent() {
           <Route path="/about" element={<AboutPage />} />
           <Route path="/catering" element={<CateringPage />} />
           <Route path="/locations" element={<LocationsPage />} />
-          <Route path="/acai-cakes" element={<AcaiCakesPage />} />
-          <Route path="/fundraisers" element={<FundraisersListPage />} />
-          {/* Fundraiser routes - both /fundraisers/:slug and /f/:slug patterns */}
-          <Route path="/fundraisers/:slug" element={<FundraiserPublicPage />} />
-          <Route path="/fundraisers/:slug/products/:productSlug" element={<FundraiserProductPage />} />
-          <Route path="/fundraisers/:slug/cart" element={<FundraiserCartPage />} />
-          <Route path="/fundraisers/:slug/checkout" element={<FundraiserCheckoutPage />} />
-          <Route path="/fundraisers/:slug/order/:orderId" element={<FundraiserOrderConfirmationPage />} />
-          {/* Short URL pattern for fundraisers */}
-          <Route path="/f/:slug" element={<FundraiserPublicPage />} />
-          <Route path="/f/:slug/products/:productSlug" element={<FundraiserProductPage />} />
-          <Route path="/f/:slug/cart" element={<FundraiserCartPage />} />
-          <Route path="/f/:slug/checkout" element={<FundraiserCheckoutPage />} />
-          <Route path="/f/:slug/order/:orderId" element={<FundraiserOrderConfirmationPage />} />
           
           <Route path="/checkout" element={<CheckoutPage />} />
           <Route path="/account" element={<AccountPage />} />
@@ -491,12 +463,6 @@ function AppContent() {
             <Route path="products/:id/edit" element={<ProductFormPage />} />
             <Route path="collections" element={<AdminCollectionsPage />} />
             <Route path="import" element={<AdminImportPage />} />
-            <Route path="fundraisers" element={<AdminFundraisersPage />} />
-            <Route path="fundraisers/new" element={<AdminFundraiserFormPage />} />
-            <Route path="fundraisers/:id" element={<AdminFundraiserDetailPage />} />
-            <Route path="fundraisers/:id/edit" element={<AdminFundraiserFormPage />} />
-            <Route path="fundraisers/:fundraiserId/products/new" element={<AdminFundraiserProductFormPage />} />
-            <Route path="acai" element={<AdminAcaiPage />} />
             <Route path="inventory" element={<AdminInventoryPage />} />
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="catering" element={<AdminCateringPage />} />

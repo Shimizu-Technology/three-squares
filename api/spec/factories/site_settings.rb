@@ -2,23 +2,21 @@ FactoryBot.define do
   factory :site_setting do
     payment_test_mode { true }
     payment_processor { 'stripe' }
-    store_name { 'Hafaloha' }
-    store_email { 'info@hafaloha.com' }
-    store_phone { '671-777-1234' }
-    order_notification_emails { ['ops@hafaloha.com'] }
+    store_name { 'Three Squares' }
+    store_email { 'sales@bgpacific.com' }
+    store_phone { '671-646-2652' }
+    order_notification_emails { ['sales@bgpacific.com'] }
     shipping_origin_address do
       {
-        company: 'Hafaloha',
-        street1: '215 Rojas Street',
+        company: 'B&G Pacific LLC',
+        street1: '416 Chalan San Antonio',
         city: 'Tamuning',
         state: 'GU',
         zip: '96913',
         country: 'US',
-        phone: '671-989-3444'
+        phone: '671-646-2652'
       }
     end
-    send_retail_emails { true }
-    send_acai_emails { false }
-    send_wholesale_emails { false }
+    send_customer_emails { false }
   end
 end

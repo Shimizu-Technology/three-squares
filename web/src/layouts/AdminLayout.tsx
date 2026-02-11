@@ -43,12 +43,6 @@ function getRouteMeta(pathname: string): RouteMeta {
   // Dynamic patterns
   if (/^\/admin\/products\/\d+\/edit$/.test(pathname))
     return { title: 'Edit Product', parent: '/admin/products' };
-  if (/^\/admin\/fundraisers\/new$/.test(pathname))
-    return { title: 'New Fundraiser', parent: '/admin/fundraisers' };
-  if (/^\/admin\/fundraisers\/\d+\/edit$/.test(pathname))
-    return { title: 'Edit Fundraiser', parent: '/admin/fundraisers' };
-  if (/^\/admin\/fundraisers\/\d+$/.test(pathname))
-    return { title: 'Fundraiser Details', parent: '/admin/fundraisers' };
   
   // Fallback
   return { title: '', parent: '/admin' };

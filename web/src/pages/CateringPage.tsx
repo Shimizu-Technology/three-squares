@@ -2,7 +2,7 @@ import { useState } from 'react';
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 import Breadcrumbs from '../components/Breadcrumbs';
-import { api } from '../services/api';
+import api from '../services/api';
 
 // Event types and budget ranges (should match API)
 const EVENT_TYPES = [

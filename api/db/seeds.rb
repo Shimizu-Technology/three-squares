@@ -135,7 +135,8 @@ breakfast_items = [
   { name: "Waffles", slug: "waffles", price: 9.95, description: "Golden Belgian waffles", collection_slug: "breakfast" },
   { name: "Chicken & Waffles", slug: "chicken-waffles", price: 14.95, description: "Signature dish - crispy fried chicken with waffles", collection_slug: "breakfast", featured: true },
   { name: "Loco Moco", slug: "loco-moco", price: 13.95, description: "Rice, burger patty, fried egg, gravy", collection_slug: "breakfast" },
-  { name: "Corned Beef Hash", slug: "corned-beef-hash", price: 12.95, description: "Classic corned beef hash with eggs", collection_slug: "breakfast" }
+  { name: "Corned Beef Hash", slug: "corned-beef-hash", price: 12.95, description: "Classic corned beef hash with eggs", collection_slug: "breakfast" },
+  { name: "Biscuits & Gravy", slug: "biscuits-and-gravy", price: 11.95, description: "Fluffy buttermilk biscuits smothered in savory sausage gravy", collection_slug: "breakfast", featured: true }
 ]
 
 # STARTERS

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { api } from '../../services/api';
-import { Calendar, Users, DollarSign, Clock, AlertCircle, CheckCircle, XCircle, Mail, Phone, Building } from 'lucide-react';
+import api from '../../services/api';
+import { Calendar, Users, DollarSign, AlertCircle, CheckCircle, XCircle, Mail, Phone, Building } from 'lucide-react';
 
 interface CateringInquiry {
   id: number;
