@@ -17,7 +17,7 @@ allowed_origins = if ENV["ALLOWED_ORIGINS"].present?
 elsif ENV["FRONTEND_URL"].present?
                     [ ENV["FRONTEND_URL"].strip ]
 else
-                    [ "http://localhost:5173" ]
+                    [ "http://localhost:5173", "http://localhost:5174" ]
 end
 
 Rails.application.config.middleware.insert_before 0, Rack::Cors do

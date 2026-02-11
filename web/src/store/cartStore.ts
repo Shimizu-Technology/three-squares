@@ -200,7 +200,7 @@ export const useCartStore = create<CartStore>()(
       },
     }),
     {
-      name: 'hafaloha-cart', // localStorage key
+      name: 'three-squares-cart', // localStorage key
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         sessionId: state.sessionId,

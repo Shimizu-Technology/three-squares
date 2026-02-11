@@ -9,13 +9,13 @@ const api = axios.create({
   },
 });
 
-const AUTH_INTERCEPTOR_ATTACHED = '__hafalohaAuthInterceptorAttached';
+const AUTH_INTERCEPTOR_ATTACHED = '__threeSquaresAuthInterceptorAttached';
 
 const onAuthError = (error: unknown) => {
   const status = (error as { response?: { status?: number } })?.response?.status;
   if (typeof window !== 'undefined' && (status === 401 || status === 403)) {
     window.dispatchEvent(
-      new CustomEvent('hafaloha:auth-error', {
+      new CustomEvent('three-squares:auth-error', {
         detail: { status },
       })
     );

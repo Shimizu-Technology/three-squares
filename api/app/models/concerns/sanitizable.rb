@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "cgi"
+
 # Strips dangerous HTML/script tags from text fields before saving.
 # Include in any model with user-facing text fields.
 #
@@ -34,6 +36,8 @@ module Sanitizable
       clean = ActionController::Base.helpers.sanitize(value, tags: [], attributes: [])
       # Also collapse any leftover whitespace from stripped tags
       clean = clean.gsub(/\s+/, " ").strip
+      # Decode HTML entities (e.g., &amp; -> &) since we're storing plain text
+      clean = CGI.unescapeHTML(clean)
       send("#{field}=", clean)
     end
   end

@@ -17,7 +17,7 @@ export class MissingAuthTokenError extends Error {
 function emitAuthError(status: number = 401) {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(
-      new CustomEvent('hafaloha:auth-error', {
+      new CustomEvent('three-squares:auth-error', {
         detail: { status },
       })
     );

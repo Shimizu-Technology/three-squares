@@ -133,7 +133,7 @@ export default function CollectionDetailPage() {
         </div>
       </div>
 
-      {/* Hero Banner - Clean design with Hafaloha branding */}
+      {/* Hero Banner - Clean design with Three Squares branding */}
       <div className="relative overflow-hidden bg-tsPrimary">
         {/* Subtle pattern overlay */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1)_0%,transparent_50%)]" />
