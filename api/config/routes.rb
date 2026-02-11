@@ -31,6 +31,17 @@ Rails.application.routes.draw do
         # Users (admin management)
         resources :users, only: [ :index, :show, :update ]
 
+        # Catering inquiries (admin management)
+        resources :catering, only: [ :index, :show, :update, :destroy ] do
+          member do
+            post :quote
+            post :status
+          end
+          collection do
+            get :stats
+          end
+        end
+
         # Site Settings (singleton resource)
         resource :site_settings, only: [ :show, :update ]
         resource :settings, only: [ :show, :update ] # New settings endpoint

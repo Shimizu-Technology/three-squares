@@ -24,6 +24,7 @@ import AdminFundraisersPage from './pages/admin/AdminFundraisersPage';
 import AdminFundraiserDetailPage from './pages/admin/AdminFundraiserDetailPage';
 import AdminFundraiserFormPage from './pages/admin/AdminFundraiserFormPage';
 import AdminFundraiserProductFormPage from './pages/admin/AdminFundraiserProductFormPage';
+import AdminCateringPage from './pages/admin/AdminCateringPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
@@ -498,6 +499,7 @@ function AppContent() {
             <Route path="acai" element={<AdminAcaiPage />} />
             <Route path="inventory" element={<AdminInventoryPage />} />
             <Route path="users" element={<AdminUsersPage />} />
+            <Route path="catering" element={<AdminCateringPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
             <Route path="settings/variant-presets" element={<AdminVariantPresetsPage />} />
           </Route>
