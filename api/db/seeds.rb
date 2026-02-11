@@ -97,13 +97,22 @@ puts ""
 def create_product(attrs)
   collection = Collection.find_by(slug: attrs[:collection_slug])
   
+  # Determine product_type: explicit > requires_shipping > default local
+  product_type = if attrs[:product_type]
+    attrs[:product_type]
+  elsif attrs[:requires_shipping]
+    "shippable"
+  else
+    "local"
+  end
+  
   product = Product.find_or_create_by!(slug: attrs[:slug]) do |p|
     p.name = attrs[:name]
     p.description = attrs[:description] || ""
     p.base_price_cents = attrs[:price] ? (attrs[:price] * 100).to_i : 0
     p.featured = attrs[:featured] || false
     p.published = true
-    p.product_type = attrs[:requires_shipping] ? "shippable" : "local"
+    p.product_type = product_type
   end
   
   if collection && !product.collections.include?(collection)
@@ -208,12 +217,12 @@ drinks_items = [
 
 # GRAB & GO (Sold by weight at Donki location)
 grab_n_go_items = [
-  { name: "Champuladu", slug: "grab-champuladu", price: 0.00, description: "Traditional Chamorro chocolate rice pudding - priced by weight", collection_slug: "grab-n-go" },
-  { name: "Tropical Sago", slug: "grab-tropical-sago", price: 0.00, description: "Tropical tapioca dessert - priced by weight", collection_slug: "grab-n-go" },
-  { name: "Chocolate Coconut Sago", slug: "grab-chocolate-sago", price: 0.00, description: "Rich chocolate coconut tapioca - priced by weight", collection_slug: "grab-n-go" },
-  { name: "Broccoli & Crab Salad", slug: "grab-broccoli-crab", price: 0.00, description: "Fresh broccoli and crab salad - priced by weight", collection_slug: "grab-n-go" },
-  { name: "Potato Salad", slug: "grab-potato-salad", price: 0.00, description: "Creamy homemade potato salad - priced by weight", collection_slug: "grab-n-go" },
-  { name: "Chicken Kelaguen", slug: "grab-chicken-kelaguen", price: 0.00, description: "Traditional Chamorro chicken salad - priced by weight", collection_slug: "grab-n-go" }
+  { name: "Champuladu", slug: "grab-champuladu", price: 0.00, description: "Traditional Chamorro chocolate rice pudding", collection_slug: "grab-n-go", product_type: "market_price" },
+  { name: "Tropical Sago", slug: "grab-tropical-sago", price: 0.00, description: "Tropical tapioca dessert", collection_slug: "grab-n-go", product_type: "market_price" },
+  { name: "Chocolate Coconut Sago", slug: "grab-chocolate-sago", price: 0.00, description: "Rich chocolate coconut tapioca", collection_slug: "grab-n-go", product_type: "market_price" },
+  { name: "Broccoli & Crab Salad", slug: "grab-broccoli-crab", price: 0.00, description: "Fresh broccoli and crab salad", collection_slug: "grab-n-go", product_type: "market_price" },
+  { name: "Potato Salad", slug: "grab-potato-salad", price: 0.00, description: "Creamy homemade potato salad", collection_slug: "grab-n-go", product_type: "market_price" },
+  { name: "Chicken Kelaguen", slug: "grab-chicken-kelaguen", price: 0.00, description: "Traditional Chamorro chicken salad", collection_slug: "grab-n-go", product_type: "market_price" }
 ]
 
 restaurant_items = breakfast_items + starters_items + mains_items + donki_items + 

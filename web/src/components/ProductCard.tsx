@@ -60,7 +60,11 @@ export default function ProductCard({ product }: ProductCardProps) {
 
           {/* Price */}
           <div className="mt-auto">
-            {product.sale_price_cents && product.sale_price_cents < product.base_price_cents ? (
+            {product.product_type === 'market_price' ? (
+              <span className="text-base font-medium text-warm-600 italic">
+                Market Price
+              </span>
+            ) : product.sale_price_cents && product.sale_price_cents < product.base_price_cents ? (
               <div className="flex items-center gap-2">
                 <span className="text-base font-medium text-warm-900">
                   {formatPrice(product.sale_price_cents)}

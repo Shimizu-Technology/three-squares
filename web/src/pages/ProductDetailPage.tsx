@@ -523,13 +523,21 @@ export default function ProductDetailPage() {
               {/* Name & Price */}
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-warm-900 mb-3">{product.name}</h1>
               <div className="flex items-baseline gap-3 mb-6">
-                <span className="text-3xl sm:text-4xl font-bold text-tsPrimary">
-                  {formatPrice(displayPrice)}
-                </span>
-                {product.sale_price_cents && product.sale_price_cents < product.base_price_cents && (
-                  <span className="text-xl text-warm-400 line-through">
-                    {formatPrice(product.base_price_cents)}
+                {product.product_type === 'market_price' ? (
+                  <span className="text-2xl sm:text-3xl font-semibold text-warm-600 italic">
+                    Market Price
                   </span>
+                ) : (
+                  <>
+                    <span className="text-3xl sm:text-4xl font-bold text-tsPrimary">
+                      {formatPrice(displayPrice)}
+                    </span>
+                    {product.sale_price_cents && product.sale_price_cents < product.base_price_cents && (
+                      <span className="text-xl text-warm-400 line-through">
+                        {formatPrice(product.base_price_cents)}
+                      </span>
+                    )}
+                  </>
                 )}
               </div>
 
