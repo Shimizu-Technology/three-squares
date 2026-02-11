@@ -245,10 +245,10 @@ class Order < ApplicationRecord
   private
 
   def generate_order_number
-    # Format: HAF-{TYPE}-YYYYMMDD-XXXX
-    # - Retail:    HAF-R-20251210-0001
-    # - Acai:      HAF-A-20251210-0001
-    # - Wholesale: HAF-W-20251210-0001
+    # Format: TSQ-{TYPE}-YYYYMMDD-XXXX (Three Squares)
+    # - Retail:    TSQ-R-20251210-0001
+    # - Acai:      TSQ-A-20251210-0001
+    # - Wholesale: TSQ-W-20251210-0001
     type_prefix = case order_type
     when "acai" then "A"
     when "wholesale" then "W"
@@ -256,7 +256,7 @@ class Order < ApplicationRecord
     end
 
     date_str = Time.current.strftime("%Y%m%d")
-    prefix = "HAF-#{type_prefix}-#{date_str}"
+    prefix = "TSQ-#{type_prefix}-#{date_str}"
 
     # Find the last order number with this prefix for today
     last_order = Order.where("order_number LIKE ?", "#{prefix}-%").order(:order_number).last

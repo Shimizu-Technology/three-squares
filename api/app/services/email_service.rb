@@ -15,7 +15,7 @@ class EmailService
       params = {
         from: from_address,
         to: [ order.email ],
-        subject: "Order Confirmation ##{order.id.to_s.rjust(6, '0')} - Hafaloha",
+        subject: "Order Confirmation ##{order.id.to_s.rjust(6, '0')} - Three Squares",
         html: order_confirmation_html(order)
       }
 
@@ -143,7 +143,7 @@ class EmailService
       params = {
         from: from_address,
         to: [ order.email ],
-        subject: "Hafaloha — Refund Processed for Order ##{order.order_number}",
+        subject: "Three Squares — Refund Processed for Order ##{order.order_number}",
         html: refund_notification_html(order, amount_formatted, reason, refund_date)
       }
 
@@ -204,7 +204,7 @@ class EmailService
   # Falls back to shimizu-technology.com until hafaloha.com is verified on Resend
   def self.from_address
     email = ENV.fetch("RESEND_FROM_EMAIL", "noreply@shimizu-technology.com")
-    "Hafaloha <#{email}>"
+    "Three Squares <#{email}>"
   end
 
   def self.store_contact_email
@@ -244,7 +244,7 @@ class EmailService
                 <!-- Header -->
                 <tr>
                   <td style="background-color: #C1191F; background: #C1191F; padding: 32px 24px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0,0,0,0.25);">Hafaloha</h1>
+                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0,0,0,0.25);">Three Squares</h1>
                     <p style="color: #FFE08A; margin: 8px 0 0 0; font-size: 14px; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,0.25);">Chamorro Pride. Island Style.</p>
                   </td>
                 </tr>
@@ -326,7 +326,7 @@ class EmailService
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
                     <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
-                    <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Hafaloha. All rights reserved.</p>
+                    <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
 
@@ -439,7 +439,7 @@ class EmailService
                 <!-- Footer -->
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 20px; text-align: center; border-top: 1px solid #E5E7EB;">
-                    <p style="color: #6B7280; margin: 0; font-size: 12px;">This is an automated notification from Hafaloha Order System</p>
+                    <p style="color: #6B7280; margin: 0; font-size: 12px;">This is an automated notification from Three Squares Order System</p>
                   </td>
                 </tr>
 
@@ -552,7 +552,7 @@ class EmailService
                 <!-- Footer -->
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 20px; text-align: center; border-top: 1px solid #E5E7EB;">
-                    <p style="color: #6B7280; margin: 0; font-size: 12px;">This is an automated notification from Hafaloha Acai Cakes</p>
+                    <p style="color: #6B7280; margin: 0; font-size: 12px;">This is an automated notification from Three Squares Acai Cakes</p>
                   </td>
                 </tr>
 
@@ -593,7 +593,7 @@ class EmailService
                 <!-- Header -->
                 <tr>
                   <td style="background-color: #C1191F; background: #C1191F; padding: 32px 24px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0,0,0,0.25);">🍰 Hafaloha</h1>
+                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0,0,0,0.25);">🍰 Three Squares</h1>
                     <p style="color: #FFE08A; margin: 8px 0 0 0; font-size: 14px; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,0.25);">Acai Cake Order Confirmed!</p>
                   </td>
                 </tr>
@@ -670,7 +670,7 @@ class EmailService
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
                     <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
-                    <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Hafaloha. All rights reserved.</p>
+                    <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
 
@@ -740,7 +740,7 @@ class EmailService
                 <!-- Header -->
                 <tr>
                   <td style="background-color: #C1191F; background: #C1191F; padding: 32px 24px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0,0,0,0.25);">Hafaloha</h1>
+                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0,0,0,0.25);">Three Squares</h1>
                     <p style="color: #FFE08A; margin: 8px 0 0 0; font-size: 14px; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,0.25);">Chamorro Pride. Island Style.</p>
                   </td>
                 </tr>
@@ -795,7 +795,7 @@ class EmailService
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
                     <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
-                    <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Hafaloha. All rights reserved.</p>
+                    <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
 
@@ -853,7 +853,7 @@ class EmailService
                 <!-- Header -->
                 <tr>
                   <td style="background-color: #C1191F; background: #C1191F; padding: 32px 24px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0,0,0,0.25);">Hafaloha</h1>
+                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0,0,0,0.25);">Three Squares</h1>
                     <p style="color: #FFE08A; margin: 8px 0 0 0; font-size: 14px; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,0.25);">Chamorro Pride. Island Style.</p>
                   </td>
                 </tr>
@@ -918,7 +918,7 @@ class EmailService
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Thank you for your order!</p>
                     <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
-                    <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Hafaloha. All rights reserved.</p>
+                    <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
 
@@ -1016,7 +1016,7 @@ class EmailService
                 <!-- Footer -->
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 20px; text-align: center; border-top: 1px solid #E5E7EB;">
-                    <p style="color: #6B7280; margin: 0; font-size: 12px;">This message was sent via the Hafaloha website contact form.</p>
+                    <p style="color: #6B7280; margin: 0; font-size: 12px;">This message was sent via the Three Squares website contact form.</p>
                   </td>
                 </tr>
 
@@ -1059,7 +1059,7 @@ class EmailService
                 <!-- Header -->
                 <tr>
                   <td style="background-color: #C1191F; background: #C1191F; padding: 32px 24px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0,0,0,0.25);">Hafaloha</h1>
+                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0,0,0,0.25);">Three Squares</h1>
                     <p style="color: #FFE08A; margin: 8px 0 0 0; font-size: 14px; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,0.25);">Chamorro Pride. Island Style.</p>
                   </td>
                 </tr>
@@ -1097,7 +1097,7 @@ class EmailService
                     </div>
 
                     <p style="color: #6B7280; font-size: 16px;">If you have any questions about this refund, please don't hesitate to reach out to us.</p>
-                    <p style="color: #6B7280; font-size: 16px;">Thank you for shopping with Hafaloha!</p>
+                    <p style="color: #6B7280; font-size: 16px;">Thank you for shopping with Three Squares!</p>
                   </td>
                 </tr>
 
@@ -1106,7 +1106,7 @@ class EmailService
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
                     <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
-                    <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Hafaloha. All rights reserved.</p>
+                    <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
 
@@ -1309,7 +1309,7 @@ class EmailService
                 <!-- Footer -->
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 24px; text-align: center; border-top: 1px solid #E5E7EB;">
-                    <p style="color: #9CA3AF; margin: 0; font-size: 12px;">&copy; #{Time.current.year} Hafaloha. All rights reserved.</p>
+                    <p style="color: #9CA3AF; margin: 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
 
@@ -1470,7 +1470,7 @@ class EmailService
                 <!-- Footer -->
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 24px; text-align: center; border-top: 1px solid #E5E7EB;">
-                    <p style="color: #9CA3AF; margin: 0; font-size: 12px;">&copy; #{Time.current.year} Hafaloha. All rights reserved.</p>
+                    <p style="color: #9CA3AF; margin: 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
 

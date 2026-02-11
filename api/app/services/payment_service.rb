@@ -78,7 +78,7 @@ class PaymentService
       amount: amount_cents,
       currency: "usd",
       source: payment_method[:token],
-      description: "Order ##{order.id} - Hafaloha",
+      description: "Order ##{order.id} - Three Squares",
       receipt_email: customer_email,
       metadata: {
         order_id: order.id,

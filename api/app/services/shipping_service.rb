@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
 class ShippingService
-  # Hafaloha's warehouse address (Guam) - default fallback
+  # Three Squares's warehouse address (Guam) - default fallback
   ORIGIN_ADDRESS = {
-    company: "Hafaloha",
+    company: "Three Squares",
     street1: "215 Rojas Street",
     street2: "Ixora Industrial Park, Unit 104",
     city: "Tamuning",

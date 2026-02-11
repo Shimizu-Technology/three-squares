@@ -253,7 +253,7 @@ Rails.application.routes.draw do
   end
 
   # Defines the root path route ("/")
-  root to: proc { [ 200, {}, [ "Hafaloha API v1.0" ] ] }
+  root to: proc { [ 200, {}, [ "Three Squares API v1.0" ] ] }
 
   # HAF-37: Catch-all for undefined API routes - returns clean JSON 404
   match "/api/*path", to: "application#route_not_found", via: :all

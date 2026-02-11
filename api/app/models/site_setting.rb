@@ -13,10 +13,10 @@ class SiteSetting < ApplicationRecord
       send_retail_emails: false,   # Off by default for development
       send_acai_emails: false,     # Off by default for development
       send_wholesale_emails: false, # Off by default for development
-      store_name: "Hafaloha",
-      store_email: "info@hafaloha.com",
-      store_phone: "671-777-1234",
-      placeholder_image_url: "/images/hafaloha-logo.png",
+      store_name: "Three Squares",
+      store_email: "sales@bgpacific.com",
+      store_phone: "671-646-2652",
+      placeholder_image_url: "/images/three-squares-logo.png",
       acai_gallery_image_a_url: "/images/acai-cake-set-a.webp",
       acai_gallery_image_b_url: "/images/acai-cake-set-b.webp",
       acai_gallery_heading: "Featured Sets",
@@ -25,14 +25,14 @@ class SiteSetting < ApplicationRecord
       acai_gallery_show_image_b: true,
       order_notification_emails: [ "shimizutechnology@gmail.com" ],
       shipping_origin_address: {
-        company: "Hafaloha",
-        street1: "215 Rojas Street",
-        street2: "Ixora Industrial Park, Unit 104",
+        company: "Three Squares",
+        street1: "416 Chalan San Antonio",
+        street2: "",
         city: "Tamuning",
         state: "GU",
         zip: "96913",
         country: "US",
-        phone: "671-989-3444"
+        phone: "671-646-2652"
       }
     )
   end

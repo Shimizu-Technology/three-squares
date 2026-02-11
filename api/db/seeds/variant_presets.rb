@@ -56,8 +56,8 @@ presets_data = [
     ]
   },
   {
-    name: "Hafaloha Colors",
-    description: "Hafaloha brand color options",
+    name: "Three Squares Colors",
+    description: "Three Squares brand color options",
     option_type: "Color",
     position: 4,
     values: [
