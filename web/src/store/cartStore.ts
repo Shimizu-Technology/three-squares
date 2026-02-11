@@ -13,7 +13,7 @@ interface CartStore {
   
   // Actions
   fetchCart: () => Promise<void>;
-  addItem: (variantId: number, quantity: number) => Promise<void>;
+  addItem: (id: number, quantity: number, isProductId?: boolean) => Promise<void>;
   updateQuantity: (cartItemId: number, quantity: number) => Promise<void>;
   removeItem: (cartItemId: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -64,13 +64,17 @@ export const useCartStore = create<CartStore>()(
       },
       
       // Add item to cart
-      addItem: async (variantId: number, quantity: number = 1) => {
+      addItem: async (id: number, quantity: number = 1, isProductId: boolean = false) => {
         set({ isLoading: true });
         try {
           const sessionId = get().sessionId;
+          // For products without variants, pass product_id instead of product_variant_id
+          const payload = isProductId
+            ? { product_id: id, quantity }
+            : { product_variant_id: id, quantity };
           await api.post(
             '/cart/items',
-            { product_variant_id: variantId, quantity },
+            payload,
             {
               headers: {
                 'X-Session-ID': sessionId,
