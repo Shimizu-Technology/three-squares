@@ -311,9 +311,12 @@ export default function ProductDetailPage() {
       if (selectedVariant) {
         await addItem(selectedVariant.id, quantity);
       } else {
-        // For products without variants, pass product ID with variant_id=null
-        // The API should handle this case
-        await addItem(product!.id, quantity, true); // true indicates it's a product ID
+        // Fallback for products that only have an auto-generated/default variant.
+        const fallbackVariant = product?.variants?.[0];
+        if (!fallbackVariant) {
+          return;
+        }
+        await addItem(fallbackVariant.id, quantity);
       }
       // Reset quantity after successful add
       setQuantity(1);
@@ -482,7 +485,7 @@ export default function ProductDetailPage() {
                     context="detail"
                     priority={selectedImageIndex === 0}
                     fetchPriority={selectedImageIndex === 0 ? 'high' : 'auto'}
-                    className="w-full h-full object-contain bg-white hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover bg-white hover:scale-105 transition-transform duration-500"
                   />
                 ) : (
                   <PlaceholderImage variant="detail" />
@@ -505,7 +508,7 @@ export default function ProductDetailPage() {
                         src={image.url}
                         alt={image.alt_text}
                         context="thumb"
-                        className="w-full h-full object-contain bg-white"
+                        className="w-full h-full object-cover bg-white"
                       />
                     </button>
                   ))}

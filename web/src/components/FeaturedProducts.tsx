@@ -76,7 +76,7 @@ export default function FeaturedProducts() {
             Featured Products
           </h2>
           <p className="text-base text-warm-500 max-w-2xl mx-auto">
-            Discover our hand-picked selection of premium island living apparel
+            Discover our hand-picked local favorites from the Three Squares kitchen
           </p>
         </div>
       </FadeIn>
@@ -92,16 +92,16 @@ export default function FeaturedProducts() {
             <StaggerItem key={product.id}>
               <Link
                 to={`/products/${product.slug}`}
-                className="group flex flex-col"
+                className="group flex flex-col rounded-xl p-2 bg-white border border-warm-200 hover:border-warm-300 hover:shadow-md transition"
               >
                 {/* Image */}
-                <div className="relative bg-warm-50 overflow-hidden rounded-lg" style={{ aspectRatio: '1/1' }}>
+                <div className="relative bg-warm-100 overflow-hidden rounded-lg" style={{ aspectRatio: '1/1' }}>
                   {product.primary_image_url ? (
                     <OptimizedImage
                       src={product.primary_image_url}
                       alt={product.name}
                       context="featured"
-                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
                     <PlaceholderImage variant="detail" className="bg-warm-50" />
@@ -115,7 +115,7 @@ export default function FeaturedProducts() {
                 </div>
 
                 {/* Content */}
-                <div className="pt-4 flex flex-col grow">
+                <div className="pt-3 pb-1 flex flex-col grow">
                   <h3 className="font-medium text-sm sm:text-base text-warm-900 mb-2 line-clamp-2 group-hover:text-tsPrimary transition">
                     {product.name}
                   </h3>

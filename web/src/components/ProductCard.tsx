@@ -14,7 +14,7 @@ export default function ProductCard({ product }: ProductCardProps) {
   return (
     <Link
       to={`/products/${product.slug}`}
-      className="group bg-white overflow-hidden flex flex-col h-full border border-warm-200 rounded-lg shadow-sm hover:shadow-md transition-shadow"
+      className="group bg-white overflow-hidden flex flex-col h-full border border-warm-200 rounded-xl shadow-sm hover:shadow-md hover:border-warm-300 transition"
     >
       <motion.div
         className="flex flex-col h-full rounded-lg"
@@ -22,13 +22,13 @@ export default function ProductCard({ product }: ProductCardProps) {
         transition={{ duration: 0.2 }}
       >
         {/* Image */}
-        <div className="relative bg-warm-50 overflow-hidden rounded-lg" style={{ aspectRatio: '1/1' }}>
+        <div className="relative bg-warm-100 overflow-hidden rounded-lg" style={{ aspectRatio: '1/1' }}>
           {product.primary_image_url ? (
             <OptimizedImage
               src={product.primary_image_url}
               alt={product.name}
               context="card"
-              className="w-full h-full object-contain bg-warm-50 group-hover:scale-105 transition-transform duration-500"
+              className="w-full h-full object-cover bg-warm-50 group-hover:scale-105 transition-transform duration-500"
             />
           ) : (
             <PlaceholderImage variant="card" />

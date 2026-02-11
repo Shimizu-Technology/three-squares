@@ -212,22 +212,25 @@ function AppContent() {
           },
         }}
       />
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-warm-50">
         {/* Cart Drawer */}
         <CartDrawer />
 
         {/* Navigation - Hidden when printing and on admin pages */}
         {!isAdminPage && (
-        <nav className="bg-white border-b border-warm-100 sticky top-0 z-40 print:hidden">
+        <nav className="bg-warm-50 border-b border-warm-200 sticky top-0 z-40 print:hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-18 py-3">
+            <div className="flex justify-between items-center h-18 py-3.5">
               {/* Logo */}
-              <Link to="/" className="flex items-center group" onClick={handleNavClick}>
+              <Link to="/" className="flex items-center gap-3 group" onClick={handleNavClick}>
                 <img 
                   src="/images/three-squares-logo.svg" 
                   alt="Three Squares" 
-                  className="h-8 sm:h-10 w-auto"
+                  className="block h-8 sm:h-9 w-auto object-contain"
                 />
+                <span className="hidden xl:block text-[11px] tracking-wide uppercase text-warm-500">
+                  by B&amp;G Pacific
+                </span>
               </Link>
 
               {/* Desktop Navigation Links */}
@@ -236,21 +239,21 @@ function AppContent() {
                 <NavDropdown onItemClick={handleNavClick} darkMode={false} />
                 <Link
                   to="/catering"
-                  className="text-warm-700 hover:text-tsPrimary font-medium transition py-2"
+                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2"
                   onClick={handleNavClick}
                 >
                   Catering
                 </Link>
                 <Link
                   to="/locations"
-                  className="text-warm-700 hover:text-tsPrimary font-medium transition py-2"
+                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2"
                   onClick={handleNavClick}
                 >
                   Locations
                 </Link>
                 <Link
                   to="/about"
-                  className="text-warm-700 hover:text-tsPrimary font-medium transition py-2"
+                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2"
                   onClick={handleNavClick}
                 >
                   About Us
@@ -267,7 +270,7 @@ function AppContent() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search menu..."
-                      className="pl-10 pr-4 py-2.5 bg-warm-50 border border-warm-200 rounded-full focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary w-56 xl:w-64 transition-all text-sm text-warm-900 placeholder-warm-400"
+                      className="pl-10 pr-4 py-2.5 bg-white border border-warm-200 rounded-full focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary w-56 xl:w-64 transition-all text-sm text-warm-900 placeholder-warm-400"
                     />
                     <svg
                       className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-warm-400"
@@ -484,8 +487,9 @@ function AppContent() {
                 <img 
                   src="/images/three-squares-logo.svg" 
                   alt="Three Squares" 
-                  className="h-8 w-auto"
+                  className="block h-8 w-auto object-contain"
                 />
+                <p className="text-[11px] uppercase tracking-wide text-warm-500 mt-2">by B&amp;G Pacific</p>
                 <p className="text-warm-500 text-sm mt-4 leading-relaxed">
                   Good Food, Good Mood, Good Service<br />
                   Guam-style comfort food & catering

@@ -1,30 +1,30 @@
 @import "tailwindcss";
 
 @theme {
-  --color-warm: #FDFBF7;
-  --color-warm-50: #FAFAF8;
-  --color-warm-100: #F5F5F0;
-  --color-warm-200: #E8E8E0;
-  --color-warm-300: #D6D3CC;
-  --color-warm-400: #A8A29E;
-  --color-warm-500: #78716C;
-  --color-warm-600: #57534E;
-  --color-warm-700: #44403C;
-  --color-warm-800: #292524;
-  --color-warm-900: #1C1917;
-  --color-warm-950: #0C0A08;
+  --color-warm: #F4F6EE;
+  --color-warm-50: #F8F9F4;
+  --color-warm-100: #EEF1E6;
+  --color-warm-200: #DFE4D6;
+  --color-warm-300: #C9D1BD;
+  --color-warm-400: #97A28A;
+  --color-warm-500: #6E7765;
+  --color-warm-600: #4F5648;
+  --color-warm-700: #3C4137;
+  --color-warm-800: #292D25;
+  --color-warm-900: #1D201A;
+  --color-warm-950: #0E100C;
 }
 
 :root {
   /* Three Squares Brand Colors */
-  --color-ts-blue: #4A7FB5;           /* Pacific Blue - Primary */
-  --color-ts-navy: #1E3A5F;           /* Navy - Primary Dark */
-  --color-ts-gold: #F5C518;           /* Golden Sun - Accent */
-  --color-ts-amber: #D4A030;          /* Amber - Warm accent */
+  --color-ts-blue: #1F3553;           /* Deep navy */
+  --color-ts-navy: #15263D;           /* Navy - Primary Dark */
+  --color-ts-gold: #D7B44A;           /* Muted gold accent */
+  --color-ts-amber: #B88D36;          /* Warm accent */
   --color-ts-text: #1A1A1A;           /* Text */
-  --color-ts-surface: #F0EDE8;        /* Surface */
+  --color-ts-surface: #EEF1E6;        /* Surface */
   --color-ts-brown: #8B5E3C;          /* Rich Brown */
-  --color-ts-green: #4A7C3F;          /* Fresh Green */
+  --color-ts-green: #3F5D3D;          /* Fresh Green */
   
   /* Aliases for primary/accent usage */
   --color-primary: #4A7FB5;
@@ -44,6 +44,7 @@ body {
   font-family: inherit;
   line-height: 1.6;
   color: #374151; /* gray-700 */
+  background-color: var(--color-warm-50);
 }
 
 /* Typography Scale - Consistent heading styles */
@@ -244,24 +245,26 @@ p {
 
 /* Clean button styling */
 .btn-primary {
-  background-color: var(--color-ts-blue);
+  background-color: #111827;
   color: white;
   font-weight: 600;
-  padding: 0.875rem 2rem;
-  border-radius: 0.75rem;
+  padding: 0.8rem 1.75rem;
+  border-radius: 0.55rem;
+  border: 1px solid #111827;
   transition: all 0.2s ease;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .btn-primary:hover {
-  background-color: var(--color-ts-navy);
-  box-shadow: 0 4px 12px rgba(74, 127, 181, 0.3);
+  background-color: #0b0f18;
+  border-color: #0b0f18;
+  box-shadow: 0 4px 12px rgba(17, 24, 39, 0.28);
   transform: translateY(-1px);
 }
 
 .btn-primary:active {
   transform: translateY(0);
-  box-shadow: 0 2px 6px rgba(74, 127, 181, 0.2);
+  box-shadow: 0 2px 6px rgba(17, 24, 39, 0.2);
 }
 
 .btn-primary:focus-visible {
@@ -272,19 +275,19 @@ p {
 
 .btn-secondary {
   background-color: transparent;
-  color: var(--color-ts-blue);
+  color: #111827;
   font-weight: 600;
-  padding: 0.875rem 2rem;
-  border-radius: 0.75rem;
-  border: 1px solid var(--color-ts-blue);
+  padding: 0.8rem 1.75rem;
+  border-radius: 0.55rem;
+  border: 1px solid #111827;
   transition: all 0.2s ease;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .btn-secondary:hover {
-  background-color: var(--color-ts-blue);
+  background-color: #111827;
   color: white;
-  box-shadow: 0 4px 12px rgba(74, 127, 181, 0.2);
+  box-shadow: 0 4px 12px rgba(17, 24, 39, 0.2);
   transform: translateY(-1px);
 }
 

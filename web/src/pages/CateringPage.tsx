@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 import Breadcrumbs from '../components/Breadcrumbs';
 import api from '../services/api';
+import useLockBodyScroll from '../hooks/useLockBodyScroll';
 
 // Event types and budget ranges (should match API)
 const EVENT_TYPES = [
@@ -138,11 +140,55 @@ const initialFormState = {
 };
 
 export default function CateringPage() {
+  const [searchParams] = useSearchParams();
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState(initialFormState);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const modalShellRef = useRef<HTMLDivElement | null>(null);
+  const modalFormRef = useRef<HTMLFormElement | null>(null);
+  useLockBodyScroll(showForm);
+
+  // Allow deep-linking directly to the inquiry form from other pages.
+  useEffect(() => {
+    if (searchParams.get('inquiry') === 'true') {
+      setShowForm(true);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    if (!showForm) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setShowForm(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showForm]);
+
+  useEffect(() => {
+    if (!showForm) return;
+
+    const shell = modalShellRef.current;
+    if (!shell) return;
+
+    // Native non-passive wheel handler so preventDefault is honored.
+    const onWheel = (event: WheelEvent) => {
+      const form = modalFormRef.current;
+      if (!form) return;
+
+      form.scrollTop += event.deltaY;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+
+    shell.addEventListener('wheel', onWheel, { passive: false });
+    return () => {
+      shell.removeEventListener('wheel', onWheel);
+    };
+  }, [showForm]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -176,7 +222,7 @@ export default function CateringPage() {
   const minDateStr = minDate.toISOString().split('T')[0];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-warm-50">
       {/* Breadcrumbs */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
         <Breadcrumbs items={[
@@ -250,11 +296,15 @@ export default function CateringPage() {
 
       {/* Catering Inquiry Form */}
       {showForm && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm" onClick={() => setShowForm(false)}>
-          <div className="min-h-screen flex items-center justify-center p-4">
-            <div 
-              className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+        <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-sm" onClick={() => setShowForm(false)}>
+          <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6">
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Request a catering quote"
+              className="w-full max-w-3xl h-[92vh] bg-white rounded-2xl shadow-2xl border border-warm-200 overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
+              ref={modalShellRef}
             >
               {submitted ? (
                 <div className="p-8 text-center">
@@ -276,18 +326,26 @@ export default function CateringPage() {
                 </div>
               ) : (
                 <>
-                  <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                    <h3 className="text-2xl font-bold text-gray-900">Request a Catering Quote</h3>
+                  <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-warm-200 bg-warm-50/80 flex justify-between items-center">
+                    <div>
+                      <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Request a Catering Quote</h3>
+                      <p className="text-sm text-gray-500 mt-1">Tell us about your event and we&apos;ll send a custom quote.</p>
+                    </div>
                     <button
                       onClick={() => setShowForm(false)}
-                      className="text-gray-400 hover:text-gray-600 transition"
+                      className="text-gray-400 hover:text-gray-700 transition p-2 rounded-md hover:bg-white"
+                      aria-label="Close modal"
                     >
                       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>
                   </div>
-                  <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                  <form
+                    onSubmit={handleSubmit}
+                    className="px-5 py-5 sm:px-6 sm:py-6 space-y-6 flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch]"
+                    ref={modalFormRef}
+                  >
                     {error && (
                       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                         {error}
@@ -592,15 +650,22 @@ export default function CateringPage() {
       </div>
 
       {/* CTA Section */}
-      <div className="bg-warm-600 py-16">
+      <div className="bg-tsNavy py-16">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <FadeIn>
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Ready to Plan Your Event?
-            </h2>
-            <p className="text-warm-100 text-lg mb-8">
-              Submit an inquiry and we'll create a custom quote for your occasion.
-            </p>
+          <FadeIn immediate>
+            <div className="rounded-2xl bg-black/20 border border-white/10 p-6 sm:p-8">
+              <h2
+                className="text-3xl font-bold mb-4"
+                style={{ color: '#ffffff', textShadow: '0 1px 8px rgba(0,0,0,0.45)' }}
+              >
+                Ready to Plan Your Event?
+              </h2>
+              <p
+                className="text-lg mb-8"
+                style={{ color: 'rgba(255,255,255,0.95)', textShadow: '0 1px 6px rgba(0,0,0,0.35)' }}
+              >
+                Submit an inquiry and we'll create a custom quote for your occasion.
+              </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button
                 onClick={() => setShowForm(true)}
@@ -613,13 +678,14 @@ export default function CateringPage() {
               </button>
               <a
                 href="tel:+16716462652"
-                className="inline-flex items-center justify-center gap-2 bg-warm-700 text-white px-8 py-4 rounded-lg font-semibold hover:bg-warm-800 transition border border-warm-500"
+                className="inline-flex items-center justify-center gap-2 bg-white/10 text-white px-8 py-4 rounded-lg font-semibold hover:bg-white/20 transition border border-white/25"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
                 </svg>
                 Call (671) 646-2652
               </a>
+            </div>
             </div>
           </FadeIn>
         </div>

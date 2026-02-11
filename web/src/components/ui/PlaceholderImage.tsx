@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { ImageOff, ShoppingBag } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import useAppConfig from '../../hooks/useAppConfig';
@@ -58,10 +59,13 @@ export default function PlaceholderImage({
   const styles = VARIANT_STYLES[variant];
   const label = text ?? PLACEHOLDER_DEFAULTS.text;
   const logoSrc = appConfig?.placeholder_image_url || PLACEHOLDER_DEFAULTS.logoSrc;
-  const isDefaultPlaceholder = logoSrc === PLACEHOLDER_DEFAULTS.logoSrc;
-  const logoClassName = isDefaultPlaceholder
-    ? 'w-full h-full object-contain p-6'
-    : 'w-full h-full object-cover';
+  const [currentLogoSrc, setCurrentLogoSrc] = useState(logoSrc);
+  const [logoFailed, setLogoFailed] = useState(false);
+
+  useEffect(() => {
+    setCurrentLogoSrc(logoSrc);
+    setLogoFailed(false);
+  }, [logoSrc]);
 
   return (
     <div
@@ -74,11 +78,26 @@ export default function PlaceholderImage({
           aria-hidden="true"
         />
       ) : (
-        <img
-          src={logoSrc}
-          alt="Three Squares"
-          className={`${logoClassName} ${iconClassName}`}
-        />
+        logoFailed ? (
+          <ImageOff
+            className={`${styles.iconSize} ${PLACEHOLDER_DEFAULTS.textColor} ${iconClassName}`}
+            strokeWidth={1.5}
+            aria-hidden="true"
+          />
+        ) : (
+          <img
+            src={currentLogoSrc}
+            alt="Three Squares"
+            className={`w-full h-full object-cover ${iconClassName}`}
+            onError={() => {
+              if (currentLogoSrc !== PLACEHOLDER_DEFAULTS.logoSrc) {
+                setCurrentLogoSrc(PLACEHOLDER_DEFAULTS.logoSrc);
+                return;
+              }
+              setLogoFailed(true);
+            }}
+          />
+        )
       )}
       {styles.showText && label && (
         <span

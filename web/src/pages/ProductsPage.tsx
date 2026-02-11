@@ -119,7 +119,7 @@ export default function ProductsPage() {
 
   if (loading && products.length === 0) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-warm-50">
         <div className="bg-warm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <PageHeaderSkeleton />
@@ -171,7 +171,7 @@ export default function ProductsPage() {
   const totalPages = Math.ceil(meta.total / meta.per_page);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-warm-50">
       {/* Header */}
       <div className="bg-warm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
@@ -181,7 +181,7 @@ export default function ProductsPage() {
                 Browse Menu
               </h1>
               <p className="text-warm-500 text-base sm:text-lg max-w-2xl mx-auto">
-                Chamorro pride. Island style. Premium quality apparel for the whole ohana.
+                Guam comfort food favorites, catering trays, and island-made specialties.
               </p>
             </div>
           </FadeIn>

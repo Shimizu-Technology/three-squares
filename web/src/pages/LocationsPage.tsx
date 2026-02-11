@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { MapPin, Clock, Phone, MessageCircle, Mail, ChevronRight } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { MapPin, Clock, Phone, MessageCircle, ChevronRight } from 'lucide-react';
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 
@@ -50,32 +51,47 @@ export default function LocationsPage() {
     <div className="min-h-screen bg-warm-50">
       {/* Hero Section */}
       <section className="relative bg-gray-900 text-white py-20 sm:py-28 overflow-hidden">
-        {/* Background Image with stronger overlay */}
+        {/* Background image */}
         <div className="absolute inset-0">
           <img
             src="/images/catering4.jpg"
             alt=""
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gray-900/70" />
+          <div className="absolute inset-0 bg-black/72" />
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(139,69,19,0.28) 0%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0.62) 100%)'
+            }}
+          />
         </div>
 
         {/* Content */}
         <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <FadeIn>
-            <span className="inline-block px-5 py-2 bg-white/20 backdrop-blur-sm border border-white/30 text-sm font-semibold rounded-full mb-6 text-white shadow-lg">
+            <span
+              className="inline-block px-5 py-2 bg-black/35 backdrop-blur-sm border border-white/30 text-sm font-semibold rounded-full mb-6 text-white shadow-lg"
+              style={{ color: '#ffffff', textShadow: '0 1px 6px rgba(0,0,0,0.85)' }}
+            >
               Visit Us Today
             </span>
           </FadeIn>
           
           <FadeIn delay={0.1}>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 tracking-tight text-white drop-shadow-lg">
+            <h1
+              className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 tracking-tight text-white"
+              style={{ color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.9), 0 4px 25px rgba(0,0,0,0.5), 0 0 40px rgba(0,0,0,0.3)' }}
+            >
               Our Locations
             </h1>
           </FadeIn>
           
           <FadeIn delay={0.2}>
-            <p className="text-lg sm:text-xl text-white max-w-2xl mx-auto leading-relaxed drop-shadow-md">
+            <p
+              className="text-lg sm:text-xl text-white max-w-2xl mx-auto leading-relaxed"
+              style={{ color: '#ffffff', textShadow: '0 1px 6px rgba(0,0,0,0.9), 0 2px 15px rgba(0,0,0,0.5)' }}
+            >
               Find us at two convenient locations on Guam. Stop by for delicious 
               island-style comfort food, or contact us for catering orders.
             </p>
@@ -96,7 +112,7 @@ export default function LocationsPage() {
         </div>
       </section>
 
-      {/* Contact Section */}
+      {/* Catering CTA - aligned with Catering page actions */}
       <section className="py-16 sm:py-24 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <FadeIn>
@@ -114,21 +130,21 @@ export default function LocationsPage() {
           
           <FadeIn delay={0.2}>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <a
-                href="mailto:sales@bgpacific.com"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-tsPrimary text-white rounded-xl font-medium text-lg hover:bg-primary-dark transition-all duration-200 hover:-translate-y-0.5"
+              <Link
+                to="/catering?inquiry=true"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-warm-600 text-white rounded-xl font-medium text-lg hover:bg-warm-700 transition-all duration-200 hover:-translate-y-0.5"
               >
-                <Mail className="w-5 h-5" />
-                Email for Catering
-              </a>
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                Request a Quote
+              </Link>
               <a
-                href="https://wa.me/16718646656"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-green-600 text-white rounded-xl font-medium text-lg hover:bg-green-700 transition-all duration-200 hover:-translate-y-0.5"
+                href="tel:+16716462652"
+                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-warm-700 border-2 border-warm-600 rounded-xl font-medium text-lg hover:bg-warm-50 transition-all duration-200 hover:-translate-y-0.5"
               >
-                <MessageCircle className="w-5 h-5" />
-                WhatsApp Us
+                <Phone className="w-5 h-5" />
+                Call (671) 646-2652
               </a>
             </div>
           </FadeIn>
@@ -144,6 +160,7 @@ interface LocationCardProps {
 
 function LocationCard({ location }: LocationCardProps) {
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${location.mapAddress}`;
+  const mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(location.mapAddress)}&z=15&output=embed`;
   
   return (
     <motion.div
@@ -234,30 +251,24 @@ function LocationCard({ location }: LocationCardProps) {
       </div>
 
       {/* Map Preview */}
-      <div className="px-6 pb-6 sm:px-8 sm:pb-8">
+      <div className="px-6 pb-6 sm:px-8 sm:pb-8 space-y-3">
+        <div className="w-full h-32 rounded-xl overflow-hidden border border-warm-200">
+          <iframe
+            src={mapEmbedUrl}
+            title={`Map of ${location.name}`}
+            className="w-full h-full"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </div>
         <a
           href={mapUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="block w-full rounded-xl overflow-hidden border border-warm-200 hover:border-tsPrimary transition-colors"
+          className="inline-flex items-center gap-1 text-tsPrimary hover:text-primary-dark text-sm font-medium transition-colors"
         >
-          <img
-            src={`https://maps.googleapis.com/maps/api/staticmap?center=${location.mapAddress}&zoom=15&size=600x200&maptype=roadmap&markers=color:red%7C${location.mapAddress}&key=AIzaSyBFw0Qbyq9zTFTd-tUY6dZWTgaQzuU17R8`}
-            alt={`Map of ${location.name}`}
-            className="w-full h-32 object-cover"
-            loading="lazy"
-            onError={(e) => {
-              // Fallback if Google Maps API fails
-              (e.target as HTMLImageElement).src = 'data:image/svg+xml,' + encodeURIComponent(`
-                <svg xmlns="http://www.w3.org/2000/svg" width="600" height="200" viewBox="0 0 600 200">
-                  <rect fill="#f5f5f4" width="600" height="200"/>
-                  <text x="300" y="100" text-anchor="middle" fill="#a8a29e" font-family="system-ui" font-size="14">
-                    Click to view map
-                  </text>
-                </svg>
-              `);
-            }}
-          />
+          Open in Google Maps
+          <ChevronRight className="w-4 h-4" />
         </a>
       </div>
     </motion.div>

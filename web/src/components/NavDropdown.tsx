@@ -67,7 +67,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
       {/* Trigger - Click navigates to /products, hover shows dropdown */}
       <Link
         to="/products"
-        className={`flex items-center font-semibold transition py-2 ${
+        className={`flex items-center text-[15px] font-medium transition py-2 ${
           darkMode 
             ? 'text-white hover:text-tsGold' 
             : 'text-warm-700 hover:text-tsPrimary nav-link-hover'
@@ -87,7 +87,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
 
       {/* Dynamic dropdown with real collections */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-2xl border border-warm-100 z-50 animate-slide-down overflow-hidden w-56">
+        <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl border border-warm-200 z-50 animate-slide-down overflow-hidden w-56">
           <div className="py-2">
             {/* Dynamic collections */}
             {collections.map((col) => (
