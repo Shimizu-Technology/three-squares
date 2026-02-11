@@ -292,7 +292,13 @@ export default function ProductDetailPage() {
     : (isProductAvailable && quantity > 0 && quantity <= maxQuantity);
   
   const handleAddToCart = async () => {
-    if (!selectedVariant || !canAddToCart) {
+    if (!canAddToCart) {
+      return;
+    }
+    
+    // For products with variants, require selectedVariant
+    // For products without variants, we add by product ID (API should handle this)
+    if (hasVariants && !selectedVariant) {
       return;
     }
     
@@ -302,7 +308,13 @@ export default function ProductDetailPage() {
     
     setIsAdding(true);
     try {
-      await addItem(selectedVariant.id, quantity);
+      if (selectedVariant) {
+        await addItem(selectedVariant.id, quantity);
+      } else {
+        // For products without variants, pass product ID with variant_id=null
+        // The API should handle this case
+        await addItem(product!.id, quantity, true); // true indicates it's a product ID
+      }
       // Reset quantity after successful add
       setQuantity(1);
     } catch (error) {
@@ -694,14 +706,14 @@ export default function ProductDetailPage() {
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                       Adding to Cart...
                     </>
-                  ) : !product.in_stock || !selectedVariant?.in_stock ? (
+                  ) : !isProductAvailable || (hasVariants && selectedVariant && !selectedVariant.in_stock) ? (
                     <>
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                       Out of Stock
                     </>
-                  ) : !selectedVariant ? (
+                  ) : hasVariants && !selectedVariant ? (
                     'Select an Option'
                   ) : (
                     <>

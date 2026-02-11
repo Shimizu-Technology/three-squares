@@ -155,7 +155,7 @@ export default function CateringPage() {
     setError(null);
 
     try {
-      await api.post('/api/v1/catering', {
+      await api.post('/catering', {
         inquiry: {
           ...formData,
           guest_count: parseInt(formData.guest_count, 10),

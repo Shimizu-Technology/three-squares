@@ -70,8 +70,8 @@ export default function AdminCateringPage() {
   const fetchData = async () => {
     try {
       const [inquiriesRes, statsRes] = await Promise.all([
-        api.get(`/api/v1/admin/catering${statusFilter ? `?status=${statusFilter}` : ''}`),
-        api.get('/api/v1/admin/catering/stats'),
+        api.get(`/admin/catering${statusFilter ? `?status=${statusFilter}` : ''}`),
+        api.get('/admin/catering/stats'),
       ]);
       setInquiries(inquiriesRes.data.inquiries);
       setStats(statsRes.data);
@@ -84,7 +84,7 @@ export default function AdminCateringPage() {
 
   const fetchInquiryDetails = async (id: number) => {
     try {
-      const res = await api.get(`/api/v1/admin/catering/${id}`);
+      const res = await api.get(`/admin/catering/${id}`);
       setSelectedInquiry(res.data.inquiry);
       setAdminNotes(res.data.inquiry.admin_notes || '');
     } catch (error) {
@@ -95,7 +95,7 @@ export default function AdminCateringPage() {
   const handleQuote = async () => {
     if (!selectedInquiry || !quoteAmount) return;
     try {
-      await api.post(`/api/v1/admin/catering/${selectedInquiry.id}/quote`, {
+      await api.post(`/admin/catering/${selectedInquiry.id}/quote`, {
         quoted_amount: parseFloat(quoteAmount),
         admin_notes: adminNotes,
       });
@@ -110,7 +110,7 @@ export default function AdminCateringPage() {
   const handleStatusChange = async (status: string) => {
     if (!selectedInquiry) return;
     try {
-      await api.post(`/api/v1/admin/catering/${selectedInquiry.id}/status`, { status });
+      await api.post(`/admin/catering/${selectedInquiry.id}/status`, { status });
       fetchData();
       fetchInquiryDetails(selectedInquiry.id);
     } catch (error) {
@@ -121,7 +121,7 @@ export default function AdminCateringPage() {
   const handleUpdateNotes = async () => {
     if (!selectedInquiry) return;
     try {
-      await api.patch(`/api/v1/admin/catering/${selectedInquiry.id}`, {
+      await api.patch(`/admin/catering/${selectedInquiry.id}`, {
         inquiry: { admin_notes: adminNotes },
       });
       fetchInquiryDetails(selectedInquiry.id);
