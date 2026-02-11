@@ -463,9 +463,9 @@ function CheckoutForm() {
                       <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                         <p className="text-sm text-blue-800">
                           <strong>Pickup Location:</strong><br />
-                          121 E. Marine Corps Dr, Suite 1-103 & Suite 1-104<br />
-                          Hagåtña, Guam 96910<br />
-                          {appConfig?.store_info?.phone || '671-777-1234'}
+                          416 Chalan San Antonio<br />
+                          Tamuning, GU 96913<br />
+                          {appConfig?.store_info?.phone || '(671) 646-2652'}
                         </p>
                         <p className="text-sm text-blue-700 mt-2">
                           You'll receive an email when your order is ready for pickup.
