@@ -65,6 +65,7 @@ categories = [
   { name: "Sides & Snacks", slug: "sides", description: "Add-ons and quick bites", position: 6 },
   { name: "Desserts", slug: "desserts", description: "Sweet endings", position: 7 },
   { name: "Drinks", slug: "drinks", description: "Cocktails & beverages", position: 8 },
+  { name: "Grab & Go", slug: "grab-n-go", description: "Sold by weight - Donki location", position: 9 },
   
   # Latte Stone Cookies
   { name: "Latte Stone Cookies", slug: "cookies", description: "Premium Guam-made shortbread cookies", position: 9 },
@@ -205,8 +206,18 @@ drinks_items = [
   { name: "Calamansi Tea", slug: "calamansi-tea", price: 0.00, description: "Complimentary with meal", collection_slug: "drinks" }
 ]
 
+# GRAB & GO (Sold by weight at Donki location)
+grab_n_go_items = [
+  { name: "Champuladu", slug: "grab-champuladu", price: 0.00, description: "Traditional Chamorro chocolate rice pudding - priced by weight", collection_slug: "grab-n-go" },
+  { name: "Tropical Sago", slug: "grab-tropical-sago", price: 0.00, description: "Tropical tapioca dessert - priced by weight", collection_slug: "grab-n-go" },
+  { name: "Chocolate Coconut Sago", slug: "grab-chocolate-sago", price: 0.00, description: "Rich chocolate coconut tapioca - priced by weight", collection_slug: "grab-n-go" },
+  { name: "Broccoli & Crab Salad", slug: "grab-broccoli-crab", price: 0.00, description: "Fresh broccoli and crab salad - priced by weight", collection_slug: "grab-n-go" },
+  { name: "Potato Salad", slug: "grab-potato-salad", price: 0.00, description: "Creamy homemade potato salad - priced by weight", collection_slug: "grab-n-go" },
+  { name: "Chicken Kelaguen", slug: "grab-chicken-kelaguen", price: 0.00, description: "Traditional Chamorro chicken salad - priced by weight", collection_slug: "grab-n-go" }
+]
+
 restaurant_items = breakfast_items + starters_items + mains_items + donki_items + 
-                   kids_items + sides_items + desserts_items + drinks_items
+                   kids_items + sides_items + desserts_items + drinks_items + grab_n_go_items
 restaurant_items.each { |item| create_product(item) }
 
 puts "   ✓ Created #{restaurant_items.count} restaurant menu items"

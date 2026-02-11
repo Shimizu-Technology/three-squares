@@ -28,8 +28,7 @@ const ROUTE_META: Record<string, RouteMeta> = {
   '/admin/collections':              { title: 'Collections',      parent: '/admin' },
   '/admin/inventory':                { title: 'Inventory',        parent: '/admin' },
   '/admin/analytics':                { title: 'Analytics',        parent: '/admin' },
-  '/admin/fundraisers':              { title: 'Fundraisers',      parent: '/admin' },
-  '/admin/acai':                     { title: 'Acai Cakes',       parent: '/admin' },
+  '/admin/catering':                 { title: 'Catering',         parent: '/admin' },
   '/admin/users':                    { title: 'Users',            parent: '/admin' },
   '/admin/import':                   { title: 'CSV Import',       parent: '/admin' },
   '/admin/settings':                 { title: 'Settings',         parent: '/admin' },
@@ -145,8 +144,7 @@ export default function AdminLayout() {
     { name: 'Analytics', path: '/admin/analytics', icon: 'analytics' },
   ];
   const specialNavigation: NavItem[] = [
-    { name: 'Fundraisers', path: '/admin/fundraisers', icon: 'fundraisers' },
-    { name: 'Acai Cakes',  path: '/admin/acai', icon: 'acai' },
+    { name: 'Catering', path: '/admin/catering', icon: 'catering' },
   ];
   const systemNavigation: NavItem[] = [
     { name: 'Users',    path: '/admin/users', icon: 'users' },

@@ -17,6 +17,7 @@ import {
   ShoppingBag,
   TrendingUp,
   BarChart3,
+  UtensilsCrossed,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -30,6 +31,7 @@ export const ADMIN_ICONS: Record<string, LucideIcon> = {
   inventory: Warehouse,
   fundraisers: Heart,
   acai: IceCreamCone,
+  catering: UtensilsCrossed,
   users: Users,
   import: Upload,
   settings: Settings,

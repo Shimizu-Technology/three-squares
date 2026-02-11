@@ -117,7 +117,7 @@ export default function ProductFormPage() {
     name: '',
     description: '',
     product_type: 'apparel',
-    vendor: 'Hafaloha',
+    vendor: 'Three Squares',
     base_price_cents: 0,
     weight_oz: 0,
     published: false,
@@ -161,7 +161,7 @@ export default function ProductFormPage() {
         name: product.name || '',
         description: product.description || '',
         product_type: product.product_type || 'apparel',
-        vendor: product.vendor || 'Hafaloha',
+        vendor: product.vendor || 'Three Squares',
         base_price_cents: product.base_price_cents || 0,
         weight_oz: product.weight_oz || 0,
         published: product.published || false,
@@ -278,7 +278,7 @@ export default function ProductFormPage() {
           name: updatedProduct.name || '',
           description: updatedProduct.description || '',
           product_type: updatedProduct.product_type || 'apparel',
-          vendor: updatedProduct.vendor || 'Hafaloha',
+          vendor: updatedProduct.vendor || 'Three Squares',
           base_price_cents: updatedProduct.base_price_cents || 0,
           weight_oz: updatedProduct.weight_oz || 0,
           published: updatedProduct.published || false,
@@ -491,7 +491,7 @@ export default function ProductFormPage() {
                 onChange={handleChange}
                 required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
-                placeholder="e.g., Hafaloha Championship T-Shirt"
+                placeholder="e.g., Three Squares Fried Chicken"
               />
             </div>
 
