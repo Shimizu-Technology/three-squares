@@ -62,6 +62,13 @@ module Api
         Rails.logger.info "  - cart_item persisted?: #{cart_item.persisted?}"
         Rails.logger.info "  - cart_item current quantity: #{cart_item.quantity}" if cart_item.persisted?
 
+        existing_products = get_cart_items.includes(product_variant: { product: :product_locations }).map { |item| item.product_variant.product }
+        if FulfillmentValidator.mixed_cart_incompatible?(existing_products + [ product ])
+          return render json: {
+            error: "This item cannot be combined with your current cart due to fulfillment constraints. Keep your cart to pickup-only or shipping-only items."
+          }, status: :unprocessable_entity
+        end
+
         if cart_item.persisted?
           # Update existing cart item
           new_quantity = cart_item.quantity + quantity
@@ -152,8 +159,19 @@ module Api
       # POST /api/v1/cart/validate
       # Validates all cart items against current stock - CRITICAL for race condition prevention
       def validate
-        cart_items = get_cart_items.includes(product_variant: :product)
+        cart_items = get_cart_items.includes(product_variant: { product: :product_locations })
         issues = []
+        products = cart_items.map { |item| item.product_variant.product }
+
+        if FulfillmentValidator.mixed_cart_incompatible?(products)
+          issues << {
+            cart_item_id: cart_items.first&.id || 0,
+            type: "mixed_fulfillment",
+            message: "Your cart has pickup-only and shipping-only items that cannot be checked out together.",
+            item_name: "Cart",
+            action: "review"
+          }
+        end
 
         cart_items.each do |item|
           variant = item.product_variant
@@ -232,9 +250,9 @@ module Api
         if current_user
           # First, merge any session cart items to the user
           merge_session_cart_to_user if session_id.present?
-          current_user.cart_items.includes(product_variant: :product)
+          current_user.cart_items.includes(product_variant: { product: :product_locations })
         elsif session_id.present?
-          CartItem.for_session(session_id).includes(product_variant: :product)
+          CartItem.for_session(session_id).includes(product_variant: { product: :product_locations })
         else
           CartItem.none
         end
@@ -303,6 +321,9 @@ module Api
             name: product.name,
             slug: product.slug,
             published: product.published?,
+            allow_pickup: product.allow_pickup,
+            allow_shipping: product.allow_shipping,
+            available_location_ids: product.product_locations.available.pluck(:location_id),
             primary_image_url: product.primary_image&.signed_url,
             inventory_level: product.inventory_level,
             product_stock_quantity: product.product_stock_quantity

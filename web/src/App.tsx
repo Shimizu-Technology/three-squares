@@ -20,6 +20,7 @@ import AdminInventoryPage from './pages/admin/AdminInventoryPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminVariantPresetsPage from './pages/admin/AdminVariantPresetsPage';
 import AdminCateringPage from './pages/admin/AdminCateringPage';
+import AdminLocationsPage from './pages/admin/AdminLocationsPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
@@ -465,6 +466,7 @@ function AppContent() {
             <Route path="products/new" element={<ProductFormPage />} />
             <Route path="products/:id/edit" element={<ProductFormPage />} />
             <Route path="collections" element={<AdminCollectionsPage />} />
+            <Route path="locations" element={<AdminLocationsPage />} />
             <Route path="import" element={<AdminImportPage />} />
             <Route path="inventory" element={<AdminInventoryPage />} />
             <Route path="users" element={<AdminUsersPage />} />

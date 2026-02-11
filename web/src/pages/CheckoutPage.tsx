@@ -2,12 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { useCartStore } from '../store/cartStore';
-import { configApi, ordersApi, shippingApi, paymentIntentsApi, formatPrice } from '../services/api';
+import { configApi, locationsApi, ordersApi, shippingApi, paymentIntentsApi, formatPrice } from '../services/api';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import StripeProvider from '../components/payment/StripeProvider';
 import PaymentForm from '../components/payment/PaymentForm';
 import type { ShippingAddress, ShippingMethod, AppConfig } from '../types/order';
+import type { Location } from '../services/api';
 import PlaceholderImage from '../components/ui/PlaceholderImage';
 import OptimizedImage from '../components/ui/OptimizedImage';
 
@@ -31,6 +32,8 @@ function CheckoutForm() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'shipping'>('shipping');
+  const [pickupLocations, setPickupLocations] = useState<Location[]>([]);
+  const [pickupLocationId, setPickupLocationId] = useState<number | null>(null);
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     name: '',
     street1: '',
@@ -69,6 +72,11 @@ function CheckoutForm() {
       try {
         const config = await configApi.getConfig();
         setAppConfig(config);
+        const locations = await locationsApi.getLocations();
+        setPickupLocations(locations.locations || []);
+        if ((locations.locations || []).length > 0) {
+          setPickupLocationId(locations.locations[0].id);
+        }
       } catch (err) {
         console.error('Failed to load config:', err);
       } finally {
@@ -140,7 +148,7 @@ function CheckoutForm() {
     const hasContactInfo = name.trim() !== '' && email.trim() !== '' && phone.trim() !== '';
     
     if (deliveryMethod === 'pickup') {
-      return hasContactInfo && (isTestMode || paymentReady);
+      return hasContactInfo && pickupLocationId !== null && (isTestMode || paymentReady);
     }
     
     // For shipping, need address and shipping method selected
@@ -211,6 +219,8 @@ function CheckoutForm() {
         const orderData = {
           customer_name: name,
           email, phone,
+          fulfillment_type: deliveryMethod,
+          location_id: deliveryMethod === 'pickup' ? pickupLocationId || undefined : undefined,
           shipping_address: orderShippingAddress,
           shipping_method: orderShippingMethod,
           payment_method: { type: 'test' },
@@ -237,7 +247,14 @@ function CheckoutForm() {
         }
         // Step 1: Create PaymentIntent
         const intentResponse = await paymentIntentsApi.create(
-          { email, shipping_cost_cents: shippingCostCents }, token, sessionId
+          {
+            email,
+            shipping_cost_cents: shippingCostCents,
+            fulfillment_type: deliveryMethod,
+            location_id: deliveryMethod === 'pickup' ? pickupLocationId || undefined : undefined,
+          },
+          token,
+          sessionId
         );
         // Step 2: Confirm card payment with Stripe
         const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
@@ -258,6 +275,8 @@ function CheckoutForm() {
         const orderData = {
           customer_name: name,
           email, phone,
+          fulfillment_type: deliveryMethod,
+          location_id: deliveryMethod === 'pickup' ? pickupLocationId || undefined : undefined,
           shipping_address: orderShippingAddress,
           shipping_method: orderShippingMethod,
           payment_method: { type: 'stripe' },
@@ -461,12 +480,27 @@ function CheckoutForm() {
                       className="overflow-hidden"
                     >
                       <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-sm text-blue-800">
-                          <strong>Pickup Location:</strong><br />
-                          416 Chalan San Antonio<br />
-                          Tamuning, GU 96913<br />
-                          {appConfig?.store_info?.phone || '(671) 646-2652'}
-                        </p>
+                        <label htmlFor="pickupLocation" className="block text-sm font-semibold text-blue-900 mb-2">
+                          Pickup Location *
+                        </label>
+                        <select
+                          id="pickupLocation"
+                          value={pickupLocationId ?? ''}
+                          onChange={(e) => setPickupLocationId(e.target.value ? Number(e.target.value) : null)}
+                          className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm text-blue-900 focus:outline-none focus:ring-2 focus:ring-tsPrimary"
+                        >
+                          <option value="" disabled>Select a location</option>
+                          {pickupLocations.map((location) => (
+                            <option key={location.id} value={location.id}>
+                              {location.name}
+                            </option>
+                          ))}
+                        </select>
+                        {pickupLocationId && (
+                          <p className="text-sm text-blue-800 mt-3">
+                            {(pickupLocations.find((location) => location.id === pickupLocationId)?.address) || appConfig?.store_info?.name}
+                          </p>
+                        )}
                         <p className="text-sm text-blue-700 mt-2">
                           You'll receive an email when your order is ready for pickup.
                         </p>

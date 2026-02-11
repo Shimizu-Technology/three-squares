@@ -26,6 +26,7 @@ const ROUTE_META: Record<string, RouteMeta> = {
   '/admin/products':                 { title: 'Products',         parent: '/admin' },
   '/admin/products/new':             { title: 'New Product',      parent: '/admin/products' },
   '/admin/collections':              { title: 'Collections',      parent: '/admin' },
+  '/admin/locations':                { title: 'Locations',        parent: '/admin' },
   '/admin/inventory':                { title: 'Inventory',        parent: '/admin' },
   '/admin/analytics':                { title: 'Analytics',        parent: '/admin' },
   '/admin/catering':                 { title: 'Catering',         parent: '/admin' },
@@ -134,6 +135,7 @@ export default function AdminLayout() {
     { name: 'Orders',    path: '/admin/orders', icon: 'orders' },
     { name: 'Products',  path: '/admin/products', icon: 'products' },
     { name: 'Collections', path: '/admin/collections', icon: 'collections' },
+    { name: 'Locations', path: '/admin/locations', icon: 'locations' },
     { name: 'Inventory', path: '/admin/inventory', icon: 'inventory' },
     { name: 'Analytics', path: '/admin/analytics', icon: 'analytics' },
   ];

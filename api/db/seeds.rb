@@ -92,10 +92,47 @@ puts "   ✓ Created #{Collection.count} categories"
 puts ""
 
 # ------------------------------------------------------------------------------
+# 3B) LOCATIONS
+# ------------------------------------------------------------------------------
+puts "3️⃣  Setting up locations..."
+
+location_seed_data = [
+  {
+    name: "Three Squares Main",
+    slug: "three-squares-main",
+    address: "416 Chalan San Antonio, Tamuning, GU 96913",
+    phone: "(671) 646-2652",
+    hours_json: {
+      "Tuesday - Saturday" => "8:00 AM - 8:00 PM",
+      "Sunday" => "8:00 AM - 5:00 PM",
+      "Monday" => "Closed"
+    }
+  },
+  {
+    name: "Three Squares @ Donki",
+    slug: "three-squares-donki",
+    address: "Inside Don Quijote, Tamuning, GU",
+    phone: "(671) 646-2652",
+    hours_json: {
+      "Daily" => "10:00 AM - 10:00 PM"
+    }
+  }
+]
+
+location_seed_data.each do |attrs|
+  location = Location.find_or_initialize_by(slug: attrs[:slug])
+  location.update!(attrs.merge(active: true))
+end
+
+puts "   ✓ Created #{Location.count} locations"
+puts ""
+
+# ------------------------------------------------------------------------------
 # 4) HELPER METHOD
 # ------------------------------------------------------------------------------
 def create_product(attrs)
   collection = Collection.find_by(slug: attrs[:collection_slug])
+  all_locations = Location.by_name.to_a
   
   # Determine product_type: explicit > requires_shipping > default local
   product_type = if attrs[:product_type]
@@ -114,9 +151,40 @@ def create_product(attrs)
     p.published = true
     p.product_type = product_type
   end
+
+  allow_shipping = attrs.key?(:allow_shipping) ? attrs[:allow_shipping] : attrs[:requires_shipping] == true
+  allow_pickup = attrs.key?(:allow_pickup) ? attrs[:allow_pickup] : true
+
+  default_location_slugs = if attrs[:collection_slug] == "donki"
+    [ "three-squares-donki" ]
+  else
+    [ "three-squares-main" ]
+  end
+  location_slugs = attrs[:location_slugs] || default_location_slugs
+  location_slugs = [] unless allow_pickup
+
+  product.update!(
+    name: attrs[:name],
+    description: attrs[:description] || "",
+    base_price_cents: attrs[:price] ? (attrs[:price] * 100).to_i : 0,
+    featured: attrs[:featured] || false,
+    published: true,
+    product_type: product_type,
+    allow_pickup: allow_pickup,
+    allow_shipping: allow_shipping
+  )
   
   if collection && !product.collections.include?(collection)
     product.collections << collection
+  end
+
+  if all_locations.any?
+    selected_location_ids = Location.where(slug: location_slugs).pluck(:id)
+    all_locations.each do |location|
+      record = ProductLocation.find_or_initialize_by(product_id: product.id, location_id: location.id)
+      record.available = selected_location_ids.include?(location.id)
+      record.save!
+    end
   end
   
   product

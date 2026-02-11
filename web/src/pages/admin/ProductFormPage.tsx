@@ -41,6 +41,13 @@ interface Collection {
   product_count?: number;
 }
 
+interface LocationOption {
+  id: number;
+  name: string;
+  slug: string;
+  active: boolean;
+}
+
 interface ProductFormData {
   name: string;
   description: string;
@@ -55,6 +62,9 @@ interface ProductFormData {
   inventory_level: 'none' | 'product' | 'variant';
   product_stock_quantity?: number;
   product_low_stock_threshold?: number;
+  allow_pickup: boolean;
+  allow_shipping: boolean;
+  location_ids: number[];
   collection_ids: number[];
   needs_attention?: boolean;
   import_notes?: string;
@@ -76,6 +86,9 @@ interface ProductDetailsResponse {
     inventory_level?: 'none' | 'product' | 'variant';
     product_stock_quantity?: number;
     product_low_stock_threshold?: number;
+    allow_pickup?: boolean;
+    allow_shipping?: boolean;
+    location_ids?: number[];
     collection_ids?: number[];
     needs_attention?: boolean;
     import_notes?: string;
@@ -86,6 +99,10 @@ interface ProductDetailsResponse {
 
 interface CollectionsResponse {
   data: Collection[];
+}
+
+interface LocationsResponse {
+  data: LocationOption[];
 }
 
 interface InventoryAuditsResponse {
@@ -106,6 +123,7 @@ export default function ProductFormPage() {
   const [images, setImages] = useState<ProductImage[]>([]);
   const deleteModalContentRef = useRef<HTMLDivElement | null>(null);
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
+  const [allLocations, setAllLocations] = useState<LocationOption[]>([]);
   
   // Inventory History Modal state
   const [showInventoryModal, setShowInventoryModal] = useState(false);
@@ -127,11 +145,15 @@ export default function ProductFormPage() {
     inventory_level: 'none',
     product_stock_quantity: undefined,
     product_low_stock_threshold: 5,
+    allow_pickup: true,
+    allow_shipping: false,
+    location_ids: [],
     collection_ids: [],
   });
 
   useEffect(() => {
     fetchCollections();
+    fetchLocations();
     if (isEditMode) {
       fetchProduct();
     }
@@ -144,6 +166,15 @@ export default function ProductFormPage() {
       setAllCollections(response.data.data || []);
     } catch (err) {
       console.error('Failed to fetch collections:', err);
+    }
+  };
+
+  const fetchLocations = async () => {
+    try {
+      const response = await authGet<LocationsResponse>('/admin/locations', getToken);
+      setAllLocations(response.data.data || []);
+    } catch (err) {
+      console.error('Failed to fetch locations:', err);
     }
   };
 
@@ -171,6 +202,9 @@ export default function ProductFormPage() {
         inventory_level: product.inventory_level || 'none',
         product_stock_quantity: product.product_stock_quantity,
         product_low_stock_threshold: product.product_low_stock_threshold || 5,
+        allow_pickup: product.allow_pickup ?? true,
+        allow_shipping: product.allow_shipping ?? false,
+        location_ids: product.location_ids || [],
         collection_ids: product.collection_ids || [],
         needs_attention: product.needs_attention || false,
         import_notes: product.import_notes || '',
@@ -249,6 +283,16 @@ export default function ProductFormPage() {
     });
   };
 
+  const handleLocationToggle = (locationId: number) => {
+    setFormData(prev => {
+      const currentIds = prev.location_ids || [];
+      const newIds = currentIds.includes(locationId)
+        ? currentIds.filter(id => id !== locationId)
+        : [...currentIds, locationId];
+      return { ...prev, location_ids: newIds };
+    });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -259,6 +303,14 @@ export default function ProductFormPage() {
     }
     if (formData.base_price_cents <= 0) {
       toast.error('Price must be greater than 0');
+      return;
+    }
+    if (!formData.allow_pickup && !formData.allow_shipping) {
+      toast.error('Select at least one fulfillment type (pickup or shipping).');
+      return;
+    }
+    if (formData.allow_pickup && formData.location_ids.length === 0) {
+      toast.error('Select at least one pickup location.');
       return;
     }
 
@@ -288,6 +340,9 @@ export default function ProductFormPage() {
           inventory_level: updatedProduct.inventory_level || 'none',
           product_stock_quantity: updatedProduct.product_stock_quantity,
           product_low_stock_threshold: updatedProduct.product_low_stock_threshold || 5,
+          allow_pickup: updatedProduct.allow_pickup ?? true,
+          allow_shipping: updatedProduct.allow_shipping ?? false,
+          location_ids: updatedProduct.location_ids || [],
           collection_ids: updatedProduct.collection_ids || [],
           needs_attention: updatedProduct.needs_attention || false,
           import_notes: updatedProduct.import_notes || '',
@@ -601,6 +656,70 @@ export default function ProductFormPage() {
                 </label>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Fulfillment & Pickup Locations */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Fulfillment</h2>
+          <p className="text-sm text-gray-600 mb-4">
+            Choose whether this product supports pickup, shipping, or both.
+          </p>
+
+          <div className="space-y-4">
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="allow_pickup"
+                name="allow_pickup"
+                checked={formData.allow_pickup}
+                onChange={handleChange}
+                className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
+              />
+              <label htmlFor="allow_pickup" className="ml-2 text-sm font-medium text-gray-700">
+                Allow Pickup
+              </label>
+            </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                id="allow_shipping"
+                name="allow_shipping"
+                checked={formData.allow_shipping}
+                onChange={handleChange}
+                className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
+              />
+              <label htmlFor="allow_shipping" className="ml-2 text-sm font-medium text-gray-700">
+                Allow Shipping
+              </label>
+            </div>
+
+            {formData.allow_pickup && (
+              <div className="pt-2">
+                <p className="text-sm font-medium text-gray-700 mb-2">Pickup Locations</p>
+                {allLocations.length === 0 ? (
+                  <p className="text-sm text-gray-500">No locations available.</p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border border-gray-300 rounded-lg p-4 bg-gray-50">
+                    {allLocations.map((location) => (
+                      <div key={location.id} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          id={`location_${location.id}`}
+                          checked={formData.location_ids.includes(location.id)}
+                          onChange={() => handleLocationToggle(location.id)}
+                          className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
+                        />
+                        <label htmlFor={`location_${location.id}`} className="ml-2 text-sm text-gray-700 cursor-pointer select-none">
+                          {location.name}
+                        </label>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

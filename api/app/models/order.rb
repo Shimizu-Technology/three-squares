@@ -2,6 +2,7 @@ class Order < ApplicationRecord
   belongs_to :user, optional: true  # Allow guest checkout
   belongs_to :fundraiser, optional: true
   belongs_to :participant, optional: true
+  belongs_to :location, optional: true
   has_many :order_items, dependent: :destroy
   has_many :refunds, dependent: :destroy
 
@@ -16,9 +17,11 @@ class Order < ApplicationRecord
   # Validations
   validates :order_number, presence: true, uniqueness: true
   validates :order_type, inclusion: { in: %w[retail wholesale acai] }
+  validates :fulfillment_type, inclusion: { in: %w[pickup shipping] }
   validates :status, inclusion: { in: VALID_STATUSES }
   validates :payment_status, inclusion: { in: %w[pending paid failed refunded] }
   validates :total_cents, numericality: { greater_than_or_equal_to: 0 }
+  validate :pickup_orders_require_location
 
   # Guest orders (no user_id) must have contact email so we can reach the customer
   validates :customer_email, presence: { message: "is required for guest checkout" }, if: -> { user_id.nil? }
@@ -125,7 +128,7 @@ class Order < ApplicationRecord
   end
 
   def is_pickup_order?
-    acai? || wholesale?
+    fulfillment_type == "pickup"
   end
 
   # Get valid next statuses based on order type and current status
@@ -161,7 +164,7 @@ class Order < ApplicationRecord
   end
 
   def requires_shipping?
-    retail? || wholesale?
+    fulfillment_type == "shipping"
   end
 
   # Shipping address helper
@@ -243,6 +246,13 @@ class Order < ApplicationRecord
   end
 
   private
+
+  def pickup_orders_require_location
+    return unless fulfillment_type == "pickup"
+    return if location_id.present?
+
+    errors.add(:location, "must be selected for pickup orders")
+  end
 
   def generate_order_number
     # Format: TSQ-{TYPE}-YYYYMMDD-XXXX (Three Squares)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_11_080000) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_11_100000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -370,6 +370,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_11_080000) do
     t.index ["user_id"], name: "index_inventory_audits_on_user_id"
   end
 
+  create_table "locations", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.string "address"
+    t.datetime "created_at", null: false
+    t.jsonb "hours_json", default: {}, null: false
+    t.string "name", null: false
+    t.string "phone"
+    t.string "slug", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_locations_on_active"
+    t.index ["slug"], name: "index_locations_on_slug", unique: true
+  end
+
   create_table "order_items", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "order_id", null: false
@@ -399,7 +412,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_11_080000) do
     t.string "customer_name"
     t.string "customer_phone"
     t.string "easypost_shipment_id"
+    t.string "fulfillment_type", default: "shipping", null: false
     t.bigint "fundraiser_id"
+    t.bigint "location_id"
     t.text "notes"
     t.string "order_number"
     t.string "order_type"
@@ -423,7 +438,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_11_080000) do
     t.bigint "user_id"
     t.index ["created_at"], name: "index_orders_on_created_at"
     t.index ["customer_email"], name: "index_orders_on_customer_email"
+    t.index ["fulfillment_type"], name: "index_orders_on_fulfillment_type"
     t.index ["fundraiser_id"], name: "index_orders_on_fundraiser_id"
+    t.index ["location_id"], name: "index_orders_on_location_id"
     t.index ["order_number"], name: "index_orders_on_order_number", unique: true
     t.index ["order_type"], name: "index_orders_on_order_type"
     t.index ["participant_id"], name: "index_orders_on_participant_id"
@@ -483,6 +500,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_11_080000) do
     t.index ["product_id"], name: "index_product_images_on_product_id"
   end
 
+  create_table "product_locations", force: :cascade do |t|
+    t.boolean "available", default: true, null: false
+    t.datetime "created_at", null: false
+    t.bigint "location_id", null: false
+    t.integer "price_override_cents"
+    t.bigint "product_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["available"], name: "index_product_locations_on_available"
+    t.index ["location_id"], name: "index_product_locations_on_location_id"
+    t.index ["product_id", "location_id"], name: "index_product_locations_on_product_id_and_location_id", unique: true
+    t.index ["product_id"], name: "index_product_locations_on_product_id"
+  end
+
   create_table "product_variants", force: :cascade do |t|
     t.boolean "available"
     t.string "barcode"
@@ -511,6 +541,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_11_080000) do
   end
 
   create_table "products", force: :cascade do |t|
+    t.boolean "allow_pickup", default: true, null: false
+    t.boolean "allow_shipping", default: false, null: false
     t.boolean "archived", default: false, null: false
     t.integer "base_price_cents"
     t.datetime "created_at", null: false
@@ -535,6 +567,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_11_080000) do
     t.datetime "updated_at", null: false
     t.string "vendor"
     t.decimal "weight_oz"
+    t.index ["allow_pickup"], name: "index_products_on_allow_pickup"
+    t.index ["allow_shipping"], name: "index_products_on_allow_shipping"
     t.index ["archived"], name: "index_products_on_archived"
     t.index ["slug"], name: "index_products_on_slug", unique: true
   end
@@ -627,12 +661,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_11_080000) do
   add_foreign_key "order_items", "product_variants"
   add_foreign_key "order_items", "products"
   add_foreign_key "orders", "fundraisers"
+  add_foreign_key "orders", "locations"
   add_foreign_key "orders", "participants"
   add_foreign_key "orders", "users"
   add_foreign_key "participants", "fundraisers"
   add_foreign_key "product_collections", "collections"
   add_foreign_key "product_collections", "products"
   add_foreign_key "product_images", "products"
+  add_foreign_key "product_locations", "locations"
+  add_foreign_key "product_locations", "products"
   add_foreign_key "product_variants", "products"
   add_foreign_key "refunds", "orders"
   add_foreign_key "refunds", "users"

@@ -115,8 +115,19 @@ module Api
           return render json: { error: "Cart validation failed", issues: validation_errors }, status: :unprocessable_entity
         end
 
+        fulfillment_type = normalized_fulfillment_type
+        location_id = pickup_location_id
+        fulfillment_issues = FulfillmentValidator.validate_cart(
+          cart_items: cart_items,
+          fulfillment_type: fulfillment_type,
+          location_id: location_id
+        )
+        if fulfillment_issues.any?
+          return render json: { error: "Cart fulfillment validation failed", issues: fulfillment_issues }, status: :unprocessable_entity
+        end
+
         # Create order
-        order = build_order(cart_items)
+        order = build_order(cart_items, fulfillment_type: fulfillment_type, location_id: location_id)
 
         # Process payment
         payment_intent_id = order_params[:payment_intent_id]
@@ -239,11 +250,11 @@ module Api
         if current_user
           # First, merge any session cart items to the user
           merge_session_cart_to_user
-          current_user.cart_items.includes(product_variant: { product: :product_images })
+          current_user.cart_items.includes(product_variant: { product: [ :product_images, :product_locations ] })
         else
           session_id = request.headers["X-Session-ID"] || request.cookies["session_id"]
           return [] if session_id.blank?
-          CartItem.where(session_id: session_id).includes(product_variant: { product: :product_images })
+          CartItem.where(session_id: session_id).includes(product_variant: { product: [ :product_images, :product_locations ] })
         end
       end
 
@@ -344,13 +355,15 @@ module Api
         issues
       end
 
-      def build_order(cart_items)
+      def build_order(cart_items, fulfillment_type:, location_id:)
         shipping_address = order_params[:shipping_address] || {}
         shipping_method_params = order_params[:shipping_method] || {}
 
         order = Order.new(
           user: current_user,
           order_type: "retail",
+          fulfillment_type: fulfillment_type,
+          location_id: (fulfillment_type == "pickup" ? location_id : nil),
           status: "pending",
           email: order_params[:customer_email] || order_params[:email],  # HAF-13: prefer canonical name
           phone: order_params[:customer_phone] || order_params[:phone],  # HAF-13: prefer canonical name
@@ -366,7 +379,7 @@ module Api
 
           # Shipping method (store as JSON/text with carrier and service info)
           shipping_method: [ shipping_method_params[:carrier], shipping_method_params[:service] ].compact.join(" ").presence,
-          shipping_cost_cents: shipping_method_params[:rate_cents] || 0
+          shipping_cost_cents: fulfillment_type == "pickup" ? 0 : (shipping_method_params[:rate_cents] || 0)
         )
 
         # Calculate totals
@@ -461,6 +474,8 @@ module Api
           status: order.status,
           payment_status: order.payment_status,
           order_type: order.order_type,
+          fulfillment_type: order.fulfillment_type,
+          location: order.location ? { id: order.location.id, name: order.location.name, slug: order.location.slug } : nil,
           customer_name: order.name,
           customer_email: order.email,
           customer_phone: order.phone,
@@ -518,6 +533,8 @@ module Api
           status_display: order.status&.titleize,
           payment_status: order.payment_status,
           order_type: order.order_type,
+          fulfillment_type: order.fulfillment_type,
+          location: order.location ? { id: order.location.id, name: order.location.name, slug: order.location.slug } : nil,
           customer_name: order.name,
           customer_email: order.email,
           customer_phone: order.phone,
@@ -577,6 +594,7 @@ module Api
         params.require(:order).permit(
           :email, :phone, :payment_intent_id,
           :customer_name, :customer_email, :customer_phone,
+          :fulfillment_type, :location_id,
           :shipping_address_line1, :shipping_address_line2,
           :shipping_city, :shipping_state, :shipping_zip, :shipping_country,
           shipping_address: [ :name, :street1, :street2, :city, :state, :zip, :country ],
@@ -683,6 +701,7 @@ module Api
           status: order.status,
           status_display: order.status&.titleize,
           order_type: order.order_type,
+          fulfillment_type: order.fulfillment_type,
           order_type_display: order.order_type.titleize,
           total_cents: order.total_cents,
           total_formatted: "$#{'%.2f' % ((order.total_cents || 0) / 100.0)}",
@@ -705,6 +724,20 @@ module Api
             }
           end
         }
+      end
+
+      def normalized_fulfillment_type
+        raw = order_params[:fulfillment_type].to_s
+        return "pickup" if raw == "pickup"
+
+        "shipping"
+      end
+
+      def pickup_location_id
+        value = order_params[:location_id]
+        return nil if value.blank?
+
+        value.to_i
       end
     end
   end

@@ -18,9 +18,20 @@ module Api
           return render json: { error: "Cart is empty" }, status: :unprocessable_entity
         end
 
+        fulfillment_type = params[:fulfillment_type].to_s == "pickup" ? "pickup" : "shipping"
+        location_id = params[:location_id].presence&.to_i
+        fulfillment_issues = FulfillmentValidator.validate_cart(
+          cart_items: cart_items,
+          fulfillment_type: fulfillment_type,
+          location_id: location_id
+        )
+        if fulfillment_issues.any?
+          return render json: { error: "Cart fulfillment validation failed", issues: fulfillment_issues }, status: :unprocessable_entity
+        end
+
         # Calculate total
         subtotal_cents = cart_items.sum { |item| item.product_variant.price_cents * item.quantity }
-        shipping_cost_cents = (params[:shipping_cost_cents] || 0).to_i
+        shipping_cost_cents = fulfillment_type == "pickup" ? 0 : (params[:shipping_cost_cents] || 0).to_i
         total_cents = subtotal_cents + shipping_cost_cents
 
         if total_cents <= 0
@@ -63,9 +74,9 @@ module Api
         if current_user
           # Merge any session cart items to the user (handles guest -> login flow)
           merge_session_cart_to_user(sess_id) if sess_id.present?
-          current_user.cart_items.includes(product_variant: :product)
+          current_user.cart_items.includes(product_variant: { product: :product_locations })
         elsif sess_id.present?
-          CartItem.where(session_id: sess_id).includes(product_variant: :product)
+          CartItem.where(session_id: sess_id).includes(product_variant: { product: :product_locations })
         else
           CartItem.none
         end

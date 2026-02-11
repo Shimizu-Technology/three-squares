@@ -28,6 +28,8 @@ export interface CreateOrderRequest {
   customer_name?: string;
   email: string;
   phone: string;
+  fulfillment_type: 'pickup' | 'shipping';
+  location_id?: number;
   shipping_address: ShippingAddress;
   shipping_method: ShippingMethod;
   payment_method: PaymentMethod;

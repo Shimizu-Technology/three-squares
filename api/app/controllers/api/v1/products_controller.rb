@@ -6,7 +6,7 @@ module Api
       # GET /api/v1/products
       def index
         @products = Product.published.active  # Only show active (non-archived) products
-                          .includes(:product_variants, :product_images, :collections)
+                          .includes(:product_variants, :product_images, :collections, :product_locations)
 
         # Base ordering (will be overridden by sort param if present)
         @products = @products.order(featured: :desc, created_at: :desc) unless params[:sort].present?
@@ -22,6 +22,14 @@ module Api
         end
 
         @products = @products.where(featured: true) if params[:featured] == "true"
+
+        if params[:location_id].present?
+          location_id = params[:location_id].to_i
+          @products = @products
+            .left_outer_joins(:product_locations)
+            .where("product_locations.id IS NULL OR (product_locations.location_id = ? AND product_locations.available = ?)", location_id, true)
+            .distinct
+        end
 
         # Search
         if params[:search].present?
@@ -84,10 +92,10 @@ module Api
 
       def set_product
         @product = Product.published
-                         .includes(:product_variants, :product_images, :collections)
+                         .includes(:product_variants, :product_images, :collections, :product_locations)
                          .find_by(id: params[:id]) ||
                    Product.published
-                         .includes(:product_variants, :product_images, :collections)
+                         .includes(:product_variants, :product_images, :collections, :product_locations)
                          .find_by(slug: params[:id])
 
         render json: { error: "Product not found" }, status: :not_found unless @product
@@ -105,6 +113,9 @@ module Api
           published: product.published,
           featured: product.featured,
           product_type: product.product_type,
+          allow_pickup: product.allow_pickup,
+          allow_shipping: product.allow_shipping,
+          available_location_ids: product.product_locations.available.pluck(:location_id),
           in_stock: product.in_stock?,
           actually_available: product.actually_available?,
           primary_image_url: product.primary_image&.signed_url,
@@ -130,6 +141,9 @@ module Api
           vendor: product.vendor,
           weight_oz: product.weight_oz,
           inventory_level: product.inventory_level,
+          allow_pickup: product.allow_pickup,
+          allow_shipping: product.allow_shipping,
+          available_location_ids: product.product_locations.available.pluck(:location_id),
           product_stock_quantity: product.product_stock_quantity,
           product_low_stock_threshold: product.product_low_stock_threshold,
           in_stock: product.in_stock?,

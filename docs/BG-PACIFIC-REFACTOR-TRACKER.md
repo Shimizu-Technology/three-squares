@@ -3,7 +3,7 @@
 **Project:** Three Squares Platform (forked from Hafaloha)  
 **Owner:** Shimizu Technology / B&G Pacific  
 **Last Updated:** 2026-02-11  
-**Status:** Phase 0 completed, Phase 1 decisions locked, implementation ready
+**Status:** Phase 1 implementation complete (ready for PR and merge)
 
 ---
 
@@ -125,6 +125,68 @@ Target output: all items marked `Locked` so Phase 1 can start immediately.
 - Better admin/reporting by location and line of business
 - Stronger catalog IA for Three Squares vs Latte Stone vs Catering
 
+### Phase 2 Goal
+
+Make day-to-day operations easier by clearly segmenting admin workflows, reporting, and storefront information architecture by location and business line while keeping a single storefront.
+
+### Phase 2 Scope (Locked)
+
+- Keep one storefront, but add clearer business-context entry points.
+- Segment admin surfaces by `location`, `fulfillment_type`, and `business_line`.
+- Add reporting views/exports that answer "what sold, where, and under which line of business."
+- Do not introduce auto-splitting mixed carts in Phase 2 (still deferred to Phase 3).
+
+### Phase 2 Workstreams
+
+#### 1) Admin and Reporting Segmentation
+
+- [ ] Orders UI/API filters: location, business line, fulfillment type.
+- [ ] Product list filters: location and business line.
+- [ ] Dashboard cards:
+  - [ ] sales by location
+  - [ ] sales by business line
+  - [ ] pickup vs shipping mix
+- [ ] Daily/period CSV export with location + business line breakdown.
+
+#### 2) Catalog IA (Single Storefront, Clearer Paths)
+
+- [ ] Add clear customer entry paths for:
+  - [ ] Three Squares
+  - [ ] Latte Stone Cookies
+  - [ ] Catering
+- [ ] Tighten product browse logic so users mostly see relevant context first.
+- [ ] Preserve direct links/search behavior without breaking current URLs.
+
+#### 3) Operations Workflow Views
+
+- [ ] Pickup queue view (grouped by location and readiness/status).
+- [ ] Shipping queue view (ready-to-ship and shipped tracking workflow).
+- [ ] Basic operational status quick-actions where safe.
+
+### Phase 2 Suggested Ticket Sequence
+
+- [ ] P2-01 Orders filtering and API query support (location/business line/fulfillment).
+- [ ] P2-02 Dashboard metrics segmented by location and business line.
+- [ ] P2-03 Storefront IA entry points and routing/query-state guardrails.
+- [ ] P2-04 Pickup queue admin view.
+- [ ] P2-05 Shipping queue admin view.
+- [ ] P2-06 Export/report endpoint and CSV admin action.
+- [ ] P2-07 Test matrix + QA pass + docs update.
+
+### Phase 2 Acceptance Criteria (Definition of Done)
+
+- [ ] Staff can filter and process orders quickly by location and business line.
+- [ ] Storefront users can find the right business context without confusion.
+- [ ] Reports clearly show segmented performance by location/business line.
+- [ ] No regressions in Phase 1 fulfillment/location enforcement.
+
+### Phase 2 Test Plan (Minimum)
+
+- [ ] Request specs for segmented order/product filtering.
+- [ ] Request specs for reporting/export correctness.
+- [ ] UI test coverage for admin queue filters and status transitions.
+- [ ] Storefront flow tests for each business-context entry path.
+
 ## Phase 3: Future growth
 
 - Optional split storefront experiences/routes
@@ -137,42 +199,42 @@ Target output: all items marked `Locked` so Phase 1 can start immediately.
 
 ## 1) Data Model / Migrations
 
-- [ ] Create `locations` table (`name`, `slug`, `address`, `phone`, `hours_json`, `active`)
-- [ ] Add `location_id` to `orders`
-- [ ] Add `fulfillment_type` to `orders` (`pickup`, `shipping`)
-- [ ] Add `allow_pickup` and `allow_shipping` to `products`
-- [ ] Create `product_locations` join (`product_id`, `location_id`, `available`, optional `price_override_cents`)
-- [ ] Seed `three-squares-main` and `three-squares-donki`
+- [x] Create `locations` table (`name`, `slug`, `address`, `phone`, `hours_json`, `active`)
+- [x] Add `location_id` to `orders`
+- [x] Add `fulfillment_type` to `orders` (`pickup`, `shipping`)
+- [x] Add `allow_pickup` and `allow_shipping` to `products`
+- [x] Create `product_locations` join (`product_id`, `location_id`, `available`, optional `price_override_cents`)
+- [x] Seed `three-squares-main` and `three-squares-donki`
 
 ## 2) Backend/API
 
-- [ ] Add public `GET /locations`
-- [ ] Update checkout/order API contract to accept `fulfillment_type` and `location_id`
+- [x] Add public `GET /locations`
+- [x] Update checkout/order API contract to accept `fulfillment_type` and `location_id`
 - [ ] Add server validation:
-  - [ ] disallow shipping for products with `allow_shipping = false`
-  - [ ] disallow pickup for products with `allow_pickup = false`
-  - [ ] require `location_id` for pickup orders
-  - [ ] block mixed incompatible carts
+  - [x] disallow shipping for products with `allow_shipping = false`
+  - [x] disallow pickup for products with `allow_pickup = false`
+  - [x] require `location_id` for pickup orders
+  - [x] block mixed incompatible carts
 
 ## 3) Frontend
 
-- [ ] Add fulfillment selector behavior tied to valid cart options
-- [ ] Add required pickup location selector when pickup is chosen
-- [ ] Add clear error message for mixed cart blocking
-- [ ] Add location filter/toggle where appropriate (menu/catalog)
+- [x] Add fulfillment selector behavior tied to valid cart options
+- [x] Add required pickup location selector when pickup is chosen
+- [x] Add clear error message for mixed cart blocking
+- [x] Add location filter/toggle where appropriate (menu/catalog)
 
 ## 4) Admin
 
-- [ ] Product form: fulfillment toggles (`allow_pickup`, `allow_shipping`)
-- [ ] Product form: location availability controls
-- [ ] Locations management (basic edit/configuration UI)
+- [x] Product form: fulfillment toggles (`allow_pickup`, `allow_shipping`)
+- [x] Product form: location availability controls
+- [x] Locations management (basic edit/configuration UI)
 
 ## 5) QA / Tests
 
-- [ ] API tests for fulfillment validation matrix
-- [ ] Checkout integration tests for pickup/shipping paths
-- [ ] Mixed cart blocked test coverage
-- [ ] Location-required validation tests
+- [x] API tests for fulfillment validation matrix
+- [x] Checkout integration tests for pickup/shipping paths
+- [x] Mixed cart blocked test coverage
+- [x] Location-required validation tests
 
 ---
 
@@ -191,15 +253,11 @@ Target output: all items marked `Locked` so Phase 1 can start immediately.
 
 ## In Progress
 
-- [ ] Phase 1 technical spec finalization
+- [ ] PR review and merge
 
 ## Next Up (Ordered)
 
-1. [ ] Implement Phase 1 migrations
-2. [ ] Implement backend validation and `GET /locations`
-3. [ ] Implement checkout/location UX updates
-4. [ ] Implement admin fulfillment/location controls
-5. [ ] Run full QA and prepare PR
+1. [x] Final QA + PR prep
 
 ---
 
