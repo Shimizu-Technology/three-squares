@@ -1,0 +1,188 @@
+{
+  "restaurant": {
+    "name": "Three Squares",
+    "legal_name": "B&G Pacific LLC",
+    "tagline": "Guam-style comfort food",
+    "motto": "Good Food, Good Mood, Good Service",
+    "phone": "(671) 646-2652",
+    "whatsapp": "(671) 864-6656",
+    "email": "sales@bgpacific.com",
+    "website": "bgpacific.com",
+    "address": {
+      "line1": "416 Chalan San Antonio",
+      "city": "Tamuning",
+      "state": "GU",
+      "zip": "96913",
+      "country": "Guam"
+    },
+    "hours": {
+      "monday": "Closed",
+      "tuesday": "8am - 8pm",
+      "wednesday": "8am - 8pm",
+      "thursday": "8am - 8pm",
+      "friday": "8am - 8pm",
+      "saturday": "8am - 8pm",
+      "sunday": "8am - 5pm"
+    },
+    "locations": [
+      {
+        "name": "Three Squares - Chalan San Antonio",
+        "type": "main",
+        "address": "416 Chalan San Antonio, Tamuning, GU 96913"
+      },
+      {
+        "name": "Three Squares @ Donki",
+        "type": "secondary",
+        "address": "Inside Don Quijote, Tamuning",
+        "hours": "10am - 10pm daily"
+      }
+    ]
+  },
+  "categories": [
+    {
+      "id": "breakfast",
+      "name": "Breakfast",
+      "description": "Served 8am - 11am",
+      "items": [
+        {"name": "French Toast, Bacon & Eggs", "price": 12.95, "description": "Classic breakfast plate"},
+        {"name": "Stack O' Cakes", "price": 8.95, "description": "Fluffy pancake stack"},
+        {"name": "French Toast Only", "price": 9.95, "description": "French toast served alone"},
+        {"name": "Waffles", "price": 9.95, "description": "Golden Belgian waffles"},
+        {"name": "Chicken & Waffles", "price": 14.95, "description": "Signature dish - crispy fried chicken with waffles"},
+        {"name": "Loco Moco", "price": 13.95, "description": "Rice, burger patty, fried egg, gravy"},
+        {"name": "Corned Beef Hash", "price": 12.95, "description": "Classic corned beef hash with eggs"}
+      ]
+    },
+    {
+      "id": "starters",
+      "name": "Starters",
+      "description": "Appetizers and small plates",
+      "items": [
+        {"name": "The Local Sampler", "price": 21.95, "description": "Tinala katne, chicken kelaguen, lumpia, titiyas"},
+        {"name": "Tinala Katne Appetizer", "price": 14.50, "description": "Smoked meat Chamorro style"},
+        {"name": "Tinala Katne Fries", "price": 8.95, "description": "Fries topped with tinala katne"},
+        {"name": "Smoked Pork Appetizer", "price": 12.95, "description": "House-smoked pork"},
+        {"name": "Three Squares Nachos", "price": 10.95, "description": "Loaded nachos"},
+        {"name": "Chicken Kelaguen", "price": 9.95, "description": "Traditional Chamorro chicken salad"},
+        {"name": "Fried Lumpia", "price": 4.95, "description": "Filipino-style egg rolls"},
+        {"name": "Soup of the Day", "price": 5.95, "description": "Ask your server"}
+      ]
+    },
+    {
+      "id": "mains",
+      "name": "Main Dishes",
+      "description": "Lunch & Dinner entrees",
+      "items": [
+        {"name": "Three Squares Famous Fried Chicken", "price": 15.95, "description": "Our signature crispy fried chicken - highly praised!", "featured": true},
+        {"name": "Pot Roast", "price": 16.95, "description": "Slow-cooked tender pot roast"},
+        {"name": "Meatloaf", "price": 14.95, "description": "Classic homestyle meatloaf"},
+        {"name": "BBQ Kalbi Shortribs", "price": 18.95, "description": "Korean-style marinated short ribs"},
+        {"name": "Teriyaki Chicken", "price": 14.95, "description": "Grilled chicken with teriyaki glaze"},
+        {"name": "Tinaktak", "price": 14.95, "description": "Chamorro beef with coconut milk"},
+        {"name": "Veggie Tinaktak", "price": 13.95, "description": "Vegetarian version with coconut milk"},
+        {"name": "Estufao", "price": 15.95, "description": "Filipino-style braised meat"},
+        {"name": "Grilled Salmon", "price": 19.95, "description": "Fresh grilled salmon fillet"},
+        {"name": "Teriyaki Salmon", "price": 19.95, "description": "Salmon with teriyaki glaze"},
+        {"name": "Salmon Tinaktak Style", "price": 19.95, "description": "Salmon in coconut milk sauce"},
+        {"name": "Philly Cheese Steak Sandwich", "price": 14.95, "description": "Classic Philly with peppers and onions"},
+        {"name": "Bleu Cheese Burger", "price": 14.95, "description": "Gourmet burger with bleu cheese"},
+        {"name": "Cheeseburger", "price": 12.95, "description": "Classic cheeseburger"}
+      ]
+    },
+    {
+      "id": "desserts",
+      "name": "Desserts",
+      "description": "Sweet endings",
+      "items": [
+        {"name": "Bread Pudding Ala Mode", "price": 8.95, "description": "Warm bread pudding with ice cream"},
+        {"name": "Fried Banana with Ice Cream", "price": 7.95, "description": "Crispy fried banana"},
+        {"name": "Coconut Banana Cake", "price": 7.95, "description": "House specialty - highly praised!"}
+      ]
+    },
+    {
+      "id": "drinks",
+      "name": "Cocktails & Drinks",
+      "description": "Bar menu available",
+      "items": [
+        {"name": "House Cocktails", "price": 10.00, "description": "Seasonal specialty drinks"},
+        {"name": "Draft Beer", "price": 6.00, "description": "Selection of local and imported beers"},
+        {"name": "Calamansi Tea", "price": 0.00, "description": "Complimentary with meal"}
+      ]
+    }
+  ],
+  "catering": {
+    "description": "Full-service catering for corporate, government, and private events",
+    "contact": {
+      "phone": "(671) 646-2652",
+      "whatsapp": "(671) 864-6656",
+      "email": "sales@bgpacific.com"
+    },
+    "categories": [
+      {
+        "id": "platters",
+        "name": "Family Platters",
+        "description": "Perfect for parties and gatherings",
+        "items": [
+          {"name": "BBQ Kalbi Shortribs - Small Platter", "price": 85.00, "serves": "10-15"},
+          {"name": "BBQ Kalbi Shortribs - Large Platter", "price": 150.00, "serves": "20-30"},
+          {"name": "Three Squares Fried Chicken - Small", "price": 65.00, "serves": "10-15"},
+          {"name": "Three Squares Fried Chicken - Large", "price": 120.00, "serves": "20-30"},
+          {"name": "Chicken Kelaguen Platter", "price": 55.00, "serves": "10-15"},
+          {"name": "Tinala Katne Platter", "price": 75.00, "serves": "10-15"},
+          {"name": "Whole Fried Parrot Fish", "price": 95.00, "serves": "10-15"},
+          {"name": "Seafood Kaddo (Soup) - Small", "price": 45.00, "serves": "10-15"}
+        ]
+      },
+      {
+        "id": "bentos",
+        "name": "Bulk Bentos",
+        "description": "Individual boxed meals for meetings and events",
+        "items": [
+          {"name": "Standard Bento", "price": 12.00, "description": "Choice of protein, rice, and sides"},
+          {"name": "Mini Bento", "price": 8.00, "description": "Smaller portion bento box"},
+          {"name": "Breakfast Mini Bento", "price": 8.00, "description": "Morning meeting option"},
+          {"name": "Shrimp Fried Rice Bento", "price": 14.00, "description": "Popular choice"}
+        ]
+      },
+      {
+        "id": "cocktail",
+        "name": "Cocktail Buffet",
+        "description": "For receptions and social events",
+        "items": [
+          {"name": "Kelaguen Poppers", "price": 65.00, "serves": "25 pieces"},
+          {"name": "Charcuterie Board", "price": 85.00, "serves": "10-15"},
+          {"name": "Mini Salad Cups", "price": 45.00, "serves": "25 cups"},
+          {"name": "Assorted Canapes", "price": 75.00, "serves": "30 pieces"}
+        ]
+      },
+      {
+        "id": "special",
+        "name": "Special Items",
+        "description": "Requires 2-3 days notice",
+        "items": [
+          {"name": "Roast Pig Carving", "price": null, "description": "Market price, contact for quote"},
+          {"name": "Shish Kabobs", "price": null, "description": "Custom order"},
+          {"name": "Latiya Cake", "price": 65.00, "description": "Traditional Chamorro dessert"},
+          {"name": "Banana Donuts - Platter", "price": 35.00, "serves": "24 pieces"}
+        ]
+      }
+    ],
+    "services": [
+      "Take-Out / Party Platters",
+      "Lunch & Dinner Buffets",
+      "Bulk Order Bentos",
+      "Private Events at Three Squares",
+      "Corporate Meeting Catering",
+      "Cocktail Buffets"
+    ],
+    "certifications": [
+      "Woman-owned business",
+      "HUBZone certified (eligible for federal contracts)"
+    ]
+  },
+  "latte_stone_cookies": {
+    "name": "Latte Stone Cookies",
+    "email": "sales@lattestonecookies.com",
+    "description": "Specialty cookie product line under B&G Pacific umbrella"
+  }
+}

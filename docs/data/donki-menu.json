@@ -1,0 +1,54 @@
+{
+  "location": "Three Squares @ Donki",
+  "address": "Inside Don Quijote, Tamuning",
+  "hours": "Sun-Sat, 10am-10pm or until sold out",
+  "categories": [
+    {
+      "name": "Main Plates",
+      "items": [
+        {"name": "Three Squares Fried Chicken", "price": 10.95},
+        {"name": "Local Burger & Fries", "price": 13.95},
+        {"name": "Classic Cheeseburger & Fries", "price": 13.95},
+        {"name": "Smoked Pork w/ Coconut Dinanche", "price": 10.95},
+        {"name": "Grilled Teriyaki Chicken", "price": 10.95},
+        {"name": "Ground Beef Tinaktak", "price": 12.95},
+        {"name": "Homemade Meatloaf w/ Gravy", "price": 12.95},
+        {"name": "Fried Parrot Fish Filet", "price": 13.95},
+        {"name": "Seafood Tinaktak", "price": 14.95},
+        {"name": "Bisteak & Onions", "price": 13.95}
+      ]
+    },
+    {
+      "name": "Kids Menu",
+      "items": [
+        {"name": "Kids Cheese Burger & Fries", "price": 7.95},
+        {"name": "Kids Grilled Cheese & Fries", "price": 6.95},
+        {"name": "Kids Spaghetti w/ Meat Sauce", "price": 7.95},
+        {"name": "Kids Teriyaki Chicken w/ Rice", "price": 6.95}
+      ]
+    },
+    {
+      "name": "Grab & Go (By the Pound/Cup)",
+      "items": [
+        {"name": "Champuladu", "price": null, "note": "Priced by weight"},
+        {"name": "Tropical Sago", "price": null, "note": "Priced by weight"},
+        {"name": "Chocolate Coconut Sago", "price": null, "note": "Priced by weight"},
+        {"name": "Broccoli & Crab Salad", "price": null, "note": "Priced by weight"},
+        {"name": "Potato Salad", "price": null, "note": "Priced by weight"},
+        {"name": "Chicken Kelaguen", "price": null, "note": "Priced by weight"}
+      ]
+    },
+    {
+      "name": "Sides & Snacks",
+      "items": [
+        {"name": "Chicken Crunch Tenders", "price": 6.95},
+        {"name": "Fried Banana Cheesecake w/ Ice Cream", "price": 6.95},
+        {"name": "2pc Buchi Buchi", "price": 4.50},
+        {"name": "2pc Empanada", "price": 4.50},
+        {"name": "3pc Fried Pork & Veggie Lumpia", "price": 6.50},
+        {"name": "French Fries", "price": 3.95},
+        {"name": "6pc Fried Corn Titiyas", "price": 1.50}
+      ]
+    }
+  ]
+}
