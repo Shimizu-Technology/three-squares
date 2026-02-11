@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" fill="none">
+  <rect width="400" height="400" fill="#F5F0E8"/>
+  
+  <!-- Three squares pattern -->
+  <g transform="translate(100, 140)">
+    <!-- Square 1 - Orange/Yellow -->
+    <rect x="0" y="0" width="50" height="50" rx="6" fill="#F59E0B"/>
+    <!-- Square 2 - Orange -->
+    <rect x="60" y="0" width="50" height="50" rx="6" fill="#EA580C"/>
+    <!-- Square 3 - Red/Orange -->
+    <rect x="120" y="0" width="50" height="50" rx="6" fill="#DC2626"/>
+  </g>
+  
+  <!-- Text: Three Squares -->
+  <text x="200" y="240" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="600" fill="#374151">
+    Three Squares
+  </text>
+  
+  <!-- Tagline -->
+  <text x="200" y="270" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="14" fill="#6B7280">
+    Good Food • Good Mood • Good Service
+  </text>
+</svg>

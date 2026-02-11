@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_07_034340) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_11_080000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -114,6 +114,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_07_034340) do
     t.index ["session_id", "product_variant_id"], name: "index_cart_items_on_session_and_variant", unique: true, where: "(session_id IS NOT NULL)"
     t.index ["user_id", "product_variant_id"], name: "index_cart_items_on_user_and_variant", unique: true, where: "(user_id IS NOT NULL)"
     t.index ["user_id"], name: "index_cart_items_on_user_id"
+  end
+
+  create_table "catering_inquiries", force: :cascade do |t|
+    t.text "admin_notes"
+    t.string "budget_range"
+    t.string "company_name"
+    t.string "contact_email", null: false
+    t.string "contact_name", null: false
+    t.string "contact_phone"
+    t.datetime "created_at", null: false
+    t.text "dietary_restrictions"
+    t.date "event_date", null: false
+    t.string "event_time"
+    t.string "event_type", null: false
+    t.integer "guest_count", null: false
+    t.text "menu_preferences"
+    t.decimal "quoted_amount", precision: 10, scale: 2
+    t.datetime "quoted_at"
+    t.bigint "responded_by_id"
+    t.text "special_requests"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.text "venue_address"
+    t.index ["event_date"], name: "index_catering_inquiries_on_event_date"
+    t.index ["responded_by_id"], name: "index_catering_inquiries_on_responded_by_id"
+    t.index ["status"], name: "index_catering_inquiries_on_status"
   end
 
   create_table "collections", force: :cascade do |t|
@@ -584,6 +610,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_07_034340) do
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "cart_items", "product_variants"
   add_foreign_key "cart_items", "users"
+  add_foreign_key "catering_inquiries", "users", column: "responded_by_id"
   add_foreign_key "fundraiser_order_items", "fundraiser_orders"
   add_foreign_key "fundraiser_order_items", "fundraiser_product_variants"
   add_foreign_key "fundraiser_orders", "fundraisers"

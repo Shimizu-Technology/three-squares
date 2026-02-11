@@ -6,7 +6,7 @@ import useAppConfig from '../../hooks/useAppConfig';
 // Easy to swap: change the icon, colors, or opacity in one place.
 const PLACEHOLDER_DEFAULTS = {
   bgClass: 'bg-warm-100',
-  logoSrc: '/images/three-squares-logo.svg',
+  logoSrc: '/images/three-squares-placeholder.svg',
   textColor: 'text-warm-400',
   text: '',
 };

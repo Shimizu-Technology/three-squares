@@ -168,6 +168,13 @@ Rails.application.routes.draw do
       resources :products, only: [ :index, :show ]
       resources :collections, only: [ :index, :show ]
 
+      # Catering inquiries
+      resources :catering, only: [ :create ] do
+        collection do
+          get :info
+        end
+      end
+
       # Public fundraiser routes (by slug)
       resources :fundraisers, only: [ :index, :show ], param: :slug do
         scope module: :fundraisers do

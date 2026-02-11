@@ -49,33 +49,33 @@ export default function LocationsPage() {
   return (
     <div className="min-h-screen bg-warm-50">
       {/* Hero Section */}
-      <section className="relative bg-warm-900 text-white py-20 sm:py-28 overflow-hidden">
-        {/* Background Image */}
+      <section className="relative bg-gray-900 text-white py-20 sm:py-28 overflow-hidden">
+        {/* Background Image with stronger overlay */}
         <div className="absolute inset-0">
           <img
             src="/images/catering4.jpg"
             alt=""
-            className="w-full h-full object-cover opacity-40"
+            className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-warm-900/70 via-warm-900/60 to-warm-900/90" />
+          <div className="absolute inset-0 bg-gray-900/70" />
         </div>
 
         {/* Content */}
         <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <FadeIn>
-            <span className="inline-block px-5 py-2 bg-white/10 backdrop-blur-md border border-white/20 text-sm font-semibold rounded-full mb-6 text-white">
+            <span className="inline-block px-5 py-2 bg-white/20 backdrop-blur-sm border border-white/30 text-sm font-semibold rounded-full mb-6 text-white shadow-lg">
               Visit Us Today
             </span>
           </FadeIn>
           
           <FadeIn delay={0.1}>
-            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 tracking-tight">
+            <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 tracking-tight text-white drop-shadow-lg">
               Our Locations
             </h1>
           </FadeIn>
           
           <FadeIn delay={0.2}>
-            <p className="text-lg sm:text-xl text-white/80 max-w-2xl mx-auto leading-relaxed">
+            <p className="text-lg sm:text-xl text-white max-w-2xl mx-auto leading-relaxed drop-shadow-md">
               Find us at two convenient locations on Guam. Stop by for delicious 
               island-style comfort food, or contact us for catering orders.
             </p>
