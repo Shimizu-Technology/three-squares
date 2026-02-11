@@ -1,23 +1,21 @@
 # db/seeds.rb
-# Seed file for Three Squares ordering platform
+# Seed file for Three Squares / B&G Pacific ordering platform
 #
 # This file creates:
-# - Site settings with Three Squares configuration
-# - Menu categories and products
-# - Catering menu items
+# - Site settings with B&G Pacific / Three Squares configuration
+# - Menu categories and products (Restaurant + Cookies + Catering)
+# - Real data from scraped assets
 
 puts "=" * 80
-puts "🍽️  SEEDING THREE SQUARES ORDERING PLATFORM"
+puts "🍽️  SEEDING THREE SQUARES / B&G PACIFIC PLATFORM"
 puts "=" * 80
 puts ""
 
 # ------------------------------------------------------------------------------
-# 1) ADMIN USER (Auto-created on first sign-in)
+# 1) ADMIN USER
 # ------------------------------------------------------------------------------
 puts "1️⃣  Admin user setup..."
 puts "   ℹ️  Admin users are auto-created when signing in with Clerk."
-puts "   ℹ️  To manually grant admin access, run in Rails console:"
-puts "      User.find_by(email: 'user@example.com')&.update!(role: 'admin')"
 puts ""
 
 # ------------------------------------------------------------------------------
@@ -27,61 +25,57 @@ puts "2️⃣  Configuring site settings..."
 
 settings = SiteSetting.instance
 
-# Only update if settings are using defaults (no store_email set)
 if settings.store_email.blank?
   settings.update!(
-    # Store Info
     store_name: "Three Squares",
     store_email: "sales@bgpacific.com",
     store_phone: "+1 (671) 646-2652",
-
-    # Order Notifications (admin emails to receive order alerts)
-    order_notification_emails: [ "sales@bgpacific.com" ],
-
-    # Shipping Origin (for rate calculations - not used for restaurant)
+    order_notification_emails: ["sales@bgpacific.com"],
     shipping_origin_address: {
-      company: "Three Squares",
+      company: "B&G Pacific LLC",
       street1: "416 Chalan San Antonio",
-      street2: "",
       city: "Tamuning",
       state: "GU",
       zip: "96913",
       country: "US",
       phone: "+1 (671) 646-2652"
     },
-
-    # Payment Settings
     payment_test_mode: Rails.env.production? ? false : true,
     payment_processor: "stripe",
-
-    # Email Settings
     send_customer_emails: false
   )
-  puts "   ✓ Site Settings configured with Three Squares defaults"
+  puts "   ✓ Site Settings configured"
 else
-  puts "   ⏭️  Site Settings already configured (skipping)"
+  puts "   ⏭️  Site Settings already configured"
 end
-
-puts "   • Store: #{settings.store_name}"
-puts "   • Email: #{settings.store_email}"
-puts "   • Phone: #{settings.store_phone}"
 puts ""
 
 # ------------------------------------------------------------------------------
-# 3) MENU CATEGORIES (Collections)
+# 3) MENU CATEGORIES
 # ------------------------------------------------------------------------------
 puts "3️⃣  Setting up menu categories..."
 
 categories = [
+  # Three Squares Restaurant Menu
   { name: "Breakfast", slug: "breakfast", description: "Served 8am - 11am", position: 1 },
   { name: "Starters", slug: "starters", description: "Appetizers and small plates", position: 2 },
   { name: "Main Dishes", slug: "mains", description: "Lunch & Dinner entrees", position: 3 },
-  { name: "Desserts", slug: "desserts", description: "Sweet endings", position: 4 },
-  { name: "Drinks", slug: "drinks", description: "Cocktails & beverages", position: 5 },
-  { name: "Catering - Platters", slug: "catering-platters", description: "Family platters for parties", position: 6 },
-  { name: "Catering - Bentos", slug: "catering-bentos", description: "Individual boxed meals", position: 7 },
-  { name: "Catering - Cocktail", slug: "catering-cocktail", description: "For receptions and events", position: 8 },
-  { name: "Catering - Special", slug: "catering-special", description: "Requires 2-3 days notice", position: 9 }
+  { name: "Donki Location", slug: "donki", description: "Three Squares @ Don Quijote menu", position: 4 },
+  { name: "Kids Menu", slug: "kids", description: "For the little ones", position: 5 },
+  { name: "Sides & Snacks", slug: "sides", description: "Add-ons and quick bites", position: 6 },
+  { name: "Desserts", slug: "desserts", description: "Sweet endings", position: 7 },
+  { name: "Drinks", slug: "drinks", description: "Cocktails & beverages", position: 8 },
+  
+  # Latte Stone Cookies
+  { name: "Latte Stone Cookies", slug: "cookies", description: "Premium Guam-made shortbread cookies", position: 9 },
+  { name: "Cookie Gift Boxes", slug: "cookie-boxes", description: "Assortment boxes and tins", position: 10 },
+  { name: "Mini Cookies", slug: "mini-cookies", description: "Bite-sized snacking cookies", position: 11 },
+  
+  # Catering
+  { name: "Catering - Platters", slug: "catering-platters", description: "Family platters for parties", position: 12 },
+  { name: "Catering - Bentos", slug: "catering-bentos", description: "Individual boxed meals", position: 13 },
+  { name: "Catering - Cocktail", slug: "catering-cocktail", description: "For receptions and events", position: 14 },
+  { name: "Catering - Special", slug: "catering-special", description: "Requires 2-3 days notice", position: 15 }
 ]
 
 categories.each do |cat|
@@ -93,29 +87,25 @@ categories.each do |cat|
   end
 end
 
-puts "   ✓ Created #{Collection.count} menu categories"
+puts "   ✓ Created #{Collection.count} categories"
 puts ""
 
 # ------------------------------------------------------------------------------
-# 4) MENU PRODUCTS
+# 4) HELPER METHOD
 # ------------------------------------------------------------------------------
-puts "4️⃣  Seeding menu items..."
-
-# Helper to create products
 def create_product(attrs)
   collection = Collection.find_by(slug: attrs[:collection_slug])
   
   product = Product.find_or_create_by!(slug: attrs[:slug]) do |p|
     p.name = attrs[:name]
     p.description = attrs[:description] || ""
-    p.price_cents = (attrs[:price] * 100).to_i
+    p.price_cents = attrs[:price] ? (attrs[:price] * 100).to_i : 0
     p.featured = attrs[:featured] || false
     p.active = true
-    p.available_for_sale = true
-    p.requires_shipping = false
+    p.available_for_sale = attrs[:price].present? && attrs[:price] > 0
+    p.requires_shipping = attrs[:requires_shipping] || false
   end
   
-  # Associate with collection
   if collection && !product.collections.include?(collection)
     product.collections << collection
   end
@@ -123,7 +113,12 @@ def create_product(attrs)
   product
 end
 
-# BREAKFAST (Served 8am - 11am)
+# ------------------------------------------------------------------------------
+# 5) THREE SQUARES RESTAURANT MENU
+# ------------------------------------------------------------------------------
+puts "4️⃣  Seeding Three Squares restaurant menu..."
+
+# BREAKFAST
 breakfast_items = [
   { name: "French Toast, Bacon & Eggs", slug: "french-toast-bacon-eggs", price: 12.95, description: "Classic breakfast plate", collection_slug: "breakfast" },
   { name: "Stack O' Cakes", slug: "stack-o-cakes", price: 8.95, description: "Fluffy pancake stack", collection_slug: "breakfast" },
@@ -164,11 +159,44 @@ mains_items = [
   { name: "Cheeseburger", slug: "cheeseburger", price: 12.95, description: "Classic cheeseburger", collection_slug: "mains" }
 ]
 
+# DONKI LOCATION MENU (Three Squares @ Don Quijote)
+donki_items = [
+  { name: "Three Squares Fried Chicken", slug: "donki-fried-chicken", price: 10.95, description: "Signature fried chicken plate", collection_slug: "donki", featured: true },
+  { name: "Local Burger & Fries", slug: "donki-local-burger", price: 13.95, description: "Island-style burger with fries", collection_slug: "donki" },
+  { name: "Classic Cheeseburger & Fries", slug: "donki-cheeseburger", price: 13.95, description: "Classic cheeseburger with fries", collection_slug: "donki" },
+  { name: "Smoked Pork w/ Coconut Dinanche", slug: "donki-smoked-pork", price: 10.95, description: "House-smoked pork with traditional sauce", collection_slug: "donki" },
+  { name: "Grilled Teriyaki Chicken", slug: "donki-teriyaki-chicken", price: 10.95, description: "Grilled chicken with teriyaki glaze", collection_slug: "donki" },
+  { name: "Ground Beef Tinaktak", slug: "donki-tinaktak", price: 12.95, description: "Chamorro beef with coconut milk", collection_slug: "donki" },
+  { name: "Homemade Meatloaf w/ Gravy", slug: "donki-meatloaf", price: 12.95, description: "Classic homestyle meatloaf with gravy", collection_slug: "donki" },
+  { name: "Fried Parrot Fish Filet", slug: "donki-parrot-fish", price: 13.95, description: "Local fried fish filet", collection_slug: "donki" },
+  { name: "Seafood Tinaktak", slug: "donki-seafood-tinaktak", price: 14.95, description: "Seafood in coconut milk sauce", collection_slug: "donki" },
+  { name: "Bisteak & Onions", slug: "donki-bisteak", price: 13.95, description: "Grilled steak with caramelized onions", collection_slug: "donki" }
+]
+
+# KIDS MENU
+kids_items = [
+  { name: "Kids Cheese Burger & Fries", slug: "kids-cheeseburger", price: 7.95, description: "Kid-sized cheeseburger with fries", collection_slug: "kids" },
+  { name: "Kids Grilled Cheese & Fries", slug: "kids-grilled-cheese", price: 6.95, description: "Grilled cheese sandwich with fries", collection_slug: "kids" },
+  { name: "Kids Spaghetti w/ Meat Sauce", slug: "kids-spaghetti", price: 7.95, description: "Spaghetti with homemade meat sauce", collection_slug: "kids" },
+  { name: "Kids Teriyaki Chicken w/ Rice", slug: "kids-teriyaki", price: 6.95, description: "Teriyaki chicken with steamed rice", collection_slug: "kids" }
+]
+
+# SIDES & SNACKS
+sides_items = [
+  { name: "Chicken Crunch Tenders", slug: "chicken-tenders", price: 6.95, description: "Crispy chicken tenders", collection_slug: "sides" },
+  { name: "Fried Banana Cheesecake w/ Ice Cream", slug: "fried-banana-cheesecake", price: 6.95, description: "Decadent fried banana cheesecake", collection_slug: "sides" },
+  { name: "2pc Buchi Buchi", slug: "buchi-buchi", price: 4.50, description: "Sweet sesame rice balls", collection_slug: "sides" },
+  { name: "2pc Empanada", slug: "empanada", price: 4.50, description: "Savory meat-filled pastries", collection_slug: "sides" },
+  { name: "3pc Fried Pork & Veggie Lumpia", slug: "lumpia-3pc", price: 6.50, description: "Filipino-style egg rolls", collection_slug: "sides" },
+  { name: "French Fries", slug: "french-fries", price: 3.95, description: "Crispy golden fries", collection_slug: "sides" },
+  { name: "6pc Fried Corn Titiyas", slug: "titiyas", price: 1.50, description: "Traditional Chamorro corn tortillas", collection_slug: "sides" }
+]
+
 # DESSERTS
 desserts_items = [
-  { name: "Bread Pudding Ala Mode", slug: "bread-pudding", price: 8.95, description: "Warm bread pudding with ice cream", collection_slug: "desserts" },
+  { name: "Bread Pudding Ala Mode", slug: "bread-pudding", price: 8.95, description: "Warm bread pudding with ice cream", collection_slug: "desserts", featured: true },
   { name: "Fried Banana with Ice Cream", slug: "fried-banana", price: 7.95, description: "Crispy fried banana", collection_slug: "desserts" },
-  { name: "Coconut Banana Cake", slug: "coconut-banana-cake", price: 7.95, description: "House specialty - highly praised!", collection_slug: "desserts", featured: true }
+  { name: "Coconut Banana Cake", slug: "coconut-banana-cake", price: 7.95, description: "House specialty - highly praised!", collection_slug: "desserts" }
 ]
 
 # DRINKS
@@ -178,91 +206,135 @@ drinks_items = [
   { name: "Calamansi Tea", slug: "calamansi-tea", price: 0.00, description: "Complimentary with meal", collection_slug: "drinks" }
 ]
 
-# CATERING - PLATTERS
-platters_items = [
-  { name: "BBQ Kalbi Shortribs - Small Platter", slug: "catering-kalbi-small", price: 85.00, description: "Serves 10-15", collection_slug: "catering-platters" },
-  { name: "BBQ Kalbi Shortribs - Large Platter", slug: "catering-kalbi-large", price: 150.00, description: "Serves 20-30", collection_slug: "catering-platters" },
-  { name: "Three Squares Fried Chicken - Small", slug: "catering-chicken-small", price: 65.00, description: "Serves 10-15", collection_slug: "catering-platters" },
-  { name: "Three Squares Fried Chicken - Large", slug: "catering-chicken-large", price: 120.00, description: "Serves 20-30", collection_slug: "catering-platters" },
-  { name: "Chicken Kelaguen Platter", slug: "catering-kelaguen-platter", price: 55.00, description: "Serves 10-15", collection_slug: "catering-platters" },
-  { name: "Tinala Katne Platter", slug: "catering-tinala-platter", price: 75.00, description: "Serves 10-15", collection_slug: "catering-platters" },
-  { name: "Whole Fried Parrot Fish", slug: "catering-parrot-fish", price: 95.00, description: "Serves 10-15", collection_slug: "catering-platters" },
-  { name: "Seafood Kaddo (Soup) - Small", slug: "catering-kaddo-small", price: 45.00, description: "Serves 10-15", collection_slug: "catering-platters" }
+restaurant_items = breakfast_items + starters_items + mains_items + donki_items + 
+                   kids_items + sides_items + desserts_items + drinks_items
+restaurant_items.each { |item| create_product(item) }
+
+puts "   ✓ Created #{restaurant_items.count} restaurant menu items"
+
+# ------------------------------------------------------------------------------
+# 6) LATTE STONE COOKIES
+# ------------------------------------------------------------------------------
+puts "5️⃣  Seeding Latte Stone Cookies products..."
+
+# Gift Boxes & Tins
+cookie_boxes = [
+  { name: "30pc Grand Assortment", slug: "cookies-30pc-grand", price: 37.50, description: "30 individually wrapped cookies - vanilla, chocolate, coconut, mango, pineapple, passionfruit varieties with chocolate dipping", collection_slug: "cookie-boxes", featured: true, requires_shipping: true },
+  { name: "20pc Classic Assortment Latte Stone Shape Tin", slug: "cookies-20pc-tin", price: 31.50, description: "20 individually wrapped shortbread cookies in collectible latte stone shape tin", collection_slug: "cookie-boxes", requires_shipping: true },
+  { name: "9pc Classic Assortment Latte Stone Shape Tin", slug: "cookies-9pc-tin", price: 22.50, description: "9 individually wrapped shortbread cookies in collectible tin", collection_slug: "cookie-boxes", requires_shipping: true },
+  { name: "12pc Grand Assortment", slug: "cookies-12pc-grand", price: 17.00, description: "12 individually wrapped cookies - 1 of each flavor variety", collection_slug: "cookie-boxes", requires_shipping: true },
+  { name: "8pc Fruit Assortment", slug: "cookies-8pc-fruit", price: 14.00, description: "8 individually wrapped fruit-flavored cookies - pineapple, passionfruit, coconut, mango", collection_slug: "cookie-boxes", requires_shipping: true },
+  { name: "6pc Chocolate Dipped Assortment", slug: "cookies-6pc-dipped", price: 11.00, description: "6 individually wrapped chocolate-dipped shortbread cookies", collection_slug: "cookie-boxes", requires_shipping: true },
+  { name: "3pc Chocolate Dipped Assortment", slug: "cookies-3pc-dipped", price: 5.50, description: "3 individually wrapped chocolate-dipped shortbread cookies - perfect gift", collection_slug: "cookie-boxes", requires_shipping: true },
+  { name: "Premium Latte Stone Cookie Box (16pc)", slug: "cookies-16pc-premium", price: 21.99, description: "16 individually wrapped latte stone shortbread cookies - 4 of each flavor", collection_slug: "cookie-boxes", featured: true, requires_shipping: true },
+  { name: "Medium Latte Stone Cookie Box (10pc)", slug: "cookies-10pc-medium", price: 12.99, description: "10 individually wrapped latte stone shortbread cookies", collection_slug: "cookie-boxes", requires_shipping: true },
+  { name: "Small Latte Stone Cookie Box (6pc)", slug: "cookies-6pc-small", price: 9.99, description: "6 individually wrapped latte stone shortbread cookies", collection_slug: "cookie-boxes", requires_shipping: true },
+  { name: "Latte Stone Cookies Box (2pc)", slug: "cookies-2pc-box", price: 2.99, description: "1 vanilla + 1 chocolate latte stone shortbread cookie", collection_slug: "cookie-boxes", requires_shipping: true },
+  { name: "10pc Holiday Box", slug: "cookies-10pc-holiday", price: 11.99, description: "Seasonal holiday gift box", collection_slug: "cookie-boxes", requires_shipping: true }
 ]
 
-# CATERING - BENTOS
+# Individual Cookie Flavors
+cookie_flavors = [
+  { name: "Passion Fruit Latte Stone Cookies (6pc)", slug: "passion-fruit-6pc", price: 8.99, description: "6 individually wrapped passion fruit shortbread cookies", collection_slug: "cookies", requires_shipping: true },
+  { name: "Passion Fruit Latte Stone Cookies (10pc)", slug: "passion-fruit-10pc", price: 11.99, description: "10 individually wrapped passion fruit shortbread cookies", collection_slug: "cookies", requires_shipping: true },
+  { name: "Pineapple Latte Stone Cookies (6pc)", slug: "pineapple-6pc", price: 8.99, description: "6 individually wrapped pineapple shortbread cookies", collection_slug: "cookies", requires_shipping: true },
+  { name: "Pineapple Latte Stone Cookies (10pc)", slug: "pineapple-10pc", price: 11.99, description: "10 individually wrapped pineapple shortbread cookies", collection_slug: "cookies", requires_shipping: true },
+  { name: "Mango Latte Stone Cookies (6pc)", slug: "mango-6pc", price: 8.99, description: "6 individually wrapped mango shortbread cookies", collection_slug: "cookies", requires_shipping: true },
+  { name: "Mango Latte Stone Cookies (10pc)", slug: "mango-10pc", price: 11.99, description: "10 individually wrapped mango shortbread cookies", collection_slug: "cookies", requires_shipping: true },
+  { name: "Coconut Latte Stone Cookies (10pc)", slug: "coconut-10pc", price: 12.99, description: "5 milk chocolate dipped + 5 plain coconut shortbread", collection_slug: "cookies", requires_shipping: true },
+  { name: "Sling Stone Cookies (8pc)", slug: "slingstone-8pc", price: 9.99, description: "8 chocolate chip cookies with macadamia nuts and coconut flakes", collection_slug: "cookies", requires_shipping: true },
+  { name: "Sling Stone Cookies (12pc)", slug: "slingstone-12pc", price: 13.99, description: "12 chocolate chip cookies with macadamia nuts and coconut flakes", collection_slug: "cookies", requires_shipping: true }
+]
+
+# Mini Cookies (Snacking)
+mini_cookies = [
+  { name: "Mini Pineapple Latte Stone Cookies", slug: "mini-pineapple", price: 5.50, description: "Crispy, bite-sized pineapple shortbread cookies - tropical snacking", collection_slug: "mini-cookies", requires_shipping: true },
+  { name: "Mini Coconut Latte Stone Cookies", slug: "mini-coconut", price: 5.50, description: "Crispy, bite-sized coconut shortbread cookies - taste of the islands", collection_slug: "mini-cookies", requires_shipping: true },
+  { name: "Mini Mango Latte Stone Cookies", slug: "mini-mango", price: 5.50, description: "Crispy, bite-sized mango shortbread cookies - summer flavor", collection_slug: "mini-cookies", requires_shipping: true },
+  { name: "Classic Mini Latte Stone Cookies", slug: "mini-classic", price: 5.99, description: "Bite-sized vanilla and chocolate shortbread with chocolate drizzle", collection_slug: "mini-cookies", requires_shipping: true },
+  { name: "Mini Chocolate Chip Cookies", slug: "mini-chocolate-chip", price: 5.99, description: "Classic mini chocolate chip cookies - perfect for snacking", collection_slug: "mini-cookies", requires_shipping: true },
+  { name: "Mini Slingstone Cookies", slug: "mini-slingstone", price: 6.49, description: "Bite-sized macadamia, coconut, and chocolate chip cookies", collection_slug: "mini-cookies", requires_shipping: true }
+]
+
+cookie_items = cookie_boxes + cookie_flavors + mini_cookies
+cookie_items.each { |item| create_product(item) }
+
+puts "   ✓ Created #{cookie_items.count} Latte Stone Cookies products"
+
+# ------------------------------------------------------------------------------
+# 7) CATERING MENU
+# ------------------------------------------------------------------------------
+puts "6️⃣  Seeding catering menu..."
+
+# PLATTERS
+platters_items = [
+  { name: "BBQ Kalbi Shortribs - Small Platter", slug: "catering-kalbi-small", price: 85.00, description: "Serves 10-15 guests", collection_slug: "catering-platters" },
+  { name: "BBQ Kalbi Shortribs - Large Platter", slug: "catering-kalbi-large", price: 150.00, description: "Serves 20-30 guests", collection_slug: "catering-platters" },
+  { name: "Three Squares Fried Chicken - Small", slug: "catering-chicken-small", price: 65.00, description: "Serves 10-15 guests", collection_slug: "catering-platters" },
+  { name: "Three Squares Fried Chicken - Large", slug: "catering-chicken-large", price: 120.00, description: "Serves 20-30 guests", collection_slug: "catering-platters" },
+  { name: "Chicken Kelaguen Platter", slug: "catering-kelaguen-platter", price: 55.00, description: "Serves 10-15 guests", collection_slug: "catering-platters" },
+  { name: "Tinala Katne Platter", slug: "catering-tinala-platter", price: 75.00, description: "Serves 10-15 guests", collection_slug: "catering-platters" },
+  { name: "Whole Fried Parrot Fish", slug: "catering-parrot-fish", price: 95.00, description: "Serves 10-15 guests", collection_slug: "catering-platters" },
+  { name: "Seafood Kaddo (Soup) - Small", slug: "catering-kaddo-small", price: 45.00, description: "Serves 10-15 guests", collection_slug: "catering-platters" }
+]
+
+# BENTOS
 bentos_items = [
   { name: "Standard Bento", slug: "catering-bento-standard", price: 12.00, description: "Choice of protein, rice, and sides", collection_slug: "catering-bentos" },
   { name: "Mini Bento", slug: "catering-bento-mini", price: 8.00, description: "Smaller portion bento box", collection_slug: "catering-bentos" },
   { name: "Breakfast Mini Bento", slug: "catering-bento-breakfast", price: 8.00, description: "Morning meeting option", collection_slug: "catering-bentos" },
-  { name: "Shrimp Fried Rice Bento", slug: "catering-bento-shrimp", price: 14.00, description: "Popular choice", collection_slug: "catering-bentos", featured: true }
+  { name: "Shrimp Fried Rice Bento", slug: "catering-bento-shrimp", price: 14.00, description: "Popular choice for events", collection_slug: "catering-bentos", featured: true }
 ]
 
-# CATERING - COCKTAIL
+# COCKTAIL BUFFET
 cocktail_items = [
-  { name: "Kelaguen Poppers", slug: "catering-poppers", price: 65.00, description: "25 pieces", collection_slug: "catering-cocktail" },
-  { name: "Charcuterie Board", slug: "catering-charcuterie", price: 85.00, description: "Serves 10-15", collection_slug: "catering-cocktail" },
+  { name: "Kelaguen Poppers", slug: "catering-poppers", price: 65.00, description: "25 pieces - perfect for cocktail hour", collection_slug: "catering-cocktail" },
+  { name: "Charcuterie Board", slug: "catering-charcuterie", price: 85.00, description: "Serves 10-15 guests", collection_slug: "catering-cocktail" },
   { name: "Mini Salad Cups", slug: "catering-salad-cups", price: 45.00, description: "25 cups", collection_slug: "catering-cocktail" },
   { name: "Assorted Canapes", slug: "catering-canapes", price: 75.00, description: "30 pieces", collection_slug: "catering-cocktail" }
 ]
 
-# CATERING - SPECIAL (2-3 days notice)
+# SPECIAL ITEMS
 special_items = [
-  { name: "Latiya Cake", slug: "catering-latiya", price: 65.00, description: "Traditional Chamorro dessert", collection_slug: "catering-special" },
-  { name: "Banana Donuts - Platter", slug: "catering-banana-donuts", price: 35.00, description: "24 pieces", collection_slug: "catering-special" }
+  { name: "Latiya Cake", slug: "catering-latiya", price: 65.00, description: "Traditional Chamorro dessert - requires 2-3 days notice", collection_slug: "catering-special" },
+  { name: "Banana Donuts - Platter", slug: "catering-banana-donuts", price: 35.00, description: "24 pieces - requires 2-3 days notice", collection_slug: "catering-special" },
+  { name: "Roast Pig Carving", slug: "catering-roast-pig", price: 0.00, description: "Market price - contact for quote", collection_slug: "catering-special" },
+  { name: "Shish Kabobs", slug: "catering-shish-kabobs", price: 0.00, description: "Custom order - contact for quote", collection_slug: "catering-special" }
 ]
 
-all_items = breakfast_items + starters_items + mains_items + desserts_items + drinks_items + 
-            platters_items + bentos_items + cocktail_items + special_items
+catering_items = platters_items + bentos_items + cocktail_items + special_items
+catering_items.each { |item| create_product(item) }
 
-all_items.each { |item| create_product(item) }
-
-puts "   ✓ Created #{Product.count} menu items"
-puts ""
+puts "   ✓ Created #{catering_items.count} catering menu items"
 
 # ------------------------------------------------------------------------------
-# 5) HOMEPAGE SECTIONS
+# 8) HOMEPAGE SECTIONS
 # ------------------------------------------------------------------------------
-puts "5️⃣  Setting up homepage sections..."
+puts "7️⃣  Setting up homepage sections..."
 
 if HomepageSection.count == 0
-  # Hero Section
   HomepageSection.create!(
     section_type: "hero",
     position: 0,
     active: true,
     title: "Three Squares",
-    subtitle: "Good Food, Good Mood, Good Service — Guam-style comfort food & catering",
-    button_text: "Order Now",
+    subtitle: "Good Food, Good Mood, Good Service — Guam-style comfort food & catering by B&G Pacific",
+    button_text: "View Menu",
     button_link: "/products",
-    background_image_url: "/images/three-squares-hero.jpg",
+    background_image_url: "/images/plated1.jpg",
     settings: {
       "overlay_opacity" => 0.4,
       "text_alignment" => "center",
       "badge_text" => "B&G Pacific LLC",
-      "secondary_button_text" => "View Catering Menu",
+      "secondary_button_text" => "Order Catering",
       "secondary_button_link" => "/catering"
     }
   )
 
-  # Category Cards
   [
-    {
-      title: "Restaurant Menu",
-      subtitle: "Breakfast, lunch, and dinner favorites",
-      button_text: "View Menu",
-      button_link: "/products",
-      image_url: "/images/three-squares-menu.jpg",
-      position: 0
-    },
-    {
-      title: "Catering Services",
-      subtitle: "Platters, bentos, and cocktail buffets",
-      button_text: "Order Catering",
-      button_link: "/catering",
-      image_url: "/images/three-squares-catering.jpg",
-      position: 1
-    }
+    { title: "Restaurant Menu", subtitle: "Breakfast, lunch, and dinner favorites", button_text: "View Menu", button_link: "/products", image_url: "/images/Cheeseburger.jpg", position: 0 },
+    { title: "Latte Stone Cookies", subtitle: "Premium Guam-made shortbread cookies", button_text: "Shop Cookies", button_link: "/products?collection=cookies", image_url: "/images/latte-stone-cookies/30.png", position: 1 },
+    { title: "Catering Services", subtitle: "Corporate, government & private events", button_text: "Order Catering", button_link: "/catering", image_url: "/images/catering4.jpg", position: 2 }
   ].each do |card|
     HomepageSection.create!(
       section_type: "category_card",
@@ -278,38 +350,31 @@ if HomepageSection.count == 0
 
   puts "   ✓ Created #{HomepageSection.count} homepage sections"
 else
-  puts "   ⏭️  Homepage sections already exist (#{HomepageSection.count} sections)"
+  puts "   ⏭️  Homepage sections already exist"
 end
 puts ""
-
-# ------------------------------------------------------------------------------
-# 6) INSTRUCTIONS
-# ------------------------------------------------------------------------------
-puts "6️⃣  Next steps:"
-puts ""
-puts "   💡 To add product images, use the Admin dashboard:"
-puts "      1. Sign in with Clerk"
-puts "      2. Go to Admin > Products"
-puts "      3. Edit each product and upload images"
-puts ""
-if settings.payment_test_mode?
-  puts "   ⚠️  Payment is in TEST MODE - no real charges will be made"
-  puts "      To enable real payments, update payment_test_mode in Admin > Settings"
-  puts ""
-end
 
 # ------------------------------------------------------------------------------
 # SUMMARY
 # ------------------------------------------------------------------------------
+total_products = Product.count
 puts "=" * 80
 puts "✅ SEED COMPLETE"
 puts "=" * 80
 puts ""
 puts "📊 Summary:"
-puts "   • Store: Three Squares"
+puts "   • Store: Three Squares (B&G Pacific LLC)"
 puts "   • Categories: #{Collection.count}"
-puts "   • Menu Items: #{Product.count}"
+puts "   • Total Products: #{total_products}"
+puts "     - Restaurant Menu: #{restaurant_items.count}"
+puts "     - Latte Stone Cookies: #{cookie_items.count}"
+puts "     - Catering: #{catering_items.count}"
 puts "   • Homepage Sections: #{HomepageSection.count}"
+puts ""
+puts "📞 Contact:"
+puts "   • Phone: (671) 646-2652"
+puts "   • WhatsApp: (671) 864-6656"
+puts "   • Email: sales@bgpacific.com"
 puts ""
 puts "🍽️  Ready to serve!"
 puts "=" * 80
