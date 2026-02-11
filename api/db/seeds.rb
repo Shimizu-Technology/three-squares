@@ -82,8 +82,8 @@ categories.each do |cat|
   Collection.find_or_create_by!(slug: cat[:slug]) do |c|
     c.name = cat[:name]
     c.description = cat[:description]
-    c.position = cat[:position]
-    c.active = true
+    c.sort_order = cat[:position]
+    c.published = true
   end
 end
 
@@ -99,11 +99,10 @@ def create_product(attrs)
   product = Product.find_or_create_by!(slug: attrs[:slug]) do |p|
     p.name = attrs[:name]
     p.description = attrs[:description] || ""
-    p.price_cents = attrs[:price] ? (attrs[:price] * 100).to_i : 0
+    p.base_price_cents = attrs[:price] ? (attrs[:price] * 100).to_i : 0
     p.featured = attrs[:featured] || false
-    p.active = true
-    p.available_for_sale = attrs[:price].present? && attrs[:price] > 0
-    p.requires_shipping = attrs[:requires_shipping] || false
+    p.published = true
+    p.product_type = attrs[:requires_shipping] ? "shippable" : "local"
   end
   
   if collection && !product.collections.include?(collection)
