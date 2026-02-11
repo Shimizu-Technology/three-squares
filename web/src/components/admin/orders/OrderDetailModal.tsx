@@ -91,7 +91,8 @@ export default function OrderDetailModal({
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 text-3xl leading-none print-hide"
+            className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-gray-400 hover:text-gray-600 text-3xl leading-none rounded-lg hover:bg-gray-100 transition print-hide"
+            aria-label="Close order details"
           >
             &times;
           </button>
@@ -430,9 +431,12 @@ export default function OrderDetailModal({
             <button
               type="button"
               onClick={() => window.open(`mailto:${order.customer_email}`, '_blank')}
-              className="flex-1 min-w-[140px] px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium"
+              className="flex-1 min-w-[140px] px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium inline-flex items-center justify-center gap-2"
             >
-              \u2709\uFE0F Email Customer
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8.25l7.485 4.99a2.75 2.75 0 003.03 0L21 8.25M4.5 6.75h15A1.5 1.5 0 0121 8.25v7.5a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 15.75v-7.5a1.5 1.5 0 011.5-1.5z" />
+              </svg>
+              Email Customer
             </button>
             {order.payment_status === 'paid' && (
               <button

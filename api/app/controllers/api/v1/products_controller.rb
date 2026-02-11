@@ -1,6 +1,7 @@
 module Api
   module V1
     class ProductsController < ApplicationController
+      COOKIE_COLLECTION_SLUGS = %w[cookies cookie-boxes mini-cookies].freeze
       before_action :set_product, only: [ :show ]
 
       # GET /api/v1/products
@@ -13,6 +14,10 @@ module Api
 
         # Filters
         @products = @products.where(product_type: params[:product_type]) if params[:product_type].present?
+
+        if params[:business_line].present?
+          @products = apply_business_line_filter(@products, params[:business_line].to_s)
+        end
 
         # Collection filter - support both ID and slug
         if params[:collection].present?
@@ -191,6 +196,24 @@ module Api
           position: image.position,
           primary: image.primary
         }
+      end
+
+      def apply_business_line_filter(relation, business_line)
+        case business_line
+        when "latte_stone"
+          relation.joins(:collections).where(collections: { slug: COOKIE_COLLECTION_SLUGS }).distinct
+        when "catering"
+          relation.joins(:collections).where("collections.slug LIKE ?", "catering-%").distinct
+        when "three_squares"
+          excluded_ids = Product
+            .joins(:collections)
+            .where("collections.slug IN (?) OR collections.slug LIKE ?", COOKIE_COLLECTION_SLUGS, "catering-%")
+            .select(:id)
+
+          relation.where.not(id: excluded_ids)
+        else
+          relation
+        end
       end
     end
   end

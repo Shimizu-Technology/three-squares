@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { useCartStore } from '../store/cartStore';
@@ -22,6 +22,8 @@ function CheckoutForm() {
   // Get items from cart (with fallback to empty array)
   const items = cart?.items || [];
   const subtotalCents = cart?.subtotal_cents || 0; // Use cents directly from cart
+  const cartSupportsShipping = items.length > 0 && items.every((item) => item.product.allow_shipping === true);
+  const cartSupportsPickup = items.length > 0 && items.every((item) => item.product.allow_pickup === true);
   
   // App config
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
@@ -66,6 +68,21 @@ function CheckoutForm() {
   
   const isTestMode = appConfig?.app_mode === 'test';
 
+  // Compatible pickup locations = intersection of available_location_ids across all cart items.
+  const compatiblePickupLocationIds = useMemo(() => {
+    if (items.length === 0) return [];
+    const itemLocationSets = items
+      .map((item) => item.product.available_location_ids || [])
+      .filter((ids) => ids.length > 0);
+    if (itemLocationSets.length === 0) return [];
+    return itemLocationSets.reduce((intersection, ids) => intersection.filter((id) => ids.includes(id)));
+  }, [items]);
+
+  const compatiblePickupLocations = useMemo(
+    () => pickupLocations.filter((location) => compatiblePickupLocationIds.includes(location.id)),
+    [pickupLocations, compatiblePickupLocationIds]
+  );
+
   // Load app config
   useEffect(() => {
     const loadConfig = async () => {
@@ -98,9 +115,45 @@ function CheckoutForm() {
       navigate('/products');
     }
   }, [cartLoading, cart, items.length, navigate, configLoading]);
+
+  // Keep delivery method aligned with cart fulfillment capabilities
+  useEffect(() => {
+    if (items.length === 0) return;
+
+    if (!cartSupportsShipping && deliveryMethod === 'shipping' && cartSupportsPickup) {
+      setDeliveryMethod('pickup');
+      setShippingMethod(null);
+      setAvailableShippingRates([]);
+      return;
+    }
+
+    if (!cartSupportsPickup && deliveryMethod === 'pickup' && cartSupportsShipping) {
+      setDeliveryMethod('shipping');
+      return;
+    }
+  }, [items.length, cartSupportsShipping, cartSupportsPickup, deliveryMethod]);
+
+  useEffect(() => {
+    if (deliveryMethod !== 'pickup') return;
+    if (compatiblePickupLocations.length === 0) {
+      setPickupLocationId(null);
+      return;
+    }
+
+    const hasValidCurrentLocation =
+      pickupLocationId !== null && compatiblePickupLocationIds.includes(pickupLocationId);
+    if (!hasValidCurrentLocation) {
+      setPickupLocationId(compatiblePickupLocations[0].id);
+    }
+  }, [deliveryMethod, pickupLocationId, compatiblePickupLocationIds, compatiblePickupLocations]);
   
   // Calculate shipping rates
   const handleCalculateShipping = async () => {
+    if (!cartSupportsShipping) {
+      setShippingError('Shipping is not available for all items in your cart.');
+      return;
+    }
+
     if (!shippingAddress.street1 || !shippingAddress.city || !shippingAddress.state || !shippingAddress.zip) {
       setShippingError('Please fill out all required shipping address fields');
       return;
@@ -148,9 +201,13 @@ function CheckoutForm() {
     const hasContactInfo = name.trim() !== '' && email.trim() !== '' && phone.trim() !== '';
     
     if (deliveryMethod === 'pickup') {
+      if (!cartSupportsPickup) return false;
+      if (compatiblePickupLocations.length === 0) return false;
       return hasContactInfo && pickupLocationId !== null && (isTestMode || paymentReady);
     }
     
+    if (!cartSupportsShipping) return false;
+
     // For shipping, need address and shipping method selected
     const hasAddress = 
       shippingAddress.street1.trim() !== '' &&
@@ -186,6 +243,22 @@ function CheckoutForm() {
       }
       
       // Build shipping data
+      if (deliveryMethod === 'shipping' && !cartSupportsShipping) {
+        setError('Shipping is not available for all items in your cart.');
+        setLoading(false);
+        return;
+      }
+      if (deliveryMethod === 'pickup' && !cartSupportsPickup) {
+        setError('Pickup is not available for all items in your cart.');
+        setLoading(false);
+        return;
+      }
+      if (deliveryMethod === 'pickup' && compatiblePickupLocations.length === 0) {
+        setError('Your cart items are not available at a common pickup location. Please update your cart.');
+        setLoading(false);
+        return;
+      }
+
       const shippingCostCents = deliveryMethod === 'pickup' ? 0 : (shippingMethod?.rate_cents || 0);
       let orderShippingAddress;
       let orderShippingMethod;
@@ -293,7 +366,7 @@ function CheckoutForm() {
     } catch (err: unknown) {
       console.error('Checkout error:', err);
       const axiosErr = err as { response?: { data?: { error?: string; issues?: Array<{ message: string }> } } };
-      if (axiosErr.response?.data?.error === 'Cart validation failed' && axiosErr.response?.data?.issues) {
+      if (axiosErr.response?.data?.issues && axiosErr.response.data.issues.length > 0) {
         const issues = axiosErr.response.data.issues;
         const errorMessages = issues.map((issue) => `• ${issue.message}`).join('\n');
         setError(`Unable to complete order:\n${errorMessages}`);
@@ -420,7 +493,8 @@ function CheckoutForm() {
                   </div>
                   <h2 className="text-xl font-bold text-gray-900">Delivery Method</h2>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className={`grid grid-cols-1 ${cartSupportsShipping && cartSupportsPickup ? 'sm:grid-cols-2' : ''} gap-4`}>
+                  {cartSupportsShipping && (
                   <button
                     type="button"
                     onClick={() => {
@@ -444,7 +518,9 @@ function CheckoutForm() {
                       </svg>
                     </div>
                   </button>
+                  )}
                   
+                  {cartSupportsPickup && (
                   <button
                     type="button"
                     onClick={() => {
@@ -467,10 +543,26 @@ function CheckoutForm() {
                       </svg>
                     </div>
                   </button>
+                  )}
                 </div>
+                {!cartSupportsShipping && cartSupportsPickup && (
+                  <p className="mt-3 text-sm text-amber-700">
+                    Your cart contains pickup-only items. Shipping is unavailable.
+                  </p>
+                )}
+                {cartSupportsShipping && !cartSupportsPickup && (
+                  <p className="mt-3 text-sm text-amber-700">
+                    Your cart contains shipping-only items. Pickup is unavailable.
+                  </p>
+                )}
+                {!cartSupportsShipping && !cartSupportsPickup && (
+                  <p className="mt-3 text-sm text-red-700">
+                    Your cart items do not share a valid fulfillment method. Please review your cart.
+                  </p>
+                )}
                 
                 <AnimatePresence mode="wait">
-                  {deliveryMethod === 'pickup' && (
+                  {deliveryMethod === 'pickup' && cartSupportsPickup && (
                     <motion.div
                       key="pickup-info"
                       initial={{ opacity: 0, height: 0 }}
@@ -490,15 +582,20 @@ function CheckoutForm() {
                           className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm text-blue-900 focus:outline-none focus:ring-2 focus:ring-tsPrimary"
                         >
                           <option value="" disabled>Select a location</option>
-                          {pickupLocations.map((location) => (
+                          {compatiblePickupLocations.map((location) => (
                             <option key={location.id} value={location.id}>
                               {location.name}
                             </option>
                           ))}
                         </select>
+                        {compatiblePickupLocations.length === 0 && (
+                          <p className="text-sm text-red-700 mt-2">
+                            No pickup location can fulfill all items in this cart. Remove incompatible items to continue.
+                          </p>
+                        )}
                         {pickupLocationId && (
                           <p className="text-sm text-blue-800 mt-3">
-                            {(pickupLocations.find((location) => location.id === pickupLocationId)?.address) || appConfig?.store_info?.name}
+                            {(compatiblePickupLocations.find((location) => location.id === pickupLocationId)?.address) || appConfig?.store_info?.name}
                           </p>
                         )}
                         <p className="text-sm text-blue-700 mt-2">
@@ -512,7 +609,7 @@ function CheckoutForm() {
               
               {/* Shipping Address - Only show if shipping selected */}
               <AnimatePresence mode="wait">
-              {deliveryMethod === 'shipping' && (
+              {deliveryMethod === 'shipping' && cartSupportsShipping && (
                 <motion.div
                   key="shipping-form"
                   initial={{ opacity: 0, y: -10 }}
@@ -751,7 +848,7 @@ function CheckoutForm() {
           
           {/* Right Column - Order Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 sticky top-24">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 lg:sticky lg:top-24">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Order Summary</h2>
               
               {/* Items */}

@@ -3,6 +3,8 @@
 module Api
   module V1
     class OrdersController < ApplicationController
+      COOKIE_COLLECTION_SLUGS = %w[cookies cookie-boxes mini-cookies].freeze
+
       rescue_from ActionController::ParameterMissing do |e|
         render json: { error: "Missing required parameter: #{e.param}. Wrap your request body in an '#{e.param}' key." }, status: :bad_request
       end
@@ -50,7 +52,7 @@ module Api
         per_page = (params[:per_page] || 25).to_i
 
         # Base query
-        orders_query = Order.includes(:order_items, :user).order(created_at: :desc)
+        orders_query = Order.includes(order_items: { product_variant: { product: :collections } }, user: []).order(created_at: :desc)
 
         # Filters
         if params[:status].present?
@@ -63,6 +65,18 @@ module Api
 
         if params[:order_type].present?
           orders_query = orders_query.where(order_type: params[:order_type])
+        end
+
+        if params[:fulfillment_type].present?
+          orders_query = orders_query.where(fulfillment_type: params[:fulfillment_type])
+        end
+
+        if params[:location_id].present?
+          orders_query = orders_query.where(location_id: params[:location_id].to_i)
+        end
+
+        if params[:business_line].present?
+          orders_query = apply_business_line_filter(orders_query, params[:business_line].to_s)
         end
 
         # Search by order number, email, or name
@@ -247,15 +261,14 @@ module Api
       private
 
       def get_cart_items
-        if current_user
-          # First, merge any session cart items to the user
-          merge_session_cart_to_user
-          current_user.cart_items.includes(product_variant: { product: [ :product_images, :product_locations ] })
-        else
-          session_id = request.headers["X-Session-ID"] || request.cookies["session_id"]
-          return [] if session_id.blank?
-          CartItem.where(session_id: session_id).includes(product_variant: { product: [ :product_images, :product_locations ] })
+        session_id = request.headers["X-Session-ID"] || request.cookies["session_id"]
+        if session_id.present?
+          return CartItem.where(session_id: session_id).includes(product_variant: { product: [ :product_images, :product_locations ] })
         end
+
+        return [] unless current_user
+
+        current_user.cart_items.includes(product_variant: { product: [ :product_images, :product_locations ] })
       end
 
       # Merge session-based cart items to the logged-in user
@@ -474,6 +487,7 @@ module Api
           status: order.status,
           payment_status: order.payment_status,
           order_type: order.order_type,
+          business_line: infer_business_line(order),
           fulfillment_type: order.fulfillment_type,
           location: order.location ? { id: order.location.id, name: order.location.name, slug: order.location.slug } : nil,
           customer_name: order.name,
@@ -533,6 +547,7 @@ module Api
           status_display: order.status&.titleize,
           payment_status: order.payment_status,
           order_type: order.order_type,
+          business_line: infer_business_line(order),
           fulfillment_type: order.fulfillment_type,
           location: order.location ? { id: order.location.id, name: order.location.name, slug: order.location.slug } : nil,
           customer_name: order.name,
@@ -701,6 +716,7 @@ module Api
           status: order.status,
           status_display: order.status&.titleize,
           order_type: order.order_type,
+          business_line: infer_business_line(order),
           fulfillment_type: order.fulfillment_type,
           order_type_display: order.order_type.titleize,
           total_cents: order.total_cents,
@@ -738,6 +754,43 @@ module Api
         return nil if value.blank?
 
         value.to_i
+      end
+
+      def apply_business_line_filter(relation, business_line)
+        case business_line
+        when "catering"
+          relation.where(order_type: "wholesale")
+        when "acai"
+          relation.where(order_type: "acai")
+        when "latte_stone"
+          relation
+            .where(order_type: "retail")
+            .joins(order_items: { product_variant: { product: :collections } })
+            .where(collections: { slug: COOKIE_COLLECTION_SLUGS })
+            .distinct
+        when "three_squares"
+          latte_stone_order_ids = Order
+            .where(order_type: "retail")
+            .joins(order_items: { product_variant: { product: :collections } })
+            .where(collections: { slug: COOKIE_COLLECTION_SLUGS })
+            .select(:id)
+
+          relation.where(order_type: "retail").where.not(id: latte_stone_order_ids)
+        else
+          relation
+        end
+      end
+
+      def infer_business_line(order)
+        return "catering" if order.order_type == "wholesale"
+        return "acai" if order.order_type == "acai"
+        return "three_squares" unless order.order_type == "retail"
+
+        is_latte = order.order_items.any? do |item|
+          item.product&.collections&.any? { |collection| COOKIE_COLLECTION_SLUGS.include?(collection.slug) }
+        end
+
+        is_latte ? "latte_stone" : "three_squares"
       end
     end
   end

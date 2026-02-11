@@ -59,6 +59,30 @@ const defaultCategoryCards: Array<{
   }
 ];
 
+const storefrontCards = [
+  {
+    title: 'Three Squares',
+    subtitle: 'Daily comfort food plates and local favorites for pickup.',
+    cta: 'Shop Three Squares',
+    to: '/shop/three-squares',
+    image_url: '/images/Cheeseburger.jpg',
+  },
+  {
+    title: 'Latte Stone Cookies',
+    subtitle: 'Gift-ready cookie boxes with shipping and pickup options.',
+    cta: 'Shop Cookies',
+    to: '/shop/latte-stone-cookies',
+    image_url: '/images/IMG-4158.jpg',
+  },
+  {
+    title: 'Catering',
+    subtitle: 'Party trays and catering packages for events and gatherings.',
+    cta: 'Shop Catering',
+    to: '/shop/catering',
+    image_url: '/images/Cocktail_Stations_-_Assorted_Poppers.jpg',
+  },
+];
+
 const heroEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 export default function HomePage() {
@@ -240,6 +264,53 @@ export default function HomePage() {
       </section>
 
       {/* ============================================================ */}
+      {/* SHOP BY BUSINESS                                             */}
+      {/* ============================================================ */}
+      <section className="py-16 sm:py-20 bg-white">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <FadeIn>
+            <div className="text-center mb-10 sm:mb-12">
+              <h2 className="text-2xl sm:text-3xl font-bold text-warm-900 tracking-tight">
+                Shop by Business
+              </h2>
+              <p className="mt-3 text-warm-600 max-w-2xl mx-auto">
+                Enter the storefront that matches what you want to order.
+              </p>
+            </div>
+          </FadeIn>
+
+          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {storefrontCards.map((card) => (
+              <StaggerItem key={card.title}>
+                <Link
+                  to={card.to}
+                  className="group block overflow-hidden rounded-2xl border border-warm-100 bg-white shadow-sm hover:shadow-md transition"
+                >
+                  <div className="relative h-44 sm:h-48">
+                    <img
+                      src={card.image_url}
+                      alt={card.title}
+                      className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
+                      loading="lazy"
+                    />
+                    <div className="absolute inset-0 bg-black/35" />
+                  </div>
+                  <div className="p-5 sm:p-6">
+                    <h3 className="text-xl font-bold text-warm-900 mb-2">{card.title}</h3>
+                    <p className="text-warm-600 text-sm leading-relaxed mb-4">{card.subtitle}</p>
+                    <span className="inline-flex items-center gap-1.5 text-tsPrimary font-semibold text-sm">
+                      {card.cta}
+                      <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
+                  </div>
+                </Link>
+              </StaggerItem>
+            ))}
+          </StaggerContainer>
+        </div>
+      </section>
+
+      {/* ============================================================ */}
       {/* SHOP BY CATEGORY — bento grid                                */}
       {/* ============================================================ */}
       {!loading && cardsContent.length > 0 && (
@@ -380,11 +451,11 @@ export default function HomePage() {
                 <h3 className="text-xl font-bold text-warm-900 mb-4">Three Squares Main</h3>
                 <div className="space-y-3 text-warm-600">
                   <div className="flex items-start gap-3">
-                    <MapPin className="w-5 h-5 text-tsPrimary flex-shrink-0 mt-0.5" />
+                    <MapPin className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" />
                     <span>416 Chalan San Antonio, Tamuning</span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Clock className="w-5 h-5 text-tsPrimary flex-shrink-0 mt-0.5" />
+                    <Clock className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" />
                     <div>
                       <p>Tue-Sat: 8am - 8pm</p>
                       <p>Sun: 8am - 5pm</p>
@@ -392,7 +463,7 @@ export default function HomePage() {
                     </div>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Phone className="w-5 h-5 text-tsPrimary flex-shrink-0 mt-0.5" />
+                    <Phone className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" />
                     <a href="tel:+16716462652" className="hover:text-tsPrimary transition-colors">
                       (671) 646-2652
                     </a>
@@ -407,11 +478,11 @@ export default function HomePage() {
                 <h3 className="text-xl font-bold text-warm-900 mb-4">Three Squares @ Donki</h3>
                 <div className="space-y-3 text-warm-600">
                   <div className="flex items-start gap-3">
-                    <MapPin className="w-5 h-5 text-tsPrimary flex-shrink-0 mt-0.5" />
+                    <MapPin className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" />
                     <span>Inside Don Quijote, Tamuning</span>
                   </div>
                   <div className="flex items-start gap-3">
-                    <Clock className="w-5 h-5 text-tsPrimary flex-shrink-0 mt-0.5" />
+                    <Clock className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" />
                     <div>
                       <p>Daily: 10am - 10pm</p>
                       <p className="text-warm-400 text-sm">or until sold out</p>

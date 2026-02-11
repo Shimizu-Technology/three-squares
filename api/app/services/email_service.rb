@@ -46,7 +46,7 @@ class EmailService
       params = {
         from: from_address,
         to: admin_emails,
-        subject: "🛍️ New Order ##{order.id.to_s.rjust(6, '0')} - #{order.email}",
+        subject: "🍽️ New Order ##{order.id.to_s.rjust(6, '0')} - #{order.email}",
         html: admin_notification_html(order)
       }
 
@@ -195,6 +195,71 @@ class EmailService
     rescue StandardError => e
       Rails.logger.error "Email Error: #{e.class} - #{e.message}"
       { success: false, error: "Failed to send contact notification" }
+    end
+  end
+
+  # Send catering inquiry confirmation email to customer
+  # @param inquiry [CateringInquiry]
+  # @return [Hash]
+  def self.send_catering_inquiry_confirmation(inquiry)
+    return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
+    return { success: false, error: "Customer email missing" } unless inquiry.contact_email.present?
+
+    begin
+      params = {
+        from: from_address,
+        to: [ inquiry.contact_email ],
+        subject: "We received your catering inquiry - Three Squares",
+        html: catering_inquiry_confirmation_html(inquiry)
+      }
+
+      response = Resend::Emails.send(params)
+      Rails.logger.info "✅ Catering inquiry confirmation sent to #{inquiry.contact_email} (Inquiry ##{inquiry.id})"
+      { success: true, message_id: response["id"] }
+    rescue Resend::Error => e
+      if Rails.env.development? && e.message.include?("domain is not verified")
+        Rails.logger.info "ℹ️  Resend domain not verified (expected in development): #{e.message}"
+      else
+        Rails.logger.error "Resend Error sending catering confirmation: #{e.message}"
+      end
+      { success: false, error: e.message }
+    rescue StandardError => e
+      Rails.logger.error "Email Error: #{e.class} - #{e.message}"
+      { success: false, error: "Failed to send catering confirmation" }
+    end
+  end
+
+  # Send catering inquiry notification email to admins
+  # @param inquiry [CateringInquiry]
+  # @return [Hash]
+  def self.send_catering_inquiry_notification(inquiry)
+    return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
+
+    settings = SiteSetting.instance
+    admin_emails = settings.order_notification_emails || [ "shimizutechnology@gmail.com" ]
+
+    begin
+      params = {
+        from: from_address,
+        to: admin_emails,
+        reply_to: inquiry.contact_email,
+        subject: "🍽️ New Catering Inquiry - #{inquiry.contact_name} (#{inquiry.event_type})",
+        html: catering_inquiry_notification_html(inquiry)
+      }
+
+      response = Resend::Emails.send(params)
+      Rails.logger.info "✅ Catering inquiry notification sent (Inquiry ##{inquiry.id})"
+      { success: true, message_id: response["id"] }
+    rescue Resend::Error => e
+      if Rails.env.development? && e.message.include?("domain is not verified")
+        Rails.logger.info "ℹ️  Resend domain not verified (expected in development): #{e.message}"
+      else
+        Rails.logger.error "Resend Error sending catering notification: #{e.message}"
+      end
+      { success: false, error: e.message }
+    rescue StandardError => e
+      Rails.logger.error "Email Error: #{e.class} - #{e.message}"
+      { success: false, error: "Failed to send catering notification" }
     end
   end
 
@@ -368,7 +433,7 @@ class EmailService
                 <!-- Header -->
                 <tr>
                   <td style="background-color: #111827; background: #111827; padding: 32px 24px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; line-height: 1.2; text-shadow: 0 2px 6px rgba(0,0,0,0.35);">🛍️ New Order Received</h1>
+                    <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; line-height: 1.2; text-shadow: 0 2px 6px rgba(0,0,0,0.35);">🍽️ New Order Received</h1>
                     #{test_mode_badge}
                   </td>
                 </tr>
@@ -1020,6 +1085,193 @@ class EmailService
                   </td>
                 </tr>
 
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    HTML
+  end
+
+  def self.catering_inquiry_confirmation_html(inquiry)
+    event_date = inquiry.event_date&.strftime("%A, %B %d, %Y")
+    event_type = CGI.escapeHTML(inquiry.event_type.to_s.titleize)
+    contact_name = CGI.escapeHTML(inquiry.contact_name.to_s)
+    guest_count = inquiry.guest_count.to_i
+    venue = inquiry.venue_address.present? ? CGI.escapeHTML(inquiry.venue_address.to_s) : "Not specified"
+    event_time = CGI.escapeHTML(inquiry.event_time.to_s)
+
+    <<~HTML
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Catering Inquiry Received</title>
+      </head>
+      <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#f3f4f6;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="padding:24px 0;background:#f3f4f6;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(17,24,39,0.08);">
+                <tr>
+                  <td style="background:linear-gradient(135deg,#C1191F 0%,#991B1B 100%);padding:30px 24px;text-align:center;">
+                    <p style="margin:0;color:#FEE2E2;font-size:12px;letter-spacing:0.08em;text-transform:uppercase;font-weight:700;">Three Squares Catering</p>
+                    <h1 style="margin:8px 0 0 0;color:#ffffff;font-size:28px;font-weight:800;line-height:1.2;">Inquiry Received</h1>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:32px 28px 26px 28px;text-align:center;">
+                    <h2 style="margin:0 0 10px 0;color:#111827;font-size:24px;">Thanks, #{contact_name}!</h2>
+                    <p style="margin:0;color:#4B5563;line-height:1.65;font-size:15px;">We received your catering inquiry. Our team will follow up within 24-48 hours with next steps and menu recommendations.</p>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:0 24px 24px 24px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8FAFC;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;">
+                      <tr>
+                        <td colspan="2" style="padding:14px 16px;background:#ffffff;border-bottom:1px solid #E5E7EB;font-size:13px;font-weight:700;color:#374151;letter-spacing:0.02em;">Inquiry Summary</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:12px 16px;color:#6B7280;font-size:14px;font-weight:600;width:140px;">Event</td>
+                        <td style="padding:12px 16px;color:#111827;font-size:14px;">#{event_type}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:0 16px 12px 16px;color:#6B7280;font-size:14px;font-weight:600;">Date/Time</td>
+                        <td style="padding:0 16px 12px 16px;color:#111827;font-size:14px;">#{event_date || "TBD"} #{event_time.present? ? "at #{event_time}" : ""}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:0 16px 12px 16px;color:#6B7280;font-size:14px;font-weight:600;">Guests</td>
+                        <td style="padding:0 16px 12px 16px;color:#111827;font-size:14px;">#{guest_count.positive? ? guest_count : "TBD"}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:0 16px 16px 16px;color:#6B7280;font-size:14px;font-weight:600;">Venue</td>
+                        <td style="padding:0 16px 16px 16px;color:#111827;font-size:14px;">#{venue}</td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:0 28px 28px 28px;text-align:center;">
+                    <p style="margin:0;color:#6B7280;font-size:13px;line-height:1.6;">If this wasn't you, simply reply to this email and we'll review it right away.</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    HTML
+  end
+
+  def self.catering_inquiry_notification_html(inquiry)
+    contact_name = CGI.escapeHTML(inquiry.contact_name.to_s)
+    contact_email = CGI.escapeHTML(inquiry.contact_email.to_s)
+    contact_phone = CGI.escapeHTML(inquiry.contact_phone.to_s)
+    company_name = CGI.escapeHTML(inquiry.company_name.to_s)
+    event_type = CGI.escapeHTML(inquiry.event_type.to_s.titleize)
+    event_date = inquiry.event_date&.strftime("%A, %B %d, %Y")
+    event_time = CGI.escapeHTML(inquiry.event_time.to_s)
+    guest_count = inquiry.guest_count.to_i
+    budget = CGI.escapeHTML(inquiry.budget_range.to_s)
+    venue = CGI.escapeHTML(inquiry.venue_address.to_s)
+    menu_prefs = CGI.escapeHTML(inquiry.menu_preferences.to_s)
+    dietary = CGI.escapeHTML(inquiry.dietary_restrictions.to_s)
+    special = CGI.escapeHTML(inquiry.special_requests.to_s)
+
+    <<~HTML
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>New Catering Inquiry</title>
+      </head>
+      <body style="margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;background:#f3f4f6;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="padding:24px 0;background:#f3f4f6;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 24px rgba(17,24,39,0.10);">
+                <tr>
+                  <td style="background:linear-gradient(135deg,#111827 0%,#1F2937 100%);padding:28px 24px;text-align:center;">
+                    <p style="margin:0;color:#CBD5E1;font-size:12px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;">Three Squares Catering</p>
+                    <h1 style="margin:8px 0 0 0;color:#ffffff;font-size:26px;font-weight:800;line-height:1.2;">🍽️ New Catering Inquiry</h1>
+                  </td>
+                </tr>
+
+                <tr>
+                  <td style="padding:24px;">
+                    <table width="100%" cellpadding="0" cellspacing="0" style="background:#F8FAFC;border:1px solid #E5E7EB;border-radius:12px;overflow:hidden;">
+                      <tr>
+                        <td colspan="2" style="padding:14px 16px;background:#ffffff;border-bottom:1px solid #E5E7EB;font-size:13px;font-weight:700;color:#374151;letter-spacing:0.02em;">Inquiry Details</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:12px 16px;color:#6B7280;font-size:14px;font-weight:600;width:150px;">Contact</td>
+                        <td style="padding:12px 16px;color:#111827;font-size:14px;">#{contact_name}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:0 16px 12px 16px;color:#6B7280;font-size:14px;font-weight:600;">Email</td>
+                        <td style="padding:0 16px 12px 16px;color:#111827;font-size:14px;"><a href="mailto:#{contact_email}" style="color:#C1191F;text-decoration:none;">#{contact_email}</a></td>
+                      </tr>
+                      <tr>
+                        <td style="padding:0 16px 12px 16px;color:#6B7280;font-size:14px;font-weight:600;">Phone</td>
+                        <td style="padding:0 16px 12px 16px;color:#111827;font-size:14px;">#{contact_phone.presence || "Not provided"}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:0 16px 12px 16px;color:#6B7280;font-size:14px;font-weight:600;">Company</td>
+                        <td style="padding:0 16px 12px 16px;color:#111827;font-size:14px;">#{company_name.presence || "Not provided"}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:0 16px 12px 16px;color:#6B7280;font-size:14px;font-weight:600;">Event</td>
+                        <td style="padding:0 16px 12px 16px;color:#111827;font-size:14px;">#{event_type}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:0 16px 12px 16px;color:#6B7280;font-size:14px;font-weight:600;">Date/Time</td>
+                        <td style="padding:0 16px 12px 16px;color:#111827;font-size:14px;">#{event_date || "TBD"} #{event_time.present? ? "at #{event_time}" : ""}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:0 16px 12px 16px;color:#6B7280;font-size:14px;font-weight:600;">Guests</td>
+                        <td style="padding:0 16px 12px 16px;color:#111827;font-size:14px;">#{guest_count.positive? ? guest_count : "TBD"}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:0 16px 12px 16px;color:#6B7280;font-size:14px;font-weight:600;">Budget</td>
+                        <td style="padding:0 16px 12px 16px;color:#111827;font-size:14px;">#{budget.presence || "Not provided"}</td>
+                      </tr>
+                      <tr>
+                        <td style="padding:0 16px 16px 16px;color:#6B7280;font-size:14px;font-weight:600;">Venue</td>
+                        <td style="padding:0 16px 16px 16px;color:#111827;font-size:14px;">#{venue.presence || "Not provided"}</td>
+                      </tr>
+                    </table>
+
+                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:16px;">
+                      <tr>
+                        <td style="background:#ffffff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 16px;">
+                          <p style="margin:0 0 6px 0;color:#6B7280;font-size:12px;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;">Menu Preferences</p>
+                          <p style="margin:0;color:#111827;font-size:14px;line-height:1.6;">#{menu_prefs.presence || "None"}</p>
+                        </td>
+                      </tr>
+                      <tr><td style="height:10px;"></td></tr>
+                      <tr>
+                        <td style="background:#ffffff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 16px;">
+                          <p style="margin:0 0 6px 0;color:#6B7280;font-size:12px;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;">Dietary Restrictions</p>
+                          <p style="margin:0;color:#111827;font-size:14px;line-height:1.6;">#{dietary.presence || "None"}</p>
+                        </td>
+                      </tr>
+                      <tr><td style="height:10px;"></td></tr>
+                      <tr>
+                        <td style="background:#ffffff;border:1px solid #E5E7EB;border-radius:12px;padding:14px 16px;">
+                          <p style="margin:0 0 6px 0;color:#6B7280;font-size:12px;font-weight:700;letter-spacing:0.02em;text-transform:uppercase;">Special Requests</p>
+                          <p style="margin:0;color:#111827;font-size:14px;line-height:1.6;">#{special.presence || "None"}</p>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
               </table>
             </td>
           </tr>

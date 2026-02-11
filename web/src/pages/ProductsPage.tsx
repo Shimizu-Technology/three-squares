@@ -27,6 +27,10 @@ export default function ProductsPage() {
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState({ page: 1, per_page: 12, total: 0 });
   const didScrollRef = useRef(false);
+  const locationNameById = locations.reduce<Record<number, string>>((acc, location) => {
+    acc[location.id] = location.name;
+    return acc;
+  }, {});
 
   const page = parseInt(searchParams.get('page') || '1');
   const search = searchParams.get('search') || '';
@@ -34,6 +38,36 @@ export default function ProductsPage() {
   const productType = searchParams.get('type') || '';
   const sort = searchParams.get('sort') || '';
   const locationId = searchParams.get('location_id') || '';
+  const businessLine = searchParams.get('business_line') || '';
+  const businessLineContent = (() => {
+    if (businessLine === 'three_squares') {
+      return {
+        eyebrow: 'Three Squares',
+        title: 'Three Squares Menu',
+        subtitle: 'Island comfort food, local favorites, and daily essentials for pickup.',
+      };
+    }
+    if (businessLine === 'latte_stone') {
+      return {
+        eyebrow: 'Latte Stone Cookies',
+        title: 'Latte Stone Cookie Shop',
+        subtitle: 'Cookie boxes and gifting picks with shipping and pickup availability.',
+      };
+    }
+    if (businessLine === 'catering') {
+      return {
+        eyebrow: 'Catering',
+        title: 'Catering Menu',
+        subtitle: 'Party trays, bentos, and event-ready packages for your next gathering.',
+      };
+    }
+
+    return {
+      eyebrow: 'All Businesses',
+      title: 'Browse Menu',
+      subtitle: 'Guam comfort food favorites, catering trays, and island-made specialties.',
+    };
+  })();
 
   useEffect(() => {
     fetchCollections();
@@ -42,7 +76,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     fetchProducts();
-  }, [page, search, collection, productType, sort, locationId]);
+  }, [page, search, collection, productType, sort, locationId, businessLine]);
 
   useEffect(() => {
     if (!didScrollRef.current) {
@@ -83,6 +117,7 @@ export default function ProductsPage() {
         product_type: productType || undefined,
         sort: sort || undefined,
         location_id: locationId ? Number(locationId) : undefined,
+        business_line: businessLine || undefined,
       });
       setProducts(response.products);
       setMeta(response.meta);
@@ -102,10 +137,11 @@ export default function ProductsPage() {
     if (productType) params.type = productType;
     if (sort) params.sort = sort;
     if (locationId) params.location_id = locationId;
+    if (businessLine) params.business_line = businessLine;
     setSearchParams(params);
   };
 
-  const handleFilterChange = (filterType: 'collection' | 'type' | 'sort' | 'location_id', value: string) => {
+  const handleFilterChange = (filterType: 'collection' | 'type' | 'sort' | 'location_id' | 'business_line', value: string) => {
     const params: Record<string, string> = {};
     if (search) params.search = search;
     if (filterType === 'collection') {
@@ -113,21 +149,31 @@ export default function ProductsPage() {
       if (productType) params.type = productType;
       if (sort) params.sort = sort;
       if (locationId) params.location_id = locationId;
+      if (businessLine) params.business_line = businessLine;
     } else if (filterType === 'type') {
       if (collection) params.collection = collection;
       if (value) params.type = value;
       if (sort) params.sort = sort;
       if (locationId) params.location_id = locationId;
+      if (businessLine) params.business_line = businessLine;
     } else if (filterType === 'sort') {
       if (collection) params.collection = collection;
       if (productType) params.type = productType;
       if (value) params.sort = value;
       if (locationId) params.location_id = locationId;
+      if (businessLine) params.business_line = businessLine;
     } else if (filterType === 'location_id') {
       if (collection) params.collection = collection;
       if (productType) params.type = productType;
       if (sort) params.sort = sort;
       if (value) params.location_id = value;
+      if (businessLine) params.business_line = businessLine;
+    } else if (filterType === 'business_line') {
+      if (collection) params.collection = collection;
+      if (productType) params.type = productType;
+      if (sort) params.sort = sort;
+      if (locationId) params.location_id = locationId;
+      if (value) params.business_line = value;
     }
     setSearchParams(params);
   };
@@ -143,6 +189,7 @@ export default function ProductsPage() {
     if (productType) params.type = productType;
     if (sort) params.sort = sort;
     if (locationId) params.location_id = locationId;
+    if (businessLine) params.business_line = businessLine;
     setSearchParams(params);
   };
 
@@ -169,10 +216,10 @@ export default function ProductsPage() {
         <div className="bg-white shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <h1 className="text-3xl sm:text-4xl font-bold text-warm-900 mb-2">
-              Shop <span className="text-tsPrimary">Three Squares</span>
+              Shop <span className="text-tsPrimary">{businessLineContent.eyebrow}</span>
             </h1>
             <p className="text-warm-600 text-sm sm:text-base">
-              Chamorro pride. Island style. Premium quality.
+              {businessLineContent.subtitle}
             </p>
           </div>
         </div>
@@ -206,11 +253,14 @@ export default function ProductsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
           <FadeIn>
             <div className="text-center">
+              <p className="text-xs font-semibold uppercase tracking-widest text-warm-500 mb-2">
+                {businessLineContent.eyebrow}
+              </p>
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-warm-900 mb-3 tracking-tight">
-                Browse Menu
+                {businessLineContent.title}
               </h1>
               <p className="text-warm-500 text-base sm:text-lg max-w-2xl mx-auto">
-                Guam comfort food favorites, catering trays, and island-made specialties.
+                {businessLineContent.subtitle}
               </p>
             </div>
           </FadeIn>
@@ -220,6 +270,33 @@ export default function ProductsPage() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Search and Filter Bar */}
         <div className="bg-white rounded-xl shadow-sm border border-warm-100 p-4 sm:p-6 mb-6">
+          <div className="mb-4">
+            <p className="text-xs font-semibold text-warm-500 uppercase tracking-wider mb-2">Shop by Business</p>
+            <div className="overflow-x-auto pb-1 -mx-1 px-1 sm:overflow-visible sm:pb-0 sm:mx-0 sm:px-0">
+              <div className="flex w-max gap-2 sm:w-auto sm:flex-wrap">
+              {[
+                { label: 'All', value: '' },
+                { label: 'Three Squares', value: 'three_squares' },
+                { label: 'Latte Stone Cookies', value: 'latte_stone' },
+                { label: 'Catering', value: 'catering' },
+              ].map((option) => (
+                <button
+                  key={option.label}
+                  type="button"
+                  onClick={() => handleFilterChange('business_line', option.value)}
+                  className={`shrink-0 px-3 py-1.5 rounded-full text-sm border transition ${
+                    (businessLine || '') === option.value
+                      ? 'bg-tsPrimary text-white border-tsPrimary'
+                      : 'bg-warm-50 text-warm-700 border-warm-200 hover:border-warm-300'
+                  }`}
+                >
+                  {option.label}
+                </button>
+              ))}
+              </div>
+            </div>
+          </div>
+
           {/* Search Bar */}
           <div className="mb-4">
             <div className="relative max-w-2xl mx-auto">
@@ -247,7 +324,22 @@ export default function ProductsPage() {
           </div>
 
           {/* Filters */}
-          <div className="grid grid-cols-1 xs:grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
+            {/* Business Line Filter */}
+            <div>
+              <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Business</label>
+              <select
+                value={businessLine}
+                onChange={(e) => handleFilterChange('business_line', e.target.value)}
+                className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
+              >
+                <option value="">All Businesses</option>
+                <option value="three_squares">Three Squares</option>
+                <option value="latte_stone">Latte Stone Cookies</option>
+                <option value="catering">Catering</option>
+              </select>
+            </div>
+
             {/* Collection Filter */}
             <div>
               <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Collection</label>
@@ -324,7 +416,7 @@ export default function ProductsPage() {
             <div className="flex items-end">
               <button
                 onClick={clearFilters}
-                disabled={!search && !collection && !productType && !sort && !locationId}
+                disabled={!search && !collection && !productType && !sort && !locationId && !businessLine}
                 className="w-full px-4 py-2.5 text-sm font-semibold text-warm-600 bg-warm-100 border border-warm-200 rounded-lg hover:bg-warm-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -336,12 +428,12 @@ export default function ProductsPage() {
           </div>
 
           {/* Active Filters Display */}
-          {(search || collection || productType || sort || locationId) && (
-            <div className="mt-4 flex flex-wrap gap-2">
+          {(search || collection || productType || sort || locationId || businessLine) && (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className="text-sm text-warm-600 font-medium">Active filters:</span>
               {search && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
-                  Search: "{search}"
+                <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
+                  <span className="truncate max-w-[220px] sm:max-w-[280px]">Search: "{search}"</span>
                   <button
                     onClick={() => handleSearch('')}
                     className="hover:bg-warm-700 rounded-full p-0.5"
@@ -353,8 +445,8 @@ export default function ProductsPage() {
                 </span>
               )}
               {collection && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
-                  {collections.find(c => c.slug === collection)?.name}
+                <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
+                  <span className="truncate max-w-[220px] sm:max-w-[280px]">{collections.find(c => c.slug === collection)?.name}</span>
                   <button
                     onClick={() => handleFilterChange('collection', '')}
                     className="hover:bg-warm-700 rounded-full p-0.5"
@@ -365,9 +457,22 @@ export default function ProductsPage() {
                   </button>
                 </span>
               )}
+              {businessLine && (
+                <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
+                  <span className="truncate max-w-[220px] sm:max-w-[280px]">Business: {businessLine === 'three_squares' ? 'Three Squares' : businessLine === 'latte_stone' ? 'Latte Stone Cookies' : 'Catering'}</span>
+                  <button
+                    onClick={() => handleFilterChange('business_line', '')}
+                    className="hover:bg-warm-700 rounded-full p-0.5"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </span>
+              )}
               {productType && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
-                  {productType}
+                <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
+                  <span className="truncate max-w-[220px] sm:max-w-[280px]">{productType}</span>
                   <button
                     onClick={() => handleFilterChange('type', '')}
                     className="hover:bg-warm-700 rounded-full p-0.5"
@@ -379,8 +484,8 @@ export default function ProductsPage() {
                 </span>
               )}
               {sort && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
-                  Sort: {sort === 'price_asc' ? 'Price ↑' : sort === 'price_desc' ? 'Price ↓' : sort === 'newest' ? 'Newest' : sort === 'name_asc' ? 'A-Z' : 'Z-A'}
+                <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
+                  <span className="truncate max-w-[220px] sm:max-w-[280px]">Sort: {sort === 'price_asc' ? 'Price ↑' : sort === 'price_desc' ? 'Price ↓' : sort === 'newest' ? 'Newest' : sort === 'name_asc' ? 'A-Z' : 'Z-A'}</span>
                   <button
                     onClick={() => handleFilterChange('sort', '')}
                     className="hover:bg-warm-700 rounded-full p-0.5"
@@ -392,8 +497,8 @@ export default function ProductsPage() {
                 </span>
               )}
               {locationId && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
-                  Pickup: {locations.find((location) => location.id.toString() === locationId)?.name || 'Location'}
+                <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
+                  <span className="truncate max-w-[220px] sm:max-w-[280px]">Pickup: {locations.find((location) => location.id.toString() === locationId)?.name || 'Location'}</span>
                   <button
                     onClick={() => handleFilterChange('location_id', '')}
                     className="hover:bg-warm-700 rounded-full p-0.5"
@@ -412,7 +517,7 @@ export default function ProductsPage() {
         <div className="flex items-center justify-between mb-6">
           <p className="text-warm-600 text-sm sm:text-base">
             <span className="font-semibold text-warm-900">{meta.total}</span> products
-            {(search || collection || productType || locationId) && (
+            {(search || collection || productType || locationId || businessLine) && (
               <span className="ml-1 text-warm-400">
                 (filtered)
               </span>
@@ -444,7 +549,7 @@ export default function ProductsPage() {
           <>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8 mb-12">
               {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product} locationNameById={locationNameById} />
               ))}
             </div>
 
@@ -479,7 +584,7 @@ export default function ProductsPage() {
                       <button
                         key={pageNum}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`min-w-[40px] px-3 py-2 text-sm font-medium rounded-lg transition ${
+                        className={`min-w-[44px] min-h-[44px] px-3 py-2 text-sm font-medium rounded-lg transition ${
                           page === pageNum
                             ? 'bg-tsPrimary text-white shadow-md'
                             : 'bg-white border border-warm-200 hover:bg-warm-50 hover:border-warm-300'

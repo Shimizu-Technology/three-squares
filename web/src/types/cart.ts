@@ -19,6 +19,7 @@ export interface Product {
   id: number;
   name: string;
   slug: string;
+  business_line?: 'three_squares' | 'latte_stone' | 'catering';
   published: boolean;
   allow_pickup?: boolean;
   allow_shipping?: boolean;

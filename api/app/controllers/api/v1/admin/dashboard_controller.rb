@@ -4,6 +4,8 @@ module Api
   module V1
     module Admin
       class DashboardController < ApplicationController
+        COOKIE_COLLECTION_SLUGS = %w[cookies cookie-boxes mini-cookies].freeze
+
         include Authenticatable
         before_action :authenticate_request
         before_action :require_admin!
@@ -14,12 +16,18 @@ module Api
           total_revenue_cents = Order.where(payment_status: "paid").sum(:total_cents)
           pending_orders = Order.where(status: "pending").count
           total_products = Product.where(published: true).count
+          business_line_breakdown = business_line_breakdown_data
+          fulfillment_breakdown = Order.group(:fulfillment_type).count
+          location_breakdown = location_breakdown_data
 
           render json: {
             total_orders: total_orders,
             total_revenue_cents: total_revenue_cents,
             pending_orders: pending_orders,
-            total_products: total_products
+            total_products: total_products,
+            business_line_breakdown: business_line_breakdown,
+            fulfillment_breakdown: fulfillment_breakdown,
+            location_breakdown: location_breakdown
           }
         end
 
@@ -74,6 +82,50 @@ module Api
               last_week: { orders: last_week_orders, revenue_cents: last_week_revenue }
             }
           }
+        end
+
+        private
+
+        def business_line_breakdown_data
+          retail_orders = Order.where(order_type: "retail")
+          latte_stone_orders = retail_orders
+            .joins(order_items: { product_variant: { product: :collections } })
+            .where(collections: { slug: COOKIE_COLLECTION_SLUGS })
+            .distinct
+          three_squares_orders = retail_orders.where.not(id: latte_stone_orders.select(:id))
+
+          {
+            "three_squares" => {
+              orders: three_squares_orders.count,
+              revenue_cents: three_squares_orders.where(payment_status: "paid").sum(:total_cents)
+            },
+            "latte_stone" => {
+              orders: latte_stone_orders.count,
+              revenue_cents: latte_stone_orders.where(payment_status: "paid").sum(:total_cents)
+            },
+            "catering" => {
+              orders: Order.where(order_type: "wholesale").count,
+              revenue_cents: Order.where(order_type: "wholesale", payment_status: "paid").sum(:total_cents)
+            },
+            "acai" => {
+              orders: Order.where(order_type: "acai").count,
+              revenue_cents: Order.where(order_type: "acai", payment_status: "paid").sum(:total_cents)
+            }
+          }
+        end
+
+        def location_breakdown_data
+          grouped_orders = Order.left_joins(:location).group("locations.name").count
+          grouped_revenue = Order.left_joins(:location).where(payment_status: "paid").group("locations.name").sum(:total_cents)
+
+          grouped_orders.map do |location_name, count|
+            label = location_name.presence || "Shipping / No Pickup Location"
+            {
+              name: label,
+              orders: count,
+              revenue_cents: grouped_revenue[location_name] || 0
+            }
+          end.sort_by { |entry| -entry[:orders] }
         end
       end
     end

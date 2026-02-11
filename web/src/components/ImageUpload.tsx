@@ -3,6 +3,7 @@ import { useAuth } from '@clerk/clerk-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import { Upload, X, Star, Loader } from 'lucide-react';
+import PlaceholderImage from './ui/PlaceholderImage';
 
 import { API_BASE_URL } from '../config';
 
@@ -285,9 +286,14 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
       )}
       
       {images.length === 0 && !uploading && (
-        <p className="text-center text-gray-500 mt-4 text-sm">
-          No images uploaded yet. Add some images to showcase your product!
-        </p>
+        <div className="mt-6 border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <div className="h-44 rounded-lg overflow-hidden border border-gray-200 bg-white">
+            <PlaceholderImage variant="detail" className="bg-gray-100" />
+          </div>
+          <p className="text-center text-gray-500 mt-3 text-sm">
+            No images uploaded yet. Add some images to showcase your product!
+          </p>
+        </div>
       )}
     </div>
   );

@@ -162,6 +162,7 @@ export const productsApi = {
     max_price?: number;
     sort?: string; // Added sort parameter
     location_id?: number;
+    business_line?: string;
   }): Promise<ProductsResponse> => {
     const response = await api.get('/products', { params });
     return response.data;

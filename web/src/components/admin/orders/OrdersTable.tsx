@@ -31,7 +31,7 @@ export default function OrdersTable({
   return (
     <>
       {/* Desktop Table */}
-      <div className="hidden md:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
+      <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50/80">
             <tr>
@@ -79,14 +79,14 @@ export default function OrdersTable({
                             e.stopPropagation();
                             onQuickUpdateStatus(order.id, nextAction.status);
                           }}
-                          className={`inline-flex items-center px-3 py-1.5 text-white text-xs font-semibold rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${nextAction.color}`}
+                          className={`inline-flex items-center px-3.5 py-2.5 text-white text-sm font-semibold rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${nextAction.color}`}
                         >
                           {nextAction.label}
                         </button>
                       )}
                       <button
                         onClick={() => onViewDetails(order.id)}
-                        className="inline-flex items-center px-3 py-1.5 text-gray-700 text-xs font-semibold bg-gray-100 hover:bg-gray-200 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
+                        className="inline-flex items-center px-3.5 py-2.5 text-gray-700 text-sm font-semibold bg-gray-100 hover:bg-gray-200 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
                       >
                         Details
                       </button>
@@ -100,7 +100,7 @@ export default function OrdersTable({
       </div>
 
       {/* Mobile Cards */}
-      <div className="md:hidden space-y-4">
+      <div className="lg:hidden space-y-4">
         {orders.map((order) => {
           const nextAction = getNextStatusAction(order);
           return (
@@ -162,7 +162,7 @@ export default function OrdersTable({
           <button
             onClick={() => onPageChange(Math.max(1, page - 1))}
             disabled={page === 1}
-            className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
+            className="min-w-[44px] min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
           >
             Previous
           </button>
@@ -172,7 +172,7 @@ export default function OrdersTable({
           <button
             onClick={() => onPageChange(Math.min(totalPages, page + 1))}
             disabled={page === totalPages}
-            className="px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
+            className="min-w-[44px] min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
           >
             Next
           </button>

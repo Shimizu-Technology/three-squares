@@ -3,7 +3,7 @@
 **Project:** Three Squares Platform (forked from Hafaloha)  
 **Owner:** Shimizu Technology / B&G Pacific  
 **Last Updated:** 2026-02-11  
-**Status:** Phase 1 implementation complete (ready for PR and merge)
+**Status:** Phase 1 implementation complete; Phase 2 largely complete; Phase 3 started (split storefront routes first slice)
 
 ---
 
@@ -165,13 +165,28 @@ Make day-to-day operations easier by clearly segmenting admin workflows, reporti
 
 ### Phase 2 Suggested Ticket Sequence
 
-- [ ] P2-01 Orders filtering and API query support (location/business line/fulfillment).
+- [ ] P2-01 Orders filtering and API query support (location/business line/fulfillment).  
+  _Progress: location + fulfillment + business-line filters implemented in admin/API. Pending: add focused request coverage for business-line filtering._
 - [ ] P2-02 Dashboard metrics segmented by location and business line.
-- [ ] P2-03 Storefront IA entry points and routing/query-state guardrails.
-- [ ] P2-04 Pickup queue admin view.
-- [ ] P2-05 Shipping queue admin view.
-- [ ] P2-06 Export/report endpoint and CSV admin action.
+- [ ] P2-03 Storefront IA entry points and routing/query-state guardrails.  
+  _Progress: nav + mobile "Shop by Business" entry links and URL-backed `business_line` filter added on products page/API._
+- [ ] P2-04 Pickup queue admin view.  
+  _Progress: added dedicated `/admin/orders/pickup-queue` page/route with pickup-first defaults, queue status chips, and API-backed queue summary counters._
+- [ ] P2-05 Shipping queue admin view.  
+  _Progress: added dedicated `/admin/orders/shipping-queue` page/route with shipping-first defaults, queue status chips, and API-backed queue summary counters._
+- [ ] P2-06 Export/report endpoint and CSV admin action.  
+  _Progress: added `/api/v1/admin/orders/export` CSV endpoint with all key filters and wired Admin Orders "Export CSV" button._
 - [ ] P2-07 Test matrix + QA pass + docs update.
+  _Progress: added request coverage for storefront `business_line` product filtering (`latte_stone`, `catering`, `three_squares`)._
+
+### Phase 2 QA Matrix (Current Slice)
+
+- [x] Products API `business_line` filter returns expected segments.
+- [x] Admin Orders filters work for location, fulfillment type, and business line.
+- [x] Admin CSV export respects active filters.
+- [x] Pickup/Shipping queue pages load with queue-first defaults.
+- [x] Queue summary counters (status/paid/total) load from API.
+- [ ] Manual browser QA pass on staging (desktop + mobile nav entry paths).
 
 ### Phase 2 Acceptance Criteria (Definition of Done)
 
@@ -189,9 +204,35 @@ Make day-to-day operations easier by clearly segmenting admin workflows, reporti
 
 ## Phase 3: Future growth
 
-- Optional split storefront experiences/routes
-- Mixed-cart auto-splitting (multi-order flow)
-- Enhanced fulfillment windows and constraints
+### Phase 3 Goal
+
+Introduce clearer split storefront experiences by business line while preserving one backend domain model and backward-compatible URLs.
+
+### Phase 3 Scope (Current Build Slice)
+
+- [x] Add dedicated business-line storefront entry routes:
+  - [x] `/shop/three-squares`
+  - [x] `/shop/latte-stone-cookies`
+  - [x] `/shop/catering`
+- [x] Keep backward compatibility by mapping these routes into existing `/products` filtering.
+- [x] Update desktop/mobile nav links to use dedicated storefront routes.
+- [x] Add business-line specific hero/header treatment in products browsing context.
+- [x] Add storefront guardrail UX for cross-business context switching when cart has active items.
+- [x] Add direct homepage entry cards for each storefront route.
+- [ ] Add end-to-end test coverage for each dedicated storefront route.
+
+### Phase 3 Next Tickets
+
+- [x] P3-01 Business-line visual context (copy + hero variants on products page).
+- [x] P3-02 Cart guardrail for business-context switching (warn/confirm when cart has active line context).
+- [x] P3-03 Homepage/storefront IA split entry cards and CTAs.
+- [ ] P3-04 E2E coverage for storefront routes and cart guardrails.
+- [ ] P3-05 Evaluate optional auto-split mixed-cart architecture proposal.
+
+### Phase 3 Deferred
+
+- [ ] Mixed-cart auto-splitting (multi-order flow)
+- [ ] Enhanced fulfillment windows and constraints
 
 ---
 
@@ -215,6 +256,7 @@ Make day-to-day operations easier by clearly segmenting admin workflows, reporti
   - [x] disallow pickup for products with `allow_pickup = false`
   - [x] require `location_id` for pickup orders
   - [x] block mixed incompatible carts
+  - [x] enforce strict no-mix carts for shippable + pickup-only combinations
 
 ## 3) Frontend
 
@@ -250,6 +292,7 @@ Make day-to-day operations easier by clearly segmenting admin workflows, reporti
 - [x] Catering modal scroll behavior fixed (background lock + internal scroll routing)
 - [x] Image loading/fallback hardened
 - [x] Removed synthetic seed image backfill behavior (real images only)
+- [x] Enforced strict mixed-fulfillment cart blocking (shippable + pickup-only cart combinations)
 
 ## In Progress
 
@@ -281,6 +324,14 @@ Make day-to-day operations easier by clearly segmenting admin workflows, reporti
 - [ ] Delivery mode and expanded fulfillment types
 - [ ] Time-window / menu-window availability by location
 - [ ] Dedicated Latte Stone storefront entry experience
+- [ ] **Hafaloha legacy cleanup pass (phase-out plan):**
+  - [ ] remove/rename remaining Hafaloha-specific copy, comments, and legacy assumptions
+  - [ ] audit and de-scope Acai-specific flows/settings if not part of B&G Pacific storefront scope
+  - [ ] consolidate or archive non-core legacy routes/components after stakeholder sign-off
+- [ ] **Default image reliability hardening:**
+  - [ ] investigate why admin/default placeholder previews intermittently fail to load
+  - [ ] standardize fallback image source resolution across API + web + admin surfaces
+  - [ ] add smoke test coverage for missing-image fallback rendering (storefront + admin)
 
 ---
 

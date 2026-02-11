@@ -1,16 +1,27 @@
 import { Link } from 'react-router-dom';
 import type { Product } from '../services/api';
 import { formatPrice } from '../services/api';
+import { useCartStore } from '../store/cartStore';
+import { evaluateCartCompatibility } from '../utils/cartCompatibility';
 import ProductBadge from './ProductBadge';
 import PlaceholderImage from './ui/PlaceholderImage';
 import OptimizedImage from './ui/OptimizedImage';
 
 interface ProductCardProps {
   product: Product;
+  locationNameById?: Record<number, string>;
 }
 
-export default function ProductCard({ product }: ProductCardProps) {
+export default function ProductCard({ product, locationNameById = {} }: ProductCardProps) {
   const isOnSale = Boolean(product.sale_price_cents && product.sale_price_cents < product.base_price_cents);
+  const cartItems = useCartStore((state) => state.cart?.items || []);
+  const cartCompatibility = evaluateCartCompatibility(cartItems, product);
+  const relevantLocationNames = cartCompatibility.relevantPickupLocationIds
+    .map((id) => locationNameById[id])
+    .filter(Boolean);
+  const conflictText = relevantLocationNames.length > 0
+    ? `Only pickup at ${relevantLocationNames.join(', ')}`
+    : 'Pickup location conflicts with current cart';
 
   return (
     <Link
@@ -61,6 +72,12 @@ export default function ProductCard({ product }: ProductCardProps) {
             <span className="text-base font-medium text-warm-900">
               {formatPrice(product.base_price_cents)}
             </span>
+          )}
+
+          {cartCompatibility.reason === 'pickup_location' && (
+            <p className="mt-2 text-xs font-medium text-amber-700">
+              {conflictText}
+            </p>
           )}
         </div>
       </div>

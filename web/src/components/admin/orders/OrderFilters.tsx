@@ -6,6 +6,13 @@ interface OrderFiltersProps {
   onStatusFilterChange: (status: string) => void;
   orderTypeFilter: string;
   onOrderTypeFilterChange: (type: string) => void;
+  businessLineFilter: string;
+  onBusinessLineFilterChange: (value: string) => void;
+  fulfillmentFilter: string;
+  onFulfillmentFilterChange: (value: string) => void;
+  locationFilter: string;
+  onLocationFilterChange: (value: string) => void;
+  locationOptions: Array<{ id: number; name: string }>;
   datePreset: string;
   onDatePresetChange: (preset: string) => void;
   startDate: string;
@@ -22,6 +29,13 @@ export default function OrderFilters({
   onStatusFilterChange,
   orderTypeFilter,
   onOrderTypeFilterChange,
+  businessLineFilter,
+  onBusinessLineFilterChange,
+  fulfillmentFilter,
+  onFulfillmentFilterChange,
+  locationFilter,
+  onLocationFilterChange,
+  locationOptions,
   datePreset,
   onDatePresetChange,
   startDate,
@@ -83,7 +97,7 @@ export default function OrderFilters({
       </div>
 
       {/* Order Type and Date Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mt-4">
         <select
           value={orderTypeFilter}
           onChange={(e) => onOrderTypeFilterChange(e.target.value)}
@@ -93,6 +107,41 @@ export default function OrderFilters({
           <option value="retail">Retail</option>
           <option value="acai">Acai Cakes</option>
           <option value="wholesale">Wholesale</option>
+        </select>
+
+        <select
+          value={businessLineFilter}
+          onChange={(e) => onBusinessLineFilterChange(e.target.value)}
+          className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-gray-300 transition text-sm"
+        >
+          <option value="all">All Business Lines</option>
+          <option value="three_squares">Three Squares</option>
+          <option value="latte_stone">Latte Stone Cookies</option>
+          <option value="catering">Catering</option>
+          <option value="acai">Acai Cakes</option>
+        </select>
+
+        <select
+          value={fulfillmentFilter}
+          onChange={(e) => onFulfillmentFilterChange(e.target.value)}
+          className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-gray-300 transition text-sm"
+        >
+          <option value="all">All Fulfillment</option>
+          <option value="pickup">Pickup</option>
+          <option value="shipping">Shipping</option>
+        </select>
+
+        <select
+          value={locationFilter}
+          onChange={(e) => onLocationFilterChange(e.target.value)}
+          className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-gray-300 transition text-sm"
+        >
+          <option value="all">All Locations</option>
+          {locationOptions.map((location) => (
+            <option key={location.id} value={String(location.id)}>
+              {location.name}
+            </option>
+          ))}
         </select>
 
         <select

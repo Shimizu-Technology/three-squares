@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser, useAuth } from '@clerk/clerk-react';
 import ProductsPage from './pages/ProductsPage';
+import BusinessLineEntryPage from './pages/BusinessLineEntryPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
@@ -12,6 +13,8 @@ import AdminLayout from './layouts/AdminLayout';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
+import AdminPickupQueuePage from './pages/admin/AdminPickupQueuePage';
+import AdminShippingQueuePage from './pages/admin/AdminShippingQueuePage';
 import AdminProductsPage from './pages/admin/AdminProductsPage';
 import AdminCollectionsPage from './pages/admin/AdminCollectionsPage';
 import AdminImportPage from './pages/admin/AdminImportPage';
@@ -175,6 +178,7 @@ function AppContent() {
 
   // Check if we're on admin pages
   const isAdminPage = location.pathname.startsWith('/admin');
+  const routeTransitionKey = isAdminPage ? '/admin' : location.pathname;
 
   return (
     <>
@@ -438,9 +442,12 @@ function AppContent() {
 
         {/* Routes with page transitions */}
         <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
+        <Routes location={location} key={routeTransitionKey}>
           <Route path="/" element={<HomePage />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/shop/three-squares" element={<BusinessLineEntryPage businessLine="three_squares" />} />
+          <Route path="/shop/latte-stone-cookies" element={<BusinessLineEntryPage businessLine="latte_stone" />} />
+          <Route path="/shop/catering" element={<BusinessLineEntryPage businessLine="catering" />} />
           <Route path="/products/:slug" element={<ProductDetailPage />} />
           <Route path="/collections" element={<CollectionsPage />} />
           <Route path="/collections/:slug" element={<CollectionDetailPage />} />
@@ -462,6 +469,8 @@ function AppContent() {
             <Route index element={<AdminDashboardPage />} />
             <Route path="analytics" element={<AdminAnalyticsPage />} />
             <Route path="orders" element={<AdminOrdersPage />} />
+            <Route path="orders/pickup-queue" element={<AdminPickupQueuePage />} />
+            <Route path="orders/shipping-queue" element={<AdminShippingQueuePage />} />
             <Route path="products" element={<AdminProductsPage />} />
             <Route path="products/new" element={<ProductFormPage />} />
             <Route path="products/:id/edit" element={<ProductFormPage />} />

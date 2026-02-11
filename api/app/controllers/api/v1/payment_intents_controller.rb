@@ -26,7 +26,8 @@ module Api
           location_id: location_id
         )
         if fulfillment_issues.any?
-          return render json: { error: "Cart fulfillment validation failed", issues: fulfillment_issues }, status: :unprocessable_entity
+          friendly_error = fulfillment_issues.first[:message].presence || "Cart fulfillment validation failed"
+          return render json: { error: friendly_error, issues: fulfillment_issues }, status: :unprocessable_entity
         end
 
         # Calculate total
@@ -71,12 +72,13 @@ module Api
       def get_cart_items
         sess_id = request.headers["X-Session-ID"] || request.cookies["session_id"]
 
-        if current_user
-          # Merge any session cart items to the user (handles guest -> login flow)
-          merge_session_cart_to_user(sess_id) if sess_id.present?
-          current_user.cart_items.includes(product_variant: { product: :product_locations })
-        elsif sess_id.present?
+        # Checkout should validate against the exact cart context shown in the UI.
+        # When a session ID is present, prefer the session cart to avoid unexpected
+        # merges with an existing account cart during payment-intent creation.
+        if sess_id.present?
           CartItem.where(session_id: sess_id).includes(product_variant: { product: :product_locations })
+        elsif current_user
+          current_user.cart_items.includes(product_variant: { product: :product_locations })
         else
           CartItem.none
         end

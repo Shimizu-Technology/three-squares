@@ -1,9 +1,11 @@
 # frozen_string_literal: true
+require "csv"
 
 module Api
   module V1
     module Admin
     class OrdersController < ApplicationController
+      COOKIE_COLLECTION_SLUGS = %w[cookies cookie-boxes mini-cookies].freeze
       include Authenticatable
         before_action :authenticate_request
         before_action :require_admin!
@@ -62,6 +64,35 @@ module Api
             total_count: total_count,
             total_pages: (total_count.to_f / per_page).ceil
           }
+        }
+      end
+
+      # GET /api/v1/admin/orders/export
+      # Export filtered orders as CSV for operations/reporting workflows
+      def export
+        orders = filtered_orders_query
+        csv_data = build_orders_csv(orders)
+
+        send_data csv_data,
+                  filename: "orders-export-#{Time.current.strftime('%Y%m%d-%H%M%S')}.csv",
+                  type: "text/csv"
+      end
+
+      # GET /api/v1/admin/orders/summary
+      # Lightweight counts for queue dashboards and operational triage.
+      def summary
+        orders = filtered_orders_query.except(:includes, :order)
+
+        status_counts = orders.group(:status).count
+        total_orders = orders.count
+        paid_orders = orders.where(payment_status: "paid").count
+        total_revenue_cents = orders.where(payment_status: "paid").sum(:total_cents)
+
+        render json: {
+          total_orders: total_orders,
+          paid_orders: paid_orders,
+          total_revenue_cents: total_revenue_cents,
+          status_counts: status_counts
         }
       end
 
@@ -207,6 +238,130 @@ module Api
 
 
       private
+
+      def filtered_orders_query
+        orders_query = Order
+          .includes(order_items: { product_variant: { product: :collections } }, user: [], location: [])
+          .order(created_at: :desc)
+
+        orders_query = orders_query.where(status: params[:status]) if params[:status].present?
+        orders_query = orders_query.where(payment_status: params[:payment_status]) if params[:payment_status].present?
+        orders_query = orders_query.where(order_type: params[:order_type]) if params[:order_type].present?
+        orders_query = orders_query.where(fulfillment_type: params[:fulfillment_type]) if params[:fulfillment_type].present?
+        orders_query = orders_query.where(location_id: params[:location_id].to_i) if params[:location_id].present?
+
+        if params[:search].present?
+          search_term = "%#{params[:search]}%"
+          orders_query = orders_query.where(
+            "order_number ILIKE ? OR customer_email ILIKE ? OR customer_name ILIKE ?",
+            search_term, search_term, search_term
+          )
+        end
+
+        start_at = parse_datetime_param(params[:start_date])
+        end_at = parse_datetime_param(params[:end_date], end_of_day: true)
+        orders_query = orders_query.where("created_at >= ?", start_at) if start_at
+        orders_query = orders_query.where("created_at <= ?", end_at) if end_at
+
+        if params[:business_line].present?
+          orders_query = apply_business_line_filter(orders_query, params[:business_line].to_s)
+        end
+
+        orders_query
+      end
+
+      def parse_datetime_param(value, end_of_day: false)
+        return nil if value.blank?
+
+        if value.match?(/^\d{4}-\d{2}-\d{2}$/)
+          date = Date.parse(value) rescue nil
+          return nil unless date
+          return end_of_day ? date.end_of_day : date.beginning_of_day
+        end
+
+        Time.zone.parse(value) rescue nil
+      end
+
+      def apply_business_line_filter(relation, business_line)
+        case business_line
+        when "catering"
+          relation.where(order_type: "wholesale")
+        when "acai"
+          relation.where(order_type: "acai")
+        when "latte_stone"
+          relation
+            .where(order_type: "retail")
+            .joins(order_items: { product_variant: { product: :collections } })
+            .where(collections: { slug: COOKIE_COLLECTION_SLUGS })
+            .distinct
+        when "three_squares"
+          latte_stone_order_ids = Order
+            .where(order_type: "retail")
+            .joins(order_items: { product_variant: { product: :collections } })
+            .where(collections: { slug: COOKIE_COLLECTION_SLUGS })
+            .select(:id)
+
+          relation.where(order_type: "retail").where.not(id: latte_stone_order_ids)
+        else
+          relation
+        end
+      end
+
+      def infer_business_line(order)
+        return "catering" if order.order_type == "wholesale"
+        return "acai" if order.order_type == "acai"
+        return "three_squares" unless order.order_type == "retail"
+
+        is_latte = order.order_items.any? do |item|
+          item.product&.collections&.any? { |collection| COOKIE_COLLECTION_SLUGS.include?(collection.slug) }
+        end
+
+        is_latte ? "latte_stone" : "three_squares"
+      end
+
+      def build_orders_csv(orders)
+        CSV.generate(headers: true) do |csv|
+          csv << [
+            "order_number",
+            "created_at",
+            "status",
+            "payment_status",
+            "order_type",
+            "business_line",
+            "fulfillment_type",
+            "location",
+            "customer_name",
+            "customer_email",
+            "item_count",
+            "subtotal_cents",
+            "shipping_cost_cents",
+            "tax_cents",
+            "total_cents",
+            "total_usd"
+          ]
+
+          orders.each do |order|
+            csv << [
+              order.order_number,
+              order.created_at.iso8601,
+              order.status,
+              order.payment_status,
+              order.order_type,
+              infer_business_line(order),
+              order.fulfillment_type,
+              order.location&.name,
+              order.customer_name,
+              order.customer_email,
+              order.order_items.sum(&:quantity),
+              order.subtotal_cents,
+              order.shipping_cost_cents,
+              order.tax_cents,
+              order.total_cents,
+              format("%.2f", (order.total_cents || 0) / 100.0)
+            ]
+          end
+        end
+      end
 
       def set_order
         @order = Order.includes(:order_items, :user, :refunds).find(params[:id])

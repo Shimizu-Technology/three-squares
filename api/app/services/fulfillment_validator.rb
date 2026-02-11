@@ -19,7 +19,42 @@ class FulfillmentValidator
     end
 
     def mixed_cart_incompatible?(products)
-      shared_types_for_products(products).empty?
+      normalized = products.compact.uniq
+      return false if normalized.empty?
+
+      mixed_shipping_capabilities?(normalized) || shared_types_for_products(normalized).empty?
+    end
+
+    def shared_pickup_location_ids_for_products(products)
+      normalized = products.compact.uniq.select(&:allow_pickup?)
+      return [] if normalized.empty?
+
+      constrained_location_sets = normalized
+        .map { |product| product.product_locations.available.pluck(:location_id).uniq }
+        .reject(&:empty?)
+
+      return [] if constrained_location_sets.empty?
+
+      constrained_location_sets.reduce(constrained_location_sets.first) do |intersection, ids|
+        intersection & ids
+      end
+    end
+
+    def pickup_location_incompatible_for_pickup_only?(products)
+      normalized = products.compact.uniq
+      return false if normalized.empty?
+      return false unless shared_types_for_products(normalized) == [ "pickup" ]
+
+      constrained_location_sets = normalized
+        .select(&:allow_pickup?)
+        .map { |product| product.product_locations.available.pluck(:location_id).uniq }
+        .reject(&:empty?)
+
+      return false if constrained_location_sets.empty?
+
+      constrained_location_sets
+        .reduce(constrained_location_sets.first) { |intersection, ids| intersection & ids }
+        .empty?
     end
 
     def validate_cart(cart_items:, fulfillment_type:, location_id: nil)
@@ -36,6 +71,15 @@ class FulfillmentValidator
 
       products = cart_items.map { |item| item.product_variant.product }.uniq
       shared_types = shared_types_for_products(products)
+
+      if mixed_shipping_capabilities?(products)
+        return [
+          {
+            type: "mixed_fulfillment",
+            message: "Your cart cannot mix shippable and pickup-only items. Please keep to one fulfillment path."
+          }
+        ]
+      end
 
       if shared_types.empty?
         return [
@@ -95,6 +139,14 @@ class FulfillmentValidator
       end
 
       issues
+    end
+
+    private
+
+    def mixed_shipping_capabilities?(products)
+      has_shipping_enabled = products.any?(&:allow_shipping?)
+      has_shipping_disabled = products.any? { |product| !product.allow_shipping? }
+      has_shipping_enabled && has_shipping_disabled
     end
   end
 end

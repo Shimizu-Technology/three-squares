@@ -7,11 +7,11 @@ module Api
 
       # GET /api/v1/cart
       def show
-        cart_items = get_cart_items
+        cart_items = get_cart_items.to_a
         render json: {
           items: cart_items.map { |item| cart_item_json(item) },
           subtotal_cents: cart_items.sum(&:subtotal_cents),
-          item_count: cart_items.sum(:quantity)
+          item_count: cart_items.sum(&:quantity)
         }
       end
 
@@ -19,10 +19,13 @@ module Api
       def add_item
         Rails.logger.info "🟢 API: add_item called"
         Rails.logger.info "  - variant_id: #{params[:product_variant_id]}"
+        Rails.logger.info "  - product_id: #{params[:product_id]}"
         Rails.logger.info "  - quantity: #{params[:quantity]}"
         Rails.logger.info "  - session_id: #{request.headers['X-Session-ID']}"
 
-        variant = ProductVariant.find(params[:product_variant_id])
+        variant = resolve_variant_for_add_item!
+        return render json: { error: "Unable to add this product to cart right now" }, status: :unprocessable_entity unless variant
+
         product = variant.product
         quantity = params[:quantity].to_i
 
@@ -69,17 +72,34 @@ module Api
           }, status: :unprocessable_entity
         end
 
+        if FulfillmentValidator.pickup_location_incompatible_for_pickup_only?(existing_products + [ product ])
+          return render json: {
+            error: "This item cannot be combined with your current cart because pickup locations do not overlap. Keep pickup items to a shared location."
+          }, status: :unprocessable_entity
+        end
+
         if cart_item.persisted?
           # Update existing cart item
           new_quantity = cart_item.quantity + quantity
           Rails.logger.info "  - new_quantity will be: #{new_quantity} (#{cart_item.quantity} + #{quantity})"
 
-          if new_quantity > variant.stock_quantity
-            return render json: {
-              error: "Cannot add #{quantity} more. Only #{variant.stock_quantity} total available (you have #{cart_item.quantity} in cart)",
-              available_quantity: variant.stock_quantity,
-              current_quantity: cart_item.quantity
-            }, status: :unprocessable_entity
+          case product.inventory_level
+          when "variant"
+            if new_quantity > variant.stock_quantity
+              return render json: {
+                error: "Cannot add #{quantity} more. Only #{variant.stock_quantity} total available (you have #{cart_item.quantity} in cart)",
+                available_quantity: variant.stock_quantity,
+                current_quantity: cart_item.quantity
+              }, status: :unprocessable_entity
+            end
+          when "product"
+            if new_quantity > product.product_stock_quantity
+              return render json: {
+                error: "Cannot add #{quantity} more. Only #{product.product_stock_quantity} total available (you have #{cart_item.quantity} in cart)",
+                available_quantity: product.product_stock_quantity,
+                current_quantity: cart_item.quantity
+              }, status: :unprocessable_entity
+            end
           end
           cart_item.quantity = new_quantity
         else
@@ -90,7 +110,7 @@ module Api
 
         if cart_item.save
           Rails.logger.info "✅ Cart item saved. New quantity: #{cart_item.quantity}"
-          total_cart_count = get_cart_items.sum(:quantity)
+          total_cart_count = get_cart_items.to_a.sum(&:quantity)
           Rails.logger.info "  - Total cart count: #{total_cart_count}"
 
           render json: {
@@ -102,7 +122,7 @@ module Api
           render json: { errors: cart_item.errors.full_messages }, status: :unprocessable_entity
         end
       rescue ActiveRecord::RecordNotFound
-        render json: { error: "Product variant not found" }, status: :not_found
+        render json: { error: "Product or variant not found" }, status: :not_found
       end
 
       # PUT /api/v1/cart/items/:id
@@ -116,18 +136,28 @@ module Api
 
         # Check stock availability
         variant = cart_item.product_variant
-        if quantity > variant.stock_quantity
-          return render json: {
-            error: "Only #{variant.stock_quantity} #{variant.display_name} available",
-            available_quantity: variant.stock_quantity
-          }, status: :unprocessable_entity
+        case variant.product.inventory_level
+        when "variant"
+          if quantity > variant.stock_quantity
+            return render json: {
+              error: "Only #{variant.stock_quantity} #{variant.display_name} available",
+              available_quantity: variant.stock_quantity
+            }, status: :unprocessable_entity
+          end
+        when "product"
+          if quantity > variant.product.product_stock_quantity
+            return render json: {
+              error: "Only #{variant.product.product_stock_quantity} available",
+              available_quantity: variant.product.product_stock_quantity
+            }, status: :unprocessable_entity
+          end
         end
 
         if cart_item.update(quantity: quantity)
           render json: {
             message: "Cart item updated",
             cart_item: cart_item_json(cart_item),
-            cart_count: get_cart_items.sum(:quantity)
+            cart_count: get_cart_items.to_a.sum(&:quantity)
           }
         else
           render json: { errors: cart_item.errors.full_messages }, status: :unprocessable_entity
@@ -142,7 +172,7 @@ module Api
         cart_item.destroy
         render json: {
           message: "Item removed from cart",
-          cart_count: get_cart_items.sum(:quantity)
+          cart_count: get_cart_items.to_a.sum(&:quantity)
         }
       rescue ActiveRecord::RecordNotFound
         render json: { error: "Cart item not found" }, status: :not_found
@@ -168,6 +198,16 @@ module Api
             cart_item_id: cart_items.first&.id || 0,
             type: "mixed_fulfillment",
             message: "Your cart has pickup-only and shipping-only items that cannot be checked out together.",
+            item_name: "Cart",
+            action: "review"
+          }
+        end
+
+        if FulfillmentValidator.pickup_location_incompatible_for_pickup_only?(products)
+          issues << {
+            cart_item_id: cart_items.first&.id || 0,
+            type: "pickup_location_conflict",
+            message: "Your pickup-only cart has items assigned to different locations with no common pickup location.",
             item_name: "Cart",
             action: "review"
           }
@@ -250,9 +290,9 @@ module Api
         if current_user
           # First, merge any session cart items to the user
           merge_session_cart_to_user if session_id.present?
-          current_user.cart_items.includes(product_variant: { product: :product_locations })
+          current_user.cart_items.includes(product_variant: { product: [ :product_locations, :collections ] })
         elsif session_id.present?
-          CartItem.for_session(session_id).includes(product_variant: { product: :product_locations })
+          CartItem.for_session(session_id).includes(product_variant: { product: [ :product_locations, :collections ] })
         else
           CartItem.none
         end
@@ -291,6 +331,36 @@ module Api
         end
       end
 
+      def resolve_variant_for_add_item!
+        if params[:product_variant_id].present?
+          return ProductVariant.find(params[:product_variant_id])
+        end
+
+        return nil unless params[:product_id].present?
+
+        product = Product.find(params[:product_id])
+        variant = product.product_variants.available.first || product.product_variants.first
+        return variant if variant.present?
+
+        # Legacy catalog products may have no persisted default variant yet.
+        if %w[product none].include?(product.inventory_level)
+          variant = product.product_variants.new(
+            size: "Default",
+            sku: "#{product.sku_prefix}-DEFAULT-#{product.id}-#{Time.current.to_i}".upcase,
+            price_cents: product.base_price_cents || 0,
+            available: true,
+            stock_quantity: 0,
+            weight_oz: product.weight_oz,
+            is_default: true
+          )
+          variant.skip_weight_validation = true
+          variant.save!
+          return variant
+        end
+
+        nil
+      end
+
       def session_id
         @session_id ||= request.headers["X-Session-ID"] || request.cookies["session_id"]
       end
@@ -320,6 +390,7 @@ module Api
             id: product.id,
             name: product.name,
             slug: product.slug,
+            business_line: product_business_line(product),
             published: product.published?,
             allow_pickup: product.allow_pickup,
             allow_shipping: product.allow_shipping,
@@ -335,6 +406,14 @@ module Api
             max_available: item.max_available_quantity
           }
         }
+      end
+
+      def product_business_line(product)
+        slugs = product.collections.map(&:slug)
+        return "latte_stone" if slugs.any? { |slug| slug.in?([ "cookies", "cookie-boxes", "mini-cookies" ]) }
+        return "catering" if slugs.any? { |slug| slug.start_with?("catering-") }
+
+        "three_squares"
       end
     end
   end

@@ -19,6 +19,8 @@ import {
   BarChart3,
   UtensilsCrossed,
   MapPin,
+  ClipboardCheck,
+  Truck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -34,6 +36,8 @@ export const ADMIN_ICONS: Record<string, LucideIcon> = {
   fundraisers: Heart,
   acai: IceCreamCone,
   catering: UtensilsCrossed,
+  pickup_queue: ClipboardCheck,
+  shipping_queue: Truck,
   users: Users,
   import: Upload,
   settings: Settings,
