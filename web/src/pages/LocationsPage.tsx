@@ -188,7 +188,7 @@ function LocationCard({ location }: LocationCardProps) {
         
         {/* Address */}
         <div className="flex items-start gap-3 mb-4">
-          <MapPin className="w-5 h-5 text-tsPrimary flex-shrink-0 mt-0.5" />
+          <MapPin className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" />
           <div>
             <p className="text-warm-700">{location.address}</p>
             <a
@@ -205,7 +205,7 @@ function LocationCard({ location }: LocationCardProps) {
 
         {/* Hours */}
         <div className="flex items-start gap-3 mb-4">
-          <Clock className="w-5 h-5 text-tsPrimary flex-shrink-0 mt-0.5" />
+          <Clock className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" />
           <div className="space-y-1">
             {location.hours.map((schedule, idx) => (
               <p key={idx} className="text-warm-700">
@@ -224,7 +224,7 @@ function LocationCard({ location }: LocationCardProps) {
         {/* Contact */}
         {(location.phone || location.whatsapp) && (
           <div className="flex items-start gap-3 mt-auto pt-4 border-t border-warm-100">
-            <Phone className="w-5 h-5 text-tsPrimary flex-shrink-0 mt-0.5" />
+            <Phone className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" />
             <div className="space-y-1">
               {location.phone && (
                 <a
@@ -258,7 +258,7 @@ function LocationCard({ location }: LocationCardProps) {
             title={`Map of ${location.name}`}
             className="w-full h-full"
             loading="lazy"
-            referrerPolicy="no-referrer-when-downgrade"
+            referrerPolicy="no-referrer"
           />
         </div>
         <a

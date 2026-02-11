@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import axios from 'axios';
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -146,8 +147,6 @@ export default function CateringPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const modalShellRef = useRef<HTMLDivElement | null>(null);
-  const modalFormRef = useRef<HTMLFormElement | null>(null);
   useLockBodyScroll(showForm);
 
   // Allow deep-linking directly to the inquiry form from other pages.
@@ -166,28 +165,6 @@ export default function CateringPage() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [showForm]);
-
-  useEffect(() => {
-    if (!showForm) return;
-
-    const shell = modalShellRef.current;
-    if (!shell) return;
-
-    // Native non-passive wheel handler so preventDefault is honored.
-    const onWheel = (event: WheelEvent) => {
-      const form = modalFormRef.current;
-      if (!form) return;
-
-      form.scrollTop += event.deltaY;
-      event.preventDefault();
-      event.stopPropagation();
-    };
-
-    shell.addEventListener('wheel', onWheel, { passive: false });
-    return () => {
-      shell.removeEventListener('wheel', onWheel);
-    };
   }, [showForm]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -209,8 +186,13 @@ export default function CateringPage() {
       });
       setSubmitted(true);
       setFormData(initialFormState);
-    } catch (err: any) {
-      setError(err.response?.data?.errors?.join(', ') || 'Something went wrong. Please try again.');
+    } catch (err: unknown) {
+      const apiErrors = axios.isAxiosError(err)
+        ? err.response?.data?.errors
+        : undefined;
+      setError(Array.isArray(apiErrors) && apiErrors.length > 0
+        ? apiErrors.join(', ')
+        : 'Something went wrong. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -281,7 +263,7 @@ export default function CateringPage() {
           {services.map((service, index) => (
             <StaggerItem key={index}>
               <div className="flex gap-4 p-6 rounded-xl border border-gray-100 hover:border-warm-200 hover:shadow-md transition">
-                <div className="flex-shrink-0 w-12 h-12 bg-warm-100 rounded-lg flex items-center justify-center text-warm-600">
+              <div className="shrink-0 w-12 h-12 bg-warm-100 rounded-lg flex items-center justify-center text-warm-600">
                   {service.icon}
                 </div>
                 <div>
@@ -302,9 +284,9 @@ export default function CateringPage() {
               role="dialog"
               aria-modal="true"
               aria-label="Request a catering quote"
-              className="w-full max-w-3xl h-[92vh] bg-white rounded-2xl shadow-2xl border border-warm-200 overflow-hidden flex flex-col"
+              className="w-full max-w-3xl h-[92vh] bg-white rounded-2xl shadow-2xl border border-warm-200 overflow-hidden overscroll-y-contain flex flex-col"
               onClick={(e) => e.stopPropagation()}
-              ref={modalShellRef}
+              onWheel={(e) => e.stopPropagation()}
             >
               {submitted ? (
                 <div className="p-8 text-center">
@@ -344,7 +326,6 @@ export default function CateringPage() {
                   <form
                     onSubmit={handleSubmit}
                     className="px-5 py-5 sm:px-6 sm:py-6 space-y-6 flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch]"
-                    ref={modalFormRef}
                   >
                     {error && (
                       <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
@@ -569,7 +550,7 @@ export default function CateringPage() {
                     <ul className="space-y-2">
                       {pkg.items.map((item, i) => (
                         <li key={i} className="flex items-center gap-2 text-gray-700">
-                          <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
                           {item}

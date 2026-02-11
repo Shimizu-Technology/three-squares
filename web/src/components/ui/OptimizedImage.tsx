@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import type { ImgixImageOptions, ImageContext } from '../../utils/imageUtils';
 import { getImgixImageUrl, getSizesForContext, getWidthsForContext } from '../../utils/imageUtils';
 
@@ -29,8 +29,6 @@ const OptimizedImage = memo(({
   ...imgProps
 }: OptimizedImageProps) => {
   const resolvedSrc = src || fallbackSrc;
-  if (!resolvedSrc) return null;
-
   const resolvedWidths = widths || getWidthsForContext(context);
   const resolvedSizes = sizes || getSizesForContext(context);
 
@@ -55,20 +53,21 @@ const OptimizedImage = memo(({
 
   // Use a medium source as initial src to avoid visible low-res pop-in.
   const defaultWidth = resolvedWidths[Math.min(1, resolvedWidths.length - 1)];
-  const transformedDefaultSrc = getImgixImageUrl(resolvedSrc, { ...baseOptions, width: defaultWidth }) || resolvedSrc;
-  const [useOriginalSource, setUseOriginalSource] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
-
-  useEffect(() => {
-    setUseOriginalSource(false);
-    setIsLoaded(false);
-  }, [resolvedSrc, transformedDefaultSrc]);
+  const transformedDefaultSrc = resolvedSrc
+    ? (getImgixImageUrl(resolvedSrc, { ...baseOptions, width: defaultWidth }) || resolvedSrc)
+    : undefined;
+  const [fallbackToOriginalSrc, setFallbackToOriginalSrc] = useState<string | null>(null);
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const useOriginalSource = Boolean(resolvedSrc && fallbackToOriginalSrc === resolvedSrc);
 
   const activeSrc = useOriginalSource ? resolvedSrc : transformedDefaultSrc;
   const activeSrcSet = useOriginalSource ? undefined : (transformedSrcSet || undefined);
   const activeSizes = activeSrcSet ? resolvedSizes : undefined;
 
   const loading = priority ? 'eager' : 'lazy';
+  const isLoaded = Boolean(activeSrc && loadedSrc === activeSrc);
+
+  if (!resolvedSrc || !activeSrc) return null;
 
   return (
     <img
@@ -78,16 +77,16 @@ const OptimizedImage = memo(({
       alt={alt}
       loading={loading}
       decoding="async"
-      className={`${className || ''} transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
+      className={`${className || ''} transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-60'}`}
       {...(fetchPriority ? { fetchpriority: fetchPriority } : {})}
       onLoad={(event) => {
-        setIsLoaded(true);
+        setLoadedSrc(activeSrc);
         onLoad?.(event);
       }}
       onError={(event) => {
         // If the transformed/CDN URL fails, retry once with the original source URL.
-        if (!useOriginalSource && transformedDefaultSrc !== resolvedSrc) {
-          setUseOriginalSource(true);
+        if (!useOriginalSource && transformedDefaultSrc !== resolvedSrc && resolvedSrc) {
+          setFallbackToOriginalSrc(resolvedSrc);
           return;
         }
 
