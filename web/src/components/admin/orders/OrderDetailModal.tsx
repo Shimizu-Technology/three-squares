@@ -84,7 +84,7 @@ export default function OrderDetailModal({
           <div>
             <h2 className="text-2xl font-bold text-gray-900">
               <span className="print:hidden">Order #</span>
-              <span className="hidden print:inline text-3xl">HAFALOHA - PACKING SLIP<br /></span>
+              <span className="hidden print:inline text-3xl">THREE SQUARES - PACKING SLIP<br /></span>
               {order.order_number}
             </h2>
             <p className="text-sm text-gray-500 mt-1">{formatDate(order.created_at)}</p>

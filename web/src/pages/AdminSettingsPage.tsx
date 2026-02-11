@@ -586,7 +586,7 @@ export default function AdminSettingsPage() {
             Back to Admin Dashboard
           </button>
           <h1 className="text-3xl font-bold text-gray-900">Store Settings</h1>
-          <p className="text-gray-600 mt-2">Manage global settings for your Hafaloha store</p>
+          <p className="text-gray-600 mt-2">Manage global settings for your Three Squares store</p>
         </div>
 
         {/* Tabs */}
@@ -950,7 +950,7 @@ function GeneralSettingsTab({
               Product Placeholder Image
             </label>
             <p className="mt-1 text-sm text-gray-500">
-              Used wherever a product image is missing. Default is the Hafaloha logo.
+              Used wherever a product image is missing. Default is the Three Squares logo.
             </p>
             <div className="mt-3 flex items-center gap-4">
               <div className="h-24 w-24 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">

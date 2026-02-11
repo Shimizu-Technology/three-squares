@@ -43,6 +43,7 @@ import ShippingInfoPage from './pages/ShippingInfoPage';
 import ReturnsPage from './pages/ReturnsPage';
 import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import CateringPage from './pages/CateringPage';
+import LocationsPage from './pages/LocationsPage';
 import axios from 'axios';
 import { Toaster } from 'react-hot-toast';
 import CartIcon from './components/CartIcon'; // Import CartIcon
@@ -454,6 +455,7 @@ function AppContent() {
           <Route path="/collections/:slug" element={<CollectionDetailPage />} />
           <Route path="/about" element={<AboutPage />} />
           <Route path="/catering" element={<CateringPage />} />
+          <Route path="/locations" element={<LocationsPage />} />
           <Route path="/acai-cakes" element={<AcaiCakesPage />} />
           <Route path="/fundraisers" element={<FundraisersListPage />} />
           {/* Fundraiser routes - both /fundraisers/:slug and /f/:slug patterns */}

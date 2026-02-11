@@ -34,7 +34,7 @@ export default function ReturnsPage() {
           </FadeIn>
           <FadeIn delay={0.1}>
             <p className="text-lg sm:text-xl text-center max-w-2xl mx-auto text-warm-600">
-              We want you to love your Hafaloha gear. If something isn't right, we're here to help.
+              We want you to be satisfied with your Three Squares experience. If something isn't right, we're here to help.
             </p>
           </FadeIn>
         </div>

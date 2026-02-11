@@ -53,7 +53,7 @@ export default function TermsOfServicePage() {
         <FadeIn immediate>
           <section className="mb-12">
             <p className="text-lg text-warm-600 leading-relaxed">
-              Welcome to Hafaloha. These Terms of Service (&quot;Terms&quot;) govern your use of our website
+              Welcome to Three Squares. These Terms of Service (&quot;Terms&quot;) govern your use of our website
               at bgpacific.com and any purchases you make through our online store. By accessing our website
               or placing an order, you agree to be bound by these Terms.
             </p>
@@ -147,7 +147,7 @@ export default function TermsOfServicePage() {
             <h2 className="text-2xl font-bold mb-6 text-warm-900 tracking-tight">Returns & Exchanges</h2>
             <div className="rounded-lg p-6 bg-warm">
               <p className="text-warm-600 leading-relaxed mb-4">
-                We want you to love your Hafaloha gear. If you&apos;re not completely satisfied, please
+                We want you to love your Three Squares gear. If you&apos;re not completely satisfied, please
                 review our{' '}
                 <a href="/returns" className="text-tsPrimary hover:text-red-700 transition">
                   Returns Policy
@@ -168,7 +168,7 @@ export default function TermsOfServicePage() {
             <h2 className="text-2xl font-bold mb-6 text-warm-900 tracking-tight">Intellectual Property</h2>
             <p className="text-warm-600 leading-relaxed">
               All content on this website — including text, graphics, logos, images, product designs,
-              and software — is the property of Hafaloha or its content suppliers and is protected by
+              and software — is the property of Three Squares or its content suppliers and is protected by
               U.S. and international copyright, trademark, and other intellectual property laws. You may
               not reproduce, distribute, or create derivative works from any content without our prior
               written consent.
@@ -181,7 +181,7 @@ export default function TermsOfServicePage() {
           <section className="mb-12">
             <h2 className="text-2xl font-bold mb-6 text-warm-900 tracking-tight">Limitation of Liability</h2>
             <p className="text-warm-600 leading-relaxed mb-4">
-              To the fullest extent permitted by law, Hafaloha shall not be liable for any indirect,
+              To the fullest extent permitted by law, Three Squares shall not be liable for any indirect,
               incidental, special, consequential, or punitive damages arising out of or related to your
               use of our website or purchase of our products.
             </p>
