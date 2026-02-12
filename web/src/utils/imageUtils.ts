@@ -16,7 +16,6 @@ export type ImageContext =
   | 'detail'
   | 'thumb'
   | 'cart'
-  | 'fundraiser'
   | 'hero';
 
 export const getImgixImageUrl = (
@@ -71,8 +70,6 @@ export const getWidthsForContext = (context?: ImageContext): number[] => {
       return [80, 160, 240];
     case 'cart':
       return [80, 160];
-    case 'fundraiser':
-      return [160, 320, 480];
     case 'hero':
       return [640, 1280, 1920];
     default:
@@ -92,8 +89,6 @@ export const getSizesForContext = (context?: ImageContext): string => {
       return '80px';
     case 'cart':
       return '80px';
-    case 'fundraiser':
-      return '(max-width: 640px) 40vw, 160px';
     case 'hero':
       return '100vw';
     default:

@@ -458,25 +458,6 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
         onEndDateChange={(value) => { setEndDate(value); setDatePreset('custom'); setPage(1); }}
       />
 
-      {/* Fundraiser Orders Note */}
-      {orderTypeFilter === 'wholesale' && mode === 'default' && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
-          <svg className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <div>
-            <p className="text-sm font-medium text-blue-800">Fundraiser orders are managed separately</p>
-            <p className="text-sm text-blue-600 mt-1">
-              To view and manage fundraiser orders, go to{' '}
-              <a href="/admin/fundraisers" className="font-medium underline hover:text-blue-800">
-                Fundraisers
-              </a>{' '}
-              → select a fundraiser → Orders tab.
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Orders List */}
       {loading ? (
         <SkeletonListPage />

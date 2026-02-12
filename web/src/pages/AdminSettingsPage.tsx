@@ -694,7 +694,7 @@ function GeneralSettingsTab({
           <div className="flex items-center justify-between py-3">
             <div>
               <p className="font-medium text-gray-900">Wholesale Orders</p>
-              <p className="text-sm text-gray-500">Fundraiser and wholesale orders</p>
+              <p className="text-sm text-gray-500">Wholesale orders</p>
             </div>
             <button
               onClick={() => onToggleEmailSetting('send_wholesale_emails')}
