@@ -13,6 +13,10 @@ module Api
         def confirm_terminal_payment
           order = Order.find(params[:id])
 
+          unless order.staff_created? && order.source == "pos"
+            return render json: { error: "Not a POS order" }, status: :forbidden
+          end
+
           unless order.payment_method == "card_present" && order.payment_intent_id.present?
             return render json: { error: "Order is not a terminal payment" }, status: :unprocessable_entity
           end

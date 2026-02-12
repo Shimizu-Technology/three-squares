@@ -9,6 +9,14 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 let terminal: Terminal | null = null;
 let connectedReader: Reader | null = null;
 
+// Auth token provider — set via setTokenProvider before initializing
+type TokenProvider = () => Promise<string | null>;
+let tokenProvider: TokenProvider | null = null;
+
+export function setTokenProvider(provider: TokenProvider) {
+  tokenProvider = provider;
+}
+
 // Callbacks for UI updates
 type StatusCallback = (status: TerminalStatus) => void;
 let statusCallback: StatusCallback | null = null;
@@ -40,7 +48,10 @@ export function onStatusChange(callback: StatusCallback) {
 }
 
 async function fetchConnectionToken(): Promise<string> {
-  const token = localStorage.getItem('clerk-token') || sessionStorage.getItem('clerk-token');
+  if (!tokenProvider) {
+    throw new Error('Token provider not set. Call setTokenProvider() before initializing terminal.');
+  }
+  const token = await tokenProvider();
   const response = await fetch(`${API_BASE}/api/v1/admin/stripe_terminal/connection_token`, {
     method: 'POST',
     headers: {

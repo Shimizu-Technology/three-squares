@@ -17,6 +17,7 @@ import {
   getConnectedReader,
   onStatusChange,
   destroyTerminal,
+  setTokenProvider,
   type TerminalStatus,
 } from '../../services/stripeTerminal';
 import type { Reader } from '@stripe/terminal-js';
@@ -389,6 +390,8 @@ export default function AdminPOSPage() {
 
   useEffect(() => {
     onStatusChange(setTerminalStatus);
+    // Provide Clerk token to terminal service
+    setTokenProvider(getToken);
     // Auto-initialize terminal on mount
     initializeTerminal()
       .then(() => {
@@ -472,12 +475,28 @@ export default function AdminPOSPage() {
       // 2. Collect payment via terminal reader
       await collectPayment(orderResult.client_secret);
 
-      // 3. Confirm payment on backend
-      const confirmed = await confirmTerminalPayment(token, orderResult.id);
+      // 3. Confirm payment on backend (retry up to 3 times — card was already charged)
+      let confirmed;
+      let confirmError;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          confirmed = await confirmTerminalPayment(token, orderResult.id);
+          break;
+        } catch (err) {
+          confirmError = err;
+          if (attempt < 2) await new Promise((r) => setTimeout(r, 1000));
+        }
+      }
 
-      setLastOrder(confirmed);
-      clearCart();
-      setTimeout(() => setLastOrder(null), 4000);
+      if (confirmed) {
+        setLastOrder(confirmed);
+        clearCart();
+        setTimeout(() => setLastOrder(null), 4000);
+      } else {
+        // Payment succeeded on terminal but confirmation failed — alert staff
+        alert(`⚠️ Card was charged but order ${orderResult.order_number} couldn't be confirmed. Please check Stripe Dashboard and confirm manually.`);
+        clearCart();
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Terminal payment failed';
       setTerminalError(message);

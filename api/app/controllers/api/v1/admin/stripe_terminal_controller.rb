@@ -7,6 +7,7 @@ module Api
         include Authenticatable
         before_action :authenticate_request
         before_action :require_admin!
+        before_action :ensure_stripe_configured!
 
         # POST /api/v1/admin/stripe_terminal/connection_token
         # Returns a connection token for the Stripe Terminal JS SDK
@@ -37,6 +38,17 @@ module Api
           }
         rescue Stripe::StripeError => e
           render json: { error: e.message }, status: :bad_request
+        end
+
+        private
+
+        def ensure_stripe_configured!
+          stripe_key = ENV["STRIPE_SECRET_KEY"]
+          if stripe_key.blank?
+            render json: { error: "Stripe is not configured" }, status: :service_unavailable
+            return
+          end
+          Stripe.api_key = stripe_key
         end
       end
     end
