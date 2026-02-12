@@ -26,6 +26,7 @@
     "@clerk/clerk-react": "^5.58.1",
     "@stripe/react-stripe-js": "^5.4.1",
     "@stripe/stripe-js": "^8.5.3",
+    "@stripe/terminal-js": "^0.26.0",
     "@tanstack/react-query": "^5.90.12",
     "axios": "^1.13.2",
     "date-fns": "^4.1.0",
