@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_11_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_12_074649) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -407,7 +407,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_11_100000) do
     t.string "acai_pickup_time"
     t.string "acai_placard_text"
     t.text "admin_notes"
+    t.integer "cash_change_cents"
+    t.integer "cash_received_cents"
     t.datetime "created_at", null: false
+    t.integer "created_by_user_id"
     t.string "customer_email"
     t.string "customer_name"
     t.string "customer_phone"
@@ -420,6 +423,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_11_100000) do
     t.string "order_type"
     t.bigint "participant_id"
     t.string "payment_intent_id"
+    t.string "payment_method"
     t.string "payment_status"
     t.string "shipping_address_line1"
     t.string "shipping_address_line2"
@@ -429,6 +433,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_11_100000) do
     t.string "shipping_method"
     t.string "shipping_state"
     t.string "shipping_zip"
+    t.string "source", default: "online", null: false
+    t.boolean "staff_created", default: false, null: false
     t.string "status"
     t.integer "subtotal_cents"
     t.integer "tax_cents"
@@ -445,6 +451,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_11_100000) do
     t.index ["order_type"], name: "index_orders_on_order_type"
     t.index ["participant_id"], name: "index_orders_on_participant_id"
     t.index ["payment_status"], name: "index_orders_on_payment_status"
+    t.index ["source"], name: "index_orders_on_source"
+    t.index ["staff_created"], name: "index_orders_on_staff_created"
     t.index ["status"], name: "index_orders_on_status"
     t.index ["user_id"], name: "index_orders_on_user_id"
   end

@@ -24,6 +24,7 @@ import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminVariantPresetsPage from './pages/admin/AdminVariantPresetsPage';
 import AdminCateringPage from './pages/admin/AdminCateringPage';
 import AdminLocationsPage from './pages/admin/AdminLocationsPage';
+import AdminPOSPage from './pages/admin/AdminPOSPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
@@ -464,6 +465,9 @@ function AppContent() {
           <Route path="/returns" element={<ReturnsPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           
+          {/* POS Mode — Full screen, outside admin layout */}
+          <Route path="/admin/pos" element={<AdminPOSPage />} />
+
           {/* Admin Routes with Layout */}
           <Route path="/admin" element={<AdminLayout />}>
             <Route index element={<AdminDashboardPage />} />
