@@ -256,8 +256,6 @@ module Api
         case business_line
         when "catering"
           relation.where(order_type: "wholesale")
-        when "acai"
-          relation.where(order_type: "acai")
         when "latte_stone"
           relation
             .where(order_type: "retail")
@@ -279,7 +277,6 @@ module Api
 
       def infer_business_line(order)
         return "catering" if order.order_type == "wholesale"
-        return "acai" if order.order_type == "acai"
         return "three_squares" unless order.order_type == "retail"
 
         is_latte = order.order_items.any? do |item|
@@ -584,20 +581,6 @@ module Api
           end
         }
 
-        # Add acai-specific fields for acai orders
-        if order.order_type == "acai"
-          settings = AcaiSetting.instance
-          json.merge!(
-            acai_pickup_date: order.acai_pickup_date&.to_s,
-            acai_pickup_time: order.acai_pickup_time, # Now stored as string
-            acai_crust_type: order.acai_crust_type,
-            acai_include_placard: order.acai_include_placard,
-            acai_placard_text: order.acai_placard_text,
-            pickup_location: settings.pickup_location,
-            pickup_phone: settings.pickup_phone
-          )
-        end
-
         json
       end
 
@@ -645,20 +628,6 @@ module Api
         json[:refundable_amount_cents] = order.refundable_amount_cents
         # Add refund history
         json[:refunds] = order.refunds.recent.map { |r| refund_json(r) }
-
-        # Add acai-specific fields for acai orders
-        if order.order_type == "acai"
-          acai_settings = AcaiSetting.instance
-          json.merge!(
-            acai_pickup_date: order.acai_pickup_date&.to_s,
-            acai_pickup_time: order.acai_pickup_time, # Now stored as string
-            acai_crust_type: order.acai_crust_type,
-            acai_include_placard: order.acai_include_placard,
-            acai_placard_text: order.acai_placard_text,
-            pickup_location: acai_settings.pickup_location,
-            pickup_phone: acai_settings.pickup_phone
-          )
-        end
 
         json
       end

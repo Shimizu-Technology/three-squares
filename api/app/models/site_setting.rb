@@ -11,18 +11,11 @@ class SiteSetting < ApplicationRecord
       payment_processor: "stripe",
       send_customer_emails: false, # Legacy field - kept for backwards compatibility
       send_retail_emails: false,   # Off by default for development
-      send_acai_emails: false,     # Off by default for development
       send_wholesale_emails: false, # Off by default for development
       store_name: "Three Squares",
       store_email: "sales@bgpacific.com",
       store_phone: "671-646-2652",
       placeholder_image_url: "/images/three-squares-logo.png",
-      acai_gallery_image_a_url: "/images/acai-cake-set-a.webp",
-      acai_gallery_image_b_url: "/images/acai-cake-set-b.webp",
-      acai_gallery_heading: "Featured Sets",
-      acai_gallery_subtext: "Seasonal & special requests",
-      acai_gallery_show_image_a: true,
-      acai_gallery_show_image_b: true,
       order_notification_emails: [ "shimizutechnology@gmail.com" ],
       shipping_origin_address: {
         company: "Three Squares",
@@ -40,7 +33,6 @@ class SiteSetting < ApplicationRecord
   # Check if customer emails are enabled for a specific order type
   def send_emails_for?(order_type)
     case order_type
-    when "acai" then send_acai_emails
     when "wholesale" then send_wholesale_emails
     else send_retail_emails # retail is default
     end

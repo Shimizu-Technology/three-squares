@@ -21,7 +21,7 @@ interface Order {
   status: string;
   status_display?: string;
   payment_status: string;
-  order_type: 'retail' | 'acai' | 'wholesale';
+  order_type: 'retail' | 'wholesale';
   customer_name: string;
   customer_email: string;
   customer_phone: string;
@@ -41,14 +41,6 @@ interface Order {
   tracking_number?: string;
   tracking_url?: string;
   can_track?: boolean;
-  // Acai-specific fields
-  acai_pickup_date?: string;
-  acai_pickup_time?: string;
-  acai_crust_type?: string;
-  acai_include_placard?: boolean;
-  acai_placard_text?: string;
-  pickup_location?: string;
-  pickup_phone?: string;
   // Common
   order_items: OrderItem[];
   created_at: string;
@@ -107,60 +99,6 @@ export default function OrderConfirmationPage() {
     });
   };
 
-  const formatPickupDate = (dateString: string) => {
-    const date = new Date(dateString + 'T00:00:00');
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const formatPickupTime = (timeString: string) => {
-    if (!timeString) return 'Time not specified';
-    
-    // Handle ISO datetime format (e.g., "2000-01-01T13:30:00.000Z")
-    if (timeString.includes('T')) {
-      try {
-        const date = new Date(timeString);
-        // Get the hours and minutes from the UTC time (since time-only is stored as UTC)
-        const hours = date.getUTCHours();
-        const minutes = date.getUTCMinutes();
-        const period = hours >= 12 ? 'PM' : 'AM';
-        const hour12 = hours > 12 ? hours - 12 : hours === 0 ? 12 : hours;
-        return `${hour12}:${minutes.toString().padStart(2, '0')} ${period}`;
-      } catch {
-        return timeString;
-      }
-    }
-    
-    // Handle "HH:MM-HH:MM" format (slot range)
-    if (timeString.includes('-') && timeString.includes(':')) {
-      const parts = timeString.split('-');
-      return parts.map(part => {
-        const [hours, minutes] = part.trim().split(':');
-        const hour = parseInt(hours);
-        if (isNaN(hour)) return part;
-        const period = hour >= 12 ? 'PM' : 'AM';
-        const hour12 = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-        return `${hour12}:${minutes} ${period}`;
-      }).join(' - ');
-    }
-    
-    // Handle simple "HH:MM" format
-    if (timeString.includes(':')) {
-      const [hours, minutes] = timeString.split(':');
-      const hour = parseInt(hours);
-      if (isNaN(hour)) return timeString;
-      const period = hour >= 12 ? 'PM' : 'AM';
-      const hour12 = hour > 12 ? hour - 12 : hour === 0 ? 12 : hour;
-      return `${hour12}:${minutes} ${period}`;
-    }
-    
-    return timeString;
-  };
-
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
@@ -190,8 +128,7 @@ export default function OrderConfirmationPage() {
     );
   }
 
-  const isAcaiOrder = order.order_type === 'acai';
-  const isPickupOrder = order.shipping_method === 'pickup' || isAcaiOrder;
+  const isPickupOrder = order.shipping_method === 'pickup';
 
   const storePhone = appConfig?.store_info?.phone || '671-777-1234';
   const storePhoneTel = `tel:${storePhone.replace(/[^\d+]/g, '')}`;
@@ -259,7 +196,7 @@ export default function OrderConfirmationPage() {
             </motion.div>
             
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-              {isAcaiOrder ? 'Açaí Cake Order Confirmed!' : 'Order Confirmed!'}
+              Order Confirmed!
             </h1>
             <p className="text-gray-600 mb-6">
               Thank you for your order, <span className="font-semibold">{order.customer_name}</span>!
@@ -278,62 +215,6 @@ export default function OrderConfirmationPage() {
             </div>
           </div>
         </div>
-
-        {/* Acai Pickup Details */}
-        {isAcaiOrder && order.acai_pickup_date && (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-6 print:shadow-none print:border print:p-4 print:mb-4 print:break-inside-avoid">
-            <h2 className="text-xl font-bold text-gray-900 mb-4 pb-4 border-b border-gray-100 flex items-center">
-              <svg className="w-6 h-6 inline mr-2 text-gray-500" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg> Pickup Details
-            </h2>
-            
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <p className="text-sm text-blue-600 font-medium mb-1">Pickup Date</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    {formatPickupDate(order.acai_pickup_date)}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-sm text-blue-600 font-medium mb-1">Pickup Time</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    {order.acai_pickup_time && formatPickupTime(order.acai_pickup_time)}
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <p className="text-sm text-gray-600 font-medium mb-1">Location</p>
-                <p className="font-semibold text-gray-900">{order.pickup_location}</p>
-              </div>
-              
-              {order.pickup_phone && (
-                <div>
-                  <p className="text-sm text-gray-600 font-medium mb-1">Phone</p>
-                  <a href={`tel:${order.pickup_phone}`} className="font-semibold text-tsPrimary hover:underline">
-                    {order.pickup_phone}
-                  </a>
-                </div>
-              )}
-
-              {order.acai_crust_type && (
-                <div>
-                  <p className="text-sm text-gray-600 font-medium mb-1">Base/Crust</p>
-                  <p className="font-semibold text-gray-900">{order.acai_crust_type}</p>
-                </div>
-              )}
-
-              {order.acai_include_placard && order.acai_placard_text && (
-                <div>
-                  <p className="text-sm text-gray-600 font-medium mb-1">Message Placard</p>
-                  <p className="font-semibold text-gray-900 italic">"{order.acai_placard_text}"</p>
-                </div>
-              )}
-            </div>
-          </div>
-        )}
 
         {/* Order Details */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-6 print:shadow-none print:border print:p-4 print:mb-4 print:break-inside-avoid">
@@ -538,13 +419,13 @@ export default function OrderConfirmationPage() {
         {/* Actions - Hidden when printing */}
         <div className="flex flex-col sm:flex-row gap-4 print:hidden">
           <button
-            onClick={() => navigate(isAcaiOrder ? '/acai-cakes' : '/products')}
+            onClick={() => navigate('/products')}
             className="flex-1 btn-primary py-4 flex items-center justify-center gap-2"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
             </svg>
-            {isAcaiOrder ? 'Order Another Cake' : 'Continue Shopping'}
+            Continue Shopping
           </button>
           <button
             onClick={() => window.print()}

@@ -8,7 +8,6 @@ class Order < ApplicationRecord
 
   # Valid statuses by order type:
   # Retail:    pending → processing → shipped → delivered (or cancelled)
-  # Acai:      pending → confirmed → ready → picked_up (or cancelled)
   # Wholesale: pending → confirmed → ready → picked_up (or cancelled)
   VALID_STATUSES = %w[pending confirmed processing ready shipped picked_up delivered cancelled].freeze
   RETAIL_STATUSES = %w[pending processing shipped delivered cancelled].freeze
@@ -16,7 +15,7 @@ class Order < ApplicationRecord
 
   # Validations
   validates :order_number, presence: true, uniqueness: true
-  validates :order_type, inclusion: { in: %w[retail wholesale acai] }
+  validates :order_type, inclusion: { in: %w[retail wholesale] }
   validates :fulfillment_type, inclusion: { in: %w[pickup shipping] }
   validates :status, inclusion: { in: VALID_STATUSES }
   validates :payment_status, inclusion: { in: %w[pending paid failed refunded] }
@@ -30,7 +29,6 @@ class Order < ApplicationRecord
   # Scopes
   scope :retail, -> { where(order_type: "retail") }
   scope :wholesale, -> { where(order_type: "wholesale") }
-  scope :acai, -> { where(order_type: "acai") }
   scope :pending, -> { where(status: "pending") }
   scope :confirmed, -> { where(status: "confirmed") }
   scope :processing, -> { where(status: "processing") }
@@ -116,7 +114,7 @@ class Order < ApplicationRecord
   end
 
   def can_mark_ready?
-    (acai? || wholesale?) && status == "confirmed" && payment_status == "paid"
+    wholesale? && status == "confirmed" && payment_status == "paid"
   end
 
   def is_paid?
@@ -157,10 +155,6 @@ class Order < ApplicationRecord
 
   def wholesale?
     order_type == "wholesale"
-  end
-
-  def acai?
-    order_type == "acai"
   end
 
   def requires_shipping?
@@ -257,10 +251,8 @@ class Order < ApplicationRecord
   def generate_order_number
     # Format: TSQ-{TYPE}-YYYYMMDD-XXXX (Three Squares)
     # - Retail:    TSQ-R-20251210-0001
-    # - Acai:      TSQ-A-20251210-0001
     # - Wholesale: TSQ-W-20251210-0001
     type_prefix = case order_type
-    when "acai" then "A"
     when "wholesale" then "W"
     else "R" # retail is default
     end

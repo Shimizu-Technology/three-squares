@@ -67,61 +67,6 @@ Rails.application.routes.draw do
         resources :collections, except: [ :new, :edit ]
         resources :locations, except: [ :new, :edit ]
 
-        # Acai Management
-        namespace :acai do
-          resource :settings, only: [ :show, :update ]
-          resources :crust_options, except: [ :new, :edit ]
-          resources :placard_options, except: [ :new, :edit ]
-          resources :pickup_windows, except: [ :new, :edit ]
-          resources :blocked_slots, except: [ :new, :edit ]
-          get "orders", to: "orders#index"
-        end
-
-        # Fundraiser Management
-        resources :fundraisers, except: [ :new, :edit ] do
-          member do
-            get :stats
-          end
-
-          # Nested participants
-          resources :participants, controller: "fundraisers/participants", except: [ :new, :edit ] do
-            collection do
-              post :bulk_create
-              post :bulk_import
-            end
-          end
-
-          # Nested fundraiser products (standalone products for this fundraiser)
-          resources :products, controller: "fundraisers/products", except: [ :new, :edit ] do
-            collection do
-              post :reorder
-            end
-
-            # Nested variants for fundraiser products
-            resources :variants, controller: "fundraisers/product_variants", except: [ :new, :edit ] do
-              member do
-                post :adjust_stock
-              end
-              collection do
-                post :generate
-              end
-            end
-
-            # Nested images for fundraiser products
-            resources :images, controller: "fundraisers/product_images", except: [ :new, :edit ] do
-              member do
-                post :set_primary
-              end
-              collection do
-                post :reorder
-              end
-            end
-          end
-
-          # Fundraiser orders (admin management)
-          resources :orders, controller: "fundraisers/orders", only: [ :index, :show, :update ]
-        end
-
         # Variant Presets (for flexible variant system)
         resources :variant_presets, except: [ :new, :edit ] do
           member do
@@ -192,19 +137,6 @@ Rails.application.routes.draw do
         end
       end
 
-      # Public fundraiser routes (by slug)
-      resources :fundraisers, only: [ :index, :show ], param: :slug do
-        scope module: :fundraisers do
-          resources :products, only: [ :index, :show ]
-          resource :cart, only: [ :show, :update, :destroy ]
-          resources :orders, only: [ :create, :show ]
-          resources :payment_intents, only: [ :create ]
-        end
-        member do
-          post :create_order  # Legacy route for backward compatibility
-        end
-      end
-
       resources :homepage_sections, only: [ :index ]
 
       # Cart routes (authentication optional - supports guest carts)
@@ -227,12 +159,6 @@ Rails.application.routes.draw do
 
       # Contact form (public)
       post "contact", to: "contact_submissions#create"
-
-      # Acai Cakes routes (public ordering)
-      get "acai/config", to: "acai#show_config"
-      get "acai/available_dates", to: "acai#available_dates"
-      get "acai/available_slots", to: "acai#available_slots"
-      post "acai/orders", to: "acai#create_order"
 
       # Orders
       resources :orders, only: [ :create, :show, :index, :update ] do

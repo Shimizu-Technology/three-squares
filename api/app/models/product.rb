@@ -141,7 +141,7 @@ class Product < ApplicationRecord
   def generate_sku_prefix
     # Generate SKU prefix from product name
     return if name.blank?
-    # Example: "Hafaloha T-Shirt" -> "HAF-TSHIRT"
+    # Example: "Three Squares T-Shirt" -> "THR-TSHIRT"
     words = name.to_s.upcase.split(/\s+/)
     if words.length > 1
       # Take first 3 letters of first word + first word of second part

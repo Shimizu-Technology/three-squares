@@ -105,7 +105,6 @@ export default function OrderFilters({
         >
           <option value="all">All Types</option>
           <option value="retail">Retail</option>
-          <option value="acai">Acai Cakes</option>
           <option value="wholesale">Wholesale</option>
         </select>
 
@@ -118,7 +117,6 @@ export default function OrderFilters({
           <option value="three_squares">Three Squares</option>
           <option value="latte_stone">Latte Stone Cookies</option>
           <option value="catering">Catering</option>
-          <option value="acai">Acai Cakes</option>
         </select>
 
         <select

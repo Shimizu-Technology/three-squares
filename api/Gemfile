@@ -35,7 +35,7 @@ gem "image_processing", "~> 1.2"
 # Use Rack CORS for handling Cross-Origin Resource Sharing (CORS), making cross-origin Ajax possible
 gem "rack-cors"
 
-# Hafaloha integrations
+# Third-party integrations
 gem "aws-sdk-s3", require: false  # S3 image storage
 gem "stripe"                       # Payment processing
 gem "easypost"                     # Shipping rates & labels

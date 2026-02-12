@@ -13,12 +13,6 @@ module Api
           payment_processor: settings.payment_processor,
           stripe_publishable_key: stripe_publishable_key(settings),
           placeholder_image_url: settings.placeholder_image_url,
-          acai_gallery_image_a_url: settings.acai_gallery_image_a_url,
-          acai_gallery_image_b_url: settings.acai_gallery_image_b_url,
-          acai_gallery_heading: settings.acai_gallery_heading,
-          acai_gallery_subtext: settings.acai_gallery_subtext,
-          acai_gallery_show_image_a: settings.acai_gallery_show_image_a,
-          acai_gallery_show_image_b: settings.acai_gallery_show_image_b,
           features: {
             payments: true, # Always enabled (test mode or production mode)
             shipping: ENV["EASYPOST_API_KEY"].present?

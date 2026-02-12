@@ -16,7 +16,6 @@ interface SiteSettings {
   payment_processor: string;
   // Per-order-type email settings
   send_retail_emails: boolean;
-  send_acai_emails: boolean;
   send_wholesale_emails: boolean;
   // Legacy field (kept for backwards compatibility)
   send_customer_emails: boolean;
@@ -24,12 +23,6 @@ interface SiteSettings {
   store_email: string;
   store_phone: string;
   placeholder_image_url?: string;
-  acai_gallery_image_a_url?: string;
-  acai_gallery_image_b_url?: string;
-  acai_gallery_heading?: string;
-  acai_gallery_subtext?: string;
-  acai_gallery_show_image_a?: boolean;
-  acai_gallery_show_image_b?: boolean;
   order_notification_emails: string[];
   shipping_origin_address: {
     company: string;
@@ -55,10 +48,6 @@ const REQUIRED_ORIGIN_FIELDS: Array<keyof SiteSettings['shipping_origin_address'
 ];
 
 const DEFAULT_PLACEHOLDER_IMAGE = '/images/three-squares-logo.svg';
-const DEFAULT_ACAI_GALLERY_IMAGE_A = '/images/acai-cake-set-a.webp';
-const DEFAULT_ACAI_GALLERY_IMAGE_B = '/images/acai-cake-set-b.webp';
-const DEFAULT_ACAI_GALLERY_HEADING = 'Featured Sets';
-const DEFAULT_ACAI_GALLERY_SUBTEXT = 'Seasonal & special requests';
 const DEFAULT_HOMEPAGE_HERO_IMAGE = '/images/three-squares-hero.jpg';
 const DEFAULT_HERO_BADGE_TEXT = 'Island Living Apparel';
 const DEFAULT_HERO_SECONDARY_TEXT = 'Browse Collections';
@@ -106,25 +95,16 @@ export default function AdminSettingsPage() {
   const { getToken } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  
+
   // Get active tab from URL or default to 'general'
   const activeTab = (searchParams.get('tab') as TabType) || 'general';
-  
+
   // General settings state
   const [settings, setSettings] = useState<SiteSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [placeholderUploading, setPlaceholderUploading] = useState(false);
   const [showPlaceholderUrlInput, setShowPlaceholderUrlInput] = useState(false);
-  const [acaiGalleryUploading, setAcaiGalleryUploading] = useState({
-    acai_gallery_image_a_url: false,
-    acai_gallery_image_b_url: false,
-  });
-  const [showAcaiGalleryUrlInput, setShowAcaiGalleryUrlInput] = useState({
-    acai_gallery_image_a_url: false,
-    acai_gallery_image_b_url: false,
-  });
-
   // Homepage sections state
   const [sections, setSections] = useState<HomepageSection[]>([]);
   const [sectionsLoading, setSectionsLoading] = useState(false);
@@ -209,12 +189,6 @@ export default function AdminSettingsPage() {
       store_email: value.store_email,
       store_phone: value.store_phone,
       placeholder_image_url: value.placeholder_image_url,
-      acai_gallery_image_a_url: value.acai_gallery_image_a_url,
-      acai_gallery_image_b_url: value.acai_gallery_image_b_url,
-      acai_gallery_heading: value.acai_gallery_heading,
-      acai_gallery_subtext: value.acai_gallery_subtext,
-      acai_gallery_show_image_a: value.acai_gallery_show_image_a,
-      acai_gallery_show_image_b: value.acai_gallery_show_image_b,
       shipping_origin_address: {
         company: value.shipping_origin_address?.company || '',
         street1: value.shipping_origin_address?.street1 || '',
@@ -257,10 +231,10 @@ export default function AdminSettingsPage() {
 
       setSettings((prev) => (prev ? { ...prev, ...response.data } : response.data));
       setLastSavedSiteSettings((prev) => (prev ? { ...prev, ...response.data } : response.data));
-      const message = settings.payment_test_mode 
-        ? 'Production mode enabled - Real payments will be processed' 
+      const message = settings.payment_test_mode
+        ? 'Production mode enabled - Real payments will be processed'
         : 'Test mode enabled - Payments will be simulated';
-      
+
       toast.success(message, { duration: 4000 });
     } catch (err: any) {
       console.error('Failed to update settings:', err);
@@ -271,7 +245,7 @@ export default function AdminSettingsPage() {
   };
 
   // Toggle individual email settings per order type
-  const handleToggleEmailSetting = async (field: 'send_retail_emails' | 'send_acai_emails' | 'send_wholesale_emails') => {
+  const handleToggleEmailSetting = async (field: 'send_retail_emails' | 'send_wholesale_emails') => {
     if (!settings) return;
 
     try {
@@ -286,17 +260,16 @@ export default function AdminSettingsPage() {
       );
 
       setSettings({ ...settings, ...response.data.settings });
-      
+
       const orderTypeLabels: Record<string, string> = {
         send_retail_emails: 'Retail',
-        send_acai_emails: 'Acai Cake',
         send_wholesale_emails: 'Wholesale'
       };
       const label = orderTypeLabels[field];
       const message = newValue
         ? `${label} order emails enabled`
         : `${label} order emails disabled`;
-      
+
       toast.success(message, { duration: 3000 });
     } catch (err: any) {
       console.error('Failed to toggle email setting:', err);
@@ -338,12 +311,6 @@ export default function AdminSettingsPage() {
       store_email: settings.store_email,
       store_phone: settings.store_phone,
       placeholder_image_url: settings.placeholder_image_url,
-      acai_gallery_image_a_url: settings.acai_gallery_image_a_url,
-      acai_gallery_image_b_url: settings.acai_gallery_image_b_url,
-      acai_gallery_heading: settings.acai_gallery_heading,
-      acai_gallery_subtext: settings.acai_gallery_subtext,
-      acai_gallery_show_image_a: settings.acai_gallery_show_image_a,
-      acai_gallery_show_image_b: settings.acai_gallery_show_image_b,
       shipping_origin_address: settings.shipping_origin_address
     };
 
@@ -414,64 +381,6 @@ export default function AdminSettingsPage() {
     e.target.value = '';
   };
 
-  type AcaiGalleryField = 'acai_gallery_image_a_url' | 'acai_gallery_image_b_url';
-
-  const updateAcaiGalleryImage = async (field: AcaiGalleryField, value: string) => {
-    if (!settings) return;
-
-    try {
-      setAcaiGalleryUploading((prev) => ({ ...prev, [field]: true }));
-      setSettings({ ...settings, [field]: value } as SiteSettings);
-      toast.success('Acai gallery image ready. Click Save to apply.');
-    } catch (err: any) {
-      console.error('Failed to update acai gallery image:', err);
-      toast.error(err.response?.data?.error || 'Failed to update acai gallery image');
-    } finally {
-      setAcaiGalleryUploading((prev) => ({ ...prev, [field]: false }));
-    }
-  };
-
-  const handleAcaiGalleryUpload = async (field: AcaiGalleryField, file: File) => {
-    try {
-      setAcaiGalleryUploading((prev) => ({ ...prev, [field]: true }));
-      const token = await getToken();
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const uploadResponse = await axios.post(
-        `${API_BASE_URL}/api/v1/admin/uploads`,
-        formData,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'multipart/form-data',
-          },
-        }
-      );
-
-      const { signed_id: signedId, filename } = uploadResponse.data.data;
-      const encodedFilename = encodeURIComponent(filename);
-      const blobUrl = `${API_BASE_URL}/rails/active_storage/blobs/redirect/${signedId}/${encodedFilename}`;
-
-      await updateAcaiGalleryImage(field, blobUrl);
-      setShowAcaiGalleryUrlInput((prev) => ({ ...prev, [field]: false }));
-    } catch (err: any) {
-      console.error('Failed to upload acai gallery image:', err);
-      toast.error(err.response?.data?.error || 'Failed to upload acai gallery image');
-      setAcaiGalleryUploading((prev) => ({ ...prev, [field]: false }));
-    }
-  };
-
-  const handleAcaiGalleryFileChange = async (
-    field: AcaiGalleryField,
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    await handleAcaiGalleryUpload(field, file);
-    e.target.value = '';
-  };
-
   const updateSettings = (updates: Partial<SiteSettings>) => {
     if (!settings) return;
     setSettings({ ...settings, ...updates });
@@ -496,7 +405,7 @@ export default function AdminSettingsPage() {
     try {
       setSaving(true);
       const token = await getToken();
-      
+
       if (section.id) {
         await api.put(`/admin/homepage_sections/${section.id}`, { section }, {
           headers: { Authorization: `Bearer ${token}` }
@@ -508,7 +417,7 @@ export default function AdminSettingsPage() {
         });
         toast.success('Section created!');
       }
-      
+
       await fetchSections();
       setEditingSection(null);
       setShowNewForm(false);
@@ -522,7 +431,7 @@ export default function AdminSettingsPage() {
 
   const handleDeleteSection = async (id: number) => {
     if (!confirm('Are you sure you want to delete this section?')) return;
-    
+
     try {
       const token = await getToken();
       await api.delete(`/admin/homepage_sections/${id}`, {
@@ -615,8 +524,6 @@ export default function AdminSettingsPage() {
             saving={saving}
             placeholderUploading={placeholderUploading}
             showPlaceholderUrlInput={showPlaceholderUrlInput}
-            acaiGalleryUploading={acaiGalleryUploading}
-            showAcaiGalleryUrlInput={showAcaiGalleryUrlInput}
             isSiteSettingsDirty={isSiteSettingsDirty}
             onToggleTestMode={handleToggleTestMode}
             onToggleEmailSetting={handleToggleEmailSetting}
@@ -625,11 +532,6 @@ export default function AdminSettingsPage() {
             onPlaceholderFileChange={handlePlaceholderFileChange}
             onUpdatePlaceholderImage={updatePlaceholderImage}
             onTogglePlaceholderUrlInput={() => setShowPlaceholderUrlInput((prev) => !prev)}
-            onAcaiGalleryFileChange={handleAcaiGalleryFileChange}
-            onUpdateAcaiGalleryImage={updateAcaiGalleryImage}
-            onToggleAcaiGalleryUrlInput={(field) =>
-              setShowAcaiGalleryUrlInput((prev) => ({ ...prev, [field]: !prev[field] }))
-            }
             onSaveSiteSettings={handleSaveSiteSettings}
             onDiscardSiteSettings={handleDiscardSiteSettings}
           />
@@ -665,33 +567,14 @@ interface GeneralSettingsTabProps {
   saving: boolean;
   placeholderUploading: boolean;
   showPlaceholderUrlInput: boolean;
-  acaiGalleryUploading: {
-    acai_gallery_image_a_url: boolean;
-    acai_gallery_image_b_url: boolean;
-  };
-  showAcaiGalleryUrlInput: {
-    acai_gallery_image_a_url: boolean;
-    acai_gallery_image_b_url: boolean;
-  };
   isSiteSettingsDirty: boolean;
   onToggleTestMode: () => void;
-  onToggleEmailSetting: (field: 'send_retail_emails' | 'send_acai_emails' | 'send_wholesale_emails') => void;
+  onToggleEmailSetting: (field: 'send_retail_emails' | 'send_wholesale_emails') => void;
   onUpdateSettings: (updates: Partial<SiteSettings>) => void;
   onUpdateShippingAddress: (updates: Partial<SiteSettings['shipping_origin_address']>) => void;
   onPlaceholderFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onUpdatePlaceholderImage: (value: string) => void;
   onTogglePlaceholderUrlInput: () => void;
-  onAcaiGalleryFileChange: (
-    field: 'acai_gallery_image_a_url' | 'acai_gallery_image_b_url',
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => void;
-  onUpdateAcaiGalleryImage: (
-    field: 'acai_gallery_image_a_url' | 'acai_gallery_image_b_url',
-    value: string
-  ) => void;
-  onToggleAcaiGalleryUrlInput: (
-    field: 'acai_gallery_image_a_url' | 'acai_gallery_image_b_url'
-  ) => void;
   onSaveSiteSettings: () => void;
   onDiscardSiteSettings: () => void;
 }
@@ -701,8 +584,6 @@ function GeneralSettingsTab({
   saving,
   placeholderUploading,
   showPlaceholderUrlInput,
-  acaiGalleryUploading,
-  showAcaiGalleryUrlInput,
   isSiteSettingsDirty,
   onToggleTestMode,
   onToggleEmailSetting,
@@ -711,9 +592,6 @@ function GeneralSettingsTab({
   onPlaceholderFileChange,
   onUpdatePlaceholderImage,
   onTogglePlaceholderUrlInput,
-  onAcaiGalleryFileChange,
-  onUpdateAcaiGalleryImage,
-  onToggleAcaiGalleryUrlInput,
   onSaveSiteSettings,
   onDiscardSiteSettings,
 }: GeneralSettingsTabProps) {
@@ -812,27 +690,6 @@ function GeneralSettingsTab({
             </button>
           </div>
 
-          {/* Acai Orders Toggle */}
-          <div className="flex items-center justify-between py-3 border-b border-gray-100">
-            <div>
-              <p className="font-medium text-gray-900">Acai Cake Orders</p>
-              <p className="text-sm text-gray-500">Acai cake pickup orders</p>
-            </div>
-            <button
-              onClick={() => onToggleEmailSetting('send_acai_emails')}
-              disabled={saving}
-              className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ${
-                settings.send_acai_emails ? 'bg-green-500' : 'bg-gray-200'
-              } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <span
-                className={`inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                  settings.send_acai_emails ? 'translate-x-5' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-
           {/* Wholesale Orders Toggle */}
           <div className="flex items-center justify-between py-3">
             <div>
@@ -862,7 +719,6 @@ function GeneralSettingsTab({
                 <strong>Status:</strong>{' '}
                 {[
                   settings.send_retail_emails && 'Retail',
-                  settings.send_acai_emails && 'Acai',
                   settings.send_wholesale_emails && 'Wholesale'
                 ].filter(Boolean).join(', ') || 'All emails disabled'}
               </p>
@@ -1015,143 +871,6 @@ function GeneralSettingsTab({
             )}
           </div>
 
-        {/* Acai Page Gallery */}
-        <div className="border-t border-gray-200 pt-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Acai Page Gallery</h3>
-          <p className="text-sm text-gray-500 mb-4">
-            These images appear near the top of the Acai Cakes order page.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Gallery Heading</label>
-              <input
-                type="text"
-                value={settings.acai_gallery_heading || DEFAULT_ACAI_GALLERY_HEADING}
-                onChange={(e) => onUpdateSettings({ acai_gallery_heading: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
-                placeholder={DEFAULT_ACAI_GALLERY_HEADING}
-              />
-              <p className="mt-1 text-xs text-gray-500">Example: Valentine’s Special Sets</p>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Gallery Subtext</label>
-              <input
-                type="text"
-                value={settings.acai_gallery_subtext || DEFAULT_ACAI_GALLERY_SUBTEXT}
-                onChange={(e) => onUpdateSettings({ acai_gallery_subtext: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
-                placeholder={DEFAULT_ACAI_GALLERY_SUBTEXT}
-              />
-              <p className="mt-1 text-xs text-gray-500">Example: Limited time • Feb 1–14</p>
-            </div>
-          </div>
-
-          {([
-            {
-              field: 'acai_gallery_image_a_url' as const,
-              label: 'Gallery Image A',
-              showField: 'acai_gallery_show_image_a' as const,
-              defaultUrl: DEFAULT_ACAI_GALLERY_IMAGE_A,
-            },
-            {
-              field: 'acai_gallery_image_b_url' as const,
-              label: 'Gallery Image B',
-              showField: 'acai_gallery_show_image_b' as const,
-              defaultUrl: DEFAULT_ACAI_GALLERY_IMAGE_B,
-            },
-          ]).map(({ field, label, showField, defaultUrl }) => {
-            const currentValue = settings[field] || defaultUrl;
-            const isDefault = !settings[field] || settings[field] === defaultUrl;
-            const isVisible = settings[showField] ?? true;
-
-            return (
-              <div key={field} className="mb-6">
-                <label className="text-sm font-medium text-gray-700 mb-2 block">{label}</label>
-                <div className="mt-2 flex flex-col sm:flex-row sm:items-center gap-4">
-                  <div className="h-28 w-40 rounded-lg border border-gray-200 bg-gray-50 overflow-hidden flex items-center justify-center">
-                    <img
-                      src={currentValue}
-                      alt={`${label} preview`}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          onUpdateSettings({ [showField]: !isVisible } as Partial<SiteSettings>)
-                        }
-                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition ${
-                          isVisible ? 'bg-tsPrimary' : 'bg-gray-200'
-                        }`}
-                        aria-pressed={isVisible}
-                      >
-                        <span
-                          className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition ${
-                            isVisible ? 'translate-x-5' : 'translate-x-1'
-                          }`}
-                        />
-                        <span className="sr-only">Show on page</span>
-                      </button>
-                      <span>{isVisible ? 'Visible on page' : 'Hidden from customers'}</span>
-                    </div>
-                    <label className="inline-flex items-center">
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={(e) => onAcaiGalleryFileChange(field, e)}
-                        className="hidden"
-                        disabled={saving || acaiGalleryUploading[field]}
-                      />
-                      <span
-                        className={`px-4 py-2 rounded-lg text-sm font-medium border ${
-                          saving || acaiGalleryUploading[field]
-                            ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                            : 'bg-white text-gray-700 border-gray-300 hover:border-tsPrimary hover:text-tsPrimary cursor-pointer'
-                        }`}
-                      >
-                        {acaiGalleryUploading[field] ? 'Uploading...' : 'Upload New Image'}
-                      </span>
-                    </label>
-                    {!isDefault && (
-                      <button
-                        type="button"
-                        onClick={() => onUpdateAcaiGalleryImage(field, defaultUrl)}
-                        disabled={saving || acaiGalleryUploading[field]}
-                        className="text-sm text-gray-600 hover:text-tsPrimary underline disabled:text-gray-400"
-                      >
-                        Reset to default image
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => onToggleAcaiGalleryUrlInput(field)}
-                      className="text-xs text-gray-500 hover:text-gray-700"
-                    >
-                      {showAcaiGalleryUrlInput[field] ? 'Hide custom URL' : 'Use a custom URL instead'}
-                    </button>
-                  </div>
-                </div>
-                {showAcaiGalleryUrlInput[field] && (
-                  <div className="mt-3">
-                    <input
-                      type="text"
-                      value={isDefault ? '' : settings[field] || ''}
-                      onChange={(e) => onUpdateSettings({ [field]: e.target.value } as Partial<SiteSettings>)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
-                      placeholder="https://... or /images/..."
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      Paste a public image URL. Save changes when finished.
-                    </p>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
           {/* Shipping Origin Address */}
           <div className="border-t border-gray-200 pt-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">Shipping Origin Address</h3>
@@ -1165,7 +884,7 @@ function GeneralSettingsTab({
                 </p>
               </div>
             )}
-            
+
             <div className="space-y-4">
               <div>
                 <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
@@ -1361,7 +1080,7 @@ function HomepageSettingsTab({
 }: HomepageSettingsTabProps) {
   // Suppress unused variable warnings for Phase 2 functionality
   void onDeleteSection;
-  
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -1382,7 +1101,7 @@ function HomepageSettingsTab({
   // Suppress unused variable warnings for Phase 2 functionality
   void showNewForm;
   void onSetShowNewForm;
-  
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -1436,7 +1155,7 @@ function HomepageSettingsTab({
                         />
                       </div>
                     )}
-                    
+
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
@@ -1456,14 +1175,14 @@ function HomepageSettingsTab({
                         <p className="text-xs text-gray-400 mt-1">Links to: {section.button_link}</p>
                       )}
                     </div>
-                    
+
                     {/* Actions */}
                     <div className="flex items-center gap-2 self-start">
                       <button
                         onClick={() => onToggleSectionActive(section)}
                         className={`px-3 py-1 text-sm rounded-lg border ${
-                          section.active 
-                            ? 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50' 
+                          section.active
+                            ? 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                             : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
                         }`}
                       >
@@ -1667,8 +1386,8 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
         <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
           <span className="text-sm text-gray-500">Section Type: </span>
           <span className="font-medium text-gray-900">
-            {formData.section_type === 'hero' ? 'Hero Banner' : 
-             formData.section_type === 'category_card' ? 'Category Card' : 
+            {formData.section_type === 'hero' ? 'Hero Banner' :
+             formData.section_type === 'category_card' ? 'Category Card' :
              formData.section_type}
           </span>
         </div>
@@ -1999,8 +1718,6 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
             >
               <option value="/products">Shop</option>
               <option value="/collections">Collections</option>
-              <option value="/fundraisers">Fundraisers</option>
-              <option value="/acai-cakes">Acai Cakes</option>
               <option value="/about">Our Story</option>
               <option value="/contact">Contact</option>
               <option value="/shipping-info">Shipping Info</option>
