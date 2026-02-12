@@ -52,7 +52,6 @@ const BUSINESS_LINE_LABELS: Record<string, string> = {
   three_squares: 'Three Squares',
   latte_stone: 'Latte Stone',
   catering: 'Catering',
-  acai: 'Acai Cakes',
 };
 
 export default function AdminDashboardPage() {

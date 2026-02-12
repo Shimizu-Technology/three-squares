@@ -11,9 +11,6 @@ interface OrdersTableProps {
 }
 
 function OrderTypeBadge({ type }: { type: string }) {
-  if (type === 'acai') {
-    return <span className="px-2 py-0.5 text-xs font-medium bg-purple-100 text-purple-800 rounded">Acai</span>;
-  }
   if (type === 'wholesale') {
     return <span className="px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800 rounded">Wholesale</span>;
   }

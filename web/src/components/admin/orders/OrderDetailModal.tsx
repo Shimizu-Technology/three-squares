@@ -259,49 +259,6 @@ export default function OrderDetailModal({
             </div>
           </div>
 
-          {/* Acai Pickup Info */}
-          {order.order_type === 'acai' && (
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-3">Acai Cake Details</h3>
-              <div className="text-sm bg-purple-50 border border-purple-200 p-4 rounded-lg space-y-2">
-                {order.acai_pickup_date && (
-                  <p>
-                    <span className="text-purple-600 font-medium">Pickup Date:</span>
-                    <span className="font-medium ml-1">
-                      {new Date(order.acai_pickup_date + 'T00:00:00').toLocaleDateString('en-US', {
-                        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-                      })}
-                    </span>
-                  </p>
-                )}
-                {order.acai_pickup_time && (
-                  <p>
-                    <span className="text-purple-600 font-medium">Pickup Time:</span>
-                    <span className="font-medium ml-1">{order.acai_pickup_time}</span>
-                  </p>
-                )}
-                {order.acai_crust_type && (
-                  <p>
-                    <span className="text-purple-600 font-medium">Base/Crust:</span>
-                    <span className="font-medium ml-1">{order.acai_crust_type}</span>
-                  </p>
-                )}
-                {order.acai_include_placard && order.acai_placard_text && (
-                  <p>
-                    <span className="text-purple-600 font-medium">Placard Message:</span>
-                    <span className="font-medium ml-1 italic">"{order.acai_placard_text}"</span>
-                  </p>
-                )}
-                {order.pickup_location && (
-                  <p className="mt-3 pt-3 border-t border-purple-200">
-                    <span className="text-purple-600 font-medium">Pickup Location:</span>
-                    <span className="font-medium ml-1">{order.pickup_location}</span>
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
           {/* Shipping Address */}
           {order.order_type === 'retail' && order.shipping_address_line1 && (
             <div>

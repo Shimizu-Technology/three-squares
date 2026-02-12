@@ -106,10 +106,6 @@ module Api
             "catering" => {
               orders: Order.where(order_type: "wholesale").count,
               revenue_cents: Order.where(order_type: "wholesale", payment_status: "paid").sum(:total_cents)
-            },
-            "acai" => {
-              orders: Order.where(order_type: "acai").count,
-              revenue_cents: Order.where(order_type: "acai", payment_status: "paid").sum(:total_cents)
             }
           }
         end

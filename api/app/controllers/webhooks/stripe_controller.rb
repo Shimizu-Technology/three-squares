@@ -91,7 +91,6 @@ module Webhooks
       # Use update_column to bypass validations — webhooks should always succeed
       # regardless of model validation state (e.g., missing optional fields).
       record.update_column(:payment_status, "paid")
-      record.update_column(:status, "paid") if target[:type] == "FundraiserOrder" && record.respond_to?(:status)
       Rails.logger.info "✅ #{target[:type]} ##{record.id} payment_status updated to 'paid' via Stripe webhook"
 
       if target[:type] == "Order"
@@ -150,23 +149,15 @@ module Webhooks
       # First try: find by metadata.order_id (set when creating the payment intent)
       order_id = payment_intent.respond_to?(:metadata) && payment_intent.metadata.respond_to?(:order_id) ?
                  payment_intent.metadata.order_id : nil
-      fundraiser_order_id = payment_intent.respond_to?(:metadata) && payment_intent.metadata.respond_to?(:fundraiser_order_id) ?
-                            payment_intent.metadata.fundraiser_order_id : nil
 
       order = Order.find_by(id: order_id) if order_id.present?
       return { type: "Order", record: order } if order
-
-      fundraiser_order = FundraiserOrder.find_by(id: fundraiser_order_id) if fundraiser_order_id.present?
-      return { type: "FundraiserOrder", record: fundraiser_order } if fundraiser_order
 
       # Fallback: find by payment_intent_id stored on the order
       order = Order.find_by(payment_intent_id: payment_intent.id) if payment_intent.id.present?
       return { type: "Order", record: order } if order
 
-      fundraiser_order = FundraiserOrder.find_by(stripe_payment_intent_id: payment_intent.id) if payment_intent.id.present?
-      return { type: "FundraiserOrder", record: fundraiser_order } if fundraiser_order
-
-      Rails.logger.warn "⚠️  Could not find payment target for payment_intent #{payment_intent.id} (metadata.order_id: #{order_id}, metadata.fundraiser_order_id: #{fundraiser_order_id})"
+      Rails.logger.warn "⚠️  Could not find payment target for payment_intent #{payment_intent.id} (metadata.order_id: #{order_id})"
       nil
     end
 
@@ -175,9 +166,6 @@ module Webhooks
 
       order = Order.find_by(payment_intent_id: payment_intent_id)
       return { type: "Order", record: order } if order
-
-      fundraiser_order = FundraiserOrder.find_by(stripe_payment_intent_id: payment_intent_id)
-      return { type: "FundraiserOrder", record: fundraiser_order } if fundraiser_order
 
       nil
     end

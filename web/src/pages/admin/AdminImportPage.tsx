@@ -477,7 +477,7 @@ export default function AdminImportPage() {
               </div>
             </div>
 
-            {/* Inventory File - DISABLED UNTIL WE GET REAL DATA FROM HAFALOHA */}
+            {/* Inventory File - DISABLED UNTIL WE GET REAL DATA */}
             {/* 
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">

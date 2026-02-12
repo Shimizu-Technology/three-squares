@@ -26,8 +26,8 @@ export interface Order {
   order_number: string;
   status: string;
   payment_status: string;
-  order_type: 'retail' | 'acai' | 'wholesale';
-  business_line?: 'three_squares' | 'latte_stone' | 'catering' | 'acai';
+  order_type: 'retail' | 'wholesale';
+  business_line?: 'three_squares' | 'latte_stone' | 'catering';
   customer_name: string;
   customer_email: string;
   customer_phone: string;
@@ -43,12 +43,6 @@ export interface Order {
   shipping_zip?: string;
   shipping_country?: string;
   tracking_number?: string;
-  acai_pickup_date?: string;
-  acai_pickup_time?: string;
-  acai_crust_type?: string;
-  acai_include_placard?: boolean;
-  acai_placard_text?: string;
-  pickup_location?: string;
   admin_notes?: string;
   notes?: string;
   created_at: string;

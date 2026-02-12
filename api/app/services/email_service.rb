@@ -104,8 +104,7 @@ class EmailService
     return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
 
     begin
-      emoji = order.acai? ? "\u{1F370}" : "\u{1F4E6}"
-      subject = "Your Order is Ready for Pickup! #{emoji} - Order ##{order.order_number}"
+      subject = "Your Order is Ready for Pickup! 📦 - Order ##{order.order_number}"
 
       params = {
         from: from_address,
@@ -266,14 +265,14 @@ class EmailService
   private
 
   # Configurable from address - uses RESEND_FROM_EMAIL env var
-  # Falls back to shimizu-technology.com until hafaloha.com is verified on Resend
+  # Falls back to shimizu-technology.com until three-squares domain is verified on Resend
   def self.from_address
     email = ENV.fetch("RESEND_FROM_EMAIL", "noreply@shimizu-technology.com")
     "Three Squares <#{email}>"
   end
 
   def self.store_contact_email
-    SiteSetting.instance.store_email.presence || "info@hafaloha.com"
+    SiteSetting.instance.store_email.presence || "sales@bgpacific.com"
   end
 
   def self.store_contact_phone
@@ -282,11 +281,6 @@ class EmailService
 
   # Generate customer confirmation HTML
   def self.order_confirmation_html(order)
-    # Route to appropriate template based on order type
-    if order.order_type == "acai"
-      return acai_order_confirmation_html(order)
-    end
-
     settings = SiteSetting.instance
     contact_email = store_contact_email
     contact_phone = store_contact_phone
@@ -406,11 +400,6 @@ class EmailService
 
   # Generate admin notification HTML
   def self.admin_notification_html(order)
-    # Route to appropriate template based on order type
-    if order.order_type == "acai"
-      return acai_admin_notification_html(order)
-    end
-
     settings = SiteSetting.instance
     contact_email = store_contact_email
     contact_phone = store_contact_phone
@@ -505,237 +494,6 @@ class EmailService
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 20px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0; font-size: 12px;">This is an automated notification from Three Squares Order System</p>
-                  </td>
-                </tr>
-
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    HTML
-  end
-
-  # Generate Acai admin notification HTML
-  def self.acai_admin_notification_html(order)
-    settings = SiteSetting.instance
-    acai_settings = AcaiSetting.instance
-    contact_email = store_contact_email
-    contact_phone = store_contact_phone
-    test_mode_badge = settings.test_mode? ? '<span style="background: #FEF3C7; color: #92400E; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; display: inline-block; margin-top: 12px;">⚙️ TEST ORDER</span>' : ""
-
-    pickup_date = order.acai_pickup_date&.strftime("%A, %B %d, %Y") || "TBD"
-    pickup_time = order.acai_pickup_time || "TBD"
-
-    <<~HTML
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>New Acai Cake Order</title>
-      </head>
-      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 20px 0;">
-          <tr>
-            <td align="center">
-              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-      #{'          '}
-                <!-- Header -->
-                <tr>
-                  <td style="background-color: #5B21B6; background: #5B21B6; padding: 32px 24px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 800; line-height: 1.2; text-shadow: 0 2px 6px rgba(0,0,0,0.35);">🍰 New Acai Cake Order!</h1>
-                    #{test_mode_badge}
-                  </td>
-                </tr>
-
-                <!-- Pickup Alert -->
-                <tr>
-                  <td style="padding: 30px;">
-                    <div style="background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); border-radius: 8px; padding: 20px; text-align: center; color: #ffffff; margin-bottom: 20px;">
-                      <p style="margin: 0 0 5px 0; font-size: 12px; opacity: 0.9;">⚡ PICKUP SCHEDULED</p>
-                      <p style="margin: 0; font-size: 18px; font-weight: bold;">#{pickup_date} @ #{pickup_time}</p>
-                    </div>
-      #{'              '}
-                    <h2 style="color: #111827; margin: 0 0 20px 0; font-size: 20px;">Order ##{order.order_number}</h2>
-      #{'              '}
-                    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 20px;">
-                      <tr>
-                        <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
-                          <strong style="color: #6B7280; font-size: 14px;">Customer:</strong>
-                          <span style="color: #111827; font-size: 14px; float: right;">#{order.name}</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
-                          <strong style="color: #6B7280; font-size: 14px;">Email:</strong>
-                          <span style="color: #111827; font-size: 14px; float: right;">#{order.email}</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
-                          <strong style="color: #6B7280; font-size: 14px;">Phone:</strong>
-                          <span style="color: #111827; font-size: 14px; float: right;">#{order.phone || 'N/A'}</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
-                          <strong style="color: #6B7280; font-size: 14px;">Crust/Base:</strong>
-                          <span style="color: #111827; font-size: 14px; float: right;">#{order.acai_crust_type}</span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
-                          <strong style="color: #6B7280; font-size: 14px;">Quantity:</strong>
-                          <span style="color: #111827; font-size: 14px; float: right;">#{order.order_items.first&.quantity || 1}</span>
-                        </td>
-                      </tr>
-                      #{order.acai_include_placard && order.acai_placard_text.present? ? "
-                      <tr>
-                        <td style=\"padding: 10px 0; border-bottom: 1px solid #E5E7EB;\">
-                          <strong style=\"color: #6B7280; font-size: 14px;\">Placard Message:</strong>
-                          <p style=\"color: #111827; font-size: 14px; margin: 5px 0 0 0; font-style: italic;\">\"#{order.acai_placard_text}\"</p>
-                        </td>
-                      </tr>" : ""}
-                      <tr>
-                        <td style="padding: 10px 0;">
-                          <strong style="color: #6B7280; font-size: 14px;">Total:</strong>
-                          <span style="color: #C1191F; font-size: 18px; font-weight: bold; float: right;">$#{format_price(order.total_cents)}</span>
-                        </td>
-                      </tr>
-                    </table>
-
-                    #{order.notes.present? ? "
-                    <div style=\"background-color: #FEF3C7; border-radius: 8px; padding: 15px; margin-top: 20px;\">
-                      <strong style=\"color: #92400E; font-size: 14px;\">📝 Special Instructions:</strong>
-                      <p style=\"color: #92400E; font-size: 14px; margin: 5px 0 0 0;\">#{order.notes}</p>
-                    </div>" : ""}
-                  </td>
-                </tr>
-
-                <!-- Footer -->
-                <tr>
-                  <td style="background-color: #F9FAFB; padding: 20px; text-align: center; border-top: 1px solid #E5E7EB;">
-                    <p style="color: #6B7280; margin: 0; font-size: 12px;">This is an automated notification from Three Squares Acai Cakes</p>
-                  </td>
-                </tr>
-
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    HTML
-  end
-
-  # Generate Acai order confirmation HTML
-  def self.acai_order_confirmation_html(order)
-    settings = SiteSetting.instance
-    acai_settings = AcaiSetting.instance
-    contact_email = store_contact_email
-    contact_phone = store_contact_phone
-    test_mode_badge = settings.test_mode? ? '<span style="background: #FEF3C7; color: #92400E; padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; display: inline-block; margin-top: 12px;">⚙️ TEST ORDER</span>' : ""
-
-    pickup_date = order.acai_pickup_date&.strftime("%A, %B %d, %Y") || "TBD"
-    pickup_time = order.acai_pickup_time || "TBD"
-
-    <<~HTML
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Acai Cake Order Confirmation</title>
-      </head>
-      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 20px 0;">
-          <tr>
-            <td align="center">
-              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-      #{'          '}
-                <!-- Header -->
-                <tr>
-                  <td style="background-color: #C1191F; background: #C1191F; padding: 32px 24px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0,0,0,0.25);">🍰 Three Squares</h1>
-                    <p style="color: #FFE08A; margin: 8px 0 0 0; font-size: 14px; font-weight: 600; text-shadow: 0 1px 3px rgba(0,0,0,0.25);">Acai Cake Order Confirmed!</p>
-                  </td>
-                </tr>
-
-                <!-- Order Confirmation -->
-                <tr>
-                  <td style="padding: 40px 30px; text-align: center;">
-                    <h2 style="color: #111827; margin: 0 0 10px 0; font-size: 24px;">Thank You For Your Order! 🎉</h2>
-                    #{test_mode_badge}
-                    <p style="color: #6B7280; margin: 20px 0 0 0; font-size: 16px;">Order ##{order.order_number}</p>
-                    <p style="color: #9CA3AF; margin: 5px 0 0 0; font-size: 14px;">#{order.created_at.strftime('%B %d, %Y at %I:%M %p')}</p>
-                  </td>
-                </tr>
-
-                <!-- Pickup Details -->
-                <tr>
-                  <td style="padding: 0 30px 30px 30px;">
-                    <div style="background: linear-gradient(135deg, #3B82F6 0%, #1D4ED8 100%); border-radius: 8px; padding: 25px; text-align: center; color: #ffffff;">
-                      <p style="margin: 0 0 15px 0; font-size: 14px; opacity: 0.9;">📍 PICKUP DETAILS</p>
-                      <p style="margin: 0 0 8px 0; font-size: 20px; font-weight: bold;">#{pickup_date}</p>
-                      <p style="margin: 0; font-size: 18px; font-weight: 600;">#{pickup_time}</p>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Location -->
-                <tr>
-                  <td style="padding: 0 30px 30px 30px;">
-                    <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
-                      <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">📍 Pickup Location</h3>
-                      <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px; line-height: 1.6;">
-                        #{acai_settings.pickup_location}
-                      </p>
-                      <p style="color: #6B7280; margin: 0; font-size: 14px;">
-                        <strong>Phone:</strong> #{acai_settings.pickup_phone}
-                      </p>
-                    </div>
-                  </td>
-                </tr>
-
-                <!-- Order Summary -->
-                <tr>
-                  <td style="padding: 0 30px 30px 30px;">
-                    <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #E5E7EB; border-radius: 8px; overflow: hidden;">
-                      <tr style="background-color: #F9FAFB;">
-                        <td colspan="2" style="padding: 15px; font-size: 16px; font-weight: 600; color: #111827;">Order Summary</td>
-                      </tr>
-                      <tr>
-                        <td style="padding: 15px; border-top: 1px solid #E5E7EB;">
-                          <strong>#{acai_settings.name}</strong><br>
-                          <span style="color: #6B7280; font-size: 14px;">#{order.acai_crust_type}</span>
-                        </td>
-                        <td style="padding: 15px; border-top: 1px solid #E5E7EB; text-align: right;">
-                          #{order.order_items.first&.quantity || 1}x
-                        </td>
-                      </tr>
-                      #{order.acai_include_placard && order.acai_placard_text.present? ? "
-                      <tr>
-                        <td colspan=\"2\" style=\"padding: 15px; border-top: 1px solid #E5E7EB;\">
-                          <strong>Message Placard:</strong><br>
-                          <span style=\"color: #6B7280; font-style: italic;\">\"#{order.acai_placard_text}\"</span>
-                        </td>
-                      </tr>" : ""}
-                      <tr style="background-color: #F9FAFB;">
-                        <td style="padding: 15px; border-top: 2px solid #E5E7EB; font-size: 16px; font-weight: bold; color: #111827;">Total</td>
-                        <td style="padding: 15px; border-top: 2px solid #E5E7EB; text-align: right; font-size: 16px; font-weight: bold; color: #C1191F;">$#{format_price(order.total_cents)}</td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
-
-                <!-- Footer -->
-                <tr>
-                  <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
-                    <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
-                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
-                    <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
 
@@ -875,31 +633,15 @@ class EmailService
 
   # Generate order ready for pickup HTML
   def self.order_ready_html(order)
-    settings = AcaiSetting.instance rescue nil
-    pickup_location = settings&.pickup_location || "Contact us for pickup location"
-    pickup_phone = settings&.pickup_phone || store_contact_phone
+    pickup_location = order.location&.name || "Contact us for pickup location"
+    pickup_phone = store_contact_phone
     contact_email = store_contact_email
     contact_phone = store_contact_phone
 
-    pickup_time_section = if order.acai? && order.acai_pickup_date.present?
-      pickup_date = order.acai_pickup_date.is_a?(String) ? Date.parse(order.acai_pickup_date) : order.acai_pickup_date
-      <<~HTML
-        <tr>
-          <td style="padding: 0 30px 30px 30px;">
-            <div style="background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%); border-radius: 8px; padding: 25px; text-align: center;">
-              <p style="color: #ffffff; margin: 0 0 15px 0; font-size: 16px; font-weight: 600;">🗓️ Your Pickup Time</p>
-              <p style="color: #ffffff; margin: 0; font-size: 20px; font-weight: bold;">#{pickup_date.strftime('%A, %B %d, %Y')}</p>
-              <p style="color: #E9D5FF; margin: 10px 0 0 0; font-size: 18px;">#{order.acai_pickup_time || 'See confirmation for time'}</p>
-            </div>
-          </td>
-        </tr>
-      HTML
-    else
-      ""
-    end
+    pickup_time_section = ""
 
-    emoji = order.acai? ? "\u{1F370}" : "\u{1F4E6}"
-    title = order.acai? ? "Your Acai Cake is Ready!" : "Your Order is Ready for Pickup!"
+    emoji = "\u{1F4E6}"
+    title = "Your Order is Ready for Pickup!"
 
     <<~HTML
       <!DOCTYPE html>
@@ -934,7 +676,7 @@ class EmailService
                   </td>
                 </tr>
 
-                <!-- Pickup Time (for Acai orders) -->
+                <!-- Pickup Time -->
                 #{pickup_time_section}
 
                 <!-- Pickup Location -->
@@ -1371,367 +1113,4 @@ class EmailService
     HTML
   end
 
-  # ============================================
-  # FUNDRAISER ORDER EMAILS
-  # ============================================
-
-  # Send order notification to fundraiser contact
-  # @param order [FundraiserOrder] - The new order
-  # @return [Hash] - { success: boolean, message_id: string, error: string }
-  def self.send_fundraiser_order_notification(order)
-    return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
-
-    fundraiser = order.fundraiser
-    return { success: false, error: "Fundraiser contact email not set" } unless fundraiser.contact_email.present?
-
-    begin
-      params = {
-        from: from_address,
-        to: [ fundraiser.contact_email ],
-        subject: "New Fundraiser Order ##{order.order_number} - #{fundraiser.name}",
-        html: fundraiser_order_notification_html(order)
-      }
-
-      response = Resend::Emails.send(params)
-
-      Rails.logger.info "✅ Fundraiser order notification sent to #{fundraiser.contact_email} (Order ##{order.order_number})"
-      { success: true, message_id: response["id"] }
-
-    rescue Resend::Error => e
-      if Rails.env.development? && e.message.include?("domain is not verified")
-        Rails.logger.info "ℹ️  Resend domain not verified (expected in development): #{e.message}"
-      else
-        Rails.logger.error "Resend Error sending fundraiser notification: #{e.message}"
-      end
-      { success: false, error: e.message }
-    rescue StandardError => e
-      Rails.logger.error "Email Error: #{e.class} - #{e.message}"
-      { success: false, error: "Failed to send fundraiser notification" }
-    end
-  end
-
-  # Send order confirmation to fundraiser customer
-  # @param order [FundraiserOrder] - The new order
-  # @return [Hash] - { success: boolean, message_id: string, error: string }
-  def self.send_fundraiser_order_confirmation(order)
-    return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
-    return { success: false, error: "Customer email not set" } unless order.customer_email.present?
-
-    fundraiser = order.fundraiser
-
-    begin
-      params = {
-        from: from_address,
-        to: [ order.customer_email ],
-        subject: "Order Confirmation ##{order.order_number} - #{fundraiser.name}",
-        html: fundraiser_order_confirmation_html(order)
-      }
-
-      response = Resend::Emails.send(params)
-
-      Rails.logger.info "✅ Fundraiser order confirmation sent to #{order.customer_email} (Order ##{order.order_number})"
-      { success: true, message_id: response["id"] }
-
-    rescue Resend::Error => e
-      if Rails.env.development? && e.message.include?("domain is not verified")
-        Rails.logger.info "ℹ️  Resend domain not verified (expected in development): #{e.message}"
-      else
-        Rails.logger.error "Resend Error sending fundraiser confirmation: #{e.message}"
-      end
-      { success: false, error: e.message }
-    rescue StandardError => e
-      Rails.logger.error "Email Error: #{e.class} - #{e.message}"
-      { success: false, error: "Failed to send fundraiser confirmation" }
-    end
-  end
-
-  # Generate HTML for fundraiser order notification (to contact)
-  def self.fundraiser_order_notification_html(order)
-    fundraiser = order.fundraiser
-    participant = order.participant
-
-    items_html = order.fundraiser_order_items.map do |item|
-      variant_info = item.variant_name.present? ? "<br><span style='color: #6B7280; font-size: 12px;'>#{CGI.escapeHTML(item.variant_name)}</span>" : ""
-      <<~HTML
-        <tr>
-          <td style="padding: 12px; border-bottom: 1px solid #E5E7EB;">#{CGI.escapeHTML(item.product_name)}#{variant_info}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #E5E7EB; text-align: center;">#{item.quantity}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #E5E7EB; text-align: right;">$#{'%.2f' % (item.total_price_cents / 100.0)}</td>
-        </tr>
-      HTML
-    end.join
-
-    participant_html = if participant
-      <<~HTML
-        <tr>
-          <td style="padding: 8px 0; color: #6B7280; width: 140px; font-weight: 500;">Participant</td>
-          <td style="padding: 8px 0; color: #111827; font-weight: 600;">
-            <span style="background-color: #FEF3C7; color: #92400E; padding: 4px 12px; border-radius: 12px; font-size: 13px;">##{participant.participant_number} - #{CGI.escapeHTML(participant.name)}</span>
-          </td>
-        </tr>
-      HTML
-    else
-      ""
-    end
-
-    shipping_html = if order.has_shipping_address?
-      <<~HTML
-        <h3 style="color: #111827; margin: 30px 0 15px 0; font-size: 16px;">Shipping Address</h3>
-        <p style="background-color: #F9FAFB; padding: 16px; border-radius: 4px; margin: 0;">#{order.full_shipping_address.gsub("\n", "<br>")}</p>
-      HTML
-    else
-      ""
-    end
-
-    <<~HTML
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>New Fundraiser Order</title>
-      </head>
-      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 20px 0;">
-          <tr>
-            <td align="center">
-              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-
-                <!-- Header -->
-                <tr>
-                  <td style="background-color: #991B1B; padding: 32px 24px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">New Fundraiser Order</h1>
-                    <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">#{CGI.escapeHTML(fundraiser.name)}</p>
-                  </td>
-                </tr>
-
-                <!-- Content -->
-                <tr>
-                  <td style="padding: 40px 30px;">
-                    <h2 style="color: #111827; margin: 0 0 20px 0; font-size: 22px;">Order ##{order.order_number}</h2>
-
-                    <p style="color: #374151; margin: 0 0 20px 0;">Hi #{CGI.escapeHTML(fundraiser.contact_name || 'there')},</p>
-                    <p style="color: #374151; margin: 0 0 20px 0;">Great news! A new order has been placed for your fundraiser.</p>
-
-                    <!-- Order Details -->
-                    <div style="background-color: #F9FAFB; border-left: 4px solid #991B1B; padding: 20px; margin: 24px 0; border-radius: 0 4px 4px 0;">
-                      <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                          <td style="padding: 8px 0; color: #6B7280; width: 140px; font-weight: 500;">Customer</td>
-                          <td style="padding: 8px 0; color: #111827; font-weight: 600;">#{CGI.escapeHTML(order.customer_name)}</td>
-                        </tr>
-                        <tr>
-                          <td style="padding: 8px 0; color: #6B7280; font-weight: 500;">Email</td>
-                          <td style="padding: 8px 0; color: #111827; font-weight: 600;">#{CGI.escapeHTML(order.customer_email)}</td>
-                        </tr>
-                        #{order.customer_phone.present? ? "<tr><td style='padding: 8px 0; color: #6B7280; font-weight: 500;'>Phone</td><td style='padding: 8px 0; color: #111827; font-weight: 600;'>#{CGI.escapeHTML(order.customer_phone)}</td></tr>" : ""}
-                        #{participant_html}
-                        <tr>
-                          <td style="padding: 8px 0; color: #6B7280; font-weight: 500;">Order Date</td>
-                          <td style="padding: 8px 0; color: #111827; font-weight: 600;">#{order.created_at.strftime('%B %d, %Y at %I:%M %p')}</td>
-                        </tr>
-                        <tr>
-                          <td style="padding: 8px 0; color: #6B7280; font-weight: 500;">Order Total</td>
-                          <td style="padding: 8px 0; color: #991B1B; font-weight: 700; font-size: 20px;">$#{'%.2f' % (order.total_cents / 100.0)}</td>
-                        </tr>
-                      </table>
-                    </div>
-
-                    <!-- Items -->
-                    <h3 style="color: #111827; margin: 30px 0 15px 0; font-size: 16px;">Items Ordered</h3>
-                    <table style="width: 100%; border-collapse: collapse;">
-                      <thead>
-                        <tr>
-                          <th style="text-align: left; padding: 12px; background-color: #F9FAFB; border-bottom: 2px solid #E5E7EB; font-weight: 600; color: #111827;">Item</th>
-                          <th style="text-align: center; padding: 12px; background-color: #F9FAFB; border-bottom: 2px solid #E5E7EB; font-weight: 600; color: #111827;">Qty</th>
-                          <th style="text-align: right; padding: 12px; background-color: #F9FAFB; border-bottom: 2px solid #E5E7EB; font-weight: 600; color: #111827;">Price</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        #{items_html}
-                      </tbody>
-                    </table>
-
-                    #{shipping_html}
-
-                    <p style="color: #374151; margin: 30px 0 0 0;">You can manage this order from your fundraiser admin dashboard.</p>
-                  </td>
-                </tr>
-
-                <!-- Footer -->
-                <tr>
-                  <td style="background-color: #F9FAFB; padding: 24px; text-align: center; border-top: 1px solid #E5E7EB;">
-                    <p style="color: #9CA3AF; margin: 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
-                  </td>
-                </tr>
-
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    HTML
-  end
-
-  # Generate HTML for fundraiser order confirmation (to customer)
-  def self.fundraiser_order_confirmation_html(order)
-    fundraiser = order.fundraiser
-    participant = order.participant
-
-    items_html = order.fundraiser_order_items.map do |item|
-      variant_info = item.variant_name.present? ? "<br><span style='color: #6B7280; font-size: 12px;'>#{CGI.escapeHTML(item.variant_name)}</span>" : ""
-      <<~HTML
-        <tr>
-          <td style="padding: 12px; border-bottom: 1px solid #E5E7EB;">#{CGI.escapeHTML(item.product_name)}#{variant_info}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #E5E7EB; text-align: center;">#{item.quantity}</td>
-          <td style="padding: 12px; border-bottom: 1px solid #E5E7EB; text-align: right;">$#{'%.2f' % (item.total_price_cents / 100.0)}</td>
-        </tr>
-      HTML
-    end.join
-
-    participant_html = participant ? "<p style='margin: 0;'>Supporting: <strong>#{CGI.escapeHTML(participant.name)}</strong></p>" : ""
-
-    # Totals
-    totals_html = <<~HTML
-      <tr>
-        <td style="padding: 8px 0;">Subtotal</td>
-        <td style="padding: 8px 0; text-align: right; font-weight: 600;">$#{'%.2f' % (order.subtotal_cents / 100.0)}</td>
-      </tr>
-    HTML
-    if order.shipping_cents.to_i > 0
-      totals_html += "<tr><td style='padding: 8px 0;'>Shipping</td><td style='padding: 8px 0; text-align: right; font-weight: 600;'>$#{'%.2f' % (order.shipping_cents / 100.0)}</td></tr>"
-    end
-    if order.tax_cents.to_i > 0
-      totals_html += "<tr><td style='padding: 8px 0;'>Tax</td><td style='padding: 8px 0; text-align: right; font-weight: 600;'>$#{'%.2f' % (order.tax_cents / 100.0)}</td></tr>"
-    end
-    totals_html += <<~HTML
-      <tr>
-        <td style="padding: 12px 0; font-size: 18px; font-weight: 700; color: #991B1B;">Total</td>
-        <td style="padding: 12px 0; text-align: right; font-size: 18px; font-weight: 700; color: #991B1B;">$#{'%.2f' % (order.total_cents / 100.0)}</td>
-      </tr>
-    HTML
-
-    # Pickup/shipping info
-    delivery_html = if order.has_shipping_address?
-      <<~HTML
-        <h3 style="color: #111827; margin: 30px 0 15px 0; font-size: 16px;">Shipping To</h3>
-        <p style="background-color: #F9FAFB; padding: 16px; border-radius: 4px; margin: 0;">#{order.full_shipping_address.gsub("\n", "<br>")}</p>
-      HTML
-    elsif fundraiser.pickup_location.present?
-      instructions = fundraiser.pickup_instructions.present? ? "<p style='margin: 12px 0 0 0; font-size: 14px; color: #4B5563;'>#{CGI.escapeHTML(fundraiser.pickup_instructions)}</p>" : ""
-      <<~HTML
-        <div style="background-color: #EFF6FF; border: 1px solid #3B82F6; padding: 20px; border-radius: 8px; margin: 24px 0;">
-          <h4 style="margin: 0 0 12px 0; color: #1D4ED8;">Pickup Information</h4>
-          <p style="margin: 0;">#{CGI.escapeHTML(fundraiser.pickup_location)}</p>
-          #{instructions}
-        </div>
-      HTML
-    else
-      ""
-    end
-
-    # Contact info
-    contact_html = ""
-    contact_html += "<li><strong>#{CGI.escapeHTML(fundraiser.contact_name)}</strong></li>" if fundraiser.contact_name.present?
-    contact_html += "<li><a href='mailto:#{fundraiser.contact_email}' style='color: #991B1B;'>#{fundraiser.contact_email}</a></li>" if fundraiser.contact_email.present?
-    contact_html += "<li>#{CGI.escapeHTML(fundraiser.contact_phone)}</li>" if fundraiser.contact_phone.present?
-
-    <<~HTML
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Order Confirmation</title>
-      </head>
-      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
-        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 20px 0;">
-          <tr>
-            <td align="center">
-              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-
-                <!-- Header -->
-                <tr>
-                  <td style="background-color: #991B1B; padding: 32px 24px; text-align: center;">
-                    <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">Order Confirmation</h1>
-                    <p style="color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 14px;">#{CGI.escapeHTML(fundraiser.name)}</p>
-                  </td>
-                </tr>
-
-                <!-- Content -->
-                <tr>
-                  <td style="padding: 40px 30px;">
-                    <!-- Success Banner -->
-                    <div style="background-color: #D1FAE5; border: 1px solid #10B981; padding: 16px 20px; border-radius: 8px; margin: 0 0 24px 0; text-align: center;">
-                      <div style="font-size: 32px; margin-bottom: 8px;">✓</div>
-                      <p style="margin: 0; color: #065F46; font-weight: 600;">Thank you for your order!</p>
-                    </div>
-
-                    <p style="color: #374151; margin: 0 0 20px 0;">Hi #{CGI.escapeHTML(order.customer_name || 'there')},</p>
-                    <p style="color: #374151; margin: 0 0 20px 0;">Thank you for supporting <strong>#{CGI.escapeHTML(fundraiser.organization_name)}</strong> through this fundraiser. Your order has been received and is being processed.</p>
-
-                    <!-- Order Info -->
-                    <div style="background-color: #F9FAFB; border-left: 4px solid #991B1B; padding: 20px; margin: 24px 0; border-radius: 0 4px 4px 0;">
-                      <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                          <td style="padding: 8px 0; color: #6B7280; width: 140px; font-weight: 500;">Order Number</td>
-                          <td style="padding: 8px 0; color: #111827; font-weight: 600;">##{order.order_number}</td>
-                        </tr>
-                        <tr>
-                          <td style="padding: 8px 0; color: #6B7280; font-weight: 500;">Order Date</td>
-                          <td style="padding: 8px 0; color: #111827; font-weight: 600;">#{order.created_at.strftime('%B %d, %Y')}</td>
-                        </tr>
-                      </table>
-                      #{participant_html}
-                    </div>
-
-                    <!-- Items -->
-                    <h3 style="color: #111827; margin: 30px 0 15px 0; font-size: 16px;">Order Summary</h3>
-                    <table style="width: 100%; border-collapse: collapse;">
-                      <thead>
-                        <tr>
-                          <th style="text-align: left; padding: 12px; background-color: #F9FAFB; border-bottom: 2px solid #E5E7EB; font-weight: 600; color: #111827;">Item</th>
-                          <th style="text-align: center; padding: 12px; background-color: #F9FAFB; border-bottom: 2px solid #E5E7EB; font-weight: 600; color: #111827;">Qty</th>
-                          <th style="text-align: right; padding: 12px; background-color: #F9FAFB; border-bottom: 2px solid #E5E7EB; font-weight: 600; color: #111827;">Price</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        #{items_html}
-                      </tbody>
-                    </table>
-
-                    <!-- Totals -->
-                    <div style="margin-top: 24px; padding-top: 16px; border-top: 2px solid #E5E7EB;">
-                      <table style="width: 100%; border-collapse: collapse;">
-                        #{totals_html}
-                      </table>
-                    </div>
-
-                    #{delivery_html}
-
-                    <p style="color: #374151; margin: 30px 0 10px 0;">If you have any questions about your order, please contact:</p>
-                    <ul style="list-style: none; padding: 0; margin: 0;">
-                      #{contact_html}
-                    </ul>
-
-                    <p style="color: #374151; margin: 30px 0 0 0;">Thank you for your support!</p>
-                  </td>
-                </tr>
-
-                <!-- Footer -->
-                <tr>
-                  <td style="background-color: #F9FAFB; padding: 24px; text-align: center; border-top: 1px solid #E5E7EB;">
-                    <p style="color: #9CA3AF; margin: 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
-                  </td>
-                </tr>
-
-              </table>
-            </td>
-          </tr>
-        </table>
-      </body>
-      </html>
-    HTML
-  end
 end

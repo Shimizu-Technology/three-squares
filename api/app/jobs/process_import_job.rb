@@ -69,8 +69,8 @@ class ProcessImportJob < ApplicationJob
       end
 
       # Parse inventory CSV if provided
-      # NOTE: This feature is disabled in the UI until we receive real inventory data from Hafaloha
-      # TODO: Test with actual Hafaloha inventory export before enabling
+      # NOTE: This feature is disabled in the UI until we receive real inventory data
+      # TODO: Test with actual inventory export before enabling
       if inventory_csv_path.present? && File.exist?(inventory_csv_path)
         update_inventory(inventory_csv_path, stats)
       end
@@ -549,7 +549,7 @@ class ProcessImportJob < ApplicationJob
     # Skip known logo/placeholder images
     skip_patterns = [
       "ChristmasPua.png",
-      "HafalohaLogo",
+      "ThreeSquaresLogo",
       "logo",
       "placeholder"
     ]

@@ -102,8 +102,6 @@ export default function OrderHistoryPage() {
     switch (orderType) {
       case 'retail':
         return '•';
-      case 'acai':
-        return '•';
       case 'wholesale':
         return '♥';
       default:

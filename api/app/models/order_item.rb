@@ -1,6 +1,6 @@
 class OrderItem < ApplicationRecord
   belongs_to :order
-  belongs_to :product, optional: true  # Optional for Acai orders
+  belongs_to :product, optional: true
   belongs_to :product_variant, optional: true
 
   # Validations
@@ -34,14 +34,12 @@ class OrderItem < ApplicationRecord
   private
 
   def set_defaults
-    # Only set from product if product exists (not for Acai orders)
     if product
       self.product_name ||= product.name
       self.variant_name ||= product_variant&.display_name
       self.product_sku ||= product_variant&.sku || product.sku_prefix
       self.unit_price_cents ||= product_variant&.price_cents || product.base_price_cents || 0
     end
-    # For Acai orders, these should be set explicitly in the controller
   end
 
   def calculate_total
