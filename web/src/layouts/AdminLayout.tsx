@@ -165,6 +165,7 @@ export default function AdminLayout() {
     { name: 'Analytics', path: '/admin/analytics', icon: 'analytics' },
   ];
   const specialNavigation: NavItem[] = [
+    { name: 'POS Mode', path: '/admin/pos', icon: 'pos' },
     { name: 'Catering', path: '/admin/catering', icon: 'catering' },
     { name: 'Pickup Queue', path: '/admin/orders/pickup-queue', icon: 'pickup_queue' },
     { name: 'Shipping Queue', path: '/admin/orders/shipping-queue', icon: 'shipping_queue' },
