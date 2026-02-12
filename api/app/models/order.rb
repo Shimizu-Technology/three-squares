@@ -13,20 +13,24 @@ class Order < ApplicationRecord
 
   # Validations
   validates :order_number, presence: true, uniqueness: true
-  validates :order_type, inclusion: { in: %w[retail wholesale] }
+  validates :order_type, inclusion: { in: %w[retail wholesale pickup dine_in] }
   validates :fulfillment_type, inclusion: { in: %w[pickup shipping] }
+  validates :source, inclusion: { in: %w[online pos phone] }
+  validates :payment_method, inclusion: { in: %w[stripe cash] }, allow_nil: true
   validates :status, inclusion: { in: VALID_STATUSES }
   validates :payment_status, inclusion: { in: %w[pending paid failed refunded] }
   validates :total_cents, numericality: { greater_than_or_equal_to: 0 }
   validate :pickup_orders_require_location
 
-  # Guest orders (no user_id) must have contact email so we can reach the customer
-  validates :customer_email, presence: { message: "is required for guest checkout" }, if: -> { user_id.nil? }
+  # Guest orders (no user_id) must have contact email — unless staff-created (POS walk-ins)
+  validates :customer_email, presence: { message: "is required for guest checkout" }, if: -> { user_id.nil? && !staff_created? }
   validates :customer_email, format: { with: URI::MailTo::EMAIL_REGEXP, message: "is not a valid email address" }, allow_blank: true
 
   # Scopes
   scope :retail, -> { where(order_type: "retail") }
   scope :wholesale, -> { where(order_type: "wholesale") }
+  scope :pos_orders, -> { where(source: "pos") }
+  scope :online_orders, -> { where(source: "online") }
   scope :pending, -> { where(status: "pending") }
   scope :confirmed, -> { where(status: "confirmed") }
   scope :processing, -> { where(status: "processing") }
@@ -155,6 +159,18 @@ class Order < ApplicationRecord
     order_type == "wholesale"
   end
 
+  def pos_order?
+    source == "pos"
+  end
+
+  def staff_created?
+    staff_created
+  end
+
+  def cash_payment?
+    payment_method == "cash"
+  end
+
   def requires_shipping?
     fulfillment_type == "shipping"
   end
@@ -250,9 +266,13 @@ class Order < ApplicationRecord
     # Format: TSQ-{TYPE}-YYYYMMDD-XXXX (Three Squares)
     # - Retail:    TSQ-R-20251210-0001
     # - Wholesale: TSQ-W-20251210-0001
-    type_prefix = case order_type
-    when "wholesale" then "W"
-    else "R" # retail is default
+    type_prefix = case source
+    when "pos" then "P"
+    else
+      case order_type
+      when "wholesale" then "W"
+      else "R"
+      end
     end
 
     date_str = Time.current.strftime("%Y%m%d")

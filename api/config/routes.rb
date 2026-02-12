@@ -123,6 +123,10 @@ Rails.application.routes.draw do
             get :summary
           end
         end
+
+        # POS (Point of Sale)
+        get "pos/menu", to: "pos_menu#show"
+        post "pos/orders", to: "pos_orders#create"
       end
 
       # Public routes (no authentication required)
