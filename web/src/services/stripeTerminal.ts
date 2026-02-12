@@ -2,7 +2,8 @@
  * Stripe Terminal SDK service for S700 reader integration.
  * Handles reader discovery, connection, and payment collection.
  */
-import { loadStripeTerminal, Terminal, Reader, ErrorResponse } from '@stripe/terminal-js';
+import { loadStripeTerminal } from '@stripe/terminal-js';
+import type { Terminal, Reader, ErrorResponse } from '@stripe/terminal-js';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
