@@ -342,7 +342,7 @@ export const shippingApi = {
 };
 
 // ============================================
-// ACAI CAKES API
+// UTILITY FUNCTIONS
 // ============================================
 
 // Helper to format price
