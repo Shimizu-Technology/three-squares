@@ -145,7 +145,7 @@ module Api
         def process_terminal_payment(order)
           # Terminal payments use card_present — the frontend SDK handles
           # card collection and processing. We create the PaymentIntent with
-          # card_present payment method type and manual capture.
+          # card_present payment method type and automatic capture.
           order.status = "pending"
           order.payment_status = "pending"
 

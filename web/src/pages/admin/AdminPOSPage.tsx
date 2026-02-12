@@ -415,7 +415,7 @@ export default function AdminPOSPage() {
     return () => {
       destroyTerminal();
     };
-  }, []);
+  }, [getToken]);
 
   const handleConnectReader = useCallback(async (reader: Reader) => {
     try {
