@@ -11,12 +11,14 @@ import { ProductGridSkeleton } from './Skeleton';
 import PlaceholderImage from './ui/PlaceholderImage';
 import OptimizedImage from './ui/OptimizedImage';
 
+const EMPTY_CART_ITEMS: Array<{ product: { allow_pickup?: boolean; allow_shipping?: boolean; available_location_ids?: number[] } }> = [];
+
 export default function FeaturedProducts() {
   const [products, setProducts] = useState<Product[]>([]);
   const [locationNameById, setLocationNameById] = useState<Record<number, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const cartItems = useCartStore((state) => state.cart?.items || []);
+  const cartItems = useCartStore((state) => state.cart?.items) ?? EMPTY_CART_ITEMS;
 
   useEffect(() => {
     const fetchFeaturedProducts = async () => {
@@ -66,7 +68,7 @@ export default function FeaturedProducts() {
           return acc;
         }, {});
         setLocationNameById(nextMap);
-      } catch (_error) {
+      } catch {
         setLocationNameById({});
       }
     };

@@ -7,6 +7,8 @@ import ProductBadge from './ProductBadge';
 import PlaceholderImage from './ui/PlaceholderImage';
 import OptimizedImage from './ui/OptimizedImage';
 
+const EMPTY_CART_ITEMS: Array<{ product: { allow_pickup?: boolean; allow_shipping?: boolean; available_location_ids?: number[] } }> = [];
+
 interface ProductCardProps {
   product: Product;
   locationNameById?: Record<number, string>;
@@ -14,7 +16,7 @@ interface ProductCardProps {
 
 export default function ProductCard({ product, locationNameById = {} }: ProductCardProps) {
   const isOnSale = Boolean(product.sale_price_cents && product.sale_price_cents < product.base_price_cents);
-  const cartItems = useCartStore((state) => state.cart?.items || []);
+  const cartItems = useCartStore((state) => state.cart?.items) ?? EMPTY_CART_ITEMS;
   const cartCompatibility = evaluateCartCompatibility(cartItems, product);
   const relevantLocationNames = cartCompatibility.relevantPickupLocationIds
     .map((id) => locationNameById[id])

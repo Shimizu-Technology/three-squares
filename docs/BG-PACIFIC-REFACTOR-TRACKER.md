@@ -228,6 +228,7 @@ Introduce clearer split storefront experiences by business line while preserving
 - [x] P3-03 Homepage/storefront IA split entry cards and CTAs.
 - [ ] P3-04 E2E coverage for storefront routes and cart guardrails.
 - [ ] P3-05 Evaluate optional auto-split mixed-cart architecture proposal.
+- [ ] P3-06 Admin order workflow split for pickup vs shipping (queue defaults, labels, and primary actions by fulfillment type).
 
 ### Phase 3 Deferred
 
