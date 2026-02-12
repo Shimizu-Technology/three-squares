@@ -10,8 +10,6 @@ class Product < ApplicationRecord
   has_many :collections, through: :product_collections
   has_many :locations, through: :product_locations
   has_many :order_items, dependent: :restrict_with_error
-  has_many :fundraiser_products, dependent: :destroy
-  has_many :fundraisers, through: :fundraiser_products
 
   # Validations
   validates :name, presence: true
