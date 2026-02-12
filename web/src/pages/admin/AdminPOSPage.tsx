@@ -22,7 +22,7 @@ interface POSProduct {
   id: number;
   name: string;
   slug: string;
-  business_line: string;
+  product_type: string;
   image_url: string | null;
   variants: POSVariant[];
 }

@@ -28,7 +28,7 @@ module Api
           # Group by collection (category)
           categories = {}
           products.order(:name).each do |product|
-            collection_names = product.collections.pluck(:name)
+            collection_names = product.collections.map(&:name)
             category = collection_names.first || "Uncategorized"
 
             categories[category] ||= []

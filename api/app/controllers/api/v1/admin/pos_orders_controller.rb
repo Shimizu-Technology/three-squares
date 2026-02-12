@@ -70,11 +70,6 @@ module Api
               raise StandardError, "#{product.name} is not available"
             end
 
-            # Check stock
-            if product.inventory_level == "variant" && variant.stock_quantity < quantity
-              raise StandardError, "#{product.name} — only #{variant.stock_quantity} in stock"
-            end
-
             unit_price_cents = variant.price_cents
 
             order.order_items.build(
@@ -120,6 +115,9 @@ module Api
           order.status = "pending"
           order.payment_status = "pending"
 
+          # Save order first so order.id is available for metadata
+          order.save! unless order.persisted?
+
           # If Stripe is configured, create a PaymentIntent
           stripe_key = ENV["STRIPE_SECRET_KEY"]
           if stripe_key.present?
@@ -146,6 +144,9 @@ module Api
             when "variant"
               variant.with_lock do
                 previous_stock = variant.stock_quantity
+                if previous_stock < item.quantity
+                  raise StandardError, "#{item.product_name} — only #{previous_stock} in stock"
+                end
                 new_stock = previous_stock - item.quantity
                 variant.update!(stock_quantity: new_stock)
 
@@ -160,6 +161,9 @@ module Api
             when "product"
               product.with_lock do
                 previous_stock = product.product_stock_quantity || 0
+                if previous_stock < item.quantity
+                  raise StandardError, "#{item.product_name} — only #{previous_stock} in stock"
+                end
                 new_stock = previous_stock - item.quantity
                 product.update!(product_stock_quantity: new_stock)
 
