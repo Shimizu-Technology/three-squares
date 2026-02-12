@@ -13,44 +13,14 @@ module Api
 
       # GET /api/v1/admin/orders
       # List all orders (admin only)
+      # Uses filtered_orders_query to ensure consistent filtering across index/export/summary
       def index
         # Pagination
         page = (params[:page] || 1).to_i
         per_page = (params[:per_page] || 25).to_i
 
-        # Base query
-        orders_query = Order.includes(:order_items, :user).order(created_at: :desc)
-
-        # Filters
-        if params[:status].present?
-          orders_query = orders_query.where(status: params[:status])
-        end
-
-        if params[:payment_status].present?
-          orders_query = orders_query.where(payment_status: params[:payment_status])
-        end
-
-        if params[:order_type].present?
-          orders_query = orders_query.where(order_type: params[:order_type])
-        end
-
-        # Search by order number, email, or name (case-insensitive for PostgreSQL)
-        if params[:search].present?
-          search_term = "%#{params[:search]}%"
-          orders_query = orders_query.where(
-            "order_number ILIKE ? OR customer_email ILIKE ? OR customer_name ILIKE ?",
-            search_term, search_term, search_term
-          )
-        end
-
-        # Date range filter
-        if params[:start_date].present?
-          orders_query = orders_query.where("created_at >= ?", params[:start_date])
-        end
-
-        if params[:end_date].present?
-          orders_query = orders_query.where("created_at <= ?", params[:end_date])
-        end
+        # Use shared filtered query for consistent filtering across all order endpoints
+        orders_query = filtered_orders_query
 
         # Paginate
         total_count = orders_query.count

@@ -79,11 +79,11 @@ module Api
           orders_query = apply_business_line_filter(orders_query, params[:business_line].to_s)
         end
 
-        # Search by order number, email, or name
+        # Search by order number, email, or name (case-insensitive for PostgreSQL)
         if params[:search].present?
           search_term = "%#{params[:search]}%"
           orders_query = orders_query.where(
-            "order_number LIKE ? OR customer_email LIKE ? OR customer_name LIKE ?",
+            "order_number ILIKE ? OR customer_email ILIKE ? OR customer_name ILIKE ?",
             search_term, search_term, search_term
           )
         end
