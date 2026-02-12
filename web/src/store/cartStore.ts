@@ -13,7 +13,7 @@ interface CartStore {
   
   // Actions
   fetchCart: () => Promise<void>;
-  addItem: (id: number, quantity: number, isProductId?: boolean) => Promise<void>;
+  addItem: (variantId: number | null, quantity: number, productId?: number) => Promise<void>;
   updateQuantity: (cartItemId: number, quantity: number) => Promise<void>;
   removeItem: (cartItemId: number) => Promise<void>;
   clearCart: () => Promise<void>;
@@ -64,14 +64,20 @@ export const useCartStore = create<CartStore>()(
       },
       
       // Add item to cart
-      addItem: async (id: number, quantity: number = 1, isProductId: boolean = false) => {
+      addItem: async (variantId: number | null, quantity: number = 1, productId?: number) => {
         set({ isLoading: true });
         try {
           const sessionId = get().sessionId;
-          // For products without variants, pass product_id instead of product_variant_id
-          const payload = isProductId
-            ? { product_id: id, quantity }
-            : { product_variant_id: id, quantity };
+          const payload: { product_variant_id?: number; product_id?: number; quantity: number } = { quantity };
+
+          if (variantId) {
+            payload.product_variant_id = variantId;
+          } else if (productId) {
+            payload.product_id = productId;
+          } else {
+            throw new Error('Missing product identifier for cart add');
+          }
+
           await api.post(
             '/cart/items',
             payload,

@@ -46,6 +46,9 @@ export interface Product {
   published?: boolean;
   featured: boolean;
   product_type: string;
+  allow_pickup?: boolean;
+  allow_shipping?: boolean;
+  available_location_ids?: number[];
   track_inventory?: boolean;
   inventory_level?: 'none' | 'product' | 'variant';
   product_stock_quantity?: number;
@@ -108,6 +111,15 @@ export interface Collection {
   product_count: number;
 }
 
+export interface Location {
+  id: number;
+  name: string;
+  slug: string;
+  address?: string | null;
+  phone?: string | null;
+  hours_json?: Record<string, string>;
+}
+
 export interface ProductsResponse {
   products: Product[];
   meta: {
@@ -149,6 +161,8 @@ export const productsApi = {
     min_price?: number;
     max_price?: number;
     sort?: string; // Added sort parameter
+    location_id?: number;
+    business_line?: string;
   }): Promise<ProductsResponse> => {
     const response = await api.get('/products', { params });
     return response.data;
@@ -157,6 +171,13 @@ export const productsApi = {
   // Get single product
   getProduct: async (idOrSlug: string | number): Promise<ProductFull> => {
     const response = await api.get(`/products/${idOrSlug}`);
+    return response.data;
+  },
+};
+
+export const locationsApi = {
+  getLocations: async (): Promise<{ locations: Location[] }> => {
+    const response = await api.get('/locations');
     return response.data;
   },
 };
@@ -256,6 +277,8 @@ export const ordersApi = {
 export interface CreatePaymentIntentRequest {
   email: string;
   shipping_cost_cents: number;
+  fulfillment_type: 'pickup' | 'shipping';
+  location_id?: number;
 }
 
 export interface CreatePaymentIntentResponse {

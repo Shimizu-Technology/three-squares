@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { collectionsApi, type Collection } from '../services/api';
+import { useCartStore } from '../store/cartStore';
 
 interface MobileNavDropdownProps {
   onItemClick: () => void;
@@ -11,6 +12,7 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
   const [isExpanded, setIsExpanded] = useState(false);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
+  const cart = useCartStore((state) => state.cart);
 
   // Fetch collections on mount
   useEffect(() => {
@@ -27,6 +29,43 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
 
     fetchCollections();
   }, []);
+
+  const handleStorefrontClick = (
+    event: ReactMouseEvent<HTMLAnchorElement>,
+    targetBusinessLine: 'three_squares' | 'latte_stone' | 'catering',
+    targetLabel: string
+  ) => {
+    const cartItems = cart?.items || [];
+    if (cartItems.length === 0) {
+      onItemClick();
+      return;
+    }
+
+    const cartBusinessLines = Array.from(
+      new Set(
+        cartItems
+          .map((item) => item.product.business_line)
+          .filter((line): line is 'three_squares' | 'latte_stone' | 'catering' => Boolean(line))
+      )
+    );
+
+    const sameContext = cartBusinessLines.length === 1 && cartBusinessLines[0] === targetBusinessLine;
+    if (sameContext || cartBusinessLines.length === 0) {
+      onItemClick();
+      return;
+    }
+
+    const confirmSwitch = window.confirm(
+      `Your cart already has items from a different storefront context. Switching to ${targetLabel} may hide some items while browsing. Continue?`
+    );
+
+    if (!confirmSwitch) {
+      event.preventDefault();
+      return;
+    }
+
+    onItemClick();
+  };
 
   return (
     <div className="space-y-1">
@@ -69,6 +108,43 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
               All Products
+            </Link>
+
+            <p className={`text-xs uppercase tracking-wider font-semibold py-2 ${darkMode ? 'text-white/40' : 'text-warm-400'}`}>
+              Shop by Business
+            </p>
+            <Link
+              to="/shop/three-squares"
+              className={`flex items-center gap-2 py-2 ${
+                darkMode
+                  ? 'text-white/80 hover:text-tsGold'
+                  : 'text-warm-700 hover:text-tsPrimary'
+              }`}
+              onClick={(event) => handleStorefrontClick(event, 'three_squares', 'Three Squares')}
+            >
+              Three Squares
+            </Link>
+            <Link
+              to="/shop/latte-stone-cookies"
+              className={`flex items-center gap-2 py-2 ${
+                darkMode
+                  ? 'text-white/80 hover:text-tsGold'
+                  : 'text-warm-700 hover:text-tsPrimary'
+              }`}
+              onClick={(event) => handleStorefrontClick(event, 'latte_stone', 'Latte Stone Cookies')}
+            >
+              Latte Stone Cookies
+            </Link>
+            <Link
+              to="/shop/catering"
+              className={`flex items-center gap-2 py-2 ${
+                darkMode
+                  ? 'text-white/80 hover:text-tsGold'
+                  : 'text-warm-700 hover:text-tsPrimary'
+              }`}
+              onClick={(event) => handleStorefrontClick(event, 'catering', 'Catering')}
+            >
+              Catering
             </Link>
 
             {/* Collections */}

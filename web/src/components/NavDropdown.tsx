@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { collectionsApi, type Collection } from '../services/api';
+import { useCartStore } from '../store/cartStore';
 
 interface NavDropdownProps {
   onItemClick: () => void;
@@ -12,6 +13,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
   const [collections, setCollections] = useState<Collection[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cart = useCartStore((state) => state.cart);
 
   // Fetch collections on mount
   useEffect(() => {
@@ -57,6 +59,43 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
     onItemClick();
   };
 
+  const handleStorefrontClick = (
+    event: ReactMouseEvent<HTMLAnchorElement>,
+    targetBusinessLine: 'three_squares' | 'latte_stone' | 'catering',
+    targetLabel: string
+  ) => {
+    const cartItems = cart?.items || [];
+    if (cartItems.length === 0) {
+      handleItemClick();
+      return;
+    }
+
+    const cartBusinessLines = Array.from(
+      new Set(
+        cartItems
+          .map((item) => item.product.business_line)
+          .filter((line): line is 'three_squares' | 'latte_stone' | 'catering' => Boolean(line))
+      )
+    );
+
+    const sameContext = cartBusinessLines.length === 1 && cartBusinessLines[0] === targetBusinessLine;
+    if (sameContext || cartBusinessLines.length === 0) {
+      handleItemClick();
+      return;
+    }
+
+    const confirmSwitch = window.confirm(
+      `Your cart already has items from a different storefront context. Switching to ${targetLabel} may hide some items while browsing. Continue?`
+    );
+
+    if (!confirmSwitch) {
+      event.preventDefault();
+      return;
+    }
+
+    handleItemClick();
+  };
+
   return (
     <div 
       ref={dropdownRef}
@@ -67,7 +106,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
       {/* Trigger - Click navigates to /products, hover shows dropdown */}
       <Link
         to="/products"
-        className={`flex items-center font-semibold transition py-2 ${
+        className={`flex items-center text-[15px] font-medium transition py-2 ${
           darkMode 
             ? 'text-white hover:text-tsGold' 
             : 'text-warm-700 hover:text-tsPrimary nav-link-hover'
@@ -87,7 +126,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
 
       {/* Dynamic dropdown with real collections */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-2xl border border-warm-100 z-50 animate-slide-down overflow-hidden w-56">
+        <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl border border-warm-200 z-50 animate-slide-down overflow-hidden w-56">
           <div className="py-2">
             {/* Dynamic collections */}
             {collections.map((col) => (
@@ -106,6 +145,33 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
             ))}
 
             {collections.length > 0 && <div className="border-t border-warm-100 my-1" />}
+
+            <p className="px-5 py-2 text-[11px] font-semibold uppercase tracking-wider text-warm-400">
+              Shop by Business
+            </p>
+            <Link
+              to="/shop/three-squares"
+              className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
+              onClick={(event) => handleStorefrontClick(event, 'three_squares', 'Three Squares')}
+            >
+              Three Squares
+            </Link>
+            <Link
+              to="/shop/latte-stone-cookies"
+              className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
+              onClick={(event) => handleStorefrontClick(event, 'latte_stone', 'Latte Stone Cookies')}
+            >
+              Latte Stone Cookies
+            </Link>
+            <Link
+              to="/shop/catering"
+              className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
+              onClick={(event) => handleStorefrontClick(event, 'catering', 'Catering')}
+            >
+              Catering
+            </Link>
+
+            <div className="border-t border-warm-100 my-1" />
 
             <Link
               to="/products"

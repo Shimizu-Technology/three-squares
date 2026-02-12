@@ -6,7 +6,9 @@ class Product < ApplicationRecord
   has_many :product_variants, dependent: :destroy
   has_many :product_images, -> { order(position: :asc) }, dependent: :destroy
   has_many :product_collections, dependent: :destroy
+  has_many :product_locations, dependent: :destroy
   has_many :collections, through: :product_collections
+  has_many :locations, through: :product_locations
   has_many :order_items, dependent: :restrict_with_error
   has_many :fundraiser_products, dependent: :destroy
   has_many :fundraisers, through: :fundraiser_products
@@ -18,7 +20,10 @@ class Product < ApplicationRecord
   validates :inventory_level, inclusion: { in: %w[none product variant] }
   validates :product_stock_quantity, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true, if: -> { inventory_level == "product" }
   validates :product_low_stock_threshold, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+  validates :allow_pickup, inclusion: { in: [ true, false ] }
+  validates :allow_shipping, inclusion: { in: [ true, false ] }
   validate :check_variants_not_in_carts_before_level_change, on: :update
+  validate :must_support_at_least_one_fulfillment_type
 
   # Scopes
   scope :published, -> { where(published: true) }
@@ -119,6 +124,14 @@ class Product < ApplicationRecord
     published? ? product_variants.where(available: true) : product_variants
   end
 
+  def available_for_location?(location_id)
+    return false unless allow_pickup?
+    return false if location_id.blank?
+    return true if product_locations.empty?
+
+    product_locations.available.where(location_id: location_id).exists?
+  end
+
   private
 
   def generate_slug
@@ -207,5 +220,11 @@ class Product < ApplicationRecord
     if cart_item_count > 0
       errors.add(:inventory_level, "cannot be changed from 'variant' because #{cart_item_count} cart item(s) reference these variants. Please wait for customers to complete checkout or clear stale carts first.")
     end
+  end
+
+  def must_support_at_least_one_fulfillment_type
+    return if allow_pickup? || allow_shipping?
+
+    errors.add(:base, "Product must allow pickup, shipping, or both")
   end
 end

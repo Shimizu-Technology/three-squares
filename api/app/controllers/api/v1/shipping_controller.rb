@@ -63,15 +63,14 @@ module Api
       private
 
       def get_cart_items
-        if current_user
-          # First, merge any session cart items to the user
-          merge_session_cart_to_user
-          current_user.cart_items.includes(product_variant: { product: :product_images })
-        else
-          session_id = request.headers["X-Session-ID"] || cookies[:session_id]
-          return [] if session_id.blank?
-          CartItem.where(session_id: session_id).includes(product_variant: { product: :product_images })
+        session_id = request.headers["X-Session-ID"] || cookies[:session_id]
+        if session_id.present?
+          return CartItem.where(session_id: session_id).includes(product_variant: { product: :product_images })
         end
+
+        return [] unless current_user
+
+        current_user.cart_items.includes(product_variant: { product: :product_images })
       end
 
       # Merge session-based cart items to the logged-in user

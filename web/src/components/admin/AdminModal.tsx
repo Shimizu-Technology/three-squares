@@ -78,7 +78,8 @@ export default function AdminModal({
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition p-1 rounded-lg hover:bg-gray-100 print-hide"
+            className="text-gray-400 hover:text-gray-600 transition min-w-[44px] min-h-[44px] p-2 rounded-lg hover:bg-gray-100 print-hide"
+            aria-label="Close modal"
           >
             <X className="w-5 h-5" />
           </button>

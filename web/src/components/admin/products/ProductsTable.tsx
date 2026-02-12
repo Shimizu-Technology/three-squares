@@ -45,7 +45,7 @@ export default function ProductsTable({
     <div className="relative">
       <button
         onClick={() => setActionMenuOpen(actionMenuOpen === product.id ? null : product.id)}
-        className="p-1 text-gray-400 hover:text-gray-600 rounded btn-icon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
+        className="min-w-[44px] min-h-[44px] p-2.5 text-gray-400 hover:text-gray-600 rounded btn-icon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
       >
         <MoreVertical className="w-4 h-4" />
       </button>

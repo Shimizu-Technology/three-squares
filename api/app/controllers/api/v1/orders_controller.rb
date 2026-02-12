@@ -3,6 +3,8 @@
 module Api
   module V1
     class OrdersController < ApplicationController
+      COOKIE_COLLECTION_SLUGS = %w[cookies cookie-boxes mini-cookies].freeze
+
       rescue_from ActionController::ParameterMissing do |e|
         render json: { error: "Missing required parameter: #{e.param}. Wrap your request body in an '#{e.param}' key." }, status: :bad_request
       end
@@ -50,7 +52,7 @@ module Api
         per_page = (params[:per_page] || 25).to_i
 
         # Base query
-        orders_query = Order.includes(:order_items, :user).order(created_at: :desc)
+        orders_query = Order.includes(order_items: { product_variant: { product: :collections } }, user: []).order(created_at: :desc)
 
         # Filters
         if params[:status].present?
@@ -65,11 +67,23 @@ module Api
           orders_query = orders_query.where(order_type: params[:order_type])
         end
 
-        # Search by order number, email, or name
+        if params[:fulfillment_type].present?
+          orders_query = orders_query.where(fulfillment_type: params[:fulfillment_type])
+        end
+
+        if params[:location_id].present?
+          orders_query = orders_query.where(location_id: params[:location_id].to_i)
+        end
+
+        if params[:business_line].present?
+          orders_query = apply_business_line_filter(orders_query, params[:business_line].to_s)
+        end
+
+        # Search by order number, email, or name (case-insensitive for PostgreSQL)
         if params[:search].present?
           search_term = "%#{params[:search]}%"
           orders_query = orders_query.where(
-            "order_number LIKE ? OR customer_email LIKE ? OR customer_name LIKE ?",
+            "order_number ILIKE ? OR customer_email ILIKE ? OR customer_name ILIKE ?",
             search_term, search_term, search_term
           )
         end
@@ -115,8 +129,19 @@ module Api
           return render json: { error: "Cart validation failed", issues: validation_errors }, status: :unprocessable_entity
         end
 
+        fulfillment_type = normalized_fulfillment_type
+        location_id = pickup_location_id
+        fulfillment_issues = FulfillmentValidator.validate_cart(
+          cart_items: cart_items,
+          fulfillment_type: fulfillment_type,
+          location_id: location_id
+        )
+        if fulfillment_issues.any?
+          return render json: { error: "Cart fulfillment validation failed", issues: fulfillment_issues }, status: :unprocessable_entity
+        end
+
         # Create order
-        order = build_order(cart_items)
+        order = build_order(cart_items, fulfillment_type: fulfillment_type, location_id: location_id)
 
         # Process payment
         payment_intent_id = order_params[:payment_intent_id]
@@ -236,15 +261,14 @@ module Api
       private
 
       def get_cart_items
-        if current_user
-          # First, merge any session cart items to the user
-          merge_session_cart_to_user
-          current_user.cart_items.includes(product_variant: { product: :product_images })
-        else
-          session_id = request.headers["X-Session-ID"] || request.cookies["session_id"]
-          return [] if session_id.blank?
-          CartItem.where(session_id: session_id).includes(product_variant: { product: :product_images })
+        session_id = request.headers["X-Session-ID"] || request.cookies["session_id"]
+        if session_id.present?
+          return CartItem.where(session_id: session_id).includes(product_variant: { product: [ :product_images, :product_locations ] })
         end
+
+        return [] unless current_user
+
+        current_user.cart_items.includes(product_variant: { product: [ :product_images, :product_locations ] })
       end
 
       # Merge session-based cart items to the logged-in user
@@ -344,13 +368,15 @@ module Api
         issues
       end
 
-      def build_order(cart_items)
+      def build_order(cart_items, fulfillment_type:, location_id:)
         shipping_address = order_params[:shipping_address] || {}
         shipping_method_params = order_params[:shipping_method] || {}
 
         order = Order.new(
           user: current_user,
           order_type: "retail",
+          fulfillment_type: fulfillment_type,
+          location_id: (fulfillment_type == "pickup" ? location_id : nil),
           status: "pending",
           email: order_params[:customer_email] || order_params[:email],  # HAF-13: prefer canonical name
           phone: order_params[:customer_phone] || order_params[:phone],  # HAF-13: prefer canonical name
@@ -366,7 +392,7 @@ module Api
 
           # Shipping method (store as JSON/text with carrier and service info)
           shipping_method: [ shipping_method_params[:carrier], shipping_method_params[:service] ].compact.join(" ").presence,
-          shipping_cost_cents: shipping_method_params[:rate_cents] || 0
+          shipping_cost_cents: fulfillment_type == "pickup" ? 0 : (shipping_method_params[:rate_cents] || 0)
         )
 
         # Calculate totals
@@ -461,6 +487,9 @@ module Api
           status: order.status,
           payment_status: order.payment_status,
           order_type: order.order_type,
+          business_line: infer_business_line(order),
+          fulfillment_type: order.fulfillment_type,
+          location: order.location ? { id: order.location.id, name: order.location.name, slug: order.location.slug } : nil,
           customer_name: order.name,
           customer_email: order.email,
           customer_phone: order.phone,
@@ -518,6 +547,9 @@ module Api
           status_display: order.status&.titleize,
           payment_status: order.payment_status,
           order_type: order.order_type,
+          business_line: infer_business_line(order),
+          fulfillment_type: order.fulfillment_type,
+          location: order.location ? { id: order.location.id, name: order.location.name, slug: order.location.slug } : nil,
           customer_name: order.name,
           customer_email: order.email,
           customer_phone: order.phone,
@@ -577,6 +609,7 @@ module Api
         params.require(:order).permit(
           :email, :phone, :payment_intent_id,
           :customer_name, :customer_email, :customer_phone,
+          :fulfillment_type, :location_id,
           :shipping_address_line1, :shipping_address_line2,
           :shipping_city, :shipping_state, :shipping_zip, :shipping_country,
           shipping_address: [ :name, :street1, :street2, :city, :state, :zip, :country ],
@@ -683,6 +716,8 @@ module Api
           status: order.status,
           status_display: order.status&.titleize,
           order_type: order.order_type,
+          business_line: infer_business_line(order),
+          fulfillment_type: order.fulfillment_type,
           order_type_display: order.order_type.titleize,
           total_cents: order.total_cents,
           total_formatted: "$#{'%.2f' % ((order.total_cents || 0) / 100.0)}",
@@ -705,6 +740,57 @@ module Api
             }
           end
         }
+      end
+
+      def normalized_fulfillment_type
+        raw = order_params[:fulfillment_type].to_s
+        return "pickup" if raw == "pickup"
+
+        "shipping"
+      end
+
+      def pickup_location_id
+        value = order_params[:location_id]
+        return nil if value.blank?
+
+        value.to_i
+      end
+
+      def apply_business_line_filter(relation, business_line)
+        case business_line
+        when "catering"
+          relation.where(order_type: "wholesale")
+        when "acai"
+          relation.where(order_type: "acai")
+        when "latte_stone"
+          relation
+            .where(order_type: "retail")
+            .joins(order_items: { product_variant: { product: :collections } })
+            .where(collections: { slug: COOKIE_COLLECTION_SLUGS })
+            .distinct
+        when "three_squares"
+          latte_stone_order_ids = Order
+            .where(order_type: "retail")
+            .joins(order_items: { product_variant: { product: :collections } })
+            .where(collections: { slug: COOKIE_COLLECTION_SLUGS })
+            .select(:id)
+
+          relation.where(order_type: "retail").where.not(id: latte_stone_order_ids)
+        else
+          relation
+        end
+      end
+
+      def infer_business_line(order)
+        return "catering" if order.order_type == "wholesale"
+        return "acai" if order.order_type == "acai"
+        return "three_squares" unless order.order_type == "retail"
+
+        is_latte = order.order_items.any? do |item|
+          item.product&.collections&.any? { |collection| COOKIE_COLLECTION_SLUGS.include?(collection.slug) }
+        end
+
+        is_latte ? "latte_stone" : "three_squares"
       end
     end
   end

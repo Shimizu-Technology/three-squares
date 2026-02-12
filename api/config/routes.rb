@@ -22,6 +22,10 @@ Rails.application.routes.draw do
 
         # Orders (admin management)
         resources :orders, only: [ :index, :show, :update ] do
+          collection do
+            get :export
+            get :summary
+          end
           member do
             post :notify  # Resend notification email
             post :refund  # Process refund
@@ -61,6 +65,7 @@ Rails.application.routes.draw do
 
         # Collections
         resources :collections, except: [ :new, :edit ]
+        resources :locations, except: [ :new, :edit ]
 
         # Acai Management
         namespace :acai do
@@ -178,6 +183,7 @@ Rails.application.routes.draw do
       # Public routes (no authentication required)
       resources :products, only: [ :index, :show ]
       resources :collections, only: [ :index, :show ]
+      resources :locations, only: [ :index ]
 
       # Catering inquiries
       resources :catering, only: [ :create ] do

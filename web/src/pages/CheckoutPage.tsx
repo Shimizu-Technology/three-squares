@@ -1,13 +1,14 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { useCartStore } from '../store/cartStore';
-import { configApi, ordersApi, shippingApi, paymentIntentsApi, formatPrice } from '../services/api';
+import { configApi, locationsApi, ordersApi, shippingApi, paymentIntentsApi, formatPrice } from '../services/api';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import StripeProvider from '../components/payment/StripeProvider';
 import PaymentForm from '../components/payment/PaymentForm';
 import type { ShippingAddress, ShippingMethod, AppConfig } from '../types/order';
+import type { Location } from '../services/api';
 import PlaceholderImage from '../components/ui/PlaceholderImage';
 import OptimizedImage from '../components/ui/OptimizedImage';
 
@@ -21,6 +22,8 @@ function CheckoutForm() {
   // Get items from cart (with fallback to empty array)
   const items = cart?.items || [];
   const subtotalCents = cart?.subtotal_cents || 0; // Use cents directly from cart
+  const cartSupportsShipping = items.length > 0 && items.every((item) => item.product.allow_shipping === true);
+  const cartSupportsPickup = items.length > 0 && items.every((item) => item.product.allow_pickup === true);
   
   // App config
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
@@ -31,6 +34,8 @@ function CheckoutForm() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'shipping'>('shipping');
+  const [pickupLocations, setPickupLocations] = useState<Location[]>([]);
+  const [pickupLocationId, setPickupLocationId] = useState<number | null>(null);
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     name: '',
     street1: '',
@@ -63,12 +68,35 @@ function CheckoutForm() {
   
   const isTestMode = appConfig?.app_mode === 'test';
 
+  // Compatible pickup locations = intersection of available_location_ids across all cart items.
+  const compatiblePickupLocationIds = useMemo(() => {
+    if (items.length === 0) return [];
+    const itemLocationSets = items
+      .map((item) => item.product.available_location_ids || [])
+      .filter((ids) => ids.length > 0);
+    if (itemLocationSets.length === 0) return [];
+    return itemLocationSets.reduce(
+      (intersection, ids) => intersection.filter((id) => ids.includes(id)),
+      itemLocationSets[0]
+    );
+  }, [items]);
+
+  const compatiblePickupLocations = useMemo(
+    () => pickupLocations.filter((location) => compatiblePickupLocationIds.includes(location.id)),
+    [pickupLocations, compatiblePickupLocationIds]
+  );
+
   // Load app config
   useEffect(() => {
     const loadConfig = async () => {
       try {
         const config = await configApi.getConfig();
         setAppConfig(config);
+        const locations = await locationsApi.getLocations();
+        setPickupLocations(locations.locations || []);
+        if ((locations.locations || []).length > 0) {
+          setPickupLocationId(locations.locations[0].id);
+        }
       } catch (err) {
         console.error('Failed to load config:', err);
       } finally {
@@ -90,9 +118,45 @@ function CheckoutForm() {
       navigate('/products');
     }
   }, [cartLoading, cart, items.length, navigate, configLoading]);
+
+  // Keep delivery method aligned with cart fulfillment capabilities
+  useEffect(() => {
+    if (items.length === 0) return;
+
+    if (!cartSupportsShipping && deliveryMethod === 'shipping' && cartSupportsPickup) {
+      setDeliveryMethod('pickup');
+      setShippingMethod(null);
+      setAvailableShippingRates([]);
+      return;
+    }
+
+    if (!cartSupportsPickup && deliveryMethod === 'pickup' && cartSupportsShipping) {
+      setDeliveryMethod('shipping');
+      return;
+    }
+  }, [items.length, cartSupportsShipping, cartSupportsPickup, deliveryMethod]);
+
+  useEffect(() => {
+    if (deliveryMethod !== 'pickup') return;
+    if (compatiblePickupLocations.length === 0) {
+      setPickupLocationId(null);
+      return;
+    }
+
+    const hasValidCurrentLocation =
+      pickupLocationId !== null && compatiblePickupLocationIds.includes(pickupLocationId);
+    if (!hasValidCurrentLocation) {
+      setPickupLocationId(compatiblePickupLocations[0].id);
+    }
+  }, [deliveryMethod, pickupLocationId, compatiblePickupLocationIds, compatiblePickupLocations]);
   
   // Calculate shipping rates
   const handleCalculateShipping = async () => {
+    if (!cartSupportsShipping) {
+      setShippingError('Shipping is not available for all items in your cart.');
+      return;
+    }
+
     if (!shippingAddress.street1 || !shippingAddress.city || !shippingAddress.state || !shippingAddress.zip) {
       setShippingError('Please fill out all required shipping address fields');
       return;
@@ -140,9 +204,13 @@ function CheckoutForm() {
     const hasContactInfo = name.trim() !== '' && email.trim() !== '' && phone.trim() !== '';
     
     if (deliveryMethod === 'pickup') {
-      return hasContactInfo && (isTestMode || paymentReady);
+      if (!cartSupportsPickup) return false;
+      if (compatiblePickupLocations.length === 0) return false;
+      return hasContactInfo && pickupLocationId !== null && (isTestMode || paymentReady);
     }
     
+    if (!cartSupportsShipping) return false;
+
     // For shipping, need address and shipping method selected
     const hasAddress = 
       shippingAddress.street1.trim() !== '' &&
@@ -178,6 +246,22 @@ function CheckoutForm() {
       }
       
       // Build shipping data
+      if (deliveryMethod === 'shipping' && !cartSupportsShipping) {
+        setError('Shipping is not available for all items in your cart.');
+        setLoading(false);
+        return;
+      }
+      if (deliveryMethod === 'pickup' && !cartSupportsPickup) {
+        setError('Pickup is not available for all items in your cart.');
+        setLoading(false);
+        return;
+      }
+      if (deliveryMethod === 'pickup' && compatiblePickupLocations.length === 0) {
+        setError('Your cart items are not available at a common pickup location. Please update your cart.');
+        setLoading(false);
+        return;
+      }
+
       const shippingCostCents = deliveryMethod === 'pickup' ? 0 : (shippingMethod?.rate_cents || 0);
       let orderShippingAddress;
       let orderShippingMethod;
@@ -211,6 +295,8 @@ function CheckoutForm() {
         const orderData = {
           customer_name: name,
           email, phone,
+          fulfillment_type: deliveryMethod,
+          location_id: deliveryMethod === 'pickup' ? pickupLocationId || undefined : undefined,
           shipping_address: orderShippingAddress,
           shipping_method: orderShippingMethod,
           payment_method: { type: 'test' },
@@ -237,7 +323,14 @@ function CheckoutForm() {
         }
         // Step 1: Create PaymentIntent
         const intentResponse = await paymentIntentsApi.create(
-          { email, shipping_cost_cents: shippingCostCents }, token, sessionId
+          {
+            email,
+            shipping_cost_cents: shippingCostCents,
+            fulfillment_type: deliveryMethod,
+            location_id: deliveryMethod === 'pickup' ? pickupLocationId || undefined : undefined,
+          },
+          token,
+          sessionId
         );
         // Step 2: Confirm card payment with Stripe
         const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
@@ -258,6 +351,8 @@ function CheckoutForm() {
         const orderData = {
           customer_name: name,
           email, phone,
+          fulfillment_type: deliveryMethod,
+          location_id: deliveryMethod === 'pickup' ? pickupLocationId || undefined : undefined,
           shipping_address: orderShippingAddress,
           shipping_method: orderShippingMethod,
           payment_method: { type: 'stripe' },
@@ -274,7 +369,7 @@ function CheckoutForm() {
     } catch (err: unknown) {
       console.error('Checkout error:', err);
       const axiosErr = err as { response?: { data?: { error?: string; issues?: Array<{ message: string }> } } };
-      if (axiosErr.response?.data?.error === 'Cart validation failed' && axiosErr.response?.data?.issues) {
+      if (axiosErr.response?.data?.issues && axiosErr.response.data.issues.length > 0) {
         const issues = axiosErr.response.data.issues;
         const errorMessages = issues.map((issue) => `• ${issue.message}`).join('\n');
         setError(`Unable to complete order:\n${errorMessages}`);
@@ -401,7 +496,8 @@ function CheckoutForm() {
                   </div>
                   <h2 className="text-xl font-bold text-gray-900">Delivery Method</h2>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className={`grid grid-cols-1 ${cartSupportsShipping && cartSupportsPickup ? 'sm:grid-cols-2' : ''} gap-4`}>
+                  {cartSupportsShipping && (
                   <button
                     type="button"
                     onClick={() => {
@@ -425,7 +521,9 @@ function CheckoutForm() {
                       </svg>
                     </div>
                   </button>
+                  )}
                   
+                  {cartSupportsPickup && (
                   <button
                     type="button"
                     onClick={() => {
@@ -448,10 +546,26 @@ function CheckoutForm() {
                       </svg>
                     </div>
                   </button>
+                  )}
                 </div>
+                {!cartSupportsShipping && cartSupportsPickup && (
+                  <p className="mt-3 text-sm text-amber-700">
+                    Your cart contains pickup-only items. Shipping is unavailable.
+                  </p>
+                )}
+                {cartSupportsShipping && !cartSupportsPickup && (
+                  <p className="mt-3 text-sm text-amber-700">
+                    Your cart contains shipping-only items. Pickup is unavailable.
+                  </p>
+                )}
+                {!cartSupportsShipping && !cartSupportsPickup && (
+                  <p className="mt-3 text-sm text-red-700">
+                    Your cart items do not share a valid fulfillment method. Please review your cart.
+                  </p>
+                )}
                 
                 <AnimatePresence mode="wait">
-                  {deliveryMethod === 'pickup' && (
+                  {deliveryMethod === 'pickup' && cartSupportsPickup && (
                     <motion.div
                       key="pickup-info"
                       initial={{ opacity: 0, height: 0 }}
@@ -461,12 +575,32 @@ function CheckoutForm() {
                       className="overflow-hidden"
                     >
                       <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <p className="text-sm text-blue-800">
-                          <strong>Pickup Location:</strong><br />
-                          416 Chalan San Antonio<br />
-                          Tamuning, GU 96913<br />
-                          {appConfig?.store_info?.phone || '(671) 646-2652'}
-                        </p>
+                        <label htmlFor="pickupLocation" className="block text-sm font-semibold text-blue-900 mb-2">
+                          Pickup Location *
+                        </label>
+                        <select
+                          id="pickupLocation"
+                          value={pickupLocationId ?? ''}
+                          onChange={(e) => setPickupLocationId(e.target.value ? Number(e.target.value) : null)}
+                          className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm text-blue-900 focus:outline-none focus:ring-2 focus:ring-tsPrimary"
+                        >
+                          <option value="" disabled>Select a location</option>
+                          {compatiblePickupLocations.map((location) => (
+                            <option key={location.id} value={location.id}>
+                              {location.name}
+                            </option>
+                          ))}
+                        </select>
+                        {compatiblePickupLocations.length === 0 && (
+                          <p className="text-sm text-red-700 mt-2">
+                            No pickup location can fulfill all items in this cart. Remove incompatible items to continue.
+                          </p>
+                        )}
+                        {pickupLocationId && (
+                          <p className="text-sm text-blue-800 mt-3">
+                            {(compatiblePickupLocations.find((location) => location.id === pickupLocationId)?.address) || appConfig?.store_info?.name}
+                          </p>
+                        )}
                         <p className="text-sm text-blue-700 mt-2">
                           You'll receive an email when your order is ready for pickup.
                         </p>
@@ -478,7 +612,7 @@ function CheckoutForm() {
               
               {/* Shipping Address - Only show if shipping selected */}
               <AnimatePresence mode="wait">
-              {deliveryMethod === 'shipping' && (
+              {deliveryMethod === 'shipping' && cartSupportsShipping && (
                 <motion.div
                   key="shipping-form"
                   initial={{ opacity: 0, y: -10 }}
@@ -717,7 +851,7 @@ function CheckoutForm() {
           
           {/* Right Column - Order Summary */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 sticky top-24">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 lg:sticky lg:top-24">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Order Summary</h2>
               
               {/* Items */}

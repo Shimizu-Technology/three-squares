@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useMemo, useState } from 'react';
 import type { ImgixImageOptions, ImageContext } from '../../utils/imageUtils';
 import { getImgixImageUrl, getSizesForContext, getWidthsForContext } from '../../utils/imageUtils';
 
@@ -24,41 +24,72 @@ const OptimizedImage = memo(({
   fetchPriority,
   alt = '',
   onError,
+  onLoad,
+  className,
   ...imgProps
 }: OptimizedImageProps) => {
   const resolvedSrc = src || fallbackSrc;
-  if (!resolvedSrc) return null;
-
   const resolvedWidths = widths || getWidthsForContext(context);
   const resolvedSizes = sizes || getSizesForContext(context);
 
-  const baseOptions: ImgixImageOptions = {
-    auto: 'format,compress',
-    ...imgixOptions,
-  };
+  const baseOptions = useMemo<ImgixImageOptions>(
+    () => ({
+      auto: 'format,compress',
+      ...imgixOptions,
+    }),
+    [imgixOptions]
+  );
 
-  const srcSet = resolvedWidths
-    .map((width) => {
-      const url = getImgixImageUrl(resolvedSrc, { ...baseOptions, width });
-      return url ? `${url} ${width}w` : null;
-    })
-    .filter(Boolean)
-    .join(', ');
+  const transformedSrcSet = useMemo(
+    () => resolvedWidths
+      .map((width) => {
+        const url = getImgixImageUrl(resolvedSrc, { ...baseOptions, width });
+        return url ? `${url} ${width}w` : null;
+      })
+      .filter(Boolean)
+      .join(', '),
+    [resolvedWidths, resolvedSrc, baseOptions]
+  );
 
-  const defaultSrc = getImgixImageUrl(resolvedSrc, { ...baseOptions, width: resolvedWidths[0] }) || resolvedSrc;
+  // Use a medium source as initial src to avoid visible low-res pop-in.
+  const defaultWidth = resolvedWidths[Math.min(1, resolvedWidths.length - 1)];
+  const transformedDefaultSrc = resolvedSrc
+    ? (getImgixImageUrl(resolvedSrc, { ...baseOptions, width: defaultWidth }) || resolvedSrc)
+    : undefined;
+  const [fallbackToOriginalSrc, setFallbackToOriginalSrc] = useState<string | null>(null);
+  const [loadedSrc, setLoadedSrc] = useState<string | null>(null);
+  const useOriginalSource = Boolean(resolvedSrc && fallbackToOriginalSrc === resolvedSrc);
+
+  const activeSrc = useOriginalSource ? resolvedSrc : transformedDefaultSrc;
+  const activeSrcSet = useOriginalSource ? undefined : (transformedSrcSet || undefined);
+  const activeSizes = activeSrcSet ? resolvedSizes : undefined;
 
   const loading = priority ? 'eager' : 'lazy';
+  const isLoaded = Boolean(activeSrc && loadedSrc === activeSrc);
+
+  if (!resolvedSrc || !activeSrc) return null;
 
   return (
     <img
-      src={defaultSrc}
-      srcSet={srcSet || undefined}
-      sizes={srcSet ? resolvedSizes : undefined}
+      src={activeSrc}
+      srcSet={activeSrcSet}
+      sizes={activeSizes}
       alt={alt}
       loading={loading}
       decoding="async"
+      className={`${className || ''} transition-opacity duration-500 ${isLoaded ? 'opacity-100' : 'opacity-60'}`}
       {...(fetchPriority ? { fetchpriority: fetchPriority } : {})}
+      onLoad={(event) => {
+        setLoadedSrc(activeSrc);
+        onLoad?.(event);
+      }}
       onError={(event) => {
+        // If the transformed/CDN URL fails, retry once with the original source URL.
+        if (!useOriginalSource && transformedDefaultSrc !== resolvedSrc && resolvedSrc) {
+          setFallbackToOriginalSrc(resolvedSrc);
+          return;
+        }
+
         if (fallbackSrc && (event.currentTarget.src || '') !== fallbackSrc) {
           event.currentTarget.src = fallbackSrc;
         }

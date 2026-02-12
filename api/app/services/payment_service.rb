@@ -146,8 +146,13 @@ class PaymentService
     Rails.logger.info "   Customer: #{customer_email}"
     Rails.logger.info "   Order ID: #{order_id}"
 
-    # Check if we have Stripe keys configured
-    if ENV["STRIPE_SECRET_KEY"].present? && ENV["STRIPE_SECRET_KEY"].start_with?("sk_test_")
+    configured_test_secret =
+      ENV["STRIPE_SECRET_KEY_TEST"].presence ||
+      ENV["STRIPE_SECRET_KEY"].presence ||
+      Stripe.api_key
+
+    # Check if we have a test Stripe key configured
+    if configured_test_secret.present? && configured_test_secret.start_with?("sk_test_")
       # Use real Stripe API with test keys - enables full checkout testing
       intent = Stripe::PaymentIntent.create(
         amount: amount_cents,

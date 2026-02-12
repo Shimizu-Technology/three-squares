@@ -18,6 +18,9 @@ import {
   TrendingUp,
   BarChart3,
   UtensilsCrossed,
+  MapPin,
+  ClipboardCheck,
+  Truck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -28,10 +31,13 @@ export const ADMIN_ICONS: Record<string, LucideIcon> = {
   orders: ShoppingCart,
   products: Package,
   collections: FolderOpen,
+  locations: MapPin,
   inventory: Warehouse,
   fundraisers: Heart,
   acai: IceCreamCone,
   catering: UtensilsCrossed,
+  pickup_queue: ClipboardCheck,
+  shipping_queue: Truck,
   users: Users,
   import: Upload,
   settings: Settings,

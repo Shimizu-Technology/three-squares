@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser, useAuth } from '@clerk/clerk-react';
 import ProductsPage from './pages/ProductsPage';
+import BusinessLineEntryPage from './pages/BusinessLineEntryPage';
 import ProductDetailPage from './pages/ProductDetailPage';
 import HomePage from './pages/HomePage';
 import AboutPage from './pages/AboutPage';
@@ -12,6 +13,8 @@ import AdminLayout from './layouts/AdminLayout';
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
 import AdminOrdersPage from './pages/admin/AdminOrdersPage';
+import AdminPickupQueuePage from './pages/admin/AdminPickupQueuePage';
+import AdminShippingQueuePage from './pages/admin/AdminShippingQueuePage';
 import AdminProductsPage from './pages/admin/AdminProductsPage';
 import AdminCollectionsPage from './pages/admin/AdminCollectionsPage';
 import AdminImportPage from './pages/admin/AdminImportPage';
@@ -20,6 +23,7 @@ import AdminInventoryPage from './pages/admin/AdminInventoryPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminVariantPresetsPage from './pages/admin/AdminVariantPresetsPage';
 import AdminCateringPage from './pages/admin/AdminCateringPage';
+import AdminLocationsPage from './pages/admin/AdminLocationsPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
@@ -174,6 +178,7 @@ function AppContent() {
 
   // Check if we're on admin pages
   const isAdminPage = location.pathname.startsWith('/admin');
+  const routeTransitionKey = isAdminPage ? '/admin' : location.pathname;
 
   return (
     <>
@@ -212,22 +217,25 @@ function AppContent() {
           },
         }}
       />
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-warm-50">
         {/* Cart Drawer */}
         <CartDrawer />
 
         {/* Navigation - Hidden when printing and on admin pages */}
         {!isAdminPage && (
-        <nav className="bg-white border-b border-warm-100 sticky top-0 z-40 print:hidden">
+        <nav className="bg-warm-50 border-b border-warm-200 sticky top-0 z-40 print:hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-18 py-3">
+            <div className="flex justify-between items-center h-18 py-3.5">
               {/* Logo */}
-              <Link to="/" className="flex items-center group" onClick={handleNavClick}>
+              <Link to="/" className="flex items-center gap-3 group" onClick={handleNavClick}>
                 <img 
                   src="/images/three-squares-logo.svg" 
                   alt="Three Squares" 
-                  className="h-8 sm:h-10 w-auto"
+                  className="block h-8 sm:h-9 w-auto object-contain"
                 />
+                <span className="hidden xl:block text-[11px] tracking-wide uppercase text-warm-500">
+                  by B&amp;G Pacific
+                </span>
               </Link>
 
               {/* Desktop Navigation Links */}
@@ -236,21 +244,21 @@ function AppContent() {
                 <NavDropdown onItemClick={handleNavClick} darkMode={false} />
                 <Link
                   to="/catering"
-                  className="text-warm-700 hover:text-tsPrimary font-medium transition py-2"
+                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2"
                   onClick={handleNavClick}
                 >
                   Catering
                 </Link>
                 <Link
                   to="/locations"
-                  className="text-warm-700 hover:text-tsPrimary font-medium transition py-2"
+                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2"
                   onClick={handleNavClick}
                 >
                   Locations
                 </Link>
                 <Link
                   to="/about"
-                  className="text-warm-700 hover:text-tsPrimary font-medium transition py-2"
+                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2"
                   onClick={handleNavClick}
                 >
                   About Us
@@ -267,7 +275,7 @@ function AppContent() {
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search menu..."
-                      className="pl-10 pr-4 py-2.5 bg-warm-50 border border-warm-200 rounded-full focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary w-56 xl:w-64 transition-all text-sm text-warm-900 placeholder-warm-400"
+                      className="pl-10 pr-4 py-2.5 bg-white border border-warm-200 rounded-full focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary w-56 xl:w-64 transition-all text-sm text-warm-900 placeholder-warm-400"
                     />
                     <svg
                       className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-warm-400"
@@ -434,9 +442,12 @@ function AppContent() {
 
         {/* Routes with page transitions */}
         <AnimatePresence mode="wait">
-        <Routes location={location} key={location.pathname}>
+        <Routes location={location} key={routeTransitionKey}>
           <Route path="/" element={<HomePage />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/shop/three-squares" element={<BusinessLineEntryPage businessLine="three_squares" />} />
+          <Route path="/shop/latte-stone-cookies" element={<BusinessLineEntryPage businessLine="latte_stone" />} />
+          <Route path="/shop/catering" element={<BusinessLineEntryPage businessLine="catering" />} />
           <Route path="/products/:slug" element={<ProductDetailPage />} />
           <Route path="/collections" element={<CollectionsPage />} />
           <Route path="/collections/:slug" element={<CollectionDetailPage />} />
@@ -458,10 +469,13 @@ function AppContent() {
             <Route index element={<AdminDashboardPage />} />
             <Route path="analytics" element={<AdminAnalyticsPage />} />
             <Route path="orders" element={<AdminOrdersPage />} />
+            <Route path="orders/pickup-queue" element={<AdminPickupQueuePage />} />
+            <Route path="orders/shipping-queue" element={<AdminShippingQueuePage />} />
             <Route path="products" element={<AdminProductsPage />} />
             <Route path="products/new" element={<ProductFormPage />} />
             <Route path="products/:id/edit" element={<ProductFormPage />} />
             <Route path="collections" element={<AdminCollectionsPage />} />
+            <Route path="locations" element={<AdminLocationsPage />} />
             <Route path="import" element={<AdminImportPage />} />
             <Route path="inventory" element={<AdminInventoryPage />} />
             <Route path="users" element={<AdminUsersPage />} />
@@ -484,8 +498,9 @@ function AppContent() {
                 <img 
                   src="/images/three-squares-logo.svg" 
                   alt="Three Squares" 
-                  className="h-8 w-auto"
+                  className="block h-8 w-auto object-contain"
                 />
+                <p className="text-[11px] uppercase tracking-wide text-warm-500 mt-2">by B&amp;G Pacific</p>
                 <p className="text-warm-500 text-sm mt-4 leading-relaxed">
                   Good Food, Good Mood, Good Service<br />
                   Guam-style comfort food & catering

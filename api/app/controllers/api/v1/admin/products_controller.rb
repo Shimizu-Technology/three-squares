@@ -6,24 +6,20 @@ module Api
 
         # GET /api/v1/admin/products
         def index
-          @products = Product.includes(:product_variants, :product_images, :collections)
+          @products = Product.includes(:product_variants, :product_images, :collections, :product_locations)
                              .order(created_at: :desc)
 
-          # Filters
           @products = @products.where(published: params[:published]) if params[:published].present?
           @products = @products.where(archived: params[:archived]) if params[:archived].present?
-          @products = @products.active unless params[:show_archived] == "true" # Default: hide archived
+          @products = @products.active unless params[:show_archived] == "true"
           @products = @products.where(product_type: params[:product_type]) if params[:product_type].present?
           @products = @products.joins(:collections).where(collections: { id: params[:collection_id] }) if params[:collection_id].present?
 
-          # Search
           if params[:search].present?
             @products = @products.where("name ILIKE ? OR description ILIKE ?", "%#{params[:search]}%", "%#{params[:search]}%")
           end
 
-          render_success(
-            @products.map { |p| serialize_product_summary(p) }
-          )
+          render_success(@products.map { |p| serialize_product_summary(p) })
         end
 
         # GET /api/v1/admin/products/:id
@@ -33,32 +29,32 @@ module Api
 
         # POST /api/v1/admin/products
         def create
-          @product = Product.new(product_params)
+          @product = Product.new(product_attributes)
 
-          if @product.save
-            # Add to collections if provided
-            if params[:collection_ids].present?
-              @product.collection_ids = params[:collection_ids]
-            end
-
-            render_created(serialize_product_full(@product))
-          else
-            render_error("Failed to create product", errors: @product.errors.full_messages)
+          ActiveRecord::Base.transaction do
+            @product.save!
+            sync_product_locations(@product, permitted_location_ids)
+            ensure_pickup_location_if_required!(@product)
           end
+
+          @product.collection_ids = params[:collection_ids] if params[:collection_ids].present?
+          render_created(serialize_product_full(@product))
+        rescue ActiveRecord::RecordInvalid
+          render_error("Failed to create product", errors: @product.errors.full_messages)
         end
 
         # PATCH/PUT /api/v1/admin/products/:id
         def update
-          if @product.update(product_params)
-            # Update collections if provided
-            if params[:collection_ids].present?
-              @product.collection_ids = params[:collection_ids]
-            end
-
-            render_success(serialize_product_full(@product), message: "Product updated successfully")
-          else
-            render_error("Failed to update product", errors: @product.errors.full_messages)
+          ActiveRecord::Base.transaction do
+            @product.update!(product_attributes)
+            sync_product_locations(@product, permitted_location_ids)
+            ensure_pickup_location_if_required!(@product)
           end
+
+          @product.collection_ids = params[:collection_ids] if params[:collection_ids].present?
+          render_success(serialize_product_full(@product), message: "Product updated successfully")
+        rescue ActiveRecord::RecordInvalid
+          render_error("Failed to update product", errors: @product.errors.full_messages)
         end
 
         # DELETE /api/v1/admin/products/:id (Actually archives instead of deleting)
@@ -101,27 +97,25 @@ module Api
 
           new_product = @product.dup
           new_product.name = "#{@product.name} (Copy)"
-          new_product.slug = nil # Will be auto-generated
+          new_product.slug = nil
           new_product.published = false
 
           if new_product.save
-            # Duplicate variants
             @product.product_variants.each do |variant|
               new_variant = variant.dup
               new_variant.product = new_product
-              new_variant.sku = nil # Will be auto-generated
+              new_variant.sku = nil
               new_variant.save
             end
 
-            # Duplicate images
             @product.product_images.each do |image|
               new_image = image.dup
               new_image.product = new_product
               new_image.save
             end
 
-            # Copy collections
             new_product.collection_ids = @product.collection_ids
+            sync_product_locations(new_product, @product.product_locations.available.pluck(:location_id))
 
             render_created(serialize_product_full(new_product), message: "Product duplicated successfully")
           else
@@ -132,11 +126,40 @@ module Api
         private
 
         def set_product
-          @product = Product.includes(:product_variants, :product_images, :collections)
+          @product = Product.includes(:product_variants, :product_images, :collections, :product_locations)
                             .find_by(id: params[:id]) ||
-                     Product.includes(:product_variants, :product_images, :collections)
+                     Product.includes(:product_variants, :product_images, :collections, :product_locations)
                             .find_by(slug: params[:id])
           render_not_found("Product not found") unless @product
+        end
+
+        def product_attributes
+          product_params.except(:location_ids)
+        end
+
+        def permitted_location_ids
+          raw_ids = product_params[:location_ids]
+          return nil unless raw_ids.is_a?(Array)
+
+          raw_ids.map(&:to_i).uniq
+        end
+
+        def sync_product_locations(product, location_ids)
+          return unless location_ids
+
+          Location.find_each do |location|
+            record = product.product_locations.find_or_initialize_by(location_id: location.id)
+            record.available = location_ids.include?(location.id)
+            record.save!
+          end
+        end
+
+        def ensure_pickup_location_if_required!(product)
+          return unless product.allow_pickup?
+          return if product.product_locations.available.exists?
+
+          product.errors.add(:base, "Select at least one pickup location for pickup-enabled products.")
+          raise ActiveRecord::RecordInvalid, product
         end
 
         def product_params
@@ -160,16 +183,16 @@ module Api
             :meta_title,
             :meta_description,
             :shopify_product_id,
-            collection_ids: []
+            :allow_pickup,
+            :allow_shipping,
+            collection_ids: [],
+            location_ids: []
           )
         end
 
         def serialize_product_summary(product)
-          # Calculate total variant stock if variant-level tracking
           total_variant_stock = if product.inventory_level == "variant"
             product.product_variants.sum(:stock_quantity)
-          else
-            nil
           end
 
           {
@@ -186,6 +209,9 @@ module Api
             product_type: product.product_type,
             track_inventory: product.track_inventory,
             inventory_level: product.inventory_level,
+            allow_pickup: product.allow_pickup,
+            allow_shipping: product.allow_shipping,
+            location_ids: product.product_locations.available.pluck(:location_id),
             product_stock_quantity: product.product_stock_quantity,
             product_low_stock_threshold: product.product_low_stock_threshold,
             product_stock_status: product.product_stock_status,
@@ -212,9 +238,20 @@ module Api
             meta_description: product.meta_description,
             shopify_product_id: product.shopify_product_id,
             collection_ids: product.collections.pluck(:id),
+            locations: Location.by_name.map { |location| serialize_product_location(location, product) },
             variants: product.product_variants.map { |v| serialize_variant(v) },
             images: product.product_images.by_position.map { |i| serialize_image(i) }
           )
+        end
+
+        def serialize_product_location(location, product)
+          product_location = product.product_locations.find { |pl| pl.location_id == location.id }
+          {
+            id: location.id,
+            name: location.name,
+            slug: location.slug,
+            available: product_location&.available || false
+          }
         end
 
         def serialize_variant(variant)

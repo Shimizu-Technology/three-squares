@@ -27,6 +27,7 @@ export interface Order {
   status: string;
   payment_status: string;
   order_type: 'retail' | 'acai' | 'wholesale';
+  business_line?: 'three_squares' | 'latte_stone' | 'catering' | 'acai';
   customer_name: string;
   customer_email: string;
   customer_phone: string;

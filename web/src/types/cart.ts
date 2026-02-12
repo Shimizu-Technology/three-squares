@@ -19,7 +19,11 @@ export interface Product {
   id: number;
   name: string;
   slug: string;
+  business_line?: 'three_squares' | 'latte_stone' | 'catering';
   published: boolean;
+  allow_pickup?: boolean;
+  allow_shipping?: boolean;
+  available_location_ids?: number[];
   primary_image_url?: string;
   inventory_level: 'none' | 'product' | 'variant';
   product_stock_quantity?: number;
@@ -49,12 +53,12 @@ export interface Cart {
 
 export interface CartValidationIssue {
   cart_item_id: number;
-  type: 'unavailable' | 'out_of_stock' | 'quantity_reduced';
+  type: 'unavailable' | 'out_of_stock' | 'quantity_reduced' | 'mixed_fulfillment' | 'location_required' | 'fulfillment_not_supported';
   message: string;
   item_name: string;
   available?: number;
   requested?: number;
-  action: 'remove' | 'reduce';
+  action: 'remove' | 'reduce' | 'review';
 }
 
 export interface CartValidation {

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import api from '../../services/api';
-import { Calendar, Users, DollarSign, AlertCircle, CheckCircle, XCircle, Mail, Phone, Building } from 'lucide-react';
+import { useAuth } from '@clerk/clerk-react';
+import { authGet, authPatch, authPost } from '../../services/authApi';
+import { Calendar, Users, DollarSign, AlertCircle, CheckCircle, XCircle, Mail, Phone, Building, Eye } from 'lucide-react';
+import AdminModal from '../../components/admin/AdminModal';
 
 interface CateringInquiry {
   id: number;
@@ -55,10 +57,12 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 };
 
 export default function AdminCateringPage() {
+  const { getToken } = useAuth();
   const [inquiries, setInquiries] = useState<CateringInquiry[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedInquiry, setSelectedInquiry] = useState<CateringInquiry | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
   const [statusFilter, setStatusFilter] = useState<string>('');
   const [quoteAmount, setQuoteAmount] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
@@ -70,8 +74,8 @@ export default function AdminCateringPage() {
   const fetchData = async () => {
     try {
       const [inquiriesRes, statsRes] = await Promise.all([
-        api.get(`/admin/catering${statusFilter ? `?status=${statusFilter}` : ''}`),
-        api.get('/admin/catering/stats'),
+        authGet<{ inquiries: CateringInquiry[] }>(`/admin/catering${statusFilter ? `?status=${statusFilter}` : ''}`, getToken),
+        authGet<Stats>('/admin/catering/stats', getToken),
       ]);
       setInquiries(inquiriesRes.data.inquiries);
       setStats(statsRes.data);
@@ -84,9 +88,10 @@ export default function AdminCateringPage() {
 
   const fetchInquiryDetails = async (id: number) => {
     try {
-      const res = await api.get(`/admin/catering/${id}`);
+      const res = await authGet<{ inquiry: CateringInquiry }>(`/admin/catering/${id}`, getToken);
       setSelectedInquiry(res.data.inquiry);
       setAdminNotes(res.data.inquiry.admin_notes || '');
+      setDetailModalOpen(true);
     } catch (error) {
       console.error('Error fetching inquiry details:', error);
     }
@@ -95,10 +100,10 @@ export default function AdminCateringPage() {
   const handleQuote = async () => {
     if (!selectedInquiry || !quoteAmount) return;
     try {
-      await api.post(`/admin/catering/${selectedInquiry.id}/quote`, {
+      await authPost(`/admin/catering/${selectedInquiry.id}/quote`, {
         quoted_amount: parseFloat(quoteAmount),
         admin_notes: adminNotes,
-      });
+      }, getToken);
       fetchData();
       fetchInquiryDetails(selectedInquiry.id);
       setQuoteAmount('');
@@ -110,7 +115,7 @@ export default function AdminCateringPage() {
   const handleStatusChange = async (status: string) => {
     if (!selectedInquiry) return;
     try {
-      await api.post(`/admin/catering/${selectedInquiry.id}/status`, { status });
+      await authPost(`/admin/catering/${selectedInquiry.id}/status`, { status }, getToken);
       fetchData();
       fetchInquiryDetails(selectedInquiry.id);
     } catch (error) {
@@ -121,9 +126,9 @@ export default function AdminCateringPage() {
   const handleUpdateNotes = async () => {
     if (!selectedInquiry) return;
     try {
-      await api.patch(`/admin/catering/${selectedInquiry.id}`, {
+      await authPatch(`/admin/catering/${selectedInquiry.id}`, {
         inquiry: { admin_notes: adminNotes },
-      });
+      }, getToken);
       fetchInquiryDetails(selectedInquiry.id);
     } catch (error) {
       console.error('Error updating notes:', error);
@@ -191,7 +196,7 @@ export default function AdminCateringPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Inquiries List */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-3">
           <div className="bg-white rounded-lg shadow overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -200,6 +205,7 @@ export default function AdminCateringPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
@@ -230,11 +236,24 @@ export default function AdminCateringPage() {
                         {inquiry.status}
                       </span>
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fetchInquiryDetails(inquiry.id);
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                        View
+                      </button>
+                    </td>
                   </tr>
                 ))}
                 {inquiries.length === 0 && (
                   <tr>
-                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
+                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                       No catering inquiries found
                     </td>
                   </tr>
@@ -243,20 +262,48 @@ export default function AdminCateringPage() {
             </table>
           </div>
         </div>
+      </div>
 
-        {/* Detail Panel */}
-        <div className="lg:col-span-1">
-          {selectedInquiry ? (
-            <div className="bg-white rounded-lg shadow p-6 space-y-6 sticky top-4">
-              <div className="flex justify-between items-start">
-                <h2 className="text-lg font-semibold text-gray-900">{selectedInquiry.contact_name}</h2>
-                <span className={`px-2 py-1 text-xs font-medium rounded-full ${STATUS_COLORS[selectedInquiry.status]}`}>
-                  {selectedInquiry.status}
+      {/* Detail Modal */}
+      {detailModalOpen && selectedInquiry && (
+        <AdminModal
+          open={detailModalOpen}
+          onClose={() => setDetailModalOpen(false)}
+          title={selectedInquiry.contact_name}
+          subtitle={`Inquiry #${selectedInquiry.id} • ${EVENT_TYPE_LABELS[selectedInquiry.event_type] || selectedInquiry.event_type}`}
+          maxWidth="max-w-5xl"
+          footer={
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => setDetailModalOpen(false)}
+                className="btn-secondary"
+              >
+                Close
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${STATUS_COLORS[selectedInquiry.status]}`}>
+                {selectedInquiry.status}
+              </span>
+              {selectedInquiry.urgent && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 text-red-700 text-xs font-semibold">
+                  <AlertCircle className="w-3.5 h-3.5" /> Urgent
                 </span>
-              </div>
+              )}
+              {selectedInquiry.quoted_amount && (
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">
+                  Quote: ${selectedInquiry.quoted_amount.toFixed(2)}
+                </span>
+              )}
+            </div>
 
-              {/* Contact Info */}
-              <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-2">
+                <h3 className="font-semibold text-gray-900">Contact</h3>
                 <div className="flex items-center gap-2 text-sm">
                   <Mail className="w-4 h-4 text-gray-400" />
                   <a href={`mailto:${selectedInquiry.contact_email}`} className="text-blue-600 hover:underline">
@@ -279,8 +326,8 @@ export default function AdminCateringPage() {
                 )}
               </div>
 
-              {/* Event Details */}
-              <div className="border-t pt-4 space-y-2">
+              <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-2">
+                <h3 className="font-semibold text-gray-900">Event</h3>
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="w-4 h-4 text-gray-400" />
                   <span className="font-medium">{new Date(selectedInquiry.event_date).toLocaleDateString()}</span>
@@ -296,44 +343,42 @@ export default function AdminCateringPage() {
                     {selectedInquiry.budget_range}
                   </div>
                 )}
-                <div className="text-sm">
-                  <span className="text-gray-500">Event Type:</span> {EVENT_TYPE_LABELS[selectedInquiry.event_type]}
-                </div>
               </div>
+            </div>
 
-              {/* Additional Details */}
-              {(selectedInquiry.venue_address || selectedInquiry.menu_preferences || selectedInquiry.dietary_restrictions || selectedInquiry.special_requests) && (
-                <div className="border-t pt-4 space-y-3 text-sm">
-                  {selectedInquiry.venue_address && (
-                    <div>
-                      <div className="text-gray-500 font-medium">Venue</div>
-                      <div>{selectedInquiry.venue_address}</div>
-                    </div>
-                  )}
-                  {selectedInquiry.menu_preferences && (
-                    <div>
-                      <div className="text-gray-500 font-medium">Menu Preferences</div>
-                      <div>{selectedInquiry.menu_preferences}</div>
-                    </div>
-                  )}
-                  {selectedInquiry.dietary_restrictions && (
-                    <div>
-                      <div className="text-gray-500 font-medium">Dietary Restrictions</div>
-                      <div>{selectedInquiry.dietary_restrictions}</div>
-                    </div>
-                  )}
-                  {selectedInquiry.special_requests && (
-                    <div>
-                      <div className="text-gray-500 font-medium">Special Requests</div>
-                      <div>{selectedInquiry.special_requests}</div>
-                    </div>
-                  )}
-                </div>
-              )}
+            {(selectedInquiry.venue_address || selectedInquiry.menu_preferences || selectedInquiry.dietary_restrictions || selectedInquiry.special_requests) && (
+              <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 text-sm">
+                <h3 className="font-semibold text-gray-900">Additional Details</h3>
+                {selectedInquiry.venue_address && (
+                  <div>
+                    <div className="text-gray-500 font-medium">Venue</div>
+                    <div>{selectedInquiry.venue_address}</div>
+                  </div>
+                )}
+                {selectedInquiry.menu_preferences && (
+                  <div>
+                    <div className="text-gray-500 font-medium">Menu Preferences</div>
+                    <div>{selectedInquiry.menu_preferences}</div>
+                  </div>
+                )}
+                {selectedInquiry.dietary_restrictions && (
+                  <div>
+                    <div className="text-gray-500 font-medium">Dietary Restrictions</div>
+                    <div>{selectedInquiry.dietary_restrictions}</div>
+                  </div>
+                )}
+                {selectedInquiry.special_requests && (
+                  <div>
+                    <div className="text-gray-500 font-medium">Special Requests</div>
+                    <div>{selectedInquiry.special_requests}</div>
+                  </div>
+                )}
+              </div>
+            )}
 
-              {/* Quote Section */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
               {selectedInquiry.status === 'pending' && (
-                <div className="border-t pt-4 space-y-3">
+                <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
                   <div className="font-medium text-gray-900">Send Quote</div>
                   <div>
                     <label className="block text-sm text-gray-500 mb-1">Quote Amount ($)</label>
@@ -342,64 +387,61 @@ export default function AdminCateringPage() {
                       value={quoteAmount}
                       onChange={(e) => setQuoteAmount(e.target.value)}
                       placeholder="0.00"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     />
                   </div>
                   <button
                     onClick={handleQuote}
                     disabled={!quoteAmount}
-                    className="w-full bg-blue-600 text-white py-2 rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50"
+                    className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     Send Quote
                   </button>
                 </div>
               )}
 
-              {/* Quoted Amount Display */}
               {selectedInquiry.quoted_amount && (
-                <div className="border-t pt-4">
+                <div className="rounded-xl border border-gray-200 bg-green-50/40 p-4">
                   <div className="text-sm text-gray-500">Quoted Amount</div>
-                  <div className="text-xl font-bold text-green-600">${selectedInquiry.quoted_amount.toFixed(2)}</div>
+                  <div className="text-2xl font-bold text-green-600">${selectedInquiry.quoted_amount.toFixed(2)}</div>
                   {selectedInquiry.quoted_at && (
-                    <div className="text-xs text-gray-400">
+                    <div className="text-xs text-gray-400 mt-1">
                       Sent {new Date(selectedInquiry.quoted_at).toLocaleString()}
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Admin Notes */}
-              <div className="border-t pt-4 space-y-2">
+              <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-2">
                 <label className="block text-sm font-medium text-gray-700">Admin Notes</label>
                 <textarea
                   value={adminNotes}
                   onChange={(e) => setAdminNotes(e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 text-sm"
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent text-sm"
                 />
                 <button
                   onClick={handleUpdateNotes}
-                  className="text-sm text-blue-600 hover:underline"
+                  className="text-sm font-medium text-tsPrimary hover:text-primary-dark"
                 >
                   Save Notes
                 </button>
               </div>
 
-              {/* Status Actions */}
-              <div className="border-t pt-4 space-y-2">
+              <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-2">
                 <div className="font-medium text-gray-900 text-sm">Update Status</div>
                 <div className="flex flex-wrap gap-2">
                   {selectedInquiry.status === 'quoted' && (
                     <>
                       <button
                         onClick={() => handleStatusChange('accepted')}
-                        className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-lg text-sm hover:bg-green-200"
+                        className="flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200"
                       >
                         <CheckCircle className="w-4 h-4" /> Accept
                       </button>
                       <button
                         onClick={() => handleStatusChange('declined')}
-                        className="flex items-center gap-1 px-3 py-1 bg-gray-100 text-gray-700 rounded-lg text-sm hover:bg-gray-200"
+                        className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
                       >
                         <XCircle className="w-4 h-4" /> Decline
                       </button>
@@ -408,7 +450,7 @@ export default function AdminCateringPage() {
                   {selectedInquiry.status === 'accepted' && (
                     <button
                       onClick={() => handleStatusChange('completed')}
-                      className="flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm hover:bg-purple-200"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200"
                     >
                       <CheckCircle className="w-4 h-4" /> Mark Completed
                     </button>
@@ -416,7 +458,7 @@ export default function AdminCateringPage() {
                   {!['completed', 'cancelled'].includes(selectedInquiry.status) && (
                     <button
                       onClick={() => handleStatusChange('cancelled')}
-                      className="flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm hover:bg-red-200"
+                      className="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200"
                     >
                       <XCircle className="w-4 h-4" /> Cancel
                     </button>
@@ -424,13 +466,9 @@ export default function AdminCateringPage() {
                 </div>
               </div>
             </div>
-          ) : (
-            <div className="bg-white rounded-lg shadow p-6 text-center text-gray-500">
-              Select an inquiry to view details
-            </div>
-          )}
-        </div>
-      </div>
+          </div>
+        </AdminModal>
+      )}
     </div>
   );
 }

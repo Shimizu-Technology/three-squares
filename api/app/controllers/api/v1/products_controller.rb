@@ -1,18 +1,23 @@
 module Api
   module V1
     class ProductsController < ApplicationController
+      COOKIE_COLLECTION_SLUGS = %w[cookies cookie-boxes mini-cookies].freeze
       before_action :set_product, only: [ :show ]
 
       # GET /api/v1/products
       def index
         @products = Product.published.active  # Only show active (non-archived) products
-                          .includes(:product_variants, :product_images, :collections)
+                          .includes(:product_variants, :product_images, :collections, :product_locations)
 
         # Base ordering (will be overridden by sort param if present)
         @products = @products.order(featured: :desc, created_at: :desc) unless params[:sort].present?
 
         # Filters
         @products = @products.where(product_type: params[:product_type]) if params[:product_type].present?
+
+        if params[:business_line].present?
+          @products = apply_business_line_filter(@products, params[:business_line].to_s)
+        end
 
         # Collection filter - support both ID and slug
         if params[:collection].present?
@@ -22,6 +27,14 @@ module Api
         end
 
         @products = @products.where(featured: true) if params[:featured] == "true"
+
+        if params[:location_id].present?
+          location_id = params[:location_id].to_i
+          @products = @products
+            .joins(:product_locations)
+            .where(product_locations: { location_id: location_id, available: true })
+            .distinct
+        end
 
         # Search
         if params[:search].present?
@@ -84,10 +97,10 @@ module Api
 
       def set_product
         @product = Product.published
-                         .includes(:product_variants, :product_images, :collections)
+                         .includes(:product_variants, :product_images, :collections, :product_locations)
                          .find_by(id: params[:id]) ||
                    Product.published
-                         .includes(:product_variants, :product_images, :collections)
+                         .includes(:product_variants, :product_images, :collections, :product_locations)
                          .find_by(slug: params[:id])
 
         render json: { error: "Product not found" }, status: :not_found unless @product
@@ -105,6 +118,9 @@ module Api
           published: product.published,
           featured: product.featured,
           product_type: product.product_type,
+          allow_pickup: product.allow_pickup,
+          allow_shipping: product.allow_shipping,
+          available_location_ids: product.product_locations.available.pluck(:location_id),
           in_stock: product.in_stock?,
           actually_available: product.actually_available?,
           primary_image_url: product.primary_image&.signed_url,
@@ -130,6 +146,9 @@ module Api
           vendor: product.vendor,
           weight_oz: product.weight_oz,
           inventory_level: product.inventory_level,
+          allow_pickup: product.allow_pickup,
+          allow_shipping: product.allow_shipping,
+          available_location_ids: product.product_locations.available.pluck(:location_id),
           product_stock_quantity: product.product_stock_quantity,
           product_low_stock_threshold: product.product_low_stock_threshold,
           in_stock: product.in_stock?,
@@ -177,6 +196,24 @@ module Api
           position: image.position,
           primary: image.primary
         }
+      end
+
+      def apply_business_line_filter(relation, business_line)
+        case business_line
+        when "latte_stone"
+          relation.joins(:collections).where(collections: { slug: COOKIE_COLLECTION_SLUGS }).distinct
+        when "catering"
+          relation.joins(:collections).where("collections.slug LIKE ?", "catering-%").distinct
+        when "three_squares"
+          excluded_ids = Product
+            .joins(:collections)
+            .where("collections.slug IN (?) OR collections.slug LIKE ?", COOKIE_COLLECTION_SLUGS, "catering-%")
+            .select(:id)
+
+          relation.where.not(id: excluded_ids)
+        else
+          relation
+        end
       end
     end
   end

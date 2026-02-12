@@ -13,6 +13,9 @@ interface DashboardStats {
   total_revenue_cents: number;
   pending_orders: number;
   total_products: number;
+  business_line_breakdown?: Record<string, { orders: number; revenue_cents: number }>;
+  fulfillment_breakdown?: Record<string, number>;
+  location_breakdown?: Array<{ name: string; orders: number; revenue_cents: number }>;
 }
 
 interface RecentOrder {
@@ -43,6 +46,13 @@ const STATUS_COLORS: Record<string, string> = {
   picked_up: 'bg-green-100 text-green-800',
   delivered: 'bg-green-100 text-green-800',
   cancelled: 'bg-red-100 text-red-800',
+};
+
+const BUSINESS_LINE_LABELS: Record<string, string> = {
+  three_squares: 'Three Squares',
+  latte_stone: 'Latte Stone',
+  catering: 'Catering',
+  acai: 'Acai Cakes',
 };
 
 export default function AdminDashboardPage() {
@@ -198,6 +208,49 @@ export default function AdminDashboardPage() {
               </Link>
             ))
           )}
+        </div>
+      </div>
+
+      {/* Phase 2 Segmentation Snapshot */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Business Line Breakdown</h3>
+          <div className="space-y-2">
+            {Object.entries(stats.business_line_breakdown || {}).map(([key, value]) => (
+              <div key={key} className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">{BUSINESS_LINE_LABELS[key] || key}</span>
+                <span className="font-semibold text-gray-900">
+                  {value.orders} / {formatCurrency(value.revenue_cents)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Fulfillment Mix</h3>
+          <div className="space-y-2">
+            {Object.entries(stats.fulfillment_breakdown || {}).map(([key, count]) => (
+              <div key={key} className="flex items-center justify-between text-sm">
+                <span className="text-gray-600">{key === 'pickup' ? 'Pickup' : 'Shipping'}</span>
+                <span className="font-semibold text-gray-900">{count}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
+          <h3 className="text-sm font-semibold text-gray-900 mb-3">Top Locations</h3>
+          <div className="space-y-2">
+            {(stats.location_breakdown || []).slice(0, 5).map((entry) => (
+              <div key={entry.name} className="flex items-center justify-between text-sm">
+                <span className="text-gray-600 truncate pr-2">{entry.name}</span>
+                <span className="font-semibold text-gray-900">
+                  {entry.orders} / {formatCurrency(entry.revenue_cents)}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </div>

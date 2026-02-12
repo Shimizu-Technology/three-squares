@@ -1,8 +1,9 @@
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import type { ProductFull, ProductVariant } from '../services/api';
-import { productsApi, formatPrice } from '../services/api';
+import { productsApi, formatPrice, locationsApi } from '../services/api';
 import { useCartStore } from '../store/cartStore';
+import { evaluateCartCompatibility } from '../utils/cartCompatibility';
 import Breadcrumbs from '../components/Breadcrumbs';
 import PlaceholderImage from '../components/ui/PlaceholderImage';
 import OptimizedImage from '../components/ui/OptimizedImage';
@@ -50,10 +51,11 @@ export default function ProductDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [showSizeGuide, setShowSizeGuide] = useState(false);
+  const [locationNameById, setLocationNameById] = useState<Record<number, string>>({});
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const sizeGuideContentRef = useRef<HTMLDivElement | null>(null);
   
-  const { addItem } = useCartStore();
+  const { addItem, cart, openCart } = useCartStore();
   
   // Extract size chart image URL from product description
   const getSizeChartUrl = (): string | null => {
@@ -69,6 +71,23 @@ export default function ProductDetailPage() {
       fetchProduct(slug);
     }
   }, [slug]);
+
+  useEffect(() => {
+    const loadLocations = async () => {
+      try {
+        const response = await locationsApi.getLocations();
+        const nextMap = (response.locations || []).reduce<Record<number, string>>((acc, location) => {
+          acc[location.id] = location.name;
+          return acc;
+        }, {});
+        setLocationNameById(nextMap);
+      } catch (_error) {
+        setLocationNameById({});
+      }
+    };
+
+    loadLocations();
+  }, []);
   
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -259,6 +278,7 @@ export default function ProductDetailPage() {
 
   const displayPrice = selectedVariant ? selectedVariant.price_cents : product.base_price_cents;
   const displayImages = product.images.length > 0 ? product.images : [{ id: 0, url: '', alt_text: product.name, position: 0, primary: true }];
+  const cartItems = cart?.items || [];
   
   // Determine if product is actually available based on inventory level
   const isProductAvailable = product.actually_available !== false && product.in_stock;
@@ -284,12 +304,21 @@ export default function ProductDetailPage() {
   };
   
   const maxQuantity = getMaxQuantity();
+
+  // Frontend guardrail: prevent add-to-cart attempts that backend will reject.
+  const cartCompatibility = evaluateCartCompatibility(cartItems, product);
+  const relevantLocationNames = cartCompatibility.relevantPickupLocationIds
+    .map((id) => locationNameById[id])
+    .filter(Boolean);
+  const cartCompatibilityMessage = cartCompatibility.reason === 'pickup_location' && relevantLocationNames.length > 0
+    ? `Only pickup at ${relevantLocationNames.join(', ')}.`
+    : cartCompatibility.message;
   
   // For products WITH variants: require selectedVariant
   // For products WITHOUT variants (product-level inventory): no variant needed
   const canAddToCart = hasVariants 
-    ? (isProductAvailable && isVariantAvailable && selectedVariant && quantity > 0 && quantity <= maxQuantity)
-    : (isProductAvailable && quantity > 0 && quantity <= maxQuantity);
+    ? (isProductAvailable && isVariantAvailable && selectedVariant && quantity > 0 && quantity <= maxQuantity && !cartCompatibility.hasConflict)
+    : (isProductAvailable && quantity > 0 && quantity <= maxQuantity && !cartCompatibility.hasConflict);
   
   const handleAddToCart = async () => {
     if (!canAddToCart) {
@@ -311,14 +340,19 @@ export default function ProductDetailPage() {
       if (selectedVariant) {
         await addItem(selectedVariant.id, quantity);
       } else {
-        // For products without variants, pass product ID with variant_id=null
-        // The API should handle this case
-        await addItem(product!.id, quantity, true); // true indicates it's a product ID
+        // Fallback for products that only have an auto-generated/default variant.
+        const fallbackVariant = product?.variants?.[0];
+        if (fallbackVariant) {
+          await addItem(fallbackVariant.id, quantity);
+        } else {
+          // Some catalog items currently have no variants returned. Let API resolve via product ID.
+          await addItem(null, quantity, product.id);
+        }
       }
       // Reset quantity after successful add
       setQuantity(1);
     } catch (error) {
-      // Error is handled in the store
+      // Error toast is handled by cart store.
       console.error('Add to cart error:', error);
     } finally {
       setIsAdding(false);
@@ -482,7 +516,7 @@ export default function ProductDetailPage() {
                     context="detail"
                     priority={selectedImageIndex === 0}
                     fetchPriority={selectedImageIndex === 0 ? 'high' : 'auto'}
-                    className="w-full h-full object-contain bg-white hover:scale-105 transition-transform duration-500"
+                    className="w-full h-full object-cover bg-white hover:scale-105 transition-transform duration-500"
                   />
                 ) : (
                   <PlaceholderImage variant="detail" />
@@ -505,7 +539,7 @@ export default function ProductDetailPage() {
                         src={image.url}
                         alt={image.alt_text}
                         context="thumb"
-                        className="w-full h-full object-contain bg-white"
+                        className="w-full h-full object-cover bg-white"
                       />
                     </button>
                   ))}
@@ -713,6 +747,8 @@ export default function ProductDetailPage() {
                       </svg>
                       Out of Stock
                     </>
+                  ) : cartCompatibility.hasConflict ? (
+                    cartCompatibility.reason === 'pickup_location' ? 'Pickup Location Conflict' : 'Incompatible with Current Cart'
                   ) : hasVariants && !selectedVariant ? (
                     'Select an Option'
                   ) : (
@@ -724,6 +760,18 @@ export default function ProductDetailPage() {
                     </>
                   )}
                 </button>
+                {cartCompatibilityMessage && (
+                  <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+                    <p>{cartCompatibilityMessage}</p>
+                    <button
+                      type="button"
+                      className="mt-1 font-semibold text-amber-900 underline underline-offset-2 hover:text-amber-700"
+                      onClick={openCart}
+                    >
+                      Review cart
+                    </button>
+                  </div>
+                )}
 
                 {/* Trust Badges */}
                 <div className="flex items-center justify-center gap-6 mt-6 pt-6 border-t border-warm-100">
@@ -733,12 +781,21 @@ export default function ProductDetailPage() {
                     </svg>
                     Secure Checkout
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-warm-500">
-                    <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                    </svg>
-                    Fast Shipping
-                  </div>
+                  {product.allow_shipping ? (
+                    <div className="flex items-center gap-2 text-sm text-warm-500">
+                      <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                      </svg>
+                      Fast Shipping
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-sm text-warm-500">
+                      <svg className="w-5 h-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.25 18.75a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM15.75 18.75a1.5 1.5 0 100-3 1.5 1.5 0 000 3zM3 5.25h2.625a.75.75 0 01.73.584l.477 2.146m0 0H18.75a.75.75 0 01.731.919l-1.2 5.25a.75.75 0 01-.731.581H8.25a.75.75 0 01-.731-.581L6.83 8z" />
+                      </svg>
+                      Pickup Available
+                    </div>
+                  )}
                 </div>
               </div>
 

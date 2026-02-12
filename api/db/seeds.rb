@@ -92,10 +92,51 @@ puts "   ✓ Created #{Collection.count} categories"
 puts ""
 
 # ------------------------------------------------------------------------------
+# 3B) LOCATIONS
+# ------------------------------------------------------------------------------
+puts "3️⃣  Setting up locations..."
+
+location_seed_data = [
+  {
+    name: "Three Squares Main",
+    slug: "three-squares-main",
+    address: "416 Chalan San Antonio, Tamuning, GU 96913",
+    phone: "(671) 646-2652",
+    hours_json: {
+      "Tuesday - Saturday" => "8:00 AM - 8:00 PM",
+      "Sunday" => "8:00 AM - 5:00 PM",
+      "Monday" => "Closed"
+    }
+  },
+  {
+    name: "Three Squares @ Donki",
+    slug: "three-squares-donki",
+    address: "Inside Don Quijote, Tamuning, GU",
+    phone: "(671) 646-2652",
+    hours_json: {
+      "Daily" => "10:00 AM - 10:00 PM"
+    }
+  }
+]
+
+location_seed_data.each do |attrs|
+  location = Location.find_or_initialize_by(slug: attrs[:slug])
+  location.update!(attrs.merge(active: true))
+end
+
+puts "   ✓ Created #{Location.count} locations"
+puts ""
+
+# Collection slugs used for fulfillment/location default logic.
+COOKIE_COLLECTION_SLUGS = %w[cookies cookie-boxes mini-cookies].freeze
+DONKI_COLLECTION_SLUG = "donki".freeze
+
+# ------------------------------------------------------------------------------
 # 4) HELPER METHOD
 # ------------------------------------------------------------------------------
 def create_product(attrs)
   collection = Collection.find_by(slug: attrs[:collection_slug])
+  all_locations = Location.by_name.to_a
   
   # Determine product_type: explicit > requires_shipping > default local
   product_type = if attrs[:product_type]
@@ -114,9 +155,50 @@ def create_product(attrs)
     p.published = true
     p.product_type = product_type
   end
+
+  # Shipping defaults:
+  # - explicit allow_shipping wins
+  # - then requires_shipping flag
+  # - then cookie collections default to shippable
+  allow_shipping = if attrs.key?(:allow_shipping)
+    attrs[:allow_shipping]
+  elsif attrs[:requires_shipping] == true
+    true
+  else
+    COOKIE_COLLECTION_SLUGS.include?(attrs[:collection_slug])
+  end
+  allow_pickup = attrs.key?(:allow_pickup) ? attrs[:allow_pickup] : true
+
+  default_location_slugs = if attrs[:collection_slug] == DONKI_COLLECTION_SLUG
+    [ "three-squares-donki" ]
+  else
+    [ "three-squares-main" ]
+  end
+  location_slugs = attrs[:location_slugs] || default_location_slugs
+  location_slugs = [] unless allow_pickup
+
+  product.update!(
+    name: attrs[:name],
+    description: attrs[:description] || "",
+    base_price_cents: attrs[:price] ? (attrs[:price] * 100).to_i : 0,
+    featured: attrs[:featured] || false,
+    published: true,
+    product_type: product_type,
+    allow_pickup: allow_pickup,
+    allow_shipping: allow_shipping
+  )
   
   if collection && !product.collections.include?(collection)
     product.collections << collection
+  end
+
+  if all_locations.any?
+    selected_location_ids = Location.where(slug: location_slugs).pluck(:id)
+    all_locations.each do |location|
+      record = ProductLocation.find_or_initialize_by(product_id: product.id, location_id: location.id)
+      record.available = selected_location_ids.include?(location.id)
+      record.save!
+    end
   end
   
   product
@@ -483,6 +565,45 @@ product_images.each do |slug, url|
 end
 
 puts "   ✓ Linked #{images_created} product images"
+puts ""
+
+# ------------------------------------------------------------------------------
+# 10) DATA QUALITY CHECKS
+# ------------------------------------------------------------------------------
+puts "9️⃣  Running fulfillment/location data checks..."
+
+donki_location = Location.find_by(slug: "three-squares-donki")
+
+shipping_enabled_products = Product.where(allow_shipping: true)
+shipping_non_cookie = shipping_enabled_products
+  .left_joins(:collections)
+  .where.not(collections: { slug: COOKIE_COLLECTION_SLUGS })
+  .distinct
+
+donki_products_with_wrong_location = if donki_location
+  Product
+    .joins(:collections)
+    .where(collections: { slug: DONKI_COLLECTION_SLUG })
+    .joins(:product_locations)
+    .where(product_locations: { available: true })
+    .where.not(product_locations: { location_id: donki_location.id })
+    .distinct
+else
+  Product.none
+end
+
+puts "   • Shipping-enabled products: #{shipping_enabled_products.count}"
+puts "   • Shipping-enabled non-cookie products: #{shipping_non_cookie.count}"
+puts "   • Donki products available outside Donki: #{donki_products_with_wrong_location.count}"
+
+if shipping_non_cookie.exists?
+  puts "   ⚠️  Non-cookie shippable products found: #{shipping_non_cookie.limit(5).pluck(:slug).join(', ')}"
+end
+if donki_products_with_wrong_location.exists?
+  puts "   ⚠️  Donki location mapping issues found: #{donki_products_with_wrong_location.limit(5).pluck(:slug).join(', ')}"
+end
+
+puts "   ✓ Data checks complete"
 puts ""
 
 # ------------------------------------------------------------------------------

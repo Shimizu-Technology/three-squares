@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { productsApi, formatPrice } from '../services/api';
+import { productsApi, formatPrice, locationsApi } from '../services/api';
 import type { Product } from '../services/api';
+import { useCartStore } from '../store/cartStore';
+import { evaluateCartCompatibility } from '../utils/cartCompatibility';
 import ProductBadge from './ProductBadge';
 import FadeIn from './animations/FadeIn';
 import { StaggerContainer, StaggerItem } from './animations/StaggerContainer';
@@ -9,10 +11,14 @@ import { ProductGridSkeleton } from './Skeleton';
 import PlaceholderImage from './ui/PlaceholderImage';
 import OptimizedImage from './ui/OptimizedImage';
 
+const EMPTY_CART_ITEMS: Array<{ product: { allow_pickup?: boolean; allow_shipping?: boolean; available_location_ids?: number[] } }> = [];
+
 export default function FeaturedProducts() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [locationNameById, setLocationNameById] = useState<Record<number, string>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const cartItems = useCartStore((state) => state.cart?.items) ?? EMPTY_CART_ITEMS;
 
   useEffect(() => {
     const fetchFeaturedProducts = async () => {
@@ -53,6 +59,23 @@ export default function FeaturedProducts() {
     fetchFeaturedProducts();
   }, []);
 
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await locationsApi.getLocations();
+        const nextMap = (response.locations || []).reduce<Record<number, string>>((acc, location) => {
+          acc[location.id] = location.name;
+          return acc;
+        }, {});
+        setLocationNameById(nextMap);
+      } catch {
+        setLocationNameById({});
+      }
+    };
+
+    fetchLocations();
+  }, []);
+
   if (isLoading) {
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24">
@@ -76,7 +99,7 @@ export default function FeaturedProducts() {
             Featured Products
           </h2>
           <p className="text-base text-warm-500 max-w-2xl mx-auto">
-            Discover our hand-picked selection of premium island living apparel
+            Discover our hand-picked local favorites from the Three Squares kitchen
           </p>
         </div>
       </FadeIn>
@@ -87,21 +110,28 @@ export default function FeaturedProducts() {
       >
         {products.map((product) => {
           const isOnSale = product.sale_price_cents && product.sale_price_cents < product.base_price_cents;
+          const cartCompatibility = evaluateCartCompatibility(cartItems, product);
+          const relevantLocationNames = cartCompatibility.relevantPickupLocationIds
+            .map((id) => locationNameById[id])
+            .filter(Boolean);
+          const conflictText = relevantLocationNames.length > 0
+            ? `Only pickup at ${relevantLocationNames.join(', ')}`
+            : 'Pickup location conflicts with current cart';
 
           return (
             <StaggerItem key={product.id}>
               <Link
                 to={`/products/${product.slug}`}
-                className="group flex flex-col"
+                className="group flex flex-col rounded-xl p-2 bg-white border border-warm-200 hover:border-warm-300 hover:shadow-md transition"
               >
                 {/* Image */}
-                <div className="relative bg-warm-50 overflow-hidden rounded-lg" style={{ aspectRatio: '1/1' }}>
+                <div className="relative bg-warm-100 overflow-hidden rounded-lg" style={{ aspectRatio: '1/1' }}>
                   {product.primary_image_url ? (
                     <OptimizedImage
                       src={product.primary_image_url}
                       alt={product.name}
                       context="featured"
-                      className="w-full h-full object-contain group-hover:scale-105 transition-transform duration-500"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
                     <PlaceholderImage variant="detail" className="bg-warm-50" />
@@ -115,7 +145,7 @@ export default function FeaturedProducts() {
                 </div>
 
                 {/* Content */}
-                <div className="pt-4 flex flex-col grow">
+                <div className="pt-3 pb-1 flex flex-col grow">
                   <h3 className="font-medium text-sm sm:text-base text-warm-900 mb-2 line-clamp-2 group-hover:text-tsPrimary transition">
                     {product.name}
                   </h3>
@@ -134,6 +164,11 @@ export default function FeaturedProducts() {
                       <span className="text-base font-medium text-warm-900">
                         {formatPrice(product.base_price_cents)}
                       </span>
+                    )}
+                    {cartCompatibility.reason === 'pickup_location' && (
+                      <p className="mt-2 text-xs font-medium text-amber-700">
+                        {conflictText}
+                      </p>
                     )}
                   </div>
                 </div>

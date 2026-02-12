@@ -9,8 +9,12 @@ module Api
         inquiry = CateringInquiry.new(inquiry_params)
 
         if inquiry.save
-          # TODO: Send notification email to restaurant
-          # TODO: Send confirmation email to customer
+          customer_email_result = EmailService.send_catering_inquiry_confirmation(inquiry)
+          admin_email_result = EmailService.send_catering_inquiry_notification(inquiry)
+
+          Rails.logger.warn("Catering customer confirmation email not sent: #{customer_email_result[:error]}") unless customer_email_result[:success]
+          Rails.logger.warn("Catering admin notification email not sent: #{admin_email_result[:error]}") unless admin_email_result[:success]
+
           render json: {
             message: "Thank you! We'll get back to you within 24-48 hours.",
             inquiry: inquiry_json(inquiry)

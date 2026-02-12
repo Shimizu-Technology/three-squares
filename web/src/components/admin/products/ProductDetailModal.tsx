@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { X, Edit, AlertTriangle } from 'lucide-react';
 import type { DetailedProduct } from './productUtils';
 import { formatCurrency, getVariantStatus } from './productUtils';
+import PlaceholderImage from '../../ui/PlaceholderImage';
 
 interface ProductDetailModalProps {
   product: DetailedProduct;
@@ -37,7 +38,11 @@ export default function ProductDetailModal({ product, loading, onClose }: Produc
             {/* Header */}
             <div className="flex justify-between items-center p-6 border-b border-gray-200 shrink-0">
               <h2 className="text-2xl font-bold text-gray-900">{product.name}</h2>
-              <button onClick={onClose} className="btn-icon text-gray-400 hover:text-gray-600 transition">
+              <button
+                onClick={onClose}
+                className="btn-icon min-w-[44px] min-h-[44px] p-2 text-gray-400 hover:text-gray-600 transition"
+                aria-label="Close product details"
+              >
                 <X className="w-6 h-6" />
               </button>
             </div>
@@ -56,7 +61,7 @@ export default function ProductDetailModal({ product, loading, onClose }: Produc
               {/* Needs Attention Banner */}
               {product.needs_attention && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                   <div>
                     <p className="font-medium text-amber-800">Needs Attention</p>
                     {product.import_notes && (
@@ -74,12 +79,16 @@ export default function ProductDetailModal({ product, loading, onClose }: Produc
                   {product.images && product.images.length > 0 ? (
                     <div className="space-y-3">
                       <div className="bg-white rounded-lg overflow-hidden border border-gray-200" style={{ aspectRatio: '1/1' }}>
-                        <img
-                          src={product.images[selectedImageIndex]?.url || product.images[0]?.url}
-                          alt={product.images[selectedImageIndex]?.alt_text || product.name}
-                          className="w-full h-full"
-                          style={{ objectFit: 'contain', backgroundColor: 'white' }}
-                        />
+                        {product.images[selectedImageIndex]?.url || product.images[0]?.url ? (
+                          <img
+                            src={product.images[selectedImageIndex]?.url || product.images[0]?.url}
+                            alt={product.images[selectedImageIndex]?.alt_text || product.name}
+                            className="w-full h-full"
+                            style={{ objectFit: 'contain', backgroundColor: 'white' }}
+                          />
+                        ) : (
+                          <PlaceholderImage variant="detail" className="bg-gray-100" />
+                        )}
                       </div>
                       {product.images.length > 1 && (
                         <div className="grid grid-cols-4 gap-2">
@@ -92,19 +101,25 @@ export default function ProductDetailModal({ product, loading, onClose }: Produc
                               }`}
                               style={{ aspectRatio: '1/1' }}
                             >
-                              <img
-                                src={image.url}
-                                alt={image.alt_text || product.name}
-                                className="w-full h-full"
-                                style={{ objectFit: 'contain', backgroundColor: 'white' }}
-                              />
+                              {image.url ? (
+                                <img
+                                  src={image.url}
+                                  alt={image.alt_text || product.name}
+                                  className="w-full h-full"
+                                  style={{ objectFit: 'contain', backgroundColor: 'white' }}
+                                />
+                              ) : (
+                                <PlaceholderImage variant="thumbnail" className="bg-gray-100" />
+                              )}
                             </button>
                           ))}
                         </div>
                       )}
                     </div>
                   ) : (
-                    <div className="bg-gray-100 h-48 rounded-lg flex items-center justify-center text-gray-400 text-4xl" />
+                    <div className="h-48 rounded-lg overflow-hidden border border-gray-200">
+                      <PlaceholderImage variant="detail" className="bg-gray-100" />
+                    </div>
                   )}
                 </div>
 

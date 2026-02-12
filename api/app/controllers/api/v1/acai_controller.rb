@@ -261,8 +261,12 @@ module Api
 
         # Create the order
         ActiveRecord::Base.transaction do
+          default_pickup_location = Location.active.find_by(slug: "three-squares-main") || Location.active.first
+
           @order = Order.new(
             order_type: "acai",
+            fulfillment_type: "pickup",
+            location: default_pickup_location,
             customer_name: resolved_name,
             customer_email: resolved_email,
             customer_phone: resolved_phone,
