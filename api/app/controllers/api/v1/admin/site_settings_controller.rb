@@ -18,12 +18,6 @@ module Api
             store_email: settings.store_email,
             store_phone: settings.store_phone,
             placeholder_image_url: settings.placeholder_image_url,
-            acai_gallery_image_a_url: settings.acai_gallery_image_a_url,
-            acai_gallery_image_b_url: settings.acai_gallery_image_b_url,
-            acai_gallery_heading: settings.acai_gallery_heading,
-            acai_gallery_subtext: settings.acai_gallery_subtext,
-            acai_gallery_show_image_a: settings.acai_gallery_show_image_a,
-            acai_gallery_show_image_b: settings.acai_gallery_show_image_b,
             order_notification_emails: settings.order_notification_emails,
             shipping_origin_address: settings.shipping_origin_address
           }
@@ -43,12 +37,6 @@ module Api
               store_email: settings.store_email,
               store_phone: settings.store_phone,
               placeholder_image_url: settings.placeholder_image_url,
-              acai_gallery_image_a_url: settings.acai_gallery_image_a_url,
-              acai_gallery_image_b_url: settings.acai_gallery_image_b_url,
-              acai_gallery_heading: settings.acai_gallery_heading,
-              acai_gallery_subtext: settings.acai_gallery_subtext,
-              acai_gallery_show_image_a: settings.acai_gallery_show_image_a,
-              acai_gallery_show_image_b: settings.acai_gallery_show_image_b,
               order_notification_emails: settings.order_notification_emails,
               shipping_origin_address: settings.shipping_origin_address
             }
@@ -70,12 +58,6 @@ module Api
             :store_email,
             :store_phone,
             :placeholder_image_url,
-            :acai_gallery_image_a_url,
-            :acai_gallery_image_b_url,
-            :acai_gallery_heading,
-            :acai_gallery_subtext,
-            :acai_gallery_show_image_a,
-            :acai_gallery_show_image_b,
             order_notification_emails: [],
             shipping_origin_address: [
               :company, :street1, :street2, :city, :state, :zip, :country, :phone, :email

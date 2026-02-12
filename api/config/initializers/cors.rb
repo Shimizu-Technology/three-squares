@@ -9,8 +9,8 @@
 # Falls back to FRONTEND_URL for backward compatibility, then localhost for dev.
 #
 # Examples:
-#   ALLOWED_ORIGINS=https://hafaloha.com,https://www.hafaloha.com,https://hafaloha-v2.netlify.app
-#   FRONTEND_URL=https://hafaloha-v2.netlify.app  (legacy single-origin)
+#   ALLOWED_ORIGINS=https://three-squares.com,https://www.three-squares.com,https://three-squares.netlify.app
+#   FRONTEND_URL=https://three-squares.netlify.app  (legacy single-origin)
 #
 allowed_origins = if ENV["ALLOWED_ORIGINS"].present?
                     ENV["ALLOWED_ORIGINS"].split(",").map(&:strip).reject(&:blank?)

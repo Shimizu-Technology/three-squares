@@ -85,7 +85,7 @@ Rails.application.configure do
     /.+\.onrender\.com/                 # Allow any Render subdomain
   ]
 
-  # Add custom domain from environment variable (e.g., api.hafaloha.com)
+  # Add custom domain from environment variable (e.g., api.three-squares.com)
   if ENV["API_HOST"].present?
     config.hosts << ENV["API_HOST"]
   end

@@ -265,7 +265,7 @@ class EmailService
   private
 
   # Configurable from address - uses RESEND_FROM_EMAIL env var
-  # Falls back to shimizu-technology.com until hafaloha.com is verified on Resend
+  # Falls back to shimizu-technology.com until three-squares domain is verified on Resend
   def self.from_address
     email = ENV.fetch("RESEND_FROM_EMAIL", "noreply@shimizu-technology.com")
     "Three Squares <#{email}>"
