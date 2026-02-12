@@ -8,6 +8,33 @@ module Api
         before_action :authenticate_request
         before_action :require_admin!
 
+        # POST /api/v1/admin/pos/orders/:id/confirm_terminal_payment
+        # Called after Stripe Terminal SDK successfully processes a card_present payment
+        def confirm_terminal_payment
+          order = Order.find(params[:id])
+
+          unless order.payment_method == "card_present" && order.payment_intent_id.present?
+            return render json: { error: "Order is not a terminal payment" }, status: :unprocessable_entity
+          end
+
+          # Verify the PaymentIntent status with Stripe
+          Stripe.api_key = ENV["STRIPE_SECRET_KEY"]
+          intent = Stripe::PaymentIntent.retrieve(order.payment_intent_id)
+
+          if intent.status == "succeeded"
+            order.update!(status: "confirmed", payment_status: "paid")
+            render json: pos_order_json(order)
+          elsif intent.status == "requires_capture"
+            captured = intent.capture
+            order.update!(status: "confirmed", payment_status: "paid")
+            render json: pos_order_json(order)
+          else
+            render json: { error: "Payment not completed. Status: #{intent.status}" }, status: :unprocessable_entity
+          end
+        rescue Stripe::StripeError => e
+          render json: { error: e.message }, status: :unprocessable_entity
+        end
+
         # POST /api/v1/admin/pos/orders
         # Create a POS order (staff-created, in-person)
         def create
@@ -91,6 +118,8 @@ module Api
             process_cash_payment(order)
           when "stripe"
             process_stripe_payment(order)
+          when "card_present"
+            process_terminal_payment(order)
           else
             raise StandardError, "Unknown payment method: #{order.payment_method}"
           end
@@ -107,6 +136,36 @@ module Api
           order.cash_change_cents = cash_received - order.total_cents
           order.status = "confirmed"
           order.payment_status = "paid"
+        end
+
+        def process_terminal_payment(order)
+          # Terminal payments use card_present — the frontend SDK handles
+          # card collection and processing. We create the PaymentIntent with
+          # card_present payment method type and manual capture.
+          order.status = "pending"
+          order.payment_status = "pending"
+
+          order.save! unless order.persisted?
+
+          stripe_key = ENV["STRIPE_SECRET_KEY"]
+          if stripe_key.present?
+            Stripe.api_key = stripe_key
+            intent = Stripe::PaymentIntent.create(
+              amount: order.total_cents,
+              currency: "usd",
+              payment_method_types: [ "card_present" ],
+              capture_method: "automatic",
+              metadata: {
+                order_id: order.id,
+                order_number: order.order_number,
+                source: "pos_terminal"
+              }
+            )
+            order.payment_intent_id = intent.id
+            @client_secret = intent.client_secret
+          else
+            raise StandardError, "Stripe is not configured"
+          end
         end
 
         def process_stripe_payment(order)

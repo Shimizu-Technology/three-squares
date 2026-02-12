@@ -1,10 +1,25 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import {
   ArrowLeft, Search, ShoppingCart, Plus, Minus, Trash2,
-  Banknote, CreditCard, MapPin, Check, X, ChefHat, AlertCircle
+  Banknote, CreditCard, MapPin, Check, X, ChefHat, AlertCircle,
+  Wifi, WifiOff, Loader2, Smartphone
 } from 'lucide-react';
+import {
+  initializeTerminal,
+  discoverReaders,
+  connectToReader,
+  collectPayment,
+  cancelPaymentCollection,
+  disconnectReader,
+  isReaderConnected,
+  getConnectedReader,
+  onStatusChange,
+  destroyTerminal,
+  type TerminalStatus,
+} from '../../services/stripeTerminal';
+import type { Reader } from '@stripe/terminal-js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -70,6 +85,19 @@ async function createPOSOrder(token: string, orderData: Record<string, unknown>)
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to create order');
+  return data;
+}
+
+async function confirmTerminalPayment(token: string, orderId: number) {
+  const res = await fetch(`${API_BASE}/api/v1/admin/pos/orders/${orderId}/confirm_terminal_payment`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Failed to confirm terminal payment');
   return data;
 }
 
@@ -250,6 +278,14 @@ export default function AdminPOSPage() {
   const [submitting, setSubmitting] = useState(false);
   const [lastOrder, setLastOrder] = useState<{ order_number: string; total_formatted: string; change_due_formatted?: string } | null>(null);
 
+  // Terminal
+  const [terminalStatus, setTerminalStatus] = useState<TerminalStatus>('not_initialized');
+  const [terminalReader, setTerminalReader] = useState<Reader | null>(null);
+  const [terminalError, setTerminalError] = useState<string | null>(null);
+  const [showReaderPicker, setShowReaderPicker] = useState(false);
+  const [availableReaders, setAvailableReaders] = useState<Reader[]>([]);
+  const [terminalCollecting, setTerminalCollecting] = useState(false);
+
   // ─── Load menu ──────────────────────────────────────────────────────────
 
   const loadMenu = useCallback(async () => {
@@ -349,6 +385,108 @@ export default function AdminPOSPage() {
     [cart]
   );
 
+  // ─── Terminal ────────────────────────────────────────────────────────────
+
+  useEffect(() => {
+    onStatusChange(setTerminalStatus);
+    // Auto-initialize terminal on mount
+    initializeTerminal()
+      .then(() => {
+        // Try to discover readers automatically
+        return discoverReaders();
+      })
+      .then((readers) => {
+        setAvailableReaders(readers);
+        // Auto-connect if exactly one reader
+        if (readers.length === 1) {
+          connectToReader(readers[0]).then((r) => setTerminalReader(r)).catch(console.error);
+        } else if (readers.length > 1) {
+          setShowReaderPicker(true);
+        }
+      })
+      .catch((err) => {
+        console.warn('Terminal init failed (will use manual card entry):', err.message);
+        setTerminalError(err.message);
+      });
+
+    return () => {
+      destroyTerminal();
+    };
+  }, []);
+
+  const handleConnectReader = useCallback(async (reader: Reader) => {
+    try {
+      setTerminalError(null);
+      const connected = await connectToReader(reader);
+      setTerminalReader(connected);
+      setShowReaderPicker(false);
+    } catch (err) {
+      setTerminalError(err instanceof Error ? err.message : 'Connection failed');
+    }
+  }, []);
+
+  const handleDiscoverReaders = useCallback(async () => {
+    try {
+      setTerminalError(null);
+      const readers = await discoverReaders();
+      setAvailableReaders(readers);
+      if (readers.length === 0) {
+        setTerminalError('No readers found. Make sure the S700 is on and connected to WiFi.');
+      } else if (readers.length === 1) {
+        await handleConnectReader(readers[0]);
+      } else {
+        setShowReaderPicker(true);
+      }
+    } catch (err) {
+      setTerminalError(err instanceof Error ? err.message : 'Discovery failed');
+    }
+  }, [handleConnectReader]);
+
+  const handleTerminalPayment = useCallback(async () => {
+    if (cart.length === 0 || terminalCollecting) return;
+    setTerminalCollecting(true);
+    setTerminalError(null);
+
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      // 1. Create order with card_present payment method
+      const orderData = {
+        customer_name: customerName || 'Walk-in',
+        order_type: orderType,
+        payment_method: 'card_present',
+        location_id: selectedLocation,
+        items: cart.map((c) => ({
+          product_variant_id: c.variant.id,
+          quantity: c.quantity,
+        })),
+      };
+
+      const orderResult = await createPOSOrder(token, orderData);
+
+      if (!orderResult.client_secret) {
+        throw new Error('No client secret returned — check Stripe configuration');
+      }
+
+      // 2. Collect payment via terminal reader
+      await collectPayment(orderResult.client_secret);
+
+      // 3. Confirm payment on backend
+      const confirmed = await confirmTerminalPayment(token, orderResult.id);
+
+      setLastOrder(confirmed);
+      clearCart();
+      setTimeout(() => setLastOrder(null), 4000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Terminal payment failed';
+      setTerminalError(message);
+      alert(message);
+    } finally {
+      setTerminalCollecting(false);
+    }
+  }, [cart, customerName, orderType, selectedLocation, getToken, clearCart, terminalCollecting]);
+
   // ─── Submit order ───────────────────────────────────────────────────────
 
   const submitOrder = useCallback(
@@ -446,6 +584,28 @@ export default function AdminPOSPage() {
                 className="pl-9 pr-4 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/60 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-white/30"
               />
             </div>
+
+            {/* Terminal status */}
+            <button
+              onClick={terminalReader ? () => disconnectReader().then(() => setTerminalReader(null)) : handleDiscoverReaders}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                terminalReader
+                  ? 'bg-green-500/20 text-green-300 hover:bg-green-500/30'
+                  : 'bg-white/10 text-white/60 hover:bg-white/20'
+              }`}
+              title={terminalReader ? `Connected: ${(terminalReader as any).label || (terminalReader as any).serial_number}` : 'Click to connect reader'}
+            >
+              {terminalStatus === 'discovering' || terminalStatus === 'connecting' ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : terminalReader ? (
+                <Wifi className="w-4 h-4" />
+              ) : (
+                <WifiOff className="w-4 h-4" />
+              )}
+              <span className="hidden lg:inline">
+                {terminalReader ? 'Reader' : 'No Reader'}
+              </span>
+            </button>
           </div>
         </header>
 
@@ -622,12 +782,20 @@ export default function AdminPOSPage() {
               Cash
             </button>
             <button
-              onClick={() => submitOrder('stripe')}
-              disabled={cart.length === 0 || submitting}
-              className="flex items-center justify-center gap-2 py-3 bg-tsPrimary text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              onClick={terminalReader ? handleTerminalPayment : () => submitOrder('stripe')}
+              disabled={cart.length === 0 || submitting || terminalCollecting}
+              className={`flex items-center justify-center gap-2 py-3 text-white rounded-xl font-medium hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors ${
+                terminalReader ? 'bg-tsPrimary' : 'bg-tsPrimary'
+              }`}
             >
-              <CreditCard className="w-5 h-5" />
-              Card
+              {terminalCollecting ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : terminalReader ? (
+                <Smartphone className="w-5 h-5" />
+              ) : (
+                <CreditCard className="w-5 h-5" />
+              )}
+              {terminalCollecting ? 'Tap Card...' : terminalReader ? 'Terminal' : 'Card'}
             </button>
           </div>
 
@@ -674,6 +842,57 @@ export default function AdminPOSPage() {
           }}
           onClose={() => setVariantPickerProduct(null)}
         />
+      )}
+
+      {/* ── Reader Picker Modal ─────────────────────────────────────────── */}
+      {showReaderPicker && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold">Select Card Reader</h3>
+              <button onClick={() => setShowReaderPicker(false)} className="p-1 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {availableReaders.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <WifiOff className="w-10 h-10 mx-auto mb-3 text-gray-300" />
+                <p>No readers found</p>
+                <p className="text-sm mt-1">Make sure the S700 is powered on and connected to WiFi</p>
+                <button
+                  onClick={handleDiscoverReaders}
+                  className="mt-4 px-4 py-2 bg-tsPrimary text-white rounded-lg text-sm hover:opacity-90"
+                >
+                  Scan Again
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {availableReaders.map((reader) => (
+                  <button
+                    key={(reader as any).id}
+                    onClick={() => handleConnectReader(reader)}
+                    className="w-full flex items-center gap-3 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    <Smartphone className="w-5 h-5 text-tsPrimary" />
+                    <div className="text-left">
+                      <div className="font-medium">{(reader as any).label || (reader as any).serial_number}</div>
+                      <div className="text-xs text-gray-500">{(reader as any).device_type}</div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {terminalError && (
+              <div className="mt-3 p-2 bg-red-50 text-red-600 text-sm rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                {terminalError}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
