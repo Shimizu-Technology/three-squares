@@ -16,6 +16,7 @@ module Api
             @order.save!
 
             build_order_items(@order, pos_params[:items])
+            @order.save! # persist items so calculate_totals! can query them
             @order.calculate_totals!
 
             process_payment(@order)

@@ -20,9 +20,9 @@ module Api
               .where(product_locations: { location_id: params[:location_id] })
           end
 
-          # Filter by business line if provided
-          if params[:business_line].present?
-            products = products.where(business_line: params[:business_line])
+          # Filter by product type if provided
+          if params[:product_type].present?
+            products = products.where(product_type: params[:product_type])
           end
 
           # Group by collection (category)
@@ -49,13 +49,13 @@ module Api
 
         def pos_product_json(product)
           primary_image = product.product_images.find_by(primary: true) || product.product_images.first
-          variants = product.product_variants.where(available: true).order(:position, :name)
+          variants = product.product_variants.where(available: true).order(:variant_name)
 
           {
             id: product.id,
             name: product.name,
             slug: product.slug,
-            business_line: product.business_line,
+            product_type: product.product_type,
             image_url: primary_image&.url,
             variants: variants.map do |v|
               {
