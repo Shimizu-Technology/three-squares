@@ -64,7 +64,8 @@ export function evaluateCartCompatibility(
   }
 
   const sharedPickupLocationIds = constrainedSets.reduce((intersection, ids) =>
-    intersection.filter((id) => ids.includes(id))
+    intersection.filter((id) => ids.includes(id)),
+    constrainedSets[0]
   );
 
   if (sharedPickupLocationIds.length === 0) {

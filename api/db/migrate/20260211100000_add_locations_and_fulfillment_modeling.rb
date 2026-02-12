@@ -80,11 +80,12 @@ class AddLocationsAndFulfillmentModeling < ActiveRecord::Migration[8.1]
 
     main_location_id = select_value("SELECT id FROM locations WHERE slug = 'three-squares-main' LIMIT 1")
     if main_location_id.present?
-      execute <<~SQL.squish
-        UPDATE orders
-        SET location_id = #{main_location_id}
-        WHERE fulfillment_type = 'pickup' AND location_id IS NULL
-      SQL
+      execute(
+        ActiveRecord::Base.sanitize_sql_array([
+          "UPDATE orders SET location_id = ? WHERE fulfillment_type = 'pickup' AND location_id IS NULL",
+          main_location_id
+        ])
+      )
     end
 
     # Default every product to Main location availability.

@@ -31,8 +31,8 @@ module Api
         if params[:location_id].present?
           location_id = params[:location_id].to_i
           @products = @products
-            .left_outer_joins(:product_locations)
-            .where("product_locations.id IS NULL OR (product_locations.location_id = ? AND product_locations.available = ?)", location_id, true)
+            .joins(:product_locations)
+            .where(product_locations: { location_id: location_id, available: true })
             .distinct
         end
 

@@ -75,7 +75,10 @@ function CheckoutForm() {
       .map((item) => item.product.available_location_ids || [])
       .filter((ids) => ids.length > 0);
     if (itemLocationSets.length === 0) return [];
-    return itemLocationSets.reduce((intersection, ids) => intersection.filter((id) => ids.includes(id)));
+    return itemLocationSets.reduce(
+      (intersection, ids) => intersection.filter((id) => ids.includes(id)),
+      itemLocationSets[0]
+    );
   }, [items]);
 
   const compatiblePickupLocations = useMemo(
