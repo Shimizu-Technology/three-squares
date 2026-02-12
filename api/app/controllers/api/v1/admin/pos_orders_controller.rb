@@ -29,7 +29,7 @@ module Api
             order.update!(status: "confirmed", payment_status: "paid")
             render json: pos_order_json(order)
           elsif intent.status == "requires_capture"
-            captured = intent.capture
+            intent.capture
             order.update!(status: "confirmed", payment_status: "paid")
             render json: pos_order_json(order)
           else

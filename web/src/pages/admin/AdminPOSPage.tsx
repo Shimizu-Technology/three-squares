@@ -493,9 +493,13 @@ export default function AdminPOSPage() {
         clearCart();
         setTimeout(() => setLastOrder(null), 4000);
       } else {
-        // Payment succeeded on terminal but confirmation failed — alert staff
-        alert(`⚠️ Card was charged but order ${orderResult.order_number} couldn't be confirmed. Please check Stripe Dashboard and confirm manually.`);
-        clearCart();
+        // Payment succeeded on terminal but confirmation failed — DO NOT clear cart
+        // so staff can see what was ordered. Show order number for manual recovery.
+        alert(
+          `⚠️ Card was charged but order ${orderResult.order_number} couldn't be confirmed automatically.\n\n` +
+          `Order ID: ${orderResult.id}\n` +
+          `Please check Stripe Dashboard and confirm the order manually.`
+        );
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Terminal payment failed';

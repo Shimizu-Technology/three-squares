@@ -52,6 +52,9 @@ async function fetchConnectionToken(): Promise<string> {
     throw new Error('Token provider not set. Call setTokenProvider() before initializing terminal.');
   }
   const token = await tokenProvider();
+  if (!token) {
+    throw new Error('Authentication token unavailable. Please sign in again.');
+  }
   const response = await fetch(`${API_BASE}/api/v1/admin/stripe_terminal/connection_token`, {
     method: 'POST',
     headers: {
