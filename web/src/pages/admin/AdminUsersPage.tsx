@@ -93,7 +93,7 @@ export default function AdminUsersPage() {
       }
       
       toast.success(response.data.message);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to update user:', err);
       toast.error(err.response?.data?.error || 'Failed to update user');
     } finally {

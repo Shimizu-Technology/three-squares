@@ -92,7 +92,7 @@ export const useCartStore = create<CartStore>()(
           await get().fetchCart();
           
           set({ isLoading: false, isOpen: true }); // Open cart drawer
-        } catch (error: any) {
+        } catch (error) {
           console.error('Failed to add item to cart:', error);
           set({ isLoading: false });
           
@@ -121,7 +121,7 @@ export const useCartStore = create<CartStore>()(
           // Refresh cart
           await get().fetchCart();
           set({ isLoading: false });
-        } catch (error: any) {
+        } catch (error) {
           console.error('Failed to update quantity:', error);
           set({ isLoading: false });
           

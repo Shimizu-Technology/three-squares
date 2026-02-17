@@ -145,7 +145,7 @@ export default function AdminSettingsPage() {
       };
       setSettings(mergedSettings);
       setLastSavedSiteSettings(mergedSettings);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to load settings:', err);
       toast.error('Failed to load settings. Please try again.');
     } finally {
@@ -236,7 +236,7 @@ export default function AdminSettingsPage() {
         : 'Test mode enabled - Payments will be simulated';
 
       toast.success(message, { duration: 4000 });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to update settings:', err);
       toast.error(err.response?.data?.error || 'Failed to update payment mode');
     } finally {
@@ -271,7 +271,7 @@ export default function AdminSettingsPage() {
         : `${label} order emails disabled`;
 
       toast.success(message, { duration: 3000 });
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to toggle email setting:', err);
       toast.error('Failed to update email setting');
     } finally {
@@ -291,7 +291,7 @@ export default function AdminSettingsPage() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       return response.data as SiteSettings;
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to update settings:', err);
       const errorMsg =
         err.response?.data?.errors?.join(', ') ||
@@ -335,7 +335,7 @@ export default function AdminSettingsPage() {
       setPlaceholderUploading(true);
       setSettings({ ...settings, placeholder_image_url: placeholderImageUrl });
       toast.success('Placeholder image ready. Click Save to apply.');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to update placeholder image:', err);
       toast.error(err.response?.data?.error || 'Failed to update placeholder image');
     } finally {
@@ -367,7 +367,7 @@ export default function AdminSettingsPage() {
 
       await updatePlaceholderImage(blobUrl);
       setShowPlaceholderUrlInput(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to upload placeholder image:', err);
       toast.error(err.response?.data?.error || 'Failed to upload placeholder image');
       setPlaceholderUploading(false);
@@ -1355,7 +1355,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
 
       setFormData((prev) => ({ ...prev, [field]: blobUrl }));
       toast.success('Image uploaded');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to upload image:', err);
       toast.error(err.response?.data?.error || 'Failed to upload image');
     } finally {

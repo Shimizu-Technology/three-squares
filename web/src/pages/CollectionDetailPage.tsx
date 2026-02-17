@@ -67,7 +67,7 @@ export default function CollectionDetailPage() {
       setCollection(data.collection);
       setProducts(data.products);
       setMeta(data.meta);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to fetch collection:', err);
       setError(err.response?.data?.error || 'Failed to load collection');
     } finally {

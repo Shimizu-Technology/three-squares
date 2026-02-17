@@ -114,7 +114,7 @@ export default function AdminInventoryPage() {
       
       setAudits(response.data.audits);
       setPagination(response.data.pagination);
-    } catch (err: any) {
+    } catch (err) {
       setError(err.response?.data?.error || 'Failed to load inventory history');
     } finally {
       setLoading(false);

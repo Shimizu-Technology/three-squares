@@ -62,10 +62,12 @@ export default function PlaceholderImage({
   const [currentLogoSrc, setCurrentLogoSrc] = useState(logoSrc);
   const [logoFailed, setLogoFailed] = useState(false);
 
+  /* eslint-disable react-hooks/set-state-in-effect -- sync props to local state intentionally */
   useEffect(() => {
     setCurrentLogoSrc(logoSrc);
     setLogoFailed(false);
   }, [logoSrc]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
     <div

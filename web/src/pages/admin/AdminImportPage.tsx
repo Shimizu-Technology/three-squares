@@ -360,7 +360,7 @@ export default function AdminImportPage() {
       setProductsFile(null);
       setInventoryFile(null);
       fetchImports();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to start import:', error);
       alert(error.response?.data?.error || 'Failed to start import');
     } finally {

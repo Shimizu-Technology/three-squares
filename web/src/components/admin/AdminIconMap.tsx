@@ -25,6 +25,7 @@ import {
 
 // Central icon registry for all admin navigation and UI elements.
 // Add new icons here instead of scattering emoji/strings across pages.
+// eslint-disable-next-line react-refresh/only-export-components
 export const ADMIN_ICONS: Record<string, LucideIcon> = {
   dashboard: LayoutDashboard,
   orders: ShoppingCart,

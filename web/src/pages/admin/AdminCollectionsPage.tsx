@@ -53,7 +53,7 @@ export default function AdminCollectionsPage() {
       setLoading(true);
       const response = await authGet<CollectionsResponse>('/admin/collections', getToken);
       setCollections(response.data.data || []);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to fetch collections:', err);
       toast.error('Failed to load collections');
     } finally {
@@ -113,7 +113,7 @@ export default function AdminCollectionsPage() {
 
       setShowEditModal(false);
       fetchCollections();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to save collection:', err);
       toast.error(err.response?.data?.error || 'Failed to save collection');
     } finally {
@@ -131,7 +131,7 @@ export default function AdminCollectionsPage() {
       setShowDeleteModal(false);
       setSelectedCollection(null);
       fetchCollections();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to delete collection:', err);
       toast.error(err.response?.data?.error || 'Failed to delete collection');
     } finally {

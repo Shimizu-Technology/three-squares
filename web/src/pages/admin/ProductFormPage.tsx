@@ -364,7 +364,7 @@ export default function ProductFormPage() {
         const newProduct = response.data.data || response.data;
         navigate(`/admin/products/${newProduct.id}/edit`);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to save product:', err);
       const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to save product';
       toast.error(errorMessage, {
@@ -390,7 +390,7 @@ export default function ProductFormPage() {
       
       // Redirect to products list
       navigate('/admin/products');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to archive product:', err);
       const errorMessage = err.response?.data?.error || 
                           err.response?.data?.message || 
@@ -420,7 +420,7 @@ export default function ProductFormPage() {
       // Refresh product data
       setIsArchived(false);
       await fetchProduct();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to unarchive product:', err);
       const errorMessage = err.response?.data?.error || 
                           err.response?.data?.message || 

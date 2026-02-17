@@ -79,7 +79,7 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
       const freshImages = response.data.data || response.data;
       onImagesChange(freshImages);
       toast.success('Image uploaded successfully!');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to upload image:', err);
       toast.error(err.response?.data?.error || 'Failed to upload image');
     } finally {

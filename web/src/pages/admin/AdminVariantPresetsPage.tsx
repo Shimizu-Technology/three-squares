@@ -141,7 +141,7 @@ export default function AdminVariantPresetsPage() {
       
       setShowModal(false);
       loadPresets();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to save preset:', error);
       toast.error(error.response?.data?.error || 'Failed to save preset');
     } finally {

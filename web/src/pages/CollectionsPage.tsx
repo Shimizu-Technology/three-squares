@@ -47,7 +47,7 @@ export default function CollectionsPage() {
       });
       setCollections(data.collections);
       setMeta(data.meta);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to fetch collections:', err);
       setError(err.response?.data?.error || 'Failed to load collections');
     } finally {
