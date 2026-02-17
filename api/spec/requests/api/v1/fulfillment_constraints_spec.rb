@@ -160,7 +160,7 @@ RSpec.describe 'Fulfillment constraints', type: :request do
 
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
-      expect(json['error']).to eq('Cart fulfillment validation failed')
+      expect(json['error']).to eq('This cart supports pickup only.')
       expect(json['issues'].map { |issue| issue['type'] }).to include('fulfillment_not_supported')
     end
   end

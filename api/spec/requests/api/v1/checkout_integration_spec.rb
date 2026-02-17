@@ -187,7 +187,7 @@ RSpec.describe 'Checkout integration', type: :request do
 
     expect(response).to have_http_status(:unprocessable_entity)
     payment_json = JSON.parse(response.body)
-    expect(payment_json['error']).to eq('Cart fulfillment validation failed')
+    expect(payment_json['error']).to eq('Your cart cannot mix shippable and pickup-only items. Please keep to one fulfillment path.')
     expect(payment_json['issues'].map { |issue| issue['type'] }).to include('mixed_fulfillment')
   end
 end
