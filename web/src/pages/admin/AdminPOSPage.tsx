@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import {
   ArrowLeft, Search, ShoppingCart, Plus, Minus, Trash2,
-  Banknote, CreditCard, MapPin, Check, X, ChefHat, AlertCircle,
+  Banknote, MapPin, Check, X, ChefHat, AlertCircle,
   Wifi, WifiOff, Loader2, Smartphone
 } from 'lucide-react';
 import {
@@ -11,7 +11,9 @@ import {
   discoverReaders,
   connectToReader,
   collectPayment,
+  cancelPaymentCollection,
   disconnectReader,
+  resetTerminalSession,
   onStatusChange,
   destroyTerminal,
   setTokenProvider,
@@ -72,6 +74,7 @@ function getReaderMeta(reader: Reader): ReaderMeta {
 // ─── API ────────────────────────────────────────────────────────────────────
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
+const POS_PENDING_TERMINAL_KEY = 'tsq-pos-pending-terminal-payment';
 
 async function fetchPOSMenu(token: string, locationId?: number): Promise<{ categories: POSCategory[]; locations: POSLocation[] }> {
   const params = new URLSearchParams();
@@ -298,6 +301,7 @@ export default function AdminPOSPage() {
   const [showReaderPicker, setShowReaderPicker] = useState(false);
   const [availableReaders, setAvailableReaders] = useState<Reader[]>([]);
   const [terminalCollecting, setTerminalCollecting] = useState(false);
+  const [hasPendingTerminalSession, setHasPendingTerminalSession] = useState(false);
 
   // ─── Load menu ──────────────────────────────────────────────────────────
 
@@ -419,7 +423,10 @@ export default function AdminPOSPage() {
     () => cart.reduce((sum, c) => sum + c.quantity, 0),
     [cart]
   );
-  const terminalLabel = terminalReader ? 'Reader connected' : 'Reader offline';
+  const terminalLabel = terminalReader ? 'Connected' : 'Offline';
+  const connectedReaderName = terminalReader
+    ? (getReaderMeta(terminalReader).label || getReaderMeta(terminalReader).serial_number || 'Unknown Reader')
+    : null;
   const canSubmitPayment = cart.length > 0 && !submitting && !terminalCollecting;
 
   const focusSearchField = useCallback(() => {
@@ -433,34 +440,28 @@ export default function AdminPOSPage() {
 
   useEffect(() => {
     onStatusChange(setTerminalStatus);
-    // Provide Clerk token to terminal service
     setTokenProvider(getToken);
-    // Auto-initialize terminal on mount
-    initializeTerminal()
-      .then(() => {
-        // Try to discover readers automatically
-        return discoverReaders();
-      })
-      .then((readers) => {
-        setAvailableReaders(readers);
-        // Auto-connect if exactly one reader
-        if (readers.length === 1) {
-          connectToReader(readers[0]).then((r) => setTerminalReader(r)).catch(console.error);
-        } else if (readers.length > 1) {
-          setShowReaderPicker(true);
-        }
-      })
-      .catch((err) => {
-        console.warn('Terminal init failed (will use manual card entry):', err.message);
-        setTerminalError(err.message);
-      });
+    setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
 
     return () => {
       destroyTerminal();
     };
   }, [getToken]);
 
+  useEffect(() => {
+    if (!terminalCollecting) return;
+
+    const beforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = '';
+    };
+
+    window.addEventListener('beforeunload', beforeUnload);
+    return () => window.removeEventListener('beforeunload', beforeUnload);
+  }, [terminalCollecting]);
+
   const handleConnectReader = useCallback(async (reader: Reader) => {
+    if (terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
     try {
       setTerminalError(null);
       const connected = await connectToReader(reader);
@@ -469,11 +470,13 @@ export default function AdminPOSPage() {
     } catch (err) {
       setTerminalError(err instanceof Error ? err.message : 'Connection failed');
     }
-  }, []);
+  }, [terminalStatus]);
 
   const handleDiscoverReaders = useCallback(async () => {
+    if (terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
     try {
       setTerminalError(null);
+      await initializeTerminal();
       const readers = await discoverReaders();
       setAvailableReaders(readers);
       if (readers.length === 0) {
@@ -486,7 +489,67 @@ export default function AdminPOSPage() {
     } catch (err) {
       setTerminalError(err instanceof Error ? err.message : 'Discovery failed');
     }
-  }, [handleConnectReader]);
+  }, [handleConnectReader, terminalStatus]);
+
+  const handleReaderButtonClick = useCallback(async () => {
+    if (terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
+
+    if (!terminalReader) {
+      await handleDiscoverReaders();
+      return;
+    }
+
+    try {
+      setTerminalError(null);
+      await initializeTerminal();
+      const readers = await discoverReaders();
+      setAvailableReaders(readers);
+      setShowReaderPicker(true);
+    } catch (err) {
+      setTerminalError(err instanceof Error ? err.message : 'Reader refresh failed');
+    }
+  }, [terminalReader, terminalStatus, handleDiscoverReaders]);
+
+  const handleDisconnectReader = useCallback(async () => {
+    try {
+      await disconnectReader();
+      setTerminalReader(null);
+      setTerminalError(null);
+    } catch (err) {
+      setTerminalError(err instanceof Error ? err.message : 'Disconnect failed');
+    }
+  }, []);
+
+  const handleCancelActiveTerminalPrompt = useCallback(async () => {
+    try {
+      await cancelPaymentCollection();
+      setTerminalCollecting(false);
+      setTerminalError(null);
+      localStorage.removeItem(POS_PENDING_TERMINAL_KEY);
+      setHasPendingTerminalSession(false);
+    } catch (err) {
+      setTerminalError(err instanceof Error ? err.message : 'Unable to cancel reader prompt');
+    }
+  }, []);
+
+  const clearPendingTerminalSession = useCallback(() => {
+    localStorage.removeItem(POS_PENDING_TERMINAL_KEY);
+    setHasPendingTerminalSession(false);
+  }, []);
+
+  const handleResetReaderSession = useCallback(async () => {
+    try {
+      setTerminalError(null);
+      await resetTerminalSession();
+      setTerminalReader(null);
+      setAvailableReaders([]);
+      setShowReaderPicker(false);
+      clearPendingTerminalSession();
+      setTerminalCollecting(false);
+    } catch (err) {
+      setTerminalError(err instanceof Error ? err.message : 'Failed to reset reader session');
+    }
+  }, [clearPendingTerminalSession]);
 
   const handleTerminalPayment = useCallback(async () => {
     if (cart.length === 0 || terminalCollecting) return;
@@ -515,6 +578,14 @@ export default function AdminPOSPage() {
         throw new Error('No client secret returned — check Stripe configuration');
       }
 
+      localStorage.setItem(POS_PENDING_TERMINAL_KEY, JSON.stringify({
+        order_id: orderResult.id,
+        order_number: orderResult.order_number,
+        amount_cents: cartTotal,
+        created_at: new Date().toISOString(),
+      }));
+      setHasPendingTerminalSession(true);
+
       // 2. Collect payment via terminal reader
       await collectPayment(orderResult.client_secret);
 
@@ -533,6 +604,8 @@ export default function AdminPOSPage() {
         setLastOrder(confirmed);
         clearCart();
         setTimeout(() => setLastOrder(null), 4000);
+        localStorage.removeItem(POS_PENDING_TERMINAL_KEY);
+        setHasPendingTerminalSession(false);
       } else {
         // Payment succeeded on terminal but confirmation failed — DO NOT clear cart
         // so staff can see what was ordered. Show order number for manual recovery.
@@ -548,8 +621,10 @@ export default function AdminPOSPage() {
       alert(message);
     } finally {
       setTerminalCollecting(false);
+      localStorage.removeItem(POS_PENDING_TERMINAL_KEY);
+      setHasPendingTerminalSession(false);
     }
-  }, [cart, customerName, orderType, selectedLocation, getToken, clearCart, terminalCollecting]);
+  }, [cart, customerName, orderType, selectedLocation, getToken, clearCart, terminalCollecting, cartTotal]);
 
   // ─── Submit order ───────────────────────────────────────────────────────
 
@@ -595,12 +670,13 @@ export default function AdminPOSPage() {
 
   const handleCardAction = useCallback(() => {
     if (!canSubmitPayment) return;
-    if (terminalReader) {
-      void handleTerminalPayment();
+    if (!terminalReader) {
+      setTerminalError('Connect a Stripe reader before taking card payments.');
+      void handleDiscoverReaders();
       return;
     }
-    void submitOrder('stripe');
-  }, [canSubmitPayment, terminalReader, handleTerminalPayment, submitOrder]);
+    void handleTerminalPayment();
+  }, [canSubmitPayment, terminalReader, handleTerminalPayment, handleDiscoverReaders]);
 
   useEffect(() => {
     if (cart.length === 0) {
@@ -736,7 +812,7 @@ export default function AdminPOSPage() {
               <ChefHat className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-semibold text-slate-900">POS Mode</h1>
+              <h1 className="text-lg font-semibold text-slate-900 whitespace-nowrap">POS Mode</h1>
               <p className="text-xs text-slate-500 truncate">{selectedLocationName}</p>
             </div>
           </div>
@@ -773,8 +849,9 @@ export default function AdminPOSPage() {
 
             {/* Terminal status */}
             <button
-              onClick={terminalReader ? () => disconnectReader().then(() => setTerminalReader(null)) : handleDiscoverReaders}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm border transition-colors ${
+              onClick={handleReaderButtonClick}
+              disabled={terminalStatus === 'connecting' || terminalStatus === 'discovering'}
+              className={`flex items-center justify-center gap-2 min-w-34 px-3 py-2 rounded-lg text-sm border transition-colors ${
                 terminalReader
                   ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
                   : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
@@ -788,9 +865,7 @@ export default function AdminPOSPage() {
               ) : (
                 <WifiOff className="w-4 h-4" />
               )}
-              <span className="hidden xl:inline">
-                {terminalLabel}
-              </span>
+              <span className="hidden xl:inline">Reader {terminalLabel}</span>
             </button>
           </div>
         </header>
@@ -832,6 +907,12 @@ export default function AdminPOSPage() {
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-tsPrimary/10 text-tsNavy">
             {orderType === 'dine_in' ? 'Dine in' : 'Pickup'}
           </span>
+          {connectedReaderName && (
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 max-w-[16rem] truncate">
+              <Wifi className="w-3.5 h-3.5 shrink-0" />
+              {connectedReaderName}
+            </span>
+          )}
           {terminalError && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-700">
               <AlertCircle className="w-3.5 h-3.5" />
@@ -1075,6 +1156,37 @@ export default function AdminPOSPage() {
             </div>
           )}
 
+          {hasPendingTerminalSession && !terminalCollecting && (
+            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
+              <p className="text-xs font-medium text-amber-800 mb-2">
+                A previous terminal payment session may still be active on the reader.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleCancelActiveTerminalPrompt}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+                >
+                  Cancel Reader Prompt
+                </button>
+                <button
+                  onClick={clearPendingTerminalSession}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-amber-300 text-amber-800 hover:bg-amber-100"
+                >
+                  Clear Notice
+                </button>
+              </div>
+            </div>
+          )}
+
+          {(terminalReader || hasPendingTerminalSession || terminalCollecting) && (
+            <button
+              onClick={handleResetReaderSession}
+              className="w-full mb-2 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium hover:bg-slate-100 transition-colors"
+            >
+              Reset Reader Session
+            </button>
+          )}
+
           <div className="grid grid-cols-2 gap-2 mb-2">
             <button
               onClick={() => setShowCashModal(true)}
@@ -1086,7 +1198,7 @@ export default function AdminPOSPage() {
             </button>
             <button
               onClick={handleCardAction}
-              disabled={!canSubmitPayment}
+              disabled={!canSubmitPayment || !terminalReader}
               className="flex items-center justify-center gap-2 py-3 text-white rounded-xl font-medium bg-tsNavy hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {terminalCollecting ? (
@@ -1094,11 +1206,20 @@ export default function AdminPOSPage() {
               ) : terminalReader ? (
                 <Smartphone className="w-5 h-5" />
               ) : (
-                <CreditCard className="w-5 h-5" />
+                <WifiOff className="w-5 h-5" />
               )}
-              {terminalCollecting ? 'Tap Card...' : terminalReader ? 'Terminal' : 'Card'}
+              {terminalCollecting ? 'Tap Card...' : terminalReader ? 'Tap Card' : 'Connect Reader'}
             </button>
           </div>
+
+          {terminalCollecting && (
+            <button
+              onClick={handleCancelActiveTerminalPrompt}
+              className="w-full mb-2 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-sm font-medium hover:bg-rose-100 transition-colors"
+            >
+              Cancel Tap/Insert
+            </button>
+          )}
 
           {lastAddedItem && cart.length > 0 && (
             <button
@@ -1116,6 +1237,7 @@ export default function AdminPOSPage() {
             <span>Cash `F8`</span>
             <span>Card `F9`</span>
             <span>Qty `[` `]` `\`</span>
+            <span>Reader: tap status chip</span>
           </div>
 
           {terminalError && (
@@ -1180,6 +1302,23 @@ export default function AdminPOSPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {terminalReader && (
+              <div className="mb-3 p-3 rounded-xl border border-emerald-200 bg-emerald-50 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-xs text-emerald-700 font-medium">Currently connected</p>
+                  <p className="text-sm text-emerald-900 truncate">
+                    {getReaderMeta(terminalReader).label || getReaderMeta(terminalReader).serial_number}
+                  </p>
+                </div>
+                <button
+                  onClick={handleDisconnectReader}
+                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-emerald-300 text-emerald-800 hover:bg-emerald-100"
+                >
+                  Disconnect
+                </button>
+              </div>
+            )}
 
             {availableReaders.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
