@@ -81,7 +81,7 @@ export default function ProductDetailPage() {
           return acc;
         }, {});
         setLocationNameById(nextMap);
-      } catch (_error) {
+      } catch {
         setLocationNameById({});
       }
     };

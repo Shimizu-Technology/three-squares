@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useState, useEffect, useRef } from 'react';
 import { Upload, FileText, AlertCircle, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
@@ -360,9 +361,9 @@ export default function AdminImportPage() {
       setProductsFile(null);
       setInventoryFile(null);
       fetchImports();
-    } catch (error: any) {
+    } catch (error) {
       console.error('Failed to start import:', error);
-      alert(error.response?.data?.error || 'Failed to start import');
+      alert(axios.isAxiosError(error) ? error.response?.data?.error || 'Failed to start import' : 'Failed to start import');
     } finally {
       setIsUploading(false);
     }

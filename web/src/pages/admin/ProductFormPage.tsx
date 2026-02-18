@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useRef, useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
@@ -364,9 +365,9 @@ export default function ProductFormPage() {
         const newProduct = response.data.data || response.data;
         navigate(`/admin/products/${newProduct.id}/edit`);
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to save product:', err);
-      const errorMessage = err.response?.data?.error || err.response?.data?.message || 'Failed to save product';
+      const errorMessage = axios.isAxiosError(err) ? err.response?.data?.error || err.response?.data?.message || 'Failed to save product' : 'Failed to save product';
       toast.error(errorMessage, {
         duration: 4000,
         position: 'top-right',
@@ -390,11 +391,9 @@ export default function ProductFormPage() {
       
       // Redirect to products list
       navigate('/admin/products');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to archive product:', err);
-      const errorMessage = err.response?.data?.error || 
-                          err.response?.data?.message || 
-                          'Failed to archive product.';
+      const errorMessage = axios.isAxiosError(err) ? err.response?.data?.error || err.response?.data?.message || 'Failed to archive product.' : 'Failed to archive product.';
       toast.error(errorMessage, {
         duration: 5000,
         position: 'top-right',
@@ -420,11 +419,9 @@ export default function ProductFormPage() {
       // Refresh product data
       setIsArchived(false);
       await fetchProduct();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to unarchive product:', err);
-      const errorMessage = err.response?.data?.error || 
-                          err.response?.data?.message || 
-                          'Failed to unarchive product.';
+      const errorMessage = axios.isAxiosError(err) ? err.response?.data?.error || err.response?.data?.message || 'Failed to unarchive product.' : 'Failed to unarchive product.';
       toast.error(errorMessage, {
         duration: 5000,
         position: 'top-right',

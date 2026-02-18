@@ -520,13 +520,11 @@ export default function AdminPOSPage() {
 
       // 3. Confirm payment on backend (retry up to 3 times — card was already charged)
       let confirmed;
-      let confirmError;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
           confirmed = await confirmTerminalPayment(token, orderResult.id);
           break;
-        } catch (err) {
-          confirmError = err;
+        } catch {
           if (attempt < 2) await new Promise((r) => setTimeout(r, 1000));
         }
       }

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import axios from 'axios';
 import api from '../services/api';
 import type { Cart, CartValidation } from '../types/cart';
 import toast from 'react-hot-toast';
@@ -92,12 +93,12 @@ export const useCartStore = create<CartStore>()(
           await get().fetchCart();
           
           set({ isLoading: false, isOpen: true }); // Open cart drawer
-        } catch (error: any) {
+        } catch (error) {
           console.error('Failed to add item to cart:', error);
           set({ isLoading: false });
           
           // Handle error (show toast)
-          const errorMessage = error.response?.data?.error || 'Failed to add item to cart';
+          const errorMessage = axios.isAxiosError(error) ? error.response?.data?.error || 'Failed to add item to cart' : 'Failed to add item to cart';
           toast.error(errorMessage);
           throw error;
         }
@@ -121,7 +122,7 @@ export const useCartStore = create<CartStore>()(
           // Refresh cart
           await get().fetchCart();
           set({ isLoading: false });
-        } catch (error: any) {
+        } catch (error) {
           console.error('Failed to update quantity:', error);
           set({ isLoading: false });
           

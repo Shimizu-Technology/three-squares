@@ -94,7 +94,7 @@ export default function AdminLayout() {
       const savedValue = localStorage.getItem(key);
       if (savedValue === "0") setIsTabletSidebarCollapsed(false);
       if (savedValue === "1") setIsTabletSidebarCollapsed(true);
-    } catch (_error) {
+    } catch {
       // no-op (localStorage may be unavailable in strict privacy modes)
     }
   }, [isLoaded, user?.id]);

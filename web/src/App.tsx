@@ -105,7 +105,7 @@ function AppContent() {
 
   // Close cart and mobile menu on route change (handles back/forward, programmatic navigation, etc.)
   useEffect(() => {
-    setMobileMenuOpen(false);
+    setMobileMenuOpen(false); // eslint-disable-line react-hooks/set-state-in-effect -- intentional: reset UI on route change
     closeCart();
   }, [location.pathname, closeCart]);
 
