@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import axios from 'axios';
 import api from '../services/api';
 import type { Cart, CartValidation } from '../types/cart';
 import toast from 'react-hot-toast';
@@ -97,7 +98,7 @@ export const useCartStore = create<CartStore>()(
           set({ isLoading: false });
           
           // Handle error (show toast)
-          const errorMessage = error.response?.data?.error || 'Failed to add item to cart';
+          const errorMessage = axios.isAxiosError(error) ? error.response?.data?.error || 'Failed to add item to cart' : 'Failed to add item to cart';
           toast.error(errorMessage);
           throw error;
         }

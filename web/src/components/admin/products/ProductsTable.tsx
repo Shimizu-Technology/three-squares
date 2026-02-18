@@ -29,7 +29,7 @@ export default function ProductsTable({
   totalFiltered,
   itemsPerPage,
   sortBy,
-  sortDir: _sortDir, // eslint-disable-line @typescript-eslint/no-unused-vars
+  sortDir: _sortDir,
   onSort,
   onPageChange,
   onView,
