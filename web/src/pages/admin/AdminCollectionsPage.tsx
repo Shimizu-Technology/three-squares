@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useRef, useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
@@ -115,7 +116,7 @@ export default function AdminCollectionsPage() {
       fetchCollections();
     } catch (err) {
       console.error('Failed to save collection:', err);
-      toast.error(err.response?.data?.error || 'Failed to save collection');
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to save collection' : 'Failed to save collection');
     } finally {
       setSaving(false);
     }
@@ -133,7 +134,7 @@ export default function AdminCollectionsPage() {
       fetchCollections();
     } catch (err) {
       console.error('Failed to delete collection:', err);
-      toast.error(err.response?.data?.error || 'Failed to delete collection');
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to delete collection' : 'Failed to delete collection');
     } finally {
       setDeleting(false);
     }

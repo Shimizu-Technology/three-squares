@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
@@ -198,7 +199,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       setSelectedOrder(response.data.order);
       toast.success('Order updated successfully!');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to update order');
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update order' : 'Failed to update order');
     } finally {
       setSaving(false);
     }
@@ -220,7 +221,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       if (selectedOrder?.id === orderId) setSelectedOrder(response.data.order);
       toast.success(`Order marked as ${formatStatus(newStatus)}!`);
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to update status');
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update status' : 'Failed to update status');
     }
   };
 
@@ -246,7 +247,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       setShipOrderId(null);
       toast.success('Order shipped! Customer will receive a notification email.');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to ship order');
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to ship order' : 'Failed to ship order');
     } finally {
       setSaving(false);
     }
@@ -271,7 +272,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       setOrders(orders.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
       setShowRefundModal(false);
     } catch (err) {
-      toast.error(err.response?.data?.error || err.response?.data?.details || 'Failed to process refund');
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.error || err.response?.data?.details || 'Failed to process refund' : 'Failed to process refund');
     } finally {
       setProcessingRefund(false);
     }
@@ -283,7 +284,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       await authPost(`/admin/orders/${orderId}/notify`, {}, getToken);
       toast.success('Notification email sent to customer!');
     } catch (err) {
-      toast.error(err.response?.data?.error || 'Failed to send notification');
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to send notification' : 'Failed to send notification');
     }
   };
 

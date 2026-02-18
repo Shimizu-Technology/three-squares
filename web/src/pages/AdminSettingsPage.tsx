@@ -238,7 +238,7 @@ export default function AdminSettingsPage() {
       toast.success(message, { duration: 4000 });
     } catch (err) {
       console.error('Failed to update settings:', err);
-      toast.error(err.response?.data?.error || 'Failed to update payment mode');
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update payment mode' : 'Failed to update payment mode');
     } finally {
       setSaving(false);
     }

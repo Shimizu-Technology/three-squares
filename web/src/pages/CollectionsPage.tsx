@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { collectionsApi } from '../services/api';
@@ -49,7 +50,7 @@ export default function CollectionsPage() {
       setMeta(data.meta);
     } catch (err) {
       console.error('Failed to fetch collections:', err);
-      setError(err.response?.data?.error || 'Failed to load collections');
+      setError(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to load collections' : 'Failed to load collections');
     } finally {
       setLoading(false);
     }

@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Package, Filter, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, Minus } from 'lucide-react';
@@ -115,7 +116,7 @@ export default function AdminInventoryPage() {
       setAudits(response.data.audits);
       setPagination(response.data.pagination);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load inventory history');
+      setError(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to load inventory history' : 'Failed to load inventory history');
     } finally {
       setLoading(false);
     }

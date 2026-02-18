@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
@@ -95,7 +96,7 @@ export default function AdminUsersPage() {
       toast.success(response.data.message);
     } catch (err) {
       console.error('Failed to update user:', err);
-      toast.error(err.response?.data?.error || 'Failed to update user');
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update user' : 'Failed to update user');
     } finally {
       setUpdatingUserId(null);
     }

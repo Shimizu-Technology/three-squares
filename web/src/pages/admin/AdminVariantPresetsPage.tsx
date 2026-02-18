@@ -1,3 +1,4 @@
+import axios from 'axios';
 // src/pages/admin/AdminVariantPresetsPage.tsx
 // Admin page for managing variant presets (reusable option templates)
 
@@ -143,7 +144,7 @@ export default function AdminVariantPresetsPage() {
       loadPresets();
     } catch (error) {
       console.error('Failed to save preset:', error);
-      toast.error(error.response?.data?.error || 'Failed to save preset');
+      toast.error(axios.isAxiosError(error) ? error.response?.data?.error || 'Failed to save preset' : 'Failed to save preset');
     } finally {
       setSaving(false);
     }
