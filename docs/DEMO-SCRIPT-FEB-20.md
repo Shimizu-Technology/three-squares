@@ -74,7 +74,7 @@
   - Add items to order
   - Select location
   - Accept **cash** or **card** payment
-  - Stripe Terminal S700 integration for card reader
+  - Stripe Terminal S700 integration ready in software (hardware pending delivery)
 - **Talking point:** "Your staff can take orders right at the counter — same system, no separate POS hardware subscription"
 - **Compare:** "Replaces Square/Toast monthly fees"
 
