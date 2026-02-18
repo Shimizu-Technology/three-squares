@@ -124,26 +124,6 @@
 
 ---
 
-## Pricing Discussion
-
-### What they're getting:
-- Custom ordering platform (not generic — built for their menu)
-- POS system (replaces Square/Toast subscription)
-- Catering management
-- Multi-location support
-- Ongoing updates and support
-
-### Suggested pricing:
-- **Setup:** Already included in initial engagement
-- **Monthly:** $500-1,000/mo for hosting, maintenance, and feature updates
-- **Compare to:** Square ($60/mo + 2.6%+$0.10 per transaction), Toast ($69/mo + processing)
-- **Value add:** No per-transaction markup beyond Stripe's standard rate (2.9% + $0.30)
-
-### Key differentiator:
-"This isn't a template. This is *your* system. When you need a feature — daily specials, loyalty points, a new location — we build it. No waiting on Toast's roadmap."
-
----
-
 ## Closing
 
 "We'd like to get this live for your main location within 2 weeks. We can start with online ordering and add the POS terminal when the S700 arrives. What questions do you have?"
