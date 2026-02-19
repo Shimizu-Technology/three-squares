@@ -142,15 +142,20 @@ function QrCodeModal({
     }
   };
 
+  const escapeHtml = (str: string) =>
+    str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
   const handlePrint = () => {
     const printContent = printRef.current;
     if (!printContent) return;
     const win = window.open('', '_blank');
     if (!win) return;
+    const safeName = escapeHtml(data.location.name);
+    const safeUrl = escapeHtml(data.menuUrl);
     win.document.write(`
       <html>
         <head>
-          <title>QR Code - ${data.location.name}</title>
+          <title>QR Code - ${safeName}</title>
           <style>
             body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: sans-serif; }
             img { max-width: 400px; }
@@ -159,9 +164,9 @@ function QrCodeModal({
           </style>
         </head>
         <body>
-          <h2>${data.location.name}</h2>
+          <h2>${safeName}</h2>
           <img src="${data.qrCode}" alt="QR Code" />
-          <p>${data.menuUrl}</p>
+          <p>${safeUrl}</p>
         </body>
       </html>
     `);
