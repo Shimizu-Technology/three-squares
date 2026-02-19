@@ -621,8 +621,6 @@ export default function AdminPOSPage() {
       alert(message);
     } finally {
       setTerminalCollecting(false);
-      localStorage.removeItem(POS_PENDING_TERMINAL_KEY);
-      setHasPendingTerminalSession(false);
     }
   }, [cart, customerName, orderType, selectedLocation, getToken, clearCart, terminalCollecting, cartTotal]);
 
