@@ -96,7 +96,7 @@ export function useLocationFromUrl(): UseLocationFromUrlResult {
     // Import cartStore dynamically to avoid circular deps
     const { useCartStore } = await import('../store/cartStore');
     const cartStore = useCartStore.getState();
-    const hasItems = (cartStore.items?.length ?? 0) > 0;
+    const hasItems = (cartStore.cart?.items?.length ?? 0) > 0;
 
     if (hasItems) {
       const confirmed = window.confirm(
