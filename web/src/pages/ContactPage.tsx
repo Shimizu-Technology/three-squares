@@ -24,7 +24,7 @@ export default function ContactPage() {
   }, []);
 
   const storeEmail = appConfig?.store_info?.email || 'sales@bgpacific.com';
-  const storePhone = appConfig?.store_info?.phone || '671-777-1234';
+  const storePhone = appConfig?.store_info?.phone || '(671) 646-2652';
   const storePhoneTel = `tel:${storePhone.replace(/[^\d+]/g, '')}`;
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
@@ -237,9 +237,8 @@ export default function ContactPage() {
                     <div>
                       <h3 className="font-medium text-warm-900 mb-1">Visit Us</h3>
                       <address className="text-warm-600 text-sm not-italic leading-relaxed">
-                        121 E. Marine Corps Dr<br />
-                        Suite 1-103 & Suite 1-104<br />
-                        Hagåtña, Guam 96910
+                        416 Chalan San Antonio<br />
+                        Tamuning, GU 96913
                       </address>
                     </div>
                   </div>
