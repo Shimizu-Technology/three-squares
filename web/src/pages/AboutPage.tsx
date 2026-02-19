@@ -17,7 +17,7 @@ export default function AboutPage() {
       <div className="bg-warm">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24">
           <FadeIn direction="none">
-            <h1 className="text-4xl sm:text-5xl font-bold text-center mb-6 text-gray-900 tracking-tight">
+            <h1 className="text-4xl sm:text-5xl font-bold text-center mb-6 text-gray-900 tracking-tight leading-tight">
               About Three Squares
             </h1>
           </FadeIn>
