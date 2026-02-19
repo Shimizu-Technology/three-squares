@@ -23,6 +23,7 @@ import AdminInventoryPage from './pages/admin/AdminInventoryPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminVariantPresetsPage from './pages/admin/AdminVariantPresetsPage';
 import AdminCateringPage from './pages/admin/AdminCateringPage';
+import LocationPicker from './components/LocationPicker';
 import AdminLocationsPage from './pages/admin/AdminLocationsPage';
 import AdminPOSPage from './pages/admin/AdminPOSPage';
 import CheckoutPage from './pages/CheckoutPage';
@@ -440,6 +441,9 @@ function AppContent() {
           )}
         </nav>
         )}
+
+        {/* Location picker for ordering pages */}
+        {!isAdminPage && <LocationPicker />}
 
         {/* Routes with page transitions */}
         <AnimatePresence mode="wait">

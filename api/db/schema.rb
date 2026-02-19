@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_19_130000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -373,6 +373,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
   create_table "locations", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.string "address"
+    t.string "admin_email"
+    t.jsonb "admin_sms_phones", default: [], null: false
     t.datetime "created_at", null: false
     t.jsonb "hours_json", default: {}, null: false
     t.string "name", null: false
@@ -628,6 +630,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
   end
 
   create_table "users", force: :cascade do |t|
+    t.bigint "assigned_location_id"
     t.string "clerk_id"
     t.datetime "created_at", null: false
     t.string "email"
@@ -635,6 +638,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
     t.string "phone"
     t.string "role"
     t.datetime "updated_at", null: false
+    t.index ["assigned_location_id"], name: "index_users_on_assigned_location_id"
     t.index ["clerk_id"], name: "index_users_on_clerk_id", unique: true
     t.index ["email"], name: "index_users_on_email"
     t.index ["role"], name: "index_users_on_role"
@@ -686,4 +690,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
   add_foreign_key "product_variants", "products"
   add_foreign_key "refunds", "orders"
   add_foreign_key "refunds", "users"
+  add_foreign_key "users", "locations", column: "assigned_location_id"
 end

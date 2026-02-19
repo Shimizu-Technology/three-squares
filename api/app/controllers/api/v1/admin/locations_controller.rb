@@ -45,7 +45,7 @@ module Api
         end
 
         def location_params
-          params.require(:location).permit(:name, :slug, :address, :phone, :active, hours_json: {})
+          params.require(:location).permit(:name, :slug, :address, :phone, :active, :admin_email, hours_json: {}, admin_sms_phones: [])
         end
 
         def serialize_location(location)
@@ -56,7 +56,9 @@ module Api
             address: location.address,
             phone: location.phone,
             active: location.active,
-            hours_json: location.hours_json
+            hours_json: location.hours_json,
+            admin_sms_phones: location.admin_sms_phones,
+            admin_email: location.admin_email
           }
         end
       end

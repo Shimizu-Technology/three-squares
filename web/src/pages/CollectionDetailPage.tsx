@@ -7,6 +7,7 @@ import ProductCard from '../components/ProductCard';
 import { ProductGridSkeleton, PageHeaderSkeleton } from '../components/Skeleton';
 import FadeIn from '../components/animations/FadeIn';
 import Breadcrumbs from '../components/Breadcrumbs';
+import { useLocationStore } from '../store/locationStore';
 
 type Collection = ApiCollection;
 
@@ -29,6 +30,7 @@ export default function CollectionDetailPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [productType, setProductType] = useState('');
   const didScrollRef = useRef(false);
+  const { selectedLocation } = useLocationStore();
 
   // Derive product type filter options from actual products
   const productTypes = useMemo(() => {
@@ -43,7 +45,7 @@ export default function CollectionDetailPage() {
     if (slug) {
       fetchCollectionData();
     }
-  }, [slug, currentPage, searchQuery, productType]);
+  }, [slug, currentPage, searchQuery, productType, selectedLocation?.id]);
 
   useEffect(() => {
     if (!didScrollRef.current) {
@@ -64,6 +66,7 @@ export default function CollectionDetailPage() {
         per_page: 12,
         search: searchQuery || undefined,
         product_type: productType || undefined,
+        location_id: selectedLocation?.id,
       });
       setCollection(data.collection);
       setProducts(data.products);

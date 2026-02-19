@@ -42,6 +42,9 @@ export interface Order {
   shipping_state?: string;
   shipping_zip?: string;
   shipping_country?: string;
+  fulfillment_type?: string;
+  location_id?: number;
+  location_name?: string;
   tracking_number?: string;
   admin_notes?: string;
   notes?: string;

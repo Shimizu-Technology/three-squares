@@ -11,11 +11,13 @@ import type { ShippingAddress, ShippingMethod, AppConfig } from '../types/order'
 import type { Location } from '../services/api';
 import PlaceholderImage from '../components/ui/PlaceholderImage';
 import OptimizedImage from '../components/ui/OptimizedImage';
+import { useLocationStore } from '../store/locationStore';
 
 function CheckoutForm() {
   const navigate = useNavigate();
   const { getToken, isSignedIn, isLoaded: authLoaded } = useAuth();
   const { cart, clearCart, sessionId, fetchCart, validateCart, removeItem, isLoading: cartLoading } = useCartStore();
+  const { selectedLocation: storedLocation } = useLocationStore();
   const stripe = useStripe();
   const elements = useElements();
   
@@ -93,9 +95,13 @@ function CheckoutForm() {
         const config = await configApi.getConfig();
         setAppConfig(config);
         const locations = await locationsApi.getLocations();
-        setPickupLocations(locations.locations || []);
-        if ((locations.locations || []).length > 0) {
-          setPickupLocationId(locations.locations[0].id);
+        const locs = locations.locations || [];
+        setPickupLocations(locs);
+        // Pre-fill from location store, fall back to first location
+        if (storedLocation && locs.some((l: Location) => l.id === storedLocation.id)) {
+          setPickupLocationId(storedLocation.id);
+        } else if (locs.length > 0) {
+          setPickupLocationId(locs[0].id);
         }
       } catch (err) {
         console.error('Failed to load config:', err);
