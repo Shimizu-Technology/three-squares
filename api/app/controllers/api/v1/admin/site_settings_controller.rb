@@ -6,7 +6,7 @@ module Api
       class SiteSettingsController < ApplicationController
         include Authenticatable
         before_action :authenticate_request
-        before_action :require_admin!
+        before_action :require_owner!
 
         # GET /api/v1/admin/site_settings
         def show

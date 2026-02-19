@@ -3,7 +3,7 @@ module Api
     module Admin
       class VariantPresetsController < ApplicationController
         include Authenticatable
-        before_action :require_admin!
+        before_action :require_owner!
         before_action :set_preset, only: [ :show, :update, :destroy, :duplicate ]
 
         # GET /api/v1/admin/variant_presets

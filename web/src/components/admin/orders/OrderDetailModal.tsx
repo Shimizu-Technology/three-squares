@@ -10,7 +10,7 @@ interface OrderDetailModalProps {
   onUpdateOrder: (updates: { status: string; tracking_number: string | null; admin_notes: string | null }) => void;
   onQuickUpdateStatus: (orderId: number, newStatus: string) => void;
   onResendNotification: (orderId: number) => void;
-  onOpenRefundModal: () => void;
+  onOpenRefundModal?: () => void;
   storeEmail?: string;
 }
 
@@ -395,7 +395,7 @@ export default function OrderDetailModal({
               </svg>
               Email Customer
             </button>
-            {order.payment_status === 'paid' && (
+            {order.payment_status === 'paid' && onOpenRefundModal && (
               <button
                 type="button"
                 onClick={onOpenRefundModal}

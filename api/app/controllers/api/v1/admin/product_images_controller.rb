@@ -2,6 +2,7 @@ module Api
   module V1
     module Admin
       class ProductImagesController < BaseController
+        before_action :require_owner!
         before_action :set_product
         before_action :set_image, only: [ :show, :update, :destroy, :set_primary ]
 

@@ -81,11 +81,11 @@ module Authenticatable
   def find_or_create_user(clerk_id, email)
     user = User.find_or_create_by!(clerk_id: clerk_id) do |u|
       u.email = email
-      u.role = ADMIN_EMAILS.include?(email) ? "admin" : "customer"
+      u.role = ADMIN_EMAILS.include?(email) ? "owner" : "customer"
     end
 
     # Always sync admin status on login (handles users created before admin list was updated)
-    expected_role = ADMIN_EMAILS.include?(email) ? "admin" : user.role
+    expected_role = ADMIN_EMAILS.include?(email) ? "owner" : user.role
     user.update!(role: expected_role, email: email) if user.role != expected_role || user.email != email
 
     user
@@ -95,10 +95,21 @@ module Authenticatable
     render json: { error: message }, status: :unauthorized
   end
 
-  # Helper to check if user is admin
-  def require_admin!
-    render json: { error: "Forbidden" }, status: :forbidden unless current_user&.admin?
+  # Authorization helpers — granular RBAC levels
+  def require_owner!
+    render json: { error: "Owner access required" }, status: :forbidden unless current_user&.owner?
   end
+
+  def require_manager_or_above!
+    render json: { error: "Manager access required" }, status: :forbidden unless current_user&.manager_or_above?
+  end
+
+  def require_staff_or_above!
+    render json: { error: "Staff access required" }, status: :forbidden unless current_user&.staff_or_above?
+  end
+
+  # Backwards compatibility: require_admin! now means require_staff_or_above!
+  alias_method :require_admin!, :require_staff_or_above!
 
   # Helper to make authentication optional
   def authenticate_optional
