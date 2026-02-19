@@ -6,7 +6,7 @@ module Api
       class HomepageSectionsController < ApplicationController
         include Authenticatable
         before_action :authenticate_request
-        before_action :require_admin!
+        before_action :require_owner!
         before_action :set_section, only: %i[show update destroy]
 
         def index

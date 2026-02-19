@@ -2,6 +2,7 @@ module Api
   module V1
     module Admin
       class ProductsController < BaseController
+        before_action :require_owner!
         before_action :set_product, only: [ :show, :update, :destroy ]
 
         # GET /api/v1/admin/products

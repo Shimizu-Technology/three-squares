@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class ImportsController < BaseController
+        before_action :require_owner!
+
         # GET /api/v1/admin/imports
         def index
           imports = current_user.admin? ? Import.all : current_user.imports

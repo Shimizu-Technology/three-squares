@@ -102,6 +102,23 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   const [exporting, setExporting] = useState(false);
   const [summary, setSummary] = useState<OrdersSummaryResponse | null>(null);
 
+  // RBAC permissions
+  const [canRefund, setCanRefund] = useState(true);
+  const [canExport, setCanExport] = useState(true);
+
+  useEffect(() => {
+    const fetchPermissions = async () => {
+      try {
+        const token = await getToken();
+        if (!token) return;
+        const response = await authGet<{ permissions: { can_refund: boolean; can_export: boolean } }>('/me', getToken);
+        setCanRefund(response.data.permissions?.can_refund ?? true);
+        setCanExport(response.data.permissions?.can_export ?? true);
+      } catch { /* fallback to showing everything */ }
+    };
+    fetchPermissions();
+  }, [getToken]);
+
   const buildFilterParams = (): Record<string, unknown> => {
     const params: Record<string, unknown> = {};
     if (statusFilter !== 'all') params.status = statusFilter;
@@ -399,14 +416,16 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
             )}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={exportOrdersCsv}
-          disabled={exporting}
-          className="px-4 py-2.5 text-sm font-semibold border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50"
-        >
-          {exporting ? 'Exporting...' : 'Export CSV'}
-        </button>
+        {canExport && (
+          <button
+            type="button"
+            onClick={exportOrdersCsv}
+            disabled={exporting}
+            className="px-4 py-2.5 text-sm font-semibold border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50"
+          >
+            {exporting ? 'Exporting...' : 'Export CSV'}
+          </button>
+        )}
       </div>
 
       {queueStatusOptions.length > 0 && (
@@ -493,7 +512,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
           onUpdateOrder={updateOrder}
           onQuickUpdateStatus={quickUpdateStatus}
           onResendNotification={resendNotification}
-          onOpenRefundModal={() => setShowRefundModal(true)}
+          onOpenRefundModal={canRefund ? () => setShowRefundModal(true) : undefined}
           storeEmail={storeEmail}
         />
       )}

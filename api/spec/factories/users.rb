@@ -7,7 +7,20 @@ FactoryBot.define do
     role { "customer" }
 
     trait :admin do
-      role { "admin" }
+      role { "owner" }
+    end
+
+    trait :owner do
+      role { "owner" }
+    end
+
+    trait :manager do
+      role { "manager" }
+    end
+
+    trait :staff do
+      role { "staff" }
+      association :assigned_location, factory: :location
     end
   end
 end

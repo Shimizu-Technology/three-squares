@@ -2,6 +2,7 @@ module Api
   module V1
     module Admin
       class LocationsController < BaseController
+        before_action :require_owner!
         before_action :set_location, only: [ :show, :update, :destroy ]
 
         def index

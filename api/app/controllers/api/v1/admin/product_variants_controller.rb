@@ -2,6 +2,7 @@ module Api
   module V1
     module Admin
       class ProductVariantsController < BaseController
+        before_action :require_owner!
         before_action :set_product
         before_action :set_variant, only: [ :show, :update, :destroy ]
 

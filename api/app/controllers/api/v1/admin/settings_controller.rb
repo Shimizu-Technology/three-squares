@@ -5,7 +5,7 @@ module Api
     module Admin
       class SettingsController < ApplicationController
         include Authenticatable
-        before_action :require_admin!
+        before_action :require_owner!
 
         # GET /api/v1/admin/settings
         def show

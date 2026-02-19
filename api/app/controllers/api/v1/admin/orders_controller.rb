@@ -8,7 +8,8 @@ module Api
       COOKIE_COLLECTION_SLUGS = %w[cookies cookie-boxes mini-cookies].freeze
       include Authenticatable
         before_action :authenticate_request
-        before_action :require_admin!
+        before_action :require_staff_or_above!
+        before_action :require_manager_or_above!, only: [ :refund, :export, :summary ]
         before_action :set_order, only: [ :show, :update, :notify, :refund ]
 
       # GET /api/v1/admin/orders

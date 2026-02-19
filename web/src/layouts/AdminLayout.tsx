@@ -14,6 +14,18 @@ interface NavItem {
   icon: string;
 }
 
+interface Permissions {
+  can_manage_settings: boolean;
+  can_manage_products: boolean;
+  can_manage_users: boolean;
+  can_view_analytics: boolean;
+  can_manage_inventory: boolean;
+  can_refund: boolean;
+  can_export: boolean;
+  can_fulfill_orders: boolean;
+  can_use_pos: boolean;
+}
+
 // --- Route metadata for breadcrumbs + titles ---
 interface RouteMeta {
   title: string;
@@ -85,6 +97,8 @@ export default function AdminLayout() {
   const [isTabletSidebarCollapsed, setIsTabletSidebarCollapsed] = useState(true);
   const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
+  const [userRole, setUserRole] = useState<string>('customer');
+  const [permissions, setPermissions] = useState<Permissions | null>(null);
   const navScrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -127,6 +141,10 @@ export default function AdminLayout() {
           headers: { Authorization: `Bearer ${token}` }
         });
         setIsAdmin(response.data.admin || false);
+        setUserRole(response.data.role || 'customer');
+        if (response.data.permissions) {
+          setPermissions(response.data.permissions);
+        }
       } catch (error) {
         console.error('Error checking admin status:', error);
         setIsAdmin(false);
@@ -154,27 +172,28 @@ export default function AdminLayout() {
 
   if (!isAdmin) return null;
 
-  // --- Navigation groups ---
+  // --- Navigation groups (filtered by permissions) ---
+  const p = permissions;
   const mainNavigation: NavItem[] = [
-    { name: 'Dashboard', path: '/admin', icon: 'dashboard' },
-    { name: 'Orders',    path: '/admin/orders', icon: 'orders' },
-    { name: 'Products',  path: '/admin/products', icon: 'products' },
-    { name: 'Collections', path: '/admin/collections', icon: 'collections' },
-    { name: 'Locations', path: '/admin/locations', icon: 'locations' },
-    { name: 'Inventory', path: '/admin/inventory', icon: 'inventory' },
-    { name: 'Analytics', path: '/admin/analytics', icon: 'analytics' },
+    ...(p?.can_view_analytics ? [{ name: 'Dashboard', path: '/admin', icon: 'dashboard' }] : []),
+    ...(p?.can_fulfill_orders ? [{ name: 'Orders', path: '/admin/orders', icon: 'orders' }] : []),
+    ...(p?.can_manage_products ? [{ name: 'Products', path: '/admin/products', icon: 'products' }] : []),
+    ...(p?.can_manage_products ? [{ name: 'Collections', path: '/admin/collections', icon: 'collections' }] : []),
+    ...(p?.can_manage_settings ? [{ name: 'Locations', path: '/admin/locations', icon: 'locations' }] : []),
+    ...(p?.can_manage_inventory ? [{ name: 'Inventory', path: '/admin/inventory', icon: 'inventory' }] : []),
+    ...(p?.can_view_analytics ? [{ name: 'Analytics', path: '/admin/analytics', icon: 'analytics' }] : []),
   ];
   const specialNavigation: NavItem[] = [
-    { name: 'POS Mode', path: '/admin/pos', icon: 'pos' },
-    { name: 'Catering', path: '/admin/catering', icon: 'catering' },
-    { name: 'Pickup Queue', path: '/admin/orders/pickup-queue', icon: 'pickup_queue' },
-    { name: 'Shipping Queue', path: '/admin/orders/shipping-queue', icon: 'shipping_queue' },
+    ...(p?.can_use_pos ? [{ name: 'POS Mode', path: '/admin/pos', icon: 'pos' }] : []),
+    ...(p?.can_manage_settings ? [{ name: 'Catering', path: '/admin/catering', icon: 'catering' }] : []),
+    ...(p?.can_fulfill_orders ? [{ name: 'Pickup Queue', path: '/admin/orders/pickup-queue', icon: 'pickup_queue' }] : []),
+    ...(p?.can_fulfill_orders ? [{ name: 'Shipping Queue', path: '/admin/orders/shipping-queue', icon: 'shipping_queue' }] : []),
   ];
   const systemNavigation: NavItem[] = [
-    { name: 'Users',    path: '/admin/users', icon: 'users' },
-    { name: 'Import',   path: '/admin/import', icon: 'import' },
-    { name: 'Settings', path: '/admin/settings', icon: 'settings' },
-    { name: 'Variant Presets', path: '/admin/settings/variant-presets', icon: 'presets' },
+    ...(p?.can_manage_users ? [{ name: 'Users', path: '/admin/users', icon: 'users' }] : []),
+    ...(p?.can_manage_settings ? [{ name: 'Import', path: '/admin/import', icon: 'import' }] : []),
+    ...(p?.can_manage_settings ? [{ name: 'Settings', path: '/admin/settings', icon: 'settings' }] : []),
+    ...(p?.can_manage_settings ? [{ name: 'Variant Presets', path: '/admin/settings/variant-presets', icon: 'presets' }] : []),
   ];
 
   const NavSection = ({ title, items }: { title: string; items: NavItem[] }) => (
@@ -273,7 +292,7 @@ export default function AdminLayout() {
               <p className="text-sm font-semibold text-gray-900 truncate">
                 {user?.firstName || 'Admin'}
               </p>
-              <p className="text-xs text-gray-500 truncate">Administrator</p>
+              <p className="text-xs text-gray-500 truncate capitalize">{userRole}</p>
             </div>
           </div>
         </div>

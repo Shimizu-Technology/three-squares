@@ -2,6 +2,8 @@ module Api
   module V1
     module Admin
       class UploadsController < BaseController
+        before_action :require_owner!
+
         # POST /api/v1/admin/uploads
         # Upload a file and return the signed URL
         def create

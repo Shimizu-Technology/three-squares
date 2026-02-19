@@ -6,7 +6,7 @@ module Api
       class UsersController < ApplicationController
         include Authenticatable
         before_action :authenticate_request
-        before_action :require_admin!
+        before_action :require_owner!
         before_action :set_user, only: [ :show, :update ]
 
         # GET /api/v1/admin/users
@@ -29,6 +29,7 @@ module Api
             users: users.map { |user| user_json(user) },
             stats: {
               total: User.count,
+              owners: User.owners.count,
               admins: User.admins.count,
               customers: User.customers.count
             }
@@ -42,9 +43,18 @@ module Api
 
         # PATCH /api/v1/admin/users/:id
         def update
-          # Prevent removing your own admin access
-          if @user.id == current_user.id && params[:user][:role] == "customer"
-            return render json: { error: "You cannot remove your own admin access" }, status: :unprocessable_entity
+          new_role = params.dig(:user, :role)
+
+          # Prevent demoting yourself
+          if @user.id == current_user.id && new_role.present? && new_role != "owner"
+            return render json: { error: "You cannot demote yourself" }, status: :unprocessable_entity
+          end
+
+          # Prevent removing the last owner
+          if @user.owner? && new_role.present? && new_role != "owner"
+            if User.owners.count <= 1
+              return render json: { error: "Cannot remove the last owner" }, status: :unprocessable_entity
+            end
           end
 
           if @user.update(user_params)

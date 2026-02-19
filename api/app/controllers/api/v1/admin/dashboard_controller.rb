@@ -8,7 +8,7 @@ module Api
 
         include Authenticatable
         before_action :authenticate_request
-        before_action :require_admin!
+        before_action :require_manager_or_above!
 
         # GET /api/v1/admin/dashboard/stats
         def stats

@@ -5,6 +5,7 @@ module Api
     module Admin
       # Admin endpoint for managing catering inquiries.
       class CateringController < BaseController
+        before_action :require_owner!
         before_action :set_inquiry, only: [:show, :update, :destroy]
 
         # GET /api/v1/admin/catering
