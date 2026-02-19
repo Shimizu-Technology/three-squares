@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
 import { authDelete, authGet, authPost, authPut } from '../../services/authApi';
+import api from '../../services/api';
 
 interface Collection {
   id: number;
@@ -23,6 +24,7 @@ interface Location {
   auto_deactivate: boolean;
   description: string | null;
   menu_collection_id: number | null;
+  qr_code_url: string | null;
   menu_collection: { id: number; name: string; slug: string } | null;
 }
 
@@ -89,6 +91,141 @@ function LocationTypeBadge({ type }: { type: string }) {
   );
 }
 
+interface QrModalData {
+  location: Location;
+  qrCode: string;
+  menuUrl: string;
+}
+
+function QrCodeModal({
+  data,
+  onClose,
+  getToken,
+}: {
+  data: QrModalData;
+  onClose: () => void;
+  getToken: () => Promise<string | null>;
+}) {
+  const printRef = useRef<HTMLDivElement>(null);
+
+  const handleDownload = async (fmt: 'png' | 'svg') => {
+    try {
+      const token = await getToken();
+      const response = await api.post(
+        `/admin/locations/${data.location.id}/generate_qr`,
+        { format: fmt },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          responseType: 'blob',
+        }
+      );
+      const blob = new Blob([response.data]);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `location-${data.location.slug}-qr.${fmt}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error(`Failed to download ${fmt.toUpperCase()}`);
+    }
+  };
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(data.menuUrl);
+      toast.success('URL copied to clipboard');
+    } catch {
+      toast.error('Failed to copy URL');
+    }
+  };
+
+  const escapeHtml = (str: string) =>
+    str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+  const handlePrint = () => {
+    const printContent = printRef.current;
+    if (!printContent) return;
+    const win = window.open('', '_blank');
+    if (!win) return;
+    const safeName = escapeHtml(data.location.name);
+    const safeUrl = escapeHtml(data.menuUrl);
+    win.document.write(`
+      <html>
+        <head>
+          <title>QR Code - ${safeName}</title>
+          <style>
+            body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; font-family: sans-serif; }
+            img { max-width: 400px; }
+            h2 { margin-bottom: 8px; }
+            p { color: #666; font-size: 14px; }
+          </style>
+        </head>
+        <body>
+          <h2>${safeName}</h2>
+          <img src="${escapeHtml(data.qrCode)}" alt="QR Code" />
+          <p>${safeUrl}</p>
+        </body>
+      </html>
+    `);
+    win.document.close();
+    win.onload = () => { win.print(); win.close(); };
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={onClose}>
+      <div
+        className="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold text-gray-900">QR Code</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+        </div>
+
+        <div ref={printRef} className="flex flex-col items-center">
+          <p className="text-sm font-medium text-gray-700 mb-3">{data.location.name}</p>
+          <img src={data.qrCode} alt={`QR code for ${data.location.name}`} className="w-64 h-64" />
+        </div>
+
+        <div className="mt-4 bg-gray-50 rounded-lg p-3">
+          <p className="text-xs text-gray-500 mb-1">Menu URL</p>
+          <p className="text-sm text-gray-800 font-mono break-all">{data.menuUrl}</p>
+        </div>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button
+            onClick={() => handleDownload('png')}
+            className="px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+          >
+            Download PNG
+          </button>
+          <button
+            onClick={() => handleDownload('svg')}
+            className="px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+          >
+            Download SVG
+          </button>
+          <button
+            onClick={handleCopyUrl}
+            className="px-3 py-2 text-sm rounded-lg border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+          >
+            Copy URL
+          </button>
+          <button
+            onClick={handlePrint}
+            className="px-3 py-2 text-sm rounded-lg border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+          >
+            Print
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminLocationsPage() {
   const { getToken } = useAuth();
   const [locations, setLocations] = useState<Location[]>([]);
@@ -101,6 +238,8 @@ export default function AdminLocationsPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editForm, setEditForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [qrModal, setQrModal] = useState<QrModalData | null>(null);
+  const [generatingQrId, setGeneratingQrId] = useState<number | null>(null);
 
   const fetchLocations = useCallback(async () => {
     try {
@@ -246,6 +385,26 @@ export default function AdminLocationsPage() {
     } catch (error) {
       console.error('Failed to auto-deactivate:', error);
       toast.error('Failed to auto-deactivate expired locations');
+    }
+  };
+
+  const handleGenerateQr = async (location: Location) => {
+    try {
+      setGeneratingQrId(location.id);
+      const response = await authPost<{ data: { qr_code: string; menu_url: string } }>(
+        `/admin/locations/${location.id}/generate_qr`,
+        { format: 'data_uri' },
+        getToken
+      );
+      const { qr_code, menu_url } = response.data.data;
+      setQrModal({ location, qrCode: qr_code, menuUrl: menu_url });
+      // Refresh to update qr_code_url on the location
+      await fetchLocations();
+    } catch (error) {
+      console.error('Failed to generate QR code:', error);
+      toast.error('Failed to generate QR code');
+    } finally {
+      setGeneratingQrId(null);
     }
   };
 
@@ -501,6 +660,19 @@ export default function AdminLocationsPage() {
                         </button>
                         <button
                           type="button"
+                          onClick={() => handleGenerateQr(location)}
+                          disabled={generatingQrId === location.id}
+                          className="px-3 py-1.5 text-sm rounded-lg border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-100 disabled:opacity-50 flex items-center gap-1"
+                        >
+                          {location.qr_code_url && (
+                            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M3 11h8V3H3v8zm2-6h4v4H5V5zm8-2v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4zm13-2h-2v2h2v-2zm0 4h-2v2h2v-2zm-4-4h-2v2h2v-2zm4 4h2v2h-2v-2zm0-4h2v2h-2v-2zm-4 4h-2v2h2v-2z"/>
+                            </svg>
+                          )}
+                          {generatingQrId === location.id ? 'Generating...' : 'QR Code'}
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => startEditing(location)}
                           className="px-3 py-1.5 text-sm rounded-lg border border-blue-200 bg-blue-50 text-blue-700"
                         >
@@ -523,6 +695,14 @@ export default function AdminLocationsPage() {
           </div>
         )}
       </div>
+
+      {qrModal && (
+        <QrCodeModal
+          data={qrModal}
+          onClose={() => setQrModal(null)}
+          getToken={getToken}
+        />
+      )}
     </div>
   );
 }

@@ -3,7 +3,7 @@ module Api
     module Admin
       class LocationsController < BaseController
         before_action :require_owner!
-        before_action :set_location, only: [ :show, :update, :destroy, :toggle_active ]
+        before_action :set_location, only: [ :show, :update, :destroy, :toggle_active, :generate_qr ]
 
         def index
           render_success(Location.by_name.map { |location| serialize_location(location) })
@@ -45,6 +45,58 @@ module Api
             @location.activate!
           end
           render_success(serialize_location(@location), message: "Location #{@location.active? ? 'activated' : 'deactivated'} successfully")
+        end
+
+        def generate_qr
+          base_url = params[:base_url].presence || ENV.fetch("FRONTEND_URL", "https://three-squares-web.netlify.app")
+          format = params[:format].presence || "data_uri"
+
+          # Validate base_url against allowed domains to prevent malicious QR codes
+          allowed_origins = (ENV["ALLOWED_ORIGINS"] || "").split(",").map(&:strip)
+          allowed_origins << ENV.fetch("FRONTEND_URL", "https://three-squares-web.netlify.app")
+          allowed_origins << "http://localhost:5173"
+          allowed_origins << "http://localhost:5174"
+          allowed_origins.uniq!
+
+          begin
+            parsed = URI.parse(base_url)
+            base_origin = "#{parsed.scheme}://#{parsed.host}#{parsed.port && ![ 80, 443 ].include?(parsed.port) ? ":#{parsed.port}" : ""}"
+          rescue URI::InvalidURIError
+            return render json: { error: "Invalid base_url" }, status: :unprocessable_entity
+          end
+
+          unless allowed_origins.any? { |origin| URI.parse(origin).host == parsed.host && URI.parse(origin).scheme == parsed.scheme }
+            return render json: { error: "Invalid base_url — must match an allowed origin" }, status: :unprocessable_entity
+          end
+
+          service = QrCodeService.new(@location, base_url: base_url)
+
+          # Persist the menu URL on the location
+          @location.update!(qr_code_url: service.menu_url)
+
+          case format
+          when "png"
+            send_data(
+              service.to_png,
+              type: "image/png",
+              disposition: "attachment",
+              filename: "location-#{@location.slug}-qr.png"
+            )
+          when "svg"
+            send_data(
+              service.to_svg,
+              type: "image/svg+xml",
+              disposition: "inline",
+              filename: "location-#{@location.slug}-qr.svg"
+            )
+          when "data_uri"
+            render_success({
+              qr_code: service.to_data_uri,
+              menu_url: service.menu_url
+            })
+          else
+            render_error("Invalid format. Use 'png', 'svg', or 'data_uri'.")
+          end
         end
 
         def auto_deactivate_expired
