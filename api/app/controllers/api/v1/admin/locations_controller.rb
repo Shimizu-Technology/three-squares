@@ -3,7 +3,7 @@ module Api
     module Admin
       class LocationsController < BaseController
         before_action :require_owner!
-        before_action :set_location, only: [ :show, :update, :destroy, :toggle_active, :generate_qr ]
+        before_action :set_location, only: [ :show, :update, :destroy, :toggle_active, :generate_qr, :stats, :duplicate ]
 
         def index
           render_success(Location.by_name.map { |location| serialize_location(location) })
@@ -96,6 +96,40 @@ module Api
             })
           else
             render_error("Invalid format. Use 'png', 'svg', or 'data_uri'.")
+          end
+        end
+
+        def stats
+          orders = @location.orders
+          total_orders = orders.count
+          billable_orders = orders.where.not(status: [ "cancelled", "refunded" ])
+          total_revenue = billable_orders.sum(:total)
+          billable_count = billable_orders.count
+          average_order_value = billable_count > 0 ? (total_revenue.to_f / billable_count).round(2) : 0
+
+          orders_by_status = orders.group(:status).count
+
+          render_success({
+            total_orders: total_orders,
+            total_revenue: total_revenue.to_f,
+            average_order_value: average_order_value,
+            orders_by_status: orders_by_status
+          })
+        end
+
+        def duplicate
+          new_location = @location.dup
+          new_location.name = "#{@location.name} (Copy)"
+          new_location.slug = "#{@location.slug}-copy-#{SecureRandom.hex(3)}"
+          new_location.starts_at = nil
+          new_location.ends_at = nil
+          new_location.active = false
+          new_location.qr_code_url = nil
+
+          if new_location.save
+            render_created(serialize_location(new_location))
+          else
+            render_error("Failed to duplicate location", errors: new_location.errors.full_messages)
           end
         end
 
