@@ -38,10 +38,15 @@ export default function AboutPage() {
             <h2 className="text-3xl font-bold mb-6 text-gray-900 tracking-tight">Our Story</h2>
             <div className="max-w-prose">
               <p className="text-lg text-gray-700 mb-6 leading-relaxed">
-                Three Squares is a subsidiary of <strong>B&G Pacific LLC</strong>, bringing over 50 years of 
-                combined experience in food and beverage to Guam. Founded by Marie Guerrero (CEO) and 
-                Mark Borja (Managing Director), we're passionate about serving authentic Guam-style 
-                comfort food that brings people together.
+                Locally owned and operated since 2016, Three Squares is a subsidiary of <strong>B&G 
+                Pacific LLC</strong>, bringing over 50 years of combined experience in food and beverage 
+                to Guam. Founded by Marie Guerrero (CEO) and Mark Borja (Managing Director), we&apos;re 
+                passionate about serving authentic Guam-style comfort food that brings people together.
+              </p>
+              <p className="text-lg text-gray-700 mb-6 leading-relaxed">
+                B&G Pacific also encompasses <strong>Everything Guam LLC</strong>, the home of our 
+                Latte Stone Cookies — artisan shortbread cookies baked in small batches and cut in the 
+                iconic shape of the latte stone. We&apos;re sharing Guam with the world, one cookie at a time.
               </p>
               <p className="text-lg text-gray-700 leading-relaxed">
                 Our menu celebrates the diverse culinary traditions of Guam — from traditional Chamorro 

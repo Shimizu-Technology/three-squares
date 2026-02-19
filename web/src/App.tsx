@@ -510,7 +510,7 @@ function AppContent() {
                 />
                 <p className="text-[11px] uppercase tracking-wide text-warm-500 mt-2">by B&amp;G Pacific</p>
                 <p className="text-warm-500 text-sm mt-4 leading-relaxed">
-                  Good Food, Good Mood, Good Service<br />
+                  Good Food. Great Vibes. Quality Service.<br />
                   Guam-style comfort food & catering
                 </p>
                 <div className="flex space-x-4 mt-4">
@@ -603,6 +603,9 @@ function AppContent() {
                   </a><br />
                   <a href="https://wa.me/16718646656" className="hover:text-warm-900 transition">
                     WhatsApp: (671) 864-6656
+                  </a><br />
+                  <a href="mailto:sales@bgpacific.com" className="hover:text-warm-900 transition">
+                    sales@bgpacific.com
                   </a>
                 </address>
               </div>
