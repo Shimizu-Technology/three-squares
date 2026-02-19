@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import type { Product } from '../services/api';
 import { productsApi, collectionsApi, locationsApi } from '../services/api';
+import { useLocationStore } from '../store/locationStore';
 import ProductCard from '../components/ProductCard';
 import FadeIn from '../components/animations/FadeIn';
 import { PageHeaderSkeleton, ProductGridSkeleton } from '../components/Skeleton';
@@ -37,7 +38,8 @@ export default function ProductsPage() {
   const collection = searchParams.get('collection') || '';
   const productType = searchParams.get('type') || '';
   const sort = searchParams.get('sort') || '';
-  const locationId = searchParams.get('location_id') || '';
+  const { selectedLocation } = useLocationStore();
+  const locationId = searchParams.get('location_id') || (selectedLocation?.id ? String(selectedLocation.id) : '');
   const businessLine = searchParams.get('business_line') || '';
   const businessLineContent = (() => {
     if (businessLine === 'three_squares') {
