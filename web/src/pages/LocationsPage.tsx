@@ -41,7 +41,7 @@ const locations: Location[] = [
     hours: [
       { days: 'Daily', time: '10:00 AM - 10:00 PM' },
     ],
-    image: '/images/Three_Squares_%40_Donki.png',
+    image: '/images/three-squares-donki.png',
     note: 'Open until sold out',
   },
 ];
