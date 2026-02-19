@@ -95,9 +95,8 @@ module Webhooks
 
       if target[:type] == "Order"
         SendOrderConfirmationEmailJob.perform_later(record.id)
-        SendOrderSmsJob.perform_later(record.id, "placed")
-        SendAdminOrderSmsJob.perform_later(record.id)
-        Rails.logger.info "📧 Order confirmation (email + SMS) enqueued for Order ##{record.id}"
+        # SMS already sent in checkout flow — don't double-send here
+        Rails.logger.info "📧 Order confirmation email enqueued for Order ##{record.id}"
       end
     rescue StandardError => e
       Rails.logger.error "❌ Failed to update payment target ##{record&.id}: #{e.message}"

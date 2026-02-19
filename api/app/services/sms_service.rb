@@ -55,7 +55,8 @@ class SmsService
 
     # Send SMS to admin phones when a new order comes in
     def send_admin_new_order(order)
-      return skip_result("SMS notifications disabled") unless sms_enabled?
+      return skip_result("SMS not configured") unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
+      return skip_result("SMS notifications disabled") unless SiteSetting.instance.send_sms_notifications
 
       settings = SiteSetting.instance
       admin_phones = settings.admin_sms_phones || []
@@ -79,7 +80,8 @@ class SmsService
     def sms_enabled?
       return false unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
 
-      SiteSetting.instance.send_sms_notifications
+      settings = SiteSetting.instance
+      settings.send_sms_notifications && settings.sms_order_updates
     end
 
     def send_sms(to:, body:, context: nil)
@@ -128,13 +130,19 @@ class SmsService
     def normalize_phone(phone)
       digits = phone.to_s.gsub(/\D/, "")
 
-      # Guam numbers: 671XXXXXXX (10 digits) or +1671XXXXXXX (11 digits)
       case digits.length
       when 7
+        # Local Guam number (no area code) — prepend +1671
         "+1671#{digits}"
       when 10
+        # US/Guam number with area code — prepend +1
         "+1#{digits}"
       when 11
+        # Already has country code (1) — prepend +
+        return nil unless digits.start_with?("1")
+        "+#{digits}"
+      when 12..15
+        # International number with country code — assume already complete
         "+#{digits}"
       else
         nil
