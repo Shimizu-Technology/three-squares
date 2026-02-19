@@ -589,7 +589,7 @@ missing_variant_products.find_each do |product|
     weight_oz: product.weight_oz,
     is_default: true
   )
-  variant.skip_weight_validation = true
+  variant.skip_weight_validation = true unless product.allow_shipping?
   variant.save!
   backfilled_variant_count += 1
 end
