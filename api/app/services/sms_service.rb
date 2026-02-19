@@ -53,6 +53,74 @@ class SmsService
       send_sms(to: order.customer_phone, body: message, context: "order_placed:#{order.id}")
     end
 
+    # Send SMS when order is being processed/packed (shipping orders)
+    def send_order_processing(order)
+      return skip_result("No customer phone") unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled") unless sms_enabled?
+
+      message = "Three Squares: Your order ##{order.order_number} is now being packed " \
+                "and prepared for shipment! We'll send tracking info once it ships."
+
+      send_sms(to: order.customer_phone, body: message, context: "order_processing:#{order.id}")
+    end
+
+    # Send SMS when order ships (shipping orders)
+    def send_order_shipped(order)
+      return skip_result("No customer phone") unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled") unless sms_enabled?
+
+      tracking = order.tracking_number.present? ? " Tracking: #{order.tracking_number}" : ""
+      message = "Three Squares: Your order ##{order.order_number} has shipped!#{tracking} " \
+                "We'll notify you when it's delivered."
+
+      send_sms(to: order.customer_phone, body: message, context: "order_shipped:#{order.id}")
+    end
+
+    # Send SMS when order is picked up
+    def send_order_picked_up(order)
+      return skip_result("No customer phone") unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled") unless sms_enabled?
+
+      message = "Three Squares: Your order ##{order.order_number} has been picked up. " \
+                "Thank you for choosing Three Squares! Enjoy your meal."
+
+      send_sms(to: order.customer_phone, body: message, context: "order_picked_up:#{order.id}")
+    end
+
+    # Send SMS when order is delivered
+    def send_order_delivered(order)
+      return skip_result("No customer phone") unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled") unless sms_enabled?
+
+      message = "Three Squares: Your order ##{order.order_number} has been delivered! " \
+                "Thank you for choosing Three Squares."
+
+      send_sms(to: order.customer_phone, body: message, context: "order_delivered:#{order.id}")
+    end
+
+    # Send SMS when order is cancelled
+    def send_order_cancelled(order)
+      return skip_result("No customer phone") unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled") unless sms_enabled?
+
+      message = "Three Squares: Your order ##{order.order_number} has been cancelled. " \
+                "If you were charged, a refund will be processed. Questions? Call #{store_phone}."
+
+      send_sms(to: order.customer_phone, body: message, context: "order_cancelled:#{order.id}")
+    end
+
+    # Send SMS for refund
+    def send_refund_notification(order, refund_amount_cents)
+      return skip_result("No customer phone") unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled") unless sms_enabled?
+
+      amount = format_price(refund_amount_cents)
+      message = "Three Squares: A refund of #{amount} USD has been processed for " \
+                "order ##{order.order_number}. Allow 5-10 business days for it to appear."
+
+      send_sms(to: order.customer_phone, body: message, context: "refund:#{order.id}")
+    end
+
     # Send SMS to admin phones when a new order comes in
     def send_admin_new_order(order)
       return skip_result("SMS not configured") unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
@@ -151,6 +219,10 @@ class SmsService
 
     def format_price(cents)
       "%.2f" % (cents.to_i / 100.0)
+    end
+
+    def store_phone
+      SiteSetting.instance.store_phone.presence || "671-646-2652"
     end
 
     def skip_result(reason)

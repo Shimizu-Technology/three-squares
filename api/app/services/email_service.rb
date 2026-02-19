@@ -160,6 +160,72 @@ class EmailService
     end
   end
 
+  # Send order confirmed/preparing email (pickup orders)
+  def self.send_order_confirmed_email(order)
+    return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
+
+    location_name = order.location&.name || "Three Squares"
+    send_status_email(
+      order: order,
+      subject: "Your Order is Being Prepared! - Order ##{order.order_number}",
+      heading: "We're Preparing Your Order!",
+      message: "Great news! Your order is now being prepared at #{location_name}. We'll send you another notification when it's ready for pickup.",
+      color: "#2563EB"
+    )
+  end
+
+  # Send order processing email (shipping orders)
+  def self.send_order_processing_email(order)
+    return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
+
+    send_status_email(
+      order: order,
+      subject: "Your Order is Being Packed! - Order ##{order.order_number}",
+      heading: "Your Order is Being Packed!",
+      message: "Great news! Your order is now being packed and prepared for shipment. We'll send you tracking information once it ships.",
+      color: "#2563EB"
+    )
+  end
+
+  # Send order picked up confirmation email
+  def self.send_order_picked_up_email(order)
+    return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
+
+    send_status_email(
+      order: order,
+      subject: "Order Picked Up - Thank You! - Order ##{order.order_number}",
+      heading: "Thank You for Picking Up Your Order!",
+      message: "Your order has been picked up. We hope you enjoy everything! Thank you for choosing Three Squares.",
+      color: "#16A34A"
+    )
+  end
+
+  # Send order delivered confirmation email
+  def self.send_order_delivered_email(order)
+    return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
+
+    send_status_email(
+      order: order,
+      subject: "Your Order Has Been Delivered! - Order ##{order.order_number}",
+      heading: "Your Order Has Been Delivered!",
+      message: "Your order has been delivered. We hope you love everything! Thank you for choosing Three Squares.",
+      color: "#16A34A"
+    )
+  end
+
+  # Send order cancelled email
+  def self.send_order_cancelled_email(order)
+    return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
+
+    send_status_email(
+      order: order,
+      subject: "Order Cancelled - Order ##{order.order_number}",
+      heading: "Your Order Has Been Cancelled",
+      message: "Your order ##{order.order_number} has been cancelled. If you paid for this order, a refund will be processed automatically. If you have any questions, please don't hesitate to reach out.",
+      color: "#DC2626"
+    )
+  end
+
   # Send contact form submission notification to admin
   # @param submission [ContactSubmission] - The contact form submission
   # @return [Hash] - { success: boolean, message_id: string, error: string }
@@ -260,6 +326,115 @@ class EmailService
       Rails.logger.error "Email Error: #{e.class} - #{e.message}"
       { success: false, error: "Failed to send catering notification" }
     end
+  end
+
+  # Generic status update email sender — used by confirmed, processing, picked_up, delivered, cancelled
+  def self.send_status_email(order:, subject:, heading:, message:, color:)
+    begin
+      params = {
+        from: from_address,
+        to: [ order.email ],
+        subject: subject,
+        html: status_update_html(order: order, heading: heading, message: message, color: color)
+      }
+
+      response = Resend::Emails.send(params)
+
+      Rails.logger.info "✅ Status email sent to #{order.email} (#{heading} - Order ##{order.order_number})"
+      { success: true, message_id: response["id"] }
+
+    rescue Resend::Error => e
+      if Rails.env.development? && e.message.include?("domain is not verified")
+        Rails.logger.info "ℹ️  Resend domain not verified (expected in development): #{e.message}"
+      else
+        Rails.logger.error "Resend Error sending status email: #{e.message}"
+      end
+      { success: false, error: e.message }
+    rescue StandardError => e
+      Rails.logger.error "Email Error: #{e.class} - #{e.message}"
+      { success: false, error: "Failed to send status email" }
+    end
+  end
+
+  # Reusable HTML template for order status update emails
+  def self.status_update_html(order:, heading:, message:, color:)
+    contact_email = store_contact_email
+    contact_phone = store_contact_phone
+
+    <<~HTML
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>#{CGI.escapeHTML(heading)}</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 20px 0;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+
+                <!-- Header -->
+                <tr>
+                  <td style="background-color: #C1191F; padding: 32px 24px; text-align: center;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0,0,0,0.25);">Three Squares</h1>
+                    <p style="color: #FFE08A; margin: 8px 0 0 0; font-size: 14px; font-weight: 600;">Chamorro Pride. Island Style.</p>
+                  </td>
+                </tr>
+
+                <!-- Status Banner -->
+                <tr>
+                  <td style="padding: 40px 30px; text-align: center;">
+                    <div style="background-color: #{color}10; border: 2px solid #{color}; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                      <h2 style="color: #{color}; margin: 0; font-size: 24px;">#{CGI.escapeHTML(heading)}</h2>
+                    </div>
+                    <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{order.order_number}</p>
+                    <p style="color: #9CA3AF; margin: 5px 0 0 0; font-size: 14px;">Placed on #{order.created_at.strftime('%B %d, %Y')}</p>
+                  </td>
+                </tr>
+
+                <!-- Message -->
+                <tr>
+                  <td style="padding: 0 30px 30px 30px;">
+                    <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0;">#{CGI.escapeHTML(message)}</p>
+                  </td>
+                </tr>
+
+                <!-- Order Items Summary -->
+                <tr>
+                  <td style="padding: 0 30px 30px 30px;">
+                    <h3 style="color: #111827; margin: 0 0 15px 0; font-size: 18px; font-weight: 600;">Your Order:</h3>
+                    <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #E5E7EB; border-radius: 8px; overflow: hidden;">
+                      <tbody>
+                        #{order_items_html(order)}
+                      </tbody>
+                      <tfoot>
+                        <tr style="background-color: #F9FAFB; border-top: 2px solid #E5E7EB;">
+                          <td colspan="2" style="padding: 15px; text-align: right; font-size: 16px; color: #111827; font-weight: bold;">Total:</td>
+                          <td style="padding: 15px; text-align: right; font-size: 16px; color: #C1191F; font-weight: bold;">$#{format_price(order.total_cents)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
+                    <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
+                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
+                    <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    HTML
   end
 
   private

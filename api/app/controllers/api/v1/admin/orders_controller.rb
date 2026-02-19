@@ -78,23 +78,12 @@ module Api
         old_status = @order.status
 
         if @order.update(order_update_params)
-          # Handle status changes
+          # Handle status changes — send notifications via both channels
           if @order.saved_change_to_status?
-            case @order.status
-            when "confirmed"
-              # Send confirmed SMS to customer
-              SendOrderSmsJob.perform_later(@order.id, "confirmed")
-            when "shipped"
-              # Send shipping notification with tracking
-              SendOrderShippedEmailJob.perform_later(@order.id) if @order.tracking_number.present?
-            when "ready"
-              # Send ready for pickup notification (email + SMS)
-              SendOrderReadyEmailJob.perform_later(@order.id)
-              SendOrderSmsJob.perform_later(@order.id, "ready")
-            when "cancelled"
-              # Restore inventory when order is cancelled
-              restore_inventory(@order, current_user)
-            end
+            send_status_notifications(@order)
+
+            # Restore inventory when order is cancelled
+            restore_inventory(@order, current_user) if @order.status == "cancelled"
           end
 
           render json: {
@@ -107,23 +96,15 @@ module Api
       end
 
       # POST /api/v1/admin/orders/:id/notify
-      # Resend notification email to customer
+      # Resend notification to customer (email + SMS) for current status
       def notify
-        case @order.status
-        when "shipped"
-          if @order.tracking_number.present?
-            SendOrderShippedEmailJob.perform_later(@order.id)
-            render json: { message: "Shipping notification sent to customer" }
-          else
-            render json: { error: "Order has no tracking number" }, status: :unprocessable_entity
-          end
-        when "ready"
-          SendOrderReadyEmailJob.perform_later(@order.id)
-          SendOrderSmsJob.perform_later(@order.id, "ready")
-          render json: { message: "Ready for pickup notification sent to customer (email + SMS)" }
-        else
-          render json: { error: "Cannot send notification for orders with status '#{@order.status}'" }, status: :unprocessable_entity
+        if @order.status.in?(%w[pending cancelled])
+          render json: { error: "Cannot resend notification for '#{@order.status}' orders" }, status: :unprocessable_entity
+          return
         end
+
+        send_status_notifications(@order)
+        render json: { message: "Notification resent for status '#{@order.status}' (email + SMS)" }
       end
 
       # POST /api/v1/admin/orders/:id/refund
@@ -191,8 +172,14 @@ module Api
             end
           end
 
-          # Send refund notification email
-          EmailService.send_refund_notification(@order, refund.amount_cents, refund.reason)
+          # Send refund notifications (email + SMS)
+          settings = SiteSetting.instance
+          if settings.enable_order_emails && @order.customer_email.present?
+            EmailService.send_refund_notification(@order, refund.amount_cents, refund.reason)
+          end
+          if settings.enable_order_sms && @order.customer_phone.present?
+            SmsService.send_refund_notification(@order, refund.amount_cents)
+          end
 
           render json: {
             message: "Refund processed successfully",
@@ -213,6 +200,54 @@ module Api
 
 
       private
+
+      # Send email + SMS notifications for the current order status.
+      # Respects enable_order_emails / enable_order_sms toggles independently.
+      def send_status_notifications(order)
+        settings = SiteSetting.instance
+        emails_on = settings.enable_order_emails
+        sms_on = settings.enable_order_sms
+
+        has_email = order.customer_email.present?
+        has_phone = order.customer_phone.present?
+
+        case order.status
+        when "confirmed"
+          # Pickup flow: order is being prepared
+          SendOrderStatusEmailJob.perform_later(order.id, "confirmed") if emails_on && has_email
+          SendOrderSmsJob.perform_later(order.id, "confirmed") if sms_on && has_phone
+
+        when "processing"
+          # Shipping flow: order is being packed
+          SendOrderStatusEmailJob.perform_later(order.id, "processing") if emails_on && has_email
+          SendOrderSmsJob.perform_later(order.id, "processing") if sms_on && has_phone
+
+        when "ready"
+          # Pickup flow: ready for pickup
+          SendOrderReadyEmailJob.perform_later(order.id) if emails_on && has_email
+          SendOrderSmsJob.perform_later(order.id, "ready") if sms_on && has_phone
+
+        when "shipped"
+          # Shipping flow: shipped with optional tracking
+          SendOrderShippedEmailJob.perform_later(order.id) if emails_on && has_email
+          SendOrderSmsJob.perform_later(order.id, "shipped") if sms_on && has_phone
+
+        when "picked_up"
+          # Pickup flow: customer picked up
+          SendOrderStatusEmailJob.perform_later(order.id, "picked_up") if emails_on && has_email
+          SendOrderSmsJob.perform_later(order.id, "picked_up") if sms_on && has_phone
+
+        when "delivered"
+          # Shipping flow: delivered
+          SendOrderStatusEmailJob.perform_later(order.id, "delivered") if emails_on && has_email
+          SendOrderSmsJob.perform_later(order.id, "delivered") if sms_on && has_phone
+
+        when "cancelled"
+          # Both flows: cancelled
+          SendOrderStatusEmailJob.perform_later(order.id, "cancelled") if emails_on && has_email
+          SendOrderSmsJob.perform_later(order.id, "cancelled") if sms_on && has_phone
+        end
+      end
 
       def filtered_orders_query
         orders_query = Order
