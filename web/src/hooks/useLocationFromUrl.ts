@@ -92,7 +92,20 @@ export function useLocationFromUrl(): UseLocationFromUrlResult {
     };
   }, [locationSlug, locations, setSelectedLocation, setLocations]);
 
-  const clearUrlLocation = () => {
+  const clearUrlLocation = async () => {
+    // Import cartStore dynamically to avoid circular deps
+    const { useCartStore } = await import('../store/cartStore');
+    const cartStore = useCartStore.getState();
+    const hasItems = (cartStore.items?.length ?? 0) > 0;
+
+    if (hasItems) {
+      const confirmed = window.confirm(
+        'Changing locations will clear your cart. Continue?'
+      );
+      if (!confirmed) return;
+      await cartStore.clearCart();
+    }
+
     resolvedSlugRef.current = null;
     const params = new URLSearchParams(searchParams);
     params.delete('location');
