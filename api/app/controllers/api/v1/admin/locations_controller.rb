@@ -51,6 +51,17 @@ module Api
           base_url = params[:base_url].presence || ENV.fetch("FRONTEND_URL", "https://three-squares-web.netlify.app")
           format = params[:format].presence || "data_uri"
 
+          # Validate base_url against allowed domains to prevent malicious QR codes
+          allowed_origins = (ENV["ALLOWED_ORIGINS"] || "").split(",").map(&:strip)
+          allowed_origins << ENV.fetch("FRONTEND_URL", "https://three-squares-web.netlify.app")
+          allowed_origins << "http://localhost:5173"
+          allowed_origins << "http://localhost:5174"
+          allowed_origins.uniq!
+
+          unless allowed_origins.any? { |origin| base_url.start_with?(origin) }
+            return render json: { error: "Invalid base_url — must match an allowed origin" }, status: :unprocessable_entity
+          end
+
           service = QrCodeService.new(@location, base_url: base_url)
 
           # Persist the menu URL on the location
