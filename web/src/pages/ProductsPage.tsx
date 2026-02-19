@@ -3,7 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import type { Product } from '../services/api';
 import { productsApi, collectionsApi, locationsApi } from '../services/api';
 import { useLocationStore } from '../store/locationStore';
+import { useLocationFromUrl } from '../hooks/useLocationFromUrl';
 import ProductCard from '../components/ProductCard';
+import LocationBanner from '../components/LocationBanner';
+import LocationNotFound from '../components/LocationNotFound';
 import FadeIn from '../components/animations/FadeIn';
 import { PageHeaderSkeleton, ProductGridSkeleton } from '../components/Skeleton';
 
@@ -28,10 +31,14 @@ export default function ProductsPage() {
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState({ page: 1, per_page: 12, total: 0 });
   const didScrollRef = useRef(false);
+  const appliedMenuCollectionRef = useRef(false);
   const locationNameById = locations.reduce<Record<number, string>>((acc, location) => {
     acc[location.id] = location.name;
     return acc;
   }, {});
+
+  // Handle ?location=<slug> URL parameter
+  const { resolving: locationResolving, notFound: locationNotFound, locationSlug, clearUrlLocation } = useLocationFromUrl();
 
   const page = parseInt(searchParams.get('page') || '1');
   const search = searchParams.get('search') || '';
@@ -41,6 +48,38 @@ export default function ProductsPage() {
   const { selectedLocation } = useLocationStore();
   const locationId = searchParams.get('location_id') || (selectedLocation?.id ? String(selectedLocation.id) : '');
   const businessLine = searchParams.get('business_line') || '';
+
+  // Auto-apply menu_collection filter when location has one and no collection is explicitly set
+  useEffect(() => {
+    if (
+      locationSlug &&
+      selectedLocation?.menu_collection?.slug &&
+      !collection &&
+      !appliedMenuCollectionRef.current
+    ) {
+      appliedMenuCollectionRef.current = true;
+      const params = new URLSearchParams(searchParams);
+      params.set('collection', selectedLocation.menu_collection.slug);
+      setSearchParams(params, { replace: true });
+    }
+  }, [locationSlug, selectedLocation, collection, searchParams, setSearchParams]);
+
+  // Reset the ref when location slug changes
+  useEffect(() => {
+    appliedMenuCollectionRef.current = false;
+  }, [locationSlug]);
+
+  // Update page title for SEO
+  useEffect(() => {
+    if (locationSlug && selectedLocation) {
+      document.title = `Menu — ${selectedLocation.name} | Three Squares`;
+    } else {
+      document.title = 'Menu | Three Squares';
+    }
+    return () => {
+      document.title = 'Three Squares';
+    };
+  }, [locationSlug, selectedLocation]);
   const businessLineContent = (() => {
     if (businessLine === 'three_squares') {
       return {
@@ -195,7 +234,13 @@ export default function ProductsPage() {
     setSearchParams(params);
   };
 
-  if (loading && products.length === 0) {
+  // Show location not found page
+  if (locationNotFound && locationSlug) {
+    return <LocationNotFound slug={locationSlug} />;
+  }
+
+  // Show loading while resolving location from URL
+  if (locationResolving || (loading && products.length === 0)) {
     return (
       <div className="min-h-screen bg-warm-50">
         <div className="bg-warm">
@@ -250,6 +295,11 @@ export default function ProductsPage() {
 
   return (
     <div className="min-h-screen bg-warm-50">
+      {/* Location-specific banner */}
+      {locationSlug && selectedLocation && (
+        <LocationBanner onClearLocation={clearUrlLocation} />
+      )}
+
       {/* Header */}
       <div className="bg-warm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
