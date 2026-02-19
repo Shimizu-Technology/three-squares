@@ -114,11 +114,11 @@ class ProductVariant < ApplicationRecord
   def generate_variant_key
     if options.present?
       # Use options JSONB field
-      parts = options.values.compact.map { |v| v.to_s.parameterize }
+      parts = options.values.compact.map { |v| v.to_s.encode("UTF-8").parameterize }
       self.variant_key = parts.any? ? parts.join("-") : "default"
     else
       # Fallback to legacy columns
-      parts = [ size, color ].compact.map(&:parameterize)
+      parts = [ size, color ].compact.map { |v| v.to_s.encode("UTF-8").parameterize }
       self.variant_key = parts.any? ? parts.join("-") : "default"
     end
   end
