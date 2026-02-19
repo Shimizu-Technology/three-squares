@@ -12,9 +12,12 @@ module Api
 
         # GET /api/v1/admin/dashboard/stats
         def stats
-          total_orders = Order.count
-          total_revenue_cents = Order.where(payment_status: "paid").sum(:total_cents)
-          pending_orders = Order.where(status: "pending").count
+          # Scope queries to assigned location for location-locked staff
+          base_scope = current_user.location_scoped? ? Order.where(location_id: current_user.assigned_location_id) : Order.all
+
+          total_orders = base_scope.count
+          total_revenue_cents = base_scope.where(payment_status: "paid").sum(:total_cents)
+          pending_orders = base_scope.where(status: "pending").count
           total_products = Product.where(published: true).count
           business_line_breakdown = business_line_breakdown_data
           fulfillment_breakdown = Order.group(:fulfillment_type).count
