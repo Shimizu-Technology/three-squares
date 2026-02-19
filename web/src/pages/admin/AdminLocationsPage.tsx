@@ -215,7 +215,7 @@ function StatusDashboard({
             onClick={() => onFilterChange(statusFilter === card.key ? 'all' : card.key)}
             className={`relative p-4 rounded-xl border-2 transition-all text-left ${
               statusFilter === card.key
-                ? `${card.color} ${card.borderColor} ring-2 ring-offset-1 ring-${card.key === 'active' ? 'green' : card.key === 'scheduled' ? 'amber' : card.key === 'expired' ? 'red' : 'gray'}-300`
+                ? `${card.color} ${card.borderColor} ring-2 ring-offset-1 ${card.key === 'active' ? 'ring-green-300' : card.key === 'scheduled' ? 'ring-amber-300' : card.key === 'expired' ? 'ring-red-300' : 'ring-gray-300'}`
                 : 'bg-white border-gray-100 hover:border-gray-200'
             }`}
           >

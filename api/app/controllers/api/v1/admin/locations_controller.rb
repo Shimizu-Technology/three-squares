@@ -102,8 +102,10 @@ module Api
         def stats
           orders = @location.orders
           total_orders = orders.count
-          total_revenue = orders.where.not(status: [ "cancelled", "refunded" ]).sum(:total)
-          average_order_value = total_orders > 0 ? (total_revenue.to_f / orders.where.not(status: [ "cancelled", "refunded" ]).count).round(2) : 0
+          billable_orders = orders.where.not(status: [ "cancelled", "refunded" ])
+          total_revenue = billable_orders.sum(:total)
+          billable_count = billable_orders.count
+          average_order_value = billable_count > 0 ? (total_revenue.to_f / billable_count).round(2) : 0
 
           orders_by_status = orders.group(:status).count
 
