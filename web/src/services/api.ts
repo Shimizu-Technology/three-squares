@@ -118,6 +118,19 @@ export interface Location {
   address?: string | null;
   phone?: string | null;
   hours_json?: Record<string, string>;
+  location_type?: 'permanent' | 'popup' | 'event';
+  starts_at?: string | null;
+  ends_at?: string | null;
+  auto_deactivate?: boolean;
+  description?: string | null;
+  qr_code_url?: string | null;
+  menu_collection_id?: number | null;
+  menu_collection?: {
+    id: number;
+    name: string;
+    slug: string;
+  } | null;
+  active?: boolean;
 }
 
 export interface ProductsResponse {

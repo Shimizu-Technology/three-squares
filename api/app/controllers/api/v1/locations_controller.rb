@@ -2,22 +2,41 @@ module Api
   module V1
     class LocationsController < ApplicationController
       def index
-        locations = Location.active.by_name
+        locations = Location.customer_visible.by_name
 
         render json: {
           locations: locations.map do |location|
-            {
-              id: location.id,
-              name: location.name,
-              slug: location.slug,
-              address: location.address,
-              phone: location.phone,
-              hours_json: location.hours_json
-            }
+            serialize_public_location(location)
           end
         }
+      end
+
+      private
+
+      def serialize_public_location(location)
+        data = {
+          id: location.id,
+          name: location.name,
+          slug: location.slug,
+          address: location.address,
+          phone: location.phone,
+          hours_json: location.hours_json,
+          location_type: location.location_type,
+          starts_at: location.starts_at,
+          ends_at: location.ends_at,
+          description: location.description
+        }
+
+        if location.menu_collection.present?
+          data[:menu_collection] = {
+            id: location.menu_collection.id,
+            name: location.menu_collection.name,
+            slug: location.menu_collection.slug
+          }
+        end
+
+        data
       end
     end
   end
 end
-
