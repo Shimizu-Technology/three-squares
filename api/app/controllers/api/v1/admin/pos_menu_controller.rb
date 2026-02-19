@@ -17,7 +17,8 @@ module Api
           # Filter by location if provided
           if params[:location_id].present?
             products = products.joins(:product_locations)
-              .where(product_locations: { location_id: params[:location_id] })
+              .where(product_locations: { location_id: params[:location_id], available: true })
+              .distinct
           end
 
           # Filter by product type if provided

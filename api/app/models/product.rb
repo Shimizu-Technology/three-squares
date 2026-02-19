@@ -160,9 +160,10 @@ class Product < ApplicationRecord
 
     Rails.logger.info "🔧 Auto-creating default variant for #{inventory_level} inventory: #{name}"
 
+    default_sku = "#{(sku_prefix.presence || slug).to_s.upcase}-DEFAULT-P#{id}"
     variant = product_variants.new(
       size: "Default",
-      sku: "#{sku_prefix}-DEFAULT",
+      sku: default_sku,
       price_cents: base_price_cents,
       available: true,
       stock_quantity: 0, # Not used for product-level or none

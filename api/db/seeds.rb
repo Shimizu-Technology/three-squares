@@ -568,6 +568,36 @@ puts "   ✓ Linked #{images_created} product images"
 puts ""
 
 # ------------------------------------------------------------------------------
+# 9B) DEFAULT VARIANT BACKFILL (POS/checkout stability)
+# ------------------------------------------------------------------------------
+puts "9️⃣  Backfilling missing default variants..."
+
+missing_variant_products = Product
+  .where(inventory_level: [ "none", "product" ])
+  .left_joins(:product_variants)
+  .where(product_variants: { id: nil })
+
+backfilled_variant_count = 0
+missing_variant_products.find_each do |product|
+  default_sku = "#{(product.sku_prefix.presence || product.slug).to_s.upcase}-DEFAULT-P#{product.id}"
+  variant = product.product_variants.new(
+    size: "Default",
+    sku: default_sku,
+    price_cents: product.base_price_cents || 0,
+    available: true,
+    stock_quantity: 0,
+    weight_oz: product.weight_oz,
+    is_default: true
+  )
+  variant.skip_weight_validation = true unless product.allow_shipping?
+  variant.save!
+  backfilled_variant_count += 1
+end
+
+puts "   ✓ Backfilled #{backfilled_variant_count} default variants"
+puts ""
+
+# ------------------------------------------------------------------------------
 # 10) DATA QUALITY CHECKS
 # ------------------------------------------------------------------------------
 puts "9️⃣  Running fulfillment/location data checks..."

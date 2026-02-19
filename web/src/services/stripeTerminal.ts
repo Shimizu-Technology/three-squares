@@ -79,6 +79,21 @@ function handleUnexpectedDisconnect() {
   updateStatus('disconnected');
 }
 
+function isTokenOrAuthError(message?: string): boolean {
+  if (!message) return false;
+  const normalized = message.toLowerCase();
+  return normalized.includes('connectiontoken has already been redeemed') ||
+    normalized.includes('authentication error') ||
+    normalized.includes('hot swapped');
+}
+
+async function clearCachedCredentialsSafe(t: Terminal): Promise<void> {
+  const result = await t.clearCachedCredentials();
+  if ('error' in result) {
+    throw new Error(result.error.message);
+  }
+}
+
 /**
  * Initialize the Stripe Terminal SDK.
  * Must be called once before any other terminal operations.
@@ -110,7 +125,12 @@ export async function discoverReaders(simulated = false): Promise<Reader[]> {
   const t = await initializeTerminal();
   updateStatus('discovering');
 
-  const result = await t.discoverReaders({ simulated });
+  let result = await t.discoverReaders({ simulated });
+
+  if ('error' in result && isTokenOrAuthError(result.error.message)) {
+    await clearCachedCredentialsSafe(t);
+    result = await t.discoverReaders({ simulated });
+  }
 
   if ('error' in result) {
     updateStatus('error');
@@ -128,7 +148,12 @@ export async function connectToReader(reader: Reader): Promise<Reader> {
   const t = await initializeTerminal();
   updateStatus('connecting');
 
-  const result = await t.connectReader(reader);
+  let result = await t.connectReader(reader);
+
+  if ('error' in result && isTokenOrAuthError(result.error.message)) {
+    await clearCachedCredentialsSafe(t);
+    result = await t.connectReader(reader);
+  }
 
   if ('error' in result) {
     updateStatus('error');
@@ -193,6 +218,34 @@ export async function disconnectReader(): Promise<void> {
     connectedReader = null;
     updateStatus('initialized');
   }
+}
+
+export async function resetTerminalSession(): Promise<void> {
+  const t = await initializeTerminal();
+
+  // Best-effort cancellation if reader is waiting for card input.
+  try {
+    await t.cancelCollectPaymentMethod();
+  } catch {
+    // ignore
+  }
+
+  try {
+    if (connectedReader) {
+      await t.disconnectReader();
+    }
+  } catch {
+    // ignore
+  }
+
+  try {
+    await clearCachedCredentialsSafe(t);
+  } catch {
+    // ignore
+  }
+
+  connectedReader = null;
+  updateStatus('initialized');
 }
 
 /**
