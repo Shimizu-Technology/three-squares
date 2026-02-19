@@ -10,7 +10,7 @@ class QrCodeService
 
   # The URL the QR code encodes — directs customers to the menu for this location
   def menu_url
-    "#{base_url}/menu?location=#{location.slug}"
+    "#{base_url}/menu?location=#{CGI.escape(location.slug)}"
   end
 
   # Generate QR code as PNG binary data
