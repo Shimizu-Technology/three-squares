@@ -12,7 +12,7 @@ export default function PrivacyPolicyPage() {
   }, []);
 
   const storeEmail = appConfig?.store_info?.email || 'sales@bgpacific.com';
-  const storePhone = appConfig?.store_info?.phone || '671-777-1234';
+  const storePhone = appConfig?.store_info?.phone || '(671) 646-2652';
   const storePhoneTel = `tel:${storePhone.replace(/[^\d+]/g, '')}`;
 
   return (
@@ -251,7 +251,7 @@ export default function PrivacyPolicyPage() {
               </p>
               <p>
                 <span className="font-medium text-warm-900">Address:</span>{' '}
-                121 E. Marine Corps Dr, Suite 1-103 & Suite 1-104, Hagåtña, Guam 96910
+                416 Chalan San Antonio, Tamuning, GU 96913
               </p>
             </div>
           </section>
