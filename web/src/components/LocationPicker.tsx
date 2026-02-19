@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { MapPin, ChevronDown, Clock, Phone, AlertTriangle } from 'lucide-react';
 import { locationsApi } from '../services/api';
 import { useLocationStore } from '../store/locationStore';
@@ -11,6 +12,8 @@ import { useCartStore } from '../store/cartStore';
  * If a location is already selected, shows a compact bar with change option.
  */
 export default function LocationPicker() {
+  const [searchParams] = useSearchParams();
+  const locationSlugFromUrl = searchParams.get('location');
   const { selectedLocation, locations, setSelectedLocation, setLocations } = useLocationStore();
   const { cart, clearCart } = useCartStore();
   const [showConfirm, setShowConfirm] = useState(false);
@@ -30,6 +33,10 @@ export default function LocationPicker() {
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (locations.length <= 1) return null;
+
+  // When location is set via URL param, skip the picker entirely
+  // (LocationBanner in ProductsPage handles the display)
+  if (locationSlugFromUrl && selectedLocation) return null;
 
   const cartHasItems = (cart?.items?.length ?? 0) > 0;
 

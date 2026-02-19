@@ -454,6 +454,7 @@ function AppContent() {
         <Routes location={location} key={routeTransitionKey}>
           <Route path="/" element={<HomePage />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/menu" element={<ProductsPage />} />
           <Route path="/shop/three-squares" element={<BusinessLineEntryPage businessLine="three_squares" />} />
           <Route path="/shop/latte-stone-cookies" element={<BusinessLineEntryPage businessLine="latte_stone" />} />
           <Route path="/shop/catering" element={<BusinessLineEntryPage businessLine="catering" />} />

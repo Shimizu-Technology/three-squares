@@ -11,6 +11,17 @@ module Api
         }
       end
 
+      def show
+        location = Location.customer_visible.find_by(slug: params[:id]) ||
+                   Location.customer_visible.find_by(id: params[:id])
+
+        if location
+          render json: serialize_public_location(location)
+        else
+          render json: { error: "Location not found" }, status: :not_found
+        end
+      end
+
       private
 
       def serialize_public_location(location)
