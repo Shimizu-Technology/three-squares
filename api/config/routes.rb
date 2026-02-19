@@ -69,6 +69,8 @@ Rails.application.routes.draw do
           member do
             post :toggle_active
             post :generate_qr
+            get :stats
+            post :duplicate
           end
           collection do
             post :auto_deactivate_expired
