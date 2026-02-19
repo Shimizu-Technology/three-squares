@@ -48,6 +48,7 @@ import NavDropdown from './components/NavDropdown'; // Import NavDropdown
 import MobileNavDropdown from './components/MobileNavDropdown'; // Import MobileNavDropdown
 import { useCartStore } from './store/cartStore'; // Import cart store
 import { API_BASE_URL } from './config';
+import AnnouncementBanner from './components/AnnouncementBanner';
 
 // Custom UserButton with Admin Dashboard Link and My Orders
 function CustomUserButton({ isAdmin }: { isAdmin: boolean }) {
@@ -222,6 +223,9 @@ function AppContent() {
       <div className="min-h-screen bg-warm-50">
         {/* Cart Drawer */}
         <CartDrawer />
+
+        {/* Announcement Banner - Above nav, customer-facing only */}
+        {!isAdminPage && <AnnouncementBanner />}
 
         {/* Navigation - Hidden when printing and on admin pages */}
         {!isAdminPage && (
@@ -510,7 +514,7 @@ function AppContent() {
                 />
                 <p className="text-[11px] uppercase tracking-wide text-warm-500 mt-2">by B&amp;G Pacific</p>
                 <p className="text-warm-500 text-sm mt-4 leading-relaxed">
-                  Good Food, Good Mood, Good Service<br />
+                  Good Food. Great Vibes. Quality Service.<br />
                   Guam-style comfort food & catering
                 </p>
                 <div className="flex space-x-4 mt-4">
@@ -603,6 +607,9 @@ function AppContent() {
                   </a><br />
                   <a href="https://wa.me/16718646656" className="hover:text-warm-900 transition">
                     WhatsApp: (671) 864-6656
+                  </a><br />
+                  <a href="mailto:sales@bgpacific.com" className="hover:text-warm-900 transition">
+                    sales@bgpacific.com
                   </a>
                 </address>
               </div>

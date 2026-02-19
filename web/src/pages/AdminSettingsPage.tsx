@@ -35,6 +35,9 @@ interface SiteSettings {
     phone: string;
     email?: string;
   };
+  announcement_enabled: boolean;
+  announcement_text: string;
+  announcement_style: string;
 }
 
 const REQUIRED_ORIGIN_FIELDS: Array<keyof SiteSettings['shipping_origin_address']> = [
@@ -189,6 +192,9 @@ export default function AdminSettingsPage() {
       store_email: value.store_email,
       store_phone: value.store_phone,
       placeholder_image_url: value.placeholder_image_url,
+      announcement_enabled: value.announcement_enabled,
+      announcement_text: value.announcement_text || '',
+      announcement_style: value.announcement_style || 'gold',
       shipping_origin_address: {
         company: value.shipping_origin_address?.company || '',
         street1: value.shipping_origin_address?.street1 || '',
@@ -311,6 +317,9 @@ export default function AdminSettingsPage() {
       store_email: settings.store_email,
       store_phone: settings.store_phone,
       placeholder_image_url: settings.placeholder_image_url,
+      announcement_enabled: settings.announcement_enabled,
+      announcement_text: settings.announcement_text,
+      announcement_style: settings.announcement_style,
       shipping_origin_address: settings.shipping_origin_address
     };
 
@@ -601,6 +610,67 @@ function GeneralSettingsTab({
 
   return (
     <div className="space-y-6">
+      {/* Announcement Banner Card */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">Announcement Banner</h2>
+          <p className="text-sm text-gray-500 mt-1">Display a banner at the top of every page</p>
+        </div>
+        <div className="p-6 space-y-6">
+          {/* Enable Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="grow">
+              <h3 className="font-medium text-gray-900">Enable Banner</h3>
+              <p className="text-sm text-gray-600 mt-1">
+                Show the announcement banner to all visitors
+              </p>
+            </div>
+            <button
+              onClick={() => onUpdateSettings({ announcement_enabled: !settings.announcement_enabled })}
+              className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ml-4 ${
+                settings.announcement_enabled ? 'bg-tsPrimary' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  settings.announcement_enabled ? 'translate-x-6' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+
+          {/* Banner Text */}
+          <div>
+            <label htmlFor="announcement_text" className="block text-sm font-medium text-gray-700 mb-2">
+              Banner Message
+            </label>
+            <input
+              type="text"
+              id="announcement_text"
+              value={settings.announcement_text || ''}
+              onChange={(e) => onUpdateSettings({ announcement_text: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
+              placeholder="Enter your announcement message..."
+            />
+          </div>
+
+          {/* Preview */}
+          {settings.announcement_text?.trim() && (
+            <div>
+              <p className="text-sm font-medium text-gray-700 mb-2">Preview</p>
+              <div
+                className="relative flex items-center justify-center px-10 py-2 rounded-lg shadow-sm"
+                style={{ backgroundColor: '#D4A030' }}
+              >
+                <p className="text-white text-sm font-medium text-center leading-snug">
+                  {settings.announcement_text}
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Payment Settings Card */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">

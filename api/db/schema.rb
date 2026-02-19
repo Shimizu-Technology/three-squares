@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_19_130000) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_20_000000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -608,6 +608,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_19_130000) do
     t.boolean "acai_gallery_show_image_b", default: true, null: false
     t.string "acai_gallery_subtext"
     t.text "admin_sms_phones", default: [], array: true
+    t.boolean "announcement_enabled", default: false, null: false
+    t.string "announcement_style", default: "gold", null: false
+    t.string "announcement_text"
     t.datetime "created_at", null: false
     t.boolean "enable_order_emails", default: false, null: false
     t.boolean "enable_order_sms", default: false, null: false
