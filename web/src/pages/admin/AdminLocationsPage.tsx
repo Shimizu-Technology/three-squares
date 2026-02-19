@@ -165,7 +165,7 @@ function QrCodeModal({
         </head>
         <body>
           <h2>${safeName}</h2>
-          <img src="${data.qrCode}" alt="QR Code" />
+          <img src="${escapeHtml(data.qrCode)}" alt="QR Code" />
           <p>${safeUrl}</p>
         </body>
       </html>

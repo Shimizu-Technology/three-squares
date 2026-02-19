@@ -58,7 +58,14 @@ module Api
           allowed_origins << "http://localhost:5174"
           allowed_origins.uniq!
 
-          unless allowed_origins.any? { |origin| base_url.start_with?(origin) }
+          begin
+            parsed = URI.parse(base_url)
+            base_origin = "#{parsed.scheme}://#{parsed.host}#{parsed.port && ![ 80, 443 ].include?(parsed.port) ? ":#{parsed.port}" : ""}"
+          rescue URI::InvalidURIError
+            return render json: { error: "Invalid base_url" }, status: :unprocessable_entity
+          end
+
+          unless allowed_origins.any? { |origin| URI.parse(origin).host == parsed.host && URI.parse(origin).scheme == parsed.scheme }
             return render json: { error: "Invalid base_url — must match an allowed origin" }, status: :unprocessable_entity
           end
 
