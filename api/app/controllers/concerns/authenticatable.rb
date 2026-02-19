@@ -84,9 +84,13 @@ module Authenticatable
       u.role = ADMIN_EMAILS.include?(email) ? "owner" : "customer"
     end
 
-    # Always sync admin status on login (handles users created before admin list was updated)
-    expected_role = ADMIN_EMAILS.include?(email) ? "owner" : user.role
-    user.update!(role: expected_role, email: email) if user.role != expected_role || user.email != email
+    # Only auto-promote to owner for ADMIN_EMAILS if user is currently a customer
+    # (i.e., first-time setup). Never override a manually-assigned role (staff/manager).
+    if ADMIN_EMAILS.include?(email) && user.role == "customer"
+      user.update!(role: "owner", email: email)
+    elsif user.email != email
+      user.update!(email: email)
+    end
 
     user
   end
