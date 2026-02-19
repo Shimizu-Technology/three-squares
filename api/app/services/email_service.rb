@@ -39,8 +39,14 @@ class EmailService
   def self.send_admin_notification(order)
     return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
 
-    settings = SiteSetting.instance
-    admin_emails = settings.order_notification_emails || [ "shimizutechnology@gmail.com" ]
+    # Route to location-specific admin email if configured, fall back to global
+    location = order.location
+    admin_emails = if location&.admin_email.present?
+      [ location.admin_email ]
+    else
+      settings = SiteSetting.instance
+      settings.order_notification_emails || [ "shimizutechnology@gmail.com" ]
+    end
 
     begin
       params = {
@@ -361,6 +367,26 @@ class EmailService
     contact_email = store_contact_email
     contact_phone = store_contact_phone
 
+    # Build pickup location block for pickup orders
+    location_section = if order.is_pickup_order? && order.location.present?
+      loc = order.location
+      <<~LOC
+        <tr>
+          <td style="padding: 0 30px 30px 30px;">
+            <div style="background-color: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 20px;">
+              <h3 style="color: #92400E; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Pickup Location</h3>
+              <p style="color: #78350F; margin: 0; font-size: 15px; line-height: 1.6;">
+                <strong>#{CGI.escapeHTML(loc.name)}</strong><br>
+                #{CGI.escapeHTML(loc.address.to_s)}#{loc.phone.present? ? "<br>#{CGI.escapeHTML(loc.phone)}" : ""}
+              </p>
+            </div>
+          </td>
+        </tr>
+      LOC
+    else
+      ""
+    end
+
     <<~HTML
       <!DOCTYPE html>
       <html>
@@ -400,6 +426,9 @@ class EmailService
                     <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0;">#{CGI.escapeHTML(message)}</p>
                   </td>
                 </tr>
+
+                <!-- Pickup Location (if applicable) -->
+                #{location_section}
 
                 <!-- Order Items Summary -->
                 <tr>
@@ -525,35 +554,8 @@ class EmailService
                   </td>
                 </tr>
 
-                <!-- Shipping Address -->
-                <tr>
-                  <td style="padding: 0 30px 30px 30px;">
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td width="50%" style="padding-right: 10px;">
-                          <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
-                            <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Shipping Address</h3>
-                            <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
-                              #{order.name}<br>
-                              #{order.shipping_address_line1}<br>
-                              #{order.shipping_address_line2.present? ? "#{order.shipping_address_line2}<br>" : ""}
-                              #{order.shipping_city}, #{order.shipping_state} #{order.shipping_zip}<br>
-                              #{order.shipping_country}
-                            </p>
-                          </div>
-                        </td>
-                        <td width="50%" style="padding-left: 10px;">
-                          <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
-                            <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Shipping Method</h3>
-                            <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
-                              #{order.shipping_method}
-                            </p>
-                          </div>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
+                <!-- Fulfillment Details -->
+                #{order_fulfillment_section_html(order)}
 
                 <!-- Footer -->
                 <tr>
@@ -622,6 +624,18 @@ class EmailService
                       </tr>
                       <tr>
                         <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
+                          <strong style="color: #6B7280; font-size: 14px;">Location:</strong>
+                          <span style="color: #111827; font-size: 14px; float: right;">#{order.location&.name || 'N/A'}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
+                          <strong style="color: #6B7280; font-size: 14px;">Type:</strong>
+                          <span style="color: #111827; font-size: 14px; float: right;">#{order.fulfillment_type&.titleize || 'N/A'}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
                           <strong style="color: #6B7280; font-size: 14px;">Date:</strong>
                           <span style="color: #111827; font-size: 14px; float: right;">#{order.created_at.strftime('%B %d, %Y at %I:%M %p')}</span>
                         </td>
@@ -679,6 +693,59 @@ class EmailService
       </body>
       </html>
     HTML
+  end
+
+  # Generate fulfillment details section (pickup location or shipping address)
+  def self.order_fulfillment_section_html(order)
+    if order.is_pickup_order? && order.location.present?
+      loc = order.location
+      <<~HTML
+        <tr>
+          <td style="padding: 0 30px 30px 30px;">
+            <div style="background-color: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 20px;">
+              <h3 style="color: #92400E; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Pickup Location</h3>
+              <p style="color: #78350F; margin: 0; font-size: 15px; line-height: 1.6;">
+                <strong>#{CGI.escapeHTML(loc.name)}</strong><br>
+                #{CGI.escapeHTML(loc.address.to_s)}#{loc.phone.present? ? "<br>#{CGI.escapeHTML(loc.phone)}" : ""}
+              </p>
+            </div>
+          </td>
+        </tr>
+      HTML
+    elsif order.shipping_address_line1.present?
+      <<~HTML
+        <tr>
+          <td style="padding: 0 30px 30px 30px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td width="50%" style="padding-right: 10px;">
+                  <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
+                    <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Shipping Address</h3>
+                    <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
+                      #{order.name}<br>
+                      #{order.shipping_address_line1}<br>
+                      #{order.shipping_address_line2.present? ? "#{order.shipping_address_line2}<br>" : ""}
+                      #{order.shipping_city}, #{order.shipping_state} #{order.shipping_zip}<br>
+                      #{order.shipping_country}
+                    </p>
+                  </div>
+                </td>
+                <td width="50%" style="padding-left: 10px;">
+                  <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
+                    <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Shipping Method</h3>
+                    <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
+                      #{order.shipping_method}
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      HTML
+    else
+      ""
+    end
   end
 
   # Generate order items table rows

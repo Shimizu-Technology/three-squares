@@ -122,12 +122,18 @@ class SmsService
     end
 
     # Send SMS to admin phones when a new order comes in
+    # Routes to location-specific phones if configured, falls back to global
     def send_admin_new_order(order)
       return skip_result("SMS not configured") unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
       return skip_result("SMS notifications disabled") unless SiteSetting.instance.send_sms_notifications
 
-      settings = SiteSetting.instance
-      admin_phones = settings.admin_sms_phones || []
+      # Try location-specific admin phones first, fall back to global
+      location = order.location
+      admin_phones = if location&.admin_sms_phones.present? && location.admin_sms_phones.any?
+        location.admin_sms_phones
+      else
+        SiteSetting.instance.admin_sms_phones || []
+      end
       return skip_result("No admin SMS phones configured") if admin_phones.empty?
 
       location_name = order.location&.name || "Online"

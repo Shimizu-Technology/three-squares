@@ -33,6 +33,7 @@ export default function OrdersTable({
           <thead className="bg-gray-50/80">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Order</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Items</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total</th>
@@ -49,6 +50,12 @@ export default function OrdersTable({
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{order.order_number}</div>
                     <div className="mt-1"><OrderTypeBadge type={order.order_type} /></div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{order.location_name || '—'}</div>
+                    {order.fulfillment_type && (
+                      <div className="text-xs text-gray-500 capitalize">{order.fulfillment_type}</div>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">{order.customer_name}</div>
@@ -114,6 +121,12 @@ export default function OrdersTable({
               </div>
 
               <div className="space-y-2 text-sm">
+                {order.location_name && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Location:</span>
+                    <span className="font-medium">{order.location_name}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Items:</span>
                   <span className="font-medium">{order.item_count}</span>

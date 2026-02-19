@@ -1,12 +1,13 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 
-interface LocationInfo {
+export interface LocationInfo {
   id: number;
   name: string;
   slug: string;
   address?: string;
   phone?: string;
+  hours_json?: Record<string, string>;
 }
 
 interface LocationStore {
