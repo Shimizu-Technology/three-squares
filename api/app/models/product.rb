@@ -160,15 +160,17 @@ class Product < ApplicationRecord
 
     Rails.logger.info "🔧 Auto-creating default variant for #{inventory_level} inventory: #{name}"
 
-    product_variants.create!(
+    variant = product_variants.new(
       size: "Default",
       sku: "#{sku_prefix}-DEFAULT",
       price_cents: base_price_cents,
       available: true,
       stock_quantity: 0, # Not used for product-level or none
-      weight_oz: weight_oz,
+      weight_oz: weight_oz || (allow_shipping? ? nil : 0),
       is_default: true
     )
+    variant.skip_weight_validation = true unless allow_shipping?
+    variant.save!
   rescue ActiveRecord::RecordInvalid => e
     Rails.logger.error "❌ Failed to create default variant: #{e.message}"
     # Don't fail the product save if variant creation fails
