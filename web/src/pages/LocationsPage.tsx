@@ -1,8 +1,11 @@
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { MapPin, Clock, Phone, MessageCircle, ChevronRight } from 'lucide-react';
+import { MapPin, Clock, Phone, MessageCircle, ChevronRight, Calendar } from 'lucide-react';
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
+import { locationsApi } from '../services/api';
+import type { Location as ApiLocation } from '../services/api';
 
 interface Location {
   name: string;
@@ -46,7 +49,30 @@ const locations: Location[] = [
   },
 ];
 
+function formatDateRange(start?: string | null, end_?: string | null): string {
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' };
+  const parts: string[] = [];
+  if (start) parts.push(new Date(start).toLocaleDateString('en-US', opts));
+  if (end_) parts.push(new Date(end_).toLocaleDateString('en-US', opts));
+  return parts.join(' — ');
+}
+
 export default function LocationsPage() {
+  const [temporaryLocations, setTemporaryLocations] = useState<ApiLocation[]>([]);
+
+  useEffect(() => {
+    const fetchTemporary = async () => {
+      try {
+        const response = await locationsApi.getLocations();
+        const locs = response.locations || [];
+        setTemporaryLocations(locs.filter((l) => l.location_type && l.location_type !== 'permanent'));
+      } catch {
+        // Silently fail - temporary locations are supplementary
+      }
+    };
+    fetchTemporary();
+  }, []);
+
   return (
     <div className="min-h-screen bg-warm-50">
       {/* Hero Section */}
@@ -111,6 +137,59 @@ export default function LocationsPage() {
           </StaggerContainer>
         </div>
       </section>
+
+      {/* Dynamic Popup/Event Locations */}
+      {temporaryLocations.length > 0 && (
+        <section className="py-16 sm:py-24 bg-white">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <FadeIn>
+              <div className="text-center mb-12">
+                <h2 className="text-3xl sm:text-4xl font-bold text-warm-900 tracking-tight">
+                  Pop-ups & Events
+                </h2>
+                <p className="text-warm-600 text-lg mt-3 max-w-2xl mx-auto">
+                  Catch us at these limited-time locations!
+                </p>
+              </div>
+            </FadeIn>
+            <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {temporaryLocations.map((loc) => (
+                <StaggerItem key={loc.id}>
+                  <div className="bg-warm-50 rounded-xl border border-warm-200 p-6 h-full">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span
+                        className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          loc.location_type === 'popup'
+                            ? 'bg-purple-100 text-purple-700'
+                            : 'bg-orange-100 text-orange-700'
+                        }`}
+                      >
+                        {loc.location_type === 'popup' ? 'Pop-up' : 'Event'}
+                      </span>
+                    </div>
+                    <h3 className="text-xl font-bold text-warm-900 mb-2">{loc.name}</h3>
+                    {loc.description && (
+                      <p className="text-warm-600 text-sm mb-3">{loc.description}</p>
+                    )}
+                    {loc.address && (
+                      <p className="text-warm-600 text-sm flex items-start gap-1.5 mb-2">
+                        <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0 text-warm-400" />
+                        {loc.address}
+                      </p>
+                    )}
+                    {(loc.starts_at || loc.ends_at) && (
+                      <p className="text-warm-500 text-sm flex items-start gap-1.5">
+                        <Calendar className="w-4 h-4 mt-0.5 flex-shrink-0 text-warm-400" />
+                        {formatDateRange(loc.starts_at, loc.ends_at)}
+                      </p>
+                    )}
+                  </div>
+                </StaggerItem>
+              ))}
+            </StaggerContainer>
+          </div>
+        </section>
+      )}
 
       {/* Catering CTA - aligned with Catering page actions */}
       <section className="py-16 sm:py-24 bg-white">

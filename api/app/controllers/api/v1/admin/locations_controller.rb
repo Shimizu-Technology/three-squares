@@ -3,7 +3,7 @@ module Api
     module Admin
       class LocationsController < BaseController
         before_action :require_owner!
-        before_action :set_location, only: [ :show, :update, :destroy ]
+        before_action :set_location, only: [ :show, :update, :destroy, :toggle_active ]
 
         def index
           render_success(Location.by_name.map { |location| serialize_location(location) })
@@ -38,6 +38,21 @@ module Api
           end
         end
 
+        def toggle_active
+          if @location.active?
+            @location.deactivate!
+          else
+            @location.activate!
+          end
+          render_success(serialize_location(@location), message: "Location #{@location.active? ? 'activated' : 'deactivated'} successfully")
+        end
+
+        def auto_deactivate_expired
+          count = Location.where(auto_deactivate: true, active: true).where("ends_at < ?", Time.current).count
+          Location.auto_deactivate_expired!
+          render_success({ deactivated_count: count }, message: "#{count} location(s) deactivated")
+        end
+
         private
 
         def set_location
@@ -46,7 +61,12 @@ module Api
         end
 
         def location_params
-          params.require(:location).permit(:name, :slug, :address, :phone, :active, :admin_email, hours_json: {}, admin_sms_phones: [])
+          params.require(:location).permit(
+            :name, :slug, :address, :phone, :active, :admin_email,
+            :location_type, :starts_at, :ends_at, :auto_deactivate,
+            :description, :qr_code_url, :menu_collection_id,
+            hours_json: {}, admin_sms_phones: []
+          )
         end
 
         def serialize_location(location)
@@ -59,11 +79,22 @@ module Api
             active: location.active,
             hours_json: location.hours_json,
             admin_sms_phones: location.admin_sms_phones,
-            admin_email: location.admin_email
+            admin_email: location.admin_email,
+            location_type: location.location_type,
+            starts_at: location.starts_at,
+            ends_at: location.ends_at,
+            auto_deactivate: location.auto_deactivate,
+            description: location.description,
+            qr_code_url: location.qr_code_url,
+            menu_collection_id: location.menu_collection_id,
+            menu_collection: location.menu_collection.present? ? {
+              id: location.menu_collection.id,
+              name: location.menu_collection.name,
+              slug: location.menu_collection.slug
+            } : nil
           }
         end
       end
     end
   end
 end
-

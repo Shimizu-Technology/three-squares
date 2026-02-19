@@ -73,7 +73,16 @@ export default function LocationPicker() {
                 onClick={() => setSelectedLocation(loc)}
                 className="bg-white border-2 border-warm-200 rounded-xl p-6 text-left hover:border-red-500 hover:shadow-md transition-all group"
               >
-                <h3 className="text-lg font-semibold text-warm-900 group-hover:text-red-700 mb-2">{loc.name}</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-lg font-semibold text-warm-900 group-hover:text-red-700">{loc.name}</h3>
+                  {loc.location_type && loc.location_type !== 'permanent' && (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                      loc.location_type === 'popup' ? 'bg-purple-100 text-purple-700' : 'bg-orange-100 text-orange-700'
+                    }`}>
+                      {loc.location_type === 'popup' ? 'Pop-up' : 'Event'}
+                    </span>
+                  )}
+                </div>
                 {loc.address && (
                   <p className="text-sm text-warm-600 flex items-start gap-1.5 mb-2">
                     <MapPin className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-warm-400" />

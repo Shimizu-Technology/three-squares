@@ -5,9 +5,18 @@ export interface LocationInfo {
   id: number;
   name: string;
   slug: string;
-  address?: string;
-  phone?: string;
+  address?: string | null;
+  phone?: string | null;
   hours_json?: Record<string, string>;
+  location_type?: 'permanent' | 'popup' | 'event';
+  starts_at?: string | null;
+  ends_at?: string | null;
+  description?: string | null;
+  menu_collection?: {
+    id: number;
+    name: string;
+    slug: string;
+  } | null;
 }
 
 interface LocationStore {

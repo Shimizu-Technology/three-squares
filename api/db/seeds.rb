@@ -121,7 +121,7 @@ location_seed_data = [
 
 location_seed_data.each do |attrs|
   location = Location.find_or_initialize_by(slug: attrs[:slug])
-  location.update!(attrs.merge(active: true))
+  location.update!(attrs.merge(active: true, location_type: "permanent"))
 end
 
 puts "   ✓ Created #{Location.count} locations"

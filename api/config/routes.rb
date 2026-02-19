@@ -65,7 +65,14 @@ Rails.application.routes.draw do
 
         # Collections
         resources :collections, except: [ :new, :edit ]
-        resources :locations, except: [ :new, :edit ]
+        resources :locations, except: [ :new, :edit ] do
+          member do
+            post :toggle_active
+          end
+          collection do
+            post :auto_deactivate_expired
+          end
+        end
 
         # Variant Presets (for flexible variant system)
         resources :variant_presets, except: [ :new, :edit ] do
