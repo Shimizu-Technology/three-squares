@@ -48,6 +48,7 @@ import NavDropdown from './components/NavDropdown'; // Import NavDropdown
 import MobileNavDropdown from './components/MobileNavDropdown'; // Import MobileNavDropdown
 import { useCartStore } from './store/cartStore'; // Import cart store
 import { API_BASE_URL } from './config';
+import AnnouncementBanner from './components/AnnouncementBanner';
 
 // Custom UserButton with Admin Dashboard Link and My Orders
 function CustomUserButton({ isAdmin }: { isAdmin: boolean }) {
@@ -222,6 +223,9 @@ function AppContent() {
       <div className="min-h-screen bg-warm-50">
         {/* Cart Drawer */}
         <CartDrawer />
+
+        {/* Announcement Banner - Above nav, customer-facing only */}
+        {!isAdminPage && <AnnouncementBanner />}
 
         {/* Navigation - Hidden when printing and on admin pages */}
         {!isAdminPage && (
