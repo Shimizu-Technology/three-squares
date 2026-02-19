@@ -42,11 +42,11 @@ class SmsService
       if order.is_pickup_order?
         location_name = order.location&.name || "Three Squares"
         message = "Three Squares: Order ##{order.order_number} received! " \
-                  "Total: $#{format_price(order.total_cents)}. " \
+                  "Total: #{format_price(order.total_cents)} USD. " \
                   "We'll text you when it's ready for pickup at #{location_name}."
       else
         message = "Three Squares: Order ##{order.order_number} received! " \
-                  "Total: $#{format_price(order.total_cents)}. " \
+                  "Total: #{format_price(order.total_cents)} USD. " \
                   "We'll send shipping updates to this number."
       end
 
