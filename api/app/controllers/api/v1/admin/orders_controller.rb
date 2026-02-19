@@ -81,12 +81,16 @@ module Api
           # Handle status changes
           if @order.saved_change_to_status?
             case @order.status
+            when "confirmed"
+              # Send confirmed SMS to customer
+              SendOrderSmsJob.perform_later(@order.id, "confirmed")
             when "shipped"
               # Send shipping notification with tracking
               SendOrderShippedEmailJob.perform_later(@order.id) if @order.tracking_number.present?
             when "ready"
-              # Send ready for pickup notification
+              # Send ready for pickup notification (email + SMS)
               SendOrderReadyEmailJob.perform_later(@order.id)
+              SendOrderSmsJob.perform_later(@order.id, "ready")
             when "cancelled"
               # Restore inventory when order is cancelled
               restore_inventory(@order, current_user)
@@ -115,7 +119,8 @@ module Api
           end
         when "ready"
           SendOrderReadyEmailJob.perform_later(@order.id)
-          render json: { message: "Ready for pickup notification sent to customer" }
+          SendOrderSmsJob.perform_later(@order.id, "ready")
+          render json: { message: "Ready for pickup notification sent to customer (email + SMS)" }
         else
           render json: { error: "Cannot send notification for orders with status '#{@order.status}'" }, status: :unprocessable_entity
         end

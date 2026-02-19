@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_12_074649) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_19_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -605,6 +605,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_074649) do
     t.boolean "acai_gallery_show_image_a", default: true, null: false
     t.boolean "acai_gallery_show_image_b", default: true, null: false
     t.string "acai_gallery_subtext"
+    t.text "admin_sms_phones", default: [], array: true
     t.datetime "created_at", null: false
     t.jsonb "fallback_shipping_rates", default: {"domestic"=>[{"rate_cents"=>800, "max_weight_oz"=>16}, {"rate_cents"=>1500, "max_weight_oz"=>48}, {"rate_cents"=>2000, "max_weight_oz"=>80}, {"rate_cents"=>3000, "max_weight_oz"=>160}, {"rate_cents"=>5000, "max_weight_oz"=>nil}], "international"=>[{"rate_cents"=>2500, "max_weight_oz"=>16}, {"rate_cents"=>4000, "max_weight_oz"=>48}, {"rate_cents"=>6000, "max_weight_oz"=>80}, {"rate_cents"=>9000, "max_weight_oz"=>160}, {"rate_cents"=>15000, "max_weight_oz"=>nil}]}, null: false
     t.text "order_notification_emails", default: [], array: true
@@ -614,8 +615,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_12_074649) do
     t.boolean "send_acai_emails", default: false, null: false
     t.boolean "send_customer_emails", default: false, null: false
     t.boolean "send_retail_emails", default: false, null: false
+    t.boolean "send_sms_notifications", default: false, null: false
     t.boolean "send_wholesale_emails", default: false, null: false
     t.jsonb "shipping_origin_address", default: {}
+    t.boolean "sms_order_updates", default: false, null: false
     t.string "store_email"
     t.string "store_name", default: "Hafaloha"
     t.string "store_phone"

@@ -208,6 +208,10 @@ module Api
           # Always send admin notifications
           SendAdminNotificationEmailJob.perform_later(order.id)
 
+          # SMS notifications
+          SendOrderSmsJob.perform_later(order.id, "placed")
+          SendAdminOrderSmsJob.perform_later(order.id)
+
           render json: {
             success: true,
             order: order_json(order),
