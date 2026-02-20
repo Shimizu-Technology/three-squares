@@ -20,6 +20,9 @@ Rails.application.routes.draw do
         get "dashboard/stats", to: "dashboard#stats"
         get "dashboard/chart_data", to: "dashboard#chart_data"
 
+        # Analytics
+        get "analytics/dashboard", to: "analytics#dashboard"
+
         # Orders (admin management)
         resources :orders, only: [ :index, :show, :update ] do
           collection do
