@@ -146,6 +146,7 @@ Rails.application.routes.draw do
         get "pos/menu", to: "pos_menu#show"
         post "pos/orders", to: "pos_orders#create"
         post "pos/orders/:id/confirm_terminal_payment", to: "pos_orders#confirm_terminal_payment"
+        post "pos/orders/:id/confirm_manual_payment", to: "pos_orders#confirm_manual_payment"
 
         # Stripe Terminal
         post "stripe_terminal/connection_token", to: "stripe_terminal#connection_token"

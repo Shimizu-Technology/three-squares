@@ -39,6 +39,48 @@ module Api
           render json: { error: e.message }, status: :unprocessable_entity
         end
 
+        # POST /api/v1/admin/pos/orders/:id/confirm_manual_payment
+        # Called after Stripe.js Elements successfully processes a card_manual payment
+        def confirm_manual_payment
+          order = Order.find(params[:id])
+
+          unless order.staff_created? && order.source == "pos"
+            return render json: { error: "Not a POS order" }, status: :forbidden
+          end
+
+          unless order.payment_method == "card_manual" && order.payment_intent_id.present?
+            return render json: { error: "Order is not a manual card payment" }, status: :unprocessable_entity
+          end
+
+          Stripe.api_key = ENV["STRIPE_SECRET_KEY"]
+          intent = Stripe::PaymentIntent.retrieve(order.payment_intent_id)
+
+          if intent.status == "succeeded"
+            order.update!(status: "confirmed", payment_status: "paid")
+
+            # Include card details in response for receipt
+            card_details = {}
+            if intent.latest_charge.present?
+              charge = Stripe::Charge.retrieve(intent.latest_charge)
+              if charge.payment_method_details&.card
+                card = charge.payment_method_details.card
+                card_details = {
+                  brand: card.brand,
+                  last4: card.last4,
+                  exp_month: card.exp_month,
+                  exp_year: card.exp_year
+                }
+              end
+            end
+
+            render json: pos_order_json(order).merge(card_details: card_details)
+          else
+            render json: { error: "Payment not completed. Status: #{intent.status}" }, status: :unprocessable_entity
+          end
+        rescue Stripe::StripeError => e
+          render json: { error: e.message }, status: :unprocessable_entity
+        end
+
         # POST /api/v1/admin/pos/orders
         # Create a POS order (staff-created, in-person)
         def create
@@ -120,6 +162,8 @@ module Api
           case order.payment_method
           when "cash"
             process_cash_payment(order)
+          when "card_manual"
+            process_manual_card_payment(order)
           when "stripe"
             process_stripe_payment(order)
           when "card_present"
@@ -170,6 +214,32 @@ module Api
           else
             raise StandardError, "Stripe is not configured"
           end
+        end
+
+        def process_manual_card_payment(order)
+          # Manual card entry — create a standard PaymentIntent (not terminal)
+          # Frontend confirms with Stripe Elements (CardElement)
+          order.status = "pending"
+          order.payment_status = "pending"
+
+          order.save! unless order.persisted?
+
+          stripe_key = ENV["STRIPE_SECRET_KEY"]
+          raise StandardError, "Stripe is not configured" if stripe_key.blank?
+
+          Stripe.api_key = stripe_key
+          intent = Stripe::PaymentIntent.create(
+            amount: order.total_cents,
+            currency: "usd",
+            payment_method_types: [ "card" ],
+            metadata: {
+              order_id: order.id,
+              order_number: order.order_number,
+              source: "pos_manual_card"
+            }
+          )
+          order.payment_intent_id = intent.id
+          @client_secret = intent.client_secret
         end
 
         def process_stripe_payment(order)
