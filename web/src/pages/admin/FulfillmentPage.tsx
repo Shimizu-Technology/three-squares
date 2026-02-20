@@ -343,8 +343,9 @@ export default function FulfillmentPage() {
         return true;
       });
 
-      // Check for new orders
-      const newIds = new Set(filtered.filter((o) => o.status === 'confirmed').map((o) => o.id));
+      // Check for new orders (pending for retail, confirmed for pickup/wholesale)
+      const newOrderStatuses = ['pending', 'confirmed'];
+      const newIds = new Set(filtered.filter((o) => newOrderStatuses.includes(o.status)).map((o) => o.id));
       const prevIds = prevOrderIdsRef.current;
       const hasNewOrders = [...newIds].some((id) => !prevIds.has(id));
       if (hasNewOrders && prevIds.size > 0) {
@@ -377,16 +378,22 @@ export default function FulfillmentPage() {
     setAdvancing((prev) => new Set(prev).add(orderId));
     const order = orders.find((o) => o.id === orderId);
     if (order) {
-      // Map depends on order type — backend handles the logic via advance_status,
-      // this is just for optimistic UI updates
-      const nextStatusMap: Record<string, string> = {
-        pending: 'confirmed',
-        confirmed: 'ready',       // pickup/wholesale: confirmed → ready
-        processing: 'shipped',    // retail: processing → shipped
-        ready: 'picked_up',       // pickup: ready → picked_up
-        shipped: 'delivered',     // retail: shipped → delivered
+      // Optimistic next status depends on order type
+      const isRetail = order.order_type === 'retail';
+      const nextStatusMap: Record<string, Record<string, string>> = {
+        retail: {
+          pending: 'processing',
+          processing: 'shipped',
+          shipped: 'delivered',
+        },
+        default: {
+          pending: 'confirmed',
+          confirmed: 'ready',
+          ready: 'picked_up',
+        },
       };
-      const nextStatus = nextStatusMap[order.status];
+      const map = isRetail ? nextStatusMap.retail : nextStatusMap.default;
+      const nextStatus = map[order.status];
       if (nextStatus) {
         setOrders((prev) =>
           prev.map((o) => (o.id === orderId ? { ...o, status: nextStatus } : o))
