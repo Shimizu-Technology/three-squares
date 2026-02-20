@@ -37,17 +37,17 @@ const COLUMNS: Column[] = [
   {
     key: 'new',
     label: 'New Orders',
-    statuses: ['confirmed'],
+    statuses: ['pending', 'confirmed'],
     icon: <Bell className="w-5 h-5" />,
     color: 'bg-blue-50 border-blue-200',
     headerColor: 'bg-blue-600 text-white',
-    actionLabel: 'Start Preparing',
+    actionLabel: 'Advance',
     actionColor: 'bg-amber-500 hover:bg-amber-600 active:bg-amber-700 text-white',
   },
   {
     key: 'preparing',
-    label: 'Preparing',
-    statuses: ['preparing', 'processing'],
+    label: 'In Progress',
+    statuses: ['processing'],
     icon: <ChefHat className="w-5 h-5" />,
     color: 'bg-amber-50 border-amber-200',
     headerColor: 'bg-amber-500 text-white',
@@ -57,7 +57,7 @@ const COLUMNS: Column[] = [
   {
     key: 'ready',
     label: 'Ready',
-    statuses: ['ready', 'ready_for_pickup'],
+    statuses: ['ready', 'shipped'],
     icon: <Package className="w-5 h-5" />,
     color: 'bg-emerald-50 border-emerald-200',
     headerColor: 'bg-emerald-600 text-white',
@@ -67,7 +67,7 @@ const COLUMNS: Column[] = [
   {
     key: 'completed',
     label: 'Completed',
-    statuses: ['picked_up', 'delivered', 'completed'],
+    statuses: ['picked_up', 'delivered'],
     icon: <CheckCircle2 className="w-5 h-5" />,
     color: 'bg-gray-50 border-gray-200',
     headerColor: 'bg-gray-500 text-white',
@@ -306,7 +306,7 @@ export default function FulfillmentPage() {
   const fetchOrders = useCallback(async () => {
     try {
       // Fetch active orders (all non-cancelled statuses we care about)
-      const statuses = ['confirmed', 'preparing', 'processing', 'ready', 'ready_for_pickup', 'picked_up', 'delivered'];
+      const statuses = ['pending', 'confirmed', 'processing', 'ready', 'shipped', 'picked_up', 'delivered'];
       const params: Record<string, string> = { per_page: '200' };
 
       if (locationFilter !== 'all') {
@@ -336,7 +336,7 @@ export default function FulfillmentPage() {
       // Filter completed orders older than 30 min
       const now = Date.now();
       const filtered = allOrders.filter((o) => {
-        if (['picked_up', 'delivered', 'completed'].includes(o.status)) {
+        if (['picked_up', 'delivered'].includes(o.status)) {
           const age = now - new Date(o.updated_at || o.created_at).getTime();
           return age < COMPLETED_MAX_AGE_MS;
         }
@@ -377,12 +377,14 @@ export default function FulfillmentPage() {
     setAdvancing((prev) => new Set(prev).add(orderId));
     const order = orders.find((o) => o.id === orderId);
     if (order) {
+      // Map depends on order type — backend handles the logic via advance_status,
+      // this is just for optimistic UI updates
       const nextStatusMap: Record<string, string> = {
-        confirmed: 'preparing',
-        preparing: 'ready',
-        processing: 'ready',
-        ready: 'picked_up',
-        ready_for_pickup: 'picked_up',
+        pending: 'confirmed',
+        confirmed: 'ready',       // pickup/wholesale: confirmed → ready
+        processing: 'shipped',    // retail: processing → shipped
+        ready: 'picked_up',       // pickup: ready → picked_up
+        shipped: 'delivered',     // retail: shipped → delivered
       };
       const nextStatus = nextStatusMap[order.status];
       if (nextStatus) {
