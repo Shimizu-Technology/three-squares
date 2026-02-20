@@ -106,9 +106,14 @@ export interface Collection {
   slug: string;
   description: string;
   image_url: string | null;
-  thumbnail_url: string | null; // Added for collections landing page
+  thumbnail_url: string | null;
   featured: boolean;
   product_count: number;
+  collection_type?: 'standard' | 'seasonal' | 'event' | 'limited_time';
+  starts_at?: string | null;
+  ends_at?: string | null;
+  is_featured?: boolean;
+  banner_text?: string | null;
 }
 
 export interface Location {
@@ -207,6 +212,7 @@ export const collectionsApi = {
     page?: number;
     per_page?: number;
     search?: string;
+    featured?: boolean;
   }): Promise<CollectionsResponse> => {
     const response = await api.get('/collections', { params });
     return response.data;

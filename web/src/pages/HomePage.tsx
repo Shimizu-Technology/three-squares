@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { UtensilsCrossed, MapPin, Phone, Clock, ChevronRight } from 'lucide-react';
 import FeaturedProducts from '../components/FeaturedProducts';
+import FeaturedSpecials from '../components/FeaturedSpecials';
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 import { homepageApi, type HomepageSection } from '../services/api';
@@ -367,6 +368,11 @@ export default function HomePage() {
           </div>
         </section>
       )}
+
+      {/* ============================================================ */}
+      {/* FEATURED SPECIALS (seasonal/event collections)               */}
+      {/* ============================================================ */}
+      <FeaturedSpecials />
 
       {/* ============================================================ */}
       {/* FEATURED MENU ITEMS                                          */}

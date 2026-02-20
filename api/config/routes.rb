@@ -68,7 +68,11 @@ Rails.application.routes.draw do
         resources :uploads, only: [ :create, :destroy ]
 
         # Collections
-        resources :collections, except: [ :new, :edit ]
+        resources :collections, except: [ :new, :edit ] do
+          collection do
+            post :auto_hide_expired
+          end
+        end
         resources :locations, except: [ :new, :edit ] do
           member do
             post :toggle_active
