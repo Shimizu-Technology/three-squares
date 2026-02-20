@@ -13,6 +13,7 @@ module Api
           @products = @products.where(published: params[:published]) if params[:published].present?
           @products = @products.where(archived: params[:archived]) if params[:archived].present?
           @products = @products.active unless params[:show_archived] == "true"
+          @products = @products.by_business_line(params[:business_line]) if params[:business_line].present?
           @products = @products.where(product_type: params[:product_type]) if params[:product_type].present?
           @products = @products.joins(:collections).where(collections: { id: params[:collection_id] }) if params[:collection_id].present?
 
@@ -186,6 +187,7 @@ module Api
             :shopify_product_id,
             :allow_pickup,
             :allow_shipping,
+            :business_line,
             collection_ids: [],
             location_ids: []
           )
@@ -200,6 +202,7 @@ module Api
             id: product.id,
             name: product.name,
             slug: product.slug,
+            business_line: product.business_line,
             base_price_cents: product.base_price_cents,
             sale_price_cents: product.sale_price_cents,
             new_product: product.new_product,

@@ -8,6 +8,7 @@ export interface Product {
   featured: boolean;
   archived: boolean;
   product_type: string;
+  business_line: 'three_squares' | 'latte_stone_cookies' | 'bgpacific';
   primary_image_url: string | null;
   variant_count: number;
   total_stock: number;

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_20_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_20_001912) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -143,6 +143,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_20_000002) do
   end
 
   create_table "collections", force: :cascade do |t|
+    t.string "business_line", default: "three_squares", null: false
     t.datetime "created_at", null: false
     t.text "description"
     t.boolean "featured"
@@ -154,6 +155,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_20_000002) do
     t.string "slug"
     t.integer "sort_order"
     t.datetime "updated_at", null: false
+    t.index ["business_line"], name: "index_collections_on_business_line"
     t.index ["slug"], name: "index_collections_on_slug", unique: true
   end
 
@@ -565,6 +567,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_20_000002) do
     t.boolean "allow_shipping", default: false, null: false
     t.boolean "archived", default: false, null: false
     t.integer "base_price_cents"
+    t.string "business_line", default: "three_squares", null: false
     t.datetime "created_at", null: false
     t.text "description"
     t.boolean "featured"
@@ -590,6 +593,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_20_000002) do
     t.index ["allow_pickup"], name: "index_products_on_allow_pickup"
     t.index ["allow_shipping"], name: "index_products_on_allow_shipping"
     t.index ["archived"], name: "index_products_on_archived"
+    t.index ["business_line"], name: "index_products_on_business_line"
     t.index ["slug"], name: "index_products_on_slug", unique: true
   end
 

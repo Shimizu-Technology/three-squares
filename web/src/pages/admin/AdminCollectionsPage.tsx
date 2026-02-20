@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import { Plus, Edit, Trash2, Eye, Package } from 'lucide-react';
 import useLockBodyScroll from '../../hooks/useLockBodyScroll';
 import { authDelete, authGet, authPatch, authPost } from '../../services/authApi';
+import { useBusinessLineStore } from '../../store/businessLineStore';
 
 interface Collection {
   id: number;
@@ -17,6 +18,7 @@ interface Collection {
   featured: boolean;
   sort_order: number;
   product_count: number;
+  business_line: 'three_squares' | 'latte_stone_cookies' | 'bgpacific';
   created_at: string;
   updated_at: string;
 }
@@ -43,7 +45,13 @@ export default function AdminCollectionsPage() {
     published: true,
     featured: false,
     sort_order: 0,
+    business_line: 'three_squares' as 'three_squares' | 'latte_stone_cookies' | 'bgpacific',
   });
+
+  const selectedBusinessLine = useBusinessLineStore((s) => s.selected);
+  const filteredCollections = collections.filter(
+    (c) => selectedBusinessLine === 'all' || c.business_line === selectedBusinessLine
+  );
 
   useEffect(() => {
     fetchCollections();
@@ -53,7 +61,8 @@ export default function AdminCollectionsPage() {
     try {
       setLoading(true);
       const response = await authGet<CollectionsResponse>('/admin/collections', getToken);
-      setCollections(response.data.data || []);
+      const allCollections = response.data.data || [];
+      setCollections(allCollections);
     } catch (err) {
       console.error('Failed to fetch collections:', err);
       toast.error('Failed to load collections');
@@ -70,6 +79,7 @@ export default function AdminCollectionsPage() {
       published: collection.published,
       featured: collection.featured,
       sort_order: collection.sort_order ?? 0,
+      business_line: collection.business_line || 'three_squares',
     });
     setShowEditModal(true);
   };
@@ -82,6 +92,7 @@ export default function AdminCollectionsPage() {
       published: true,
       featured: false,
       sort_order: 0,
+      business_line: selectedBusinessLine !== 'all' ? selectedBusinessLine : 'three_squares',
     });
     setShowEditModal(true);
   };
@@ -190,14 +201,14 @@ export default function AdminCollectionsPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {collections.length === 0 ? (
+            {filteredCollections.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                   No collections found. Create your first collection!
                 </td>
               </tr>
             ) : (
-              collections.map((collection) => (
+              filteredCollections.map((collection) => (
                 <tr key={collection.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4">
                     <div>
@@ -313,6 +324,22 @@ export default function AdminCollectionsPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="Brief description of this collection"
                 />
+              </div>
+
+              {/* Business Line */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Business Line
+                </label>
+                <select
+                  value={formData.business_line}
+                  onChange={(e) => setFormData({ ...formData, business_line: e.target.value as 'three_squares' | 'latte_stone_cookies' | 'bgpacific' })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
+                >
+                  <option value="three_squares">Three Squares</option>
+                  <option value="latte_stone_cookies">Latte Stone Cookies</option>
+                  <option value="bgpacific">B&amp;G Pacific</option>
+                </select>
               </div>
 
               {/* Sort Order */}

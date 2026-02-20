@@ -8,6 +8,7 @@ module Api
         # GET /api/v1/admin/collections
         def index
           @collections = Collection.order(sort_order: :asc, name: :asc)
+          @collections = @collections.by_business_line(params[:business_line]) if params[:business_line].present?
 
           render_success(
             @collections.map { |c| serialize_collection(c) }
@@ -65,7 +66,8 @@ module Api
             :featured,
             :sort_order,
             :meta_title,
-            :meta_description
+            :meta_description,
+            :business_line
           )
         end
 
@@ -74,6 +76,7 @@ module Api
             id: collection.id,
             name: collection.name,
             slug: collection.slug,
+            business_line: collection.business_line,
             description: collection.description,
             image_url: collection.image_url,
             published: collection.published,

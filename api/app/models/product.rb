@@ -11,6 +11,16 @@ class Product < ApplicationRecord
   has_many :locations, through: :product_locations
   has_many :order_items, dependent: :restrict_with_error
 
+  # Business line enum
+  BUSINESS_LINES = %w[three_squares latte_stone_cookies bgpacific].freeze
+  validates :business_line, inclusion: { in: BUSINESS_LINES }
+
+  # Business line scopes
+  scope :three_squares, -> { where(business_line: "three_squares") }
+  scope :latte_stone_cookies, -> { where(business_line: "latte_stone_cookies") }
+  scope :bgpacific, -> { where(business_line: "bgpacific") }
+  scope :by_business_line, ->(line) { line.present? ? where(business_line: line) : all }
+
   # Validations
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: true, format: { with: /\A[a-z0-9\-]+\z/ }

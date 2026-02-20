@@ -11,6 +11,7 @@ import {
 import { SkeletonListPage } from '../../components/admin';
 
 import { authGet, authPatch, authPost } from '../../services/authApi';
+import { useBusinessLineStore } from '../../store/businessLineStore';
 
 interface ProductListResponse {
   data: Product[];
@@ -121,7 +122,10 @@ export default function AdminProductsPage() {
   };
 
   // ── Filter + Sort + Paginate ───────────────────────────
+  const selectedBusinessLine = useBusinessLineStore((s) => s.selected);
   const filteredProducts = products.filter((product) => {
+    // Business line filter from global admin context
+    if (selectedBusinessLine !== 'all' && product.business_line !== selectedBusinessLine) return false;
     if (searchQuery && !product.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (filterPublished === 'archived') {
       if (!product.archived) return false;
