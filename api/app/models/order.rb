@@ -16,7 +16,7 @@ class Order < ApplicationRecord
   validates :order_type, inclusion: { in: %w[retail wholesale pickup dine_in] }
   validates :fulfillment_type, inclusion: { in: %w[pickup shipping] }
   validates :source, inclusion: { in: %w[online pos phone] }
-  validates :payment_method, inclusion: { in: %w[stripe cash card_present] }, allow_nil: true
+  validates :payment_method, inclusion: { in: %w[stripe cash card_present card_manual] }, allow_nil: true
   validates :status, inclusion: { in: VALID_STATUSES }
   validates :payment_status, inclusion: { in: %w[pending paid failed refunded] }
   validates :total_cents, numericality: { greater_than_or_equal_to: 0 }

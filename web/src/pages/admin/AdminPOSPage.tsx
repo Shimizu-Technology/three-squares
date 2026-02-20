@@ -1,11 +1,15 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
 import {
   ArrowLeft, Search, ShoppingCart, Plus, Minus, Trash2,
   Banknote, MapPin, Check, X, ChefHat, AlertCircle,
-  Wifi, WifiOff, Loader2, Smartphone
+  Wifi, WifiOff, Loader2, Smartphone, CreditCard
 } from 'lucide-react';
+import ManualCardEntry from '../../components/admin/ManualCardEntry';
+import type { ManualPaymentResult } from '../../components/admin/ManualCardEntry';
 import {
   initializeTerminal,
   discoverReaders,
@@ -263,6 +267,10 @@ function VariantPickerModal({
   );
 }
 
+// ─── Stripe Elements Setup ──────────────────────────────────────────────────
+
+const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY || '');
+
 // ─── Main POS Page ──────────────────────────────────────────────────────────
 
 export default function AdminPOSPage() {
@@ -291,8 +299,12 @@ export default function AdminPOSPage() {
   // Modals
   const [variantPickerProduct, setVariantPickerProduct] = useState<POSProduct | null>(null);
   const [showCashModal, setShowCashModal] = useState(false);
+  const [showManualCardModal, setShowManualCardModal] = useState(false);
+  const [manualCardClientSecret, setManualCardClientSecret] = useState<string | null>(null);
+  const [manualCardOrderId, setManualCardOrderId] = useState<number | null>(null);
+  const [manualCardApiToken, setManualCardApiToken] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
-  const [lastOrder, setLastOrder] = useState<{ order_number: string; total_formatted: string; change_due_formatted?: string } | null>(null);
+  const [lastOrder, setLastOrder] = useState<{ order_number: string; total_formatted: string; change_due_formatted?: string; card_brand?: string; card_last4?: string } | null>(null);
 
   // Terminal
   const [terminalStatus, setTerminalStatus] = useState<TerminalStatus>('not_initialized');
@@ -666,6 +678,58 @@ export default function AdminPOSPage() {
     [cart, customerName, orderType, selectedLocation, getToken, clearCart]
   );
 
+  // ─── Manual Card Entry ─────────────────────────────────────────────────
+
+  const handleManualCardEntry = useCallback(async () => {
+    if (cart.length === 0) return;
+    setSubmitting(true);
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      const orderData: Record<string, unknown> = {
+        customer_name: customerName || 'Walk-in',
+        order_type: orderType,
+        payment_method: 'card_manual',
+        location_id: selectedLocation,
+        items: cart.map((c) => ({
+          product_variant_id: c.variant.id,
+          quantity: c.quantity,
+        })),
+      };
+
+      const result = await createPOSOrder(token, orderData);
+      // result.client_secret has the PaymentIntent secret for Stripe.js
+      if (result.client_secret) {
+        setManualCardClientSecret(result.client_secret);
+        setManualCardOrderId(result.id);
+        setManualCardApiToken(token);
+        setShowManualCardModal(true);
+      } else {
+        throw new Error('No client secret returned — Stripe may not be configured');
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Failed to create order';
+      alert(message);
+    } finally {
+      setSubmitting(false);
+    }
+  }, [cart, customerName, orderType, selectedLocation, getToken]);
+
+  const handleManualCardSuccess = useCallback((result: ManualPaymentResult) => {
+    setShowManualCardModal(false);
+    setManualCardClientSecret(null);
+    setManualCardOrderId(null);
+    setLastOrder({
+      order_number: `Order #${result.orderId}`,
+      total_formatted: `$${(cartTotal / 100).toFixed(2)}`,
+      card_brand: result.brand,
+      card_last4: result.last4,
+    });
+    clearCart();
+    setTimeout(() => setLastOrder(null), 4000);
+  }, [cartTotal, clearCart]);
+
   const handleCardAction = useCallback(() => {
     if (!canSubmitPayment) return;
     if (!terminalReader) {
@@ -727,6 +791,12 @@ export default function AdminPOSPage() {
       if (event.key === 'F9' && canSubmitPayment) {
         event.preventDefault();
         handleCardAction();
+        return;
+      }
+
+      if (event.key === 'F10' && canSubmitPayment) {
+        event.preventDefault();
+        handleManualCardEntry();
         return;
       }
 
@@ -1185,7 +1255,7 @@ export default function AdminPOSPage() {
             </button>
           )}
 
-          <div className="grid grid-cols-2 gap-2 mb-2">
+          <div className="grid grid-cols-3 gap-2 mb-2">
             <button
               onClick={() => setShowCashModal(true)}
               disabled={!canSubmitPayment}
@@ -1206,7 +1276,15 @@ export default function AdminPOSPage() {
               ) : (
                 <WifiOff className="w-5 h-5" />
               )}
-              {terminalCollecting ? 'Tap Card...' : terminalReader ? 'Tap Card' : 'Connect Reader'}
+              {terminalCollecting ? 'Tap Card...' : terminalReader ? 'Tap Card' : 'No Reader'}
+            </button>
+            <button
+              onClick={handleManualCardEntry}
+              disabled={!canSubmitPayment || submitting}
+              className="flex items-center justify-center gap-2 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <CreditCard className="w-5 h-5" />
+              Type Card
             </button>
           </div>
 
@@ -1233,7 +1311,8 @@ export default function AdminPOSPage() {
             <span>Search `/`</span>
             <span>Toggle type `F2`</span>
             <span>Cash `F8`</span>
-            <span>Card `F9`</span>
+            <span>Tap `F9`</span>
+            <span>Type `F10`</span>
             <span>Qty `[` `]` `\`</span>
             <span>Reader: tap status chip</span>
           </div>
@@ -1265,6 +1344,7 @@ export default function AdminPOSPage() {
             <div className="text-sm opacity-90">
               {lastOrder.total_formatted}
               {lastOrder.change_due_formatted && ` — Change: ${lastOrder.change_due_formatted}`}
+              {lastOrder.card_brand && lastOrder.card_last4 && ` — ${lastOrder.card_brand.toUpperCase()} ****${lastOrder.card_last4}`}
             </div>
           </div>
         </div>
@@ -1277,6 +1357,23 @@ export default function AdminPOSPage() {
           onComplete={(cashReceivedCents) => submitOrder('cash', cashReceivedCents)}
           onClose={() => setShowCashModal(false)}
         />
+      )}
+
+      {showManualCardModal && manualCardClientSecret && manualCardOrderId && (
+        <Elements stripe={stripePromise} options={{ clientSecret: manualCardClientSecret }}>
+          <ManualCardEntry
+            clientSecret={manualCardClientSecret}
+            totalCents={cartTotal}
+            orderId={manualCardOrderId}
+            onSuccess={handleManualCardSuccess}
+            onClose={() => {
+              setShowManualCardModal(false);
+              setManualCardClientSecret(null);
+              setManualCardOrderId(null);
+            }}
+            apiToken={manualCardApiToken}
+          />
+        </Elements>
       )}
 
       {variantPickerProduct && (

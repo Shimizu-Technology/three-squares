@@ -20,6 +20,7 @@ module Api
             by_location: location_data(active_paid),
             by_order_type: group_breakdown(active_paid, :order_type),
             by_source: group_breakdown(active_paid, :source),
+            by_payment_method: group_breakdown(active_paid, :payment_method),
             revenue_trend: revenue_trend_data(active_paid),
             top_products: top_products_data(active_paid),
             recent_orders: recent_orders_data(base)
