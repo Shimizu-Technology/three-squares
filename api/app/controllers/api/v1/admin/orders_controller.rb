@@ -177,7 +177,7 @@ module Api
           if settings.enable_order_emails && @order.customer_email.present?
             EmailService.send_refund_notification(@order, refund.amount_cents, refund.reason)
           end
-          if settings.enable_order_sms && @order.customer_phone.present?
+          if @order.customer_phone.present?
             SmsService.send_refund_notification(@order, refund.amount_cents)
           end
 
@@ -202,11 +202,11 @@ module Api
       private
 
       # Send email + SMS notifications for the current order status.
-      # Respects enable_order_emails / enable_order_sms toggles independently.
+      # Email respects enable_order_emails toggle in controller.
+      # SMS toggle logic is handled internally by SmsService#sms_enabled?.
       def send_status_notifications(order)
         settings = SiteSetting.instance
         emails_on = settings.enable_order_emails
-        sms_on = settings.enable_order_sms
 
         has_email = order.customer_email.present?
         has_phone = order.customer_phone.present?
@@ -215,37 +215,37 @@ module Api
         when "confirmed"
           # Pickup flow: order is being prepared
           SendOrderStatusEmailJob.perform_later(order.id, "confirmed") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "confirmed") if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, "confirmed") if has_phone
 
         when "processing"
           # Shipping flow: order is being packed
           SendOrderStatusEmailJob.perform_later(order.id, "processing") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "processing") if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, "processing") if has_phone
 
         when "ready"
           # Pickup flow: ready for pickup
           SendOrderReadyEmailJob.perform_later(order.id) if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "ready") if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, "ready") if has_phone
 
         when "shipped"
           # Shipping flow: shipped with optional tracking
           SendOrderShippedEmailJob.perform_later(order.id) if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "shipped") if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, "shipped") if has_phone
 
         when "picked_up"
           # Pickup flow: customer picked up
           SendOrderStatusEmailJob.perform_later(order.id, "picked_up") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "picked_up") if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, "picked_up") if has_phone
 
         when "delivered"
           # Shipping flow: delivered
           SendOrderStatusEmailJob.perform_later(order.id, "delivered") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "delivered") if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, "delivered") if has_phone
 
         when "cancelled"
           # Both flows: cancelled
           SendOrderStatusEmailJob.perform_later(order.id, "cancelled") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "cancelled") if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, "cancelled") if has_phone
         end
       end
 
