@@ -10,7 +10,7 @@ module Api
         before_action :authenticate_request
         before_action :require_staff_or_above!
         before_action :require_manager_or_above!, only: [ :refund, :export, :summary ]
-        before_action :set_order, only: [ :show, :update, :notify, :refund ]
+        before_action :set_order, only: [ :show, :update, :notify, :refund, :advance_status ]
 
       # GET /api/v1/admin/orders
       # List all orders (admin only)
@@ -199,6 +199,30 @@ module Api
         render json: { error: "Refund failed: #{e.message}" }, status: :internal_server_error
       end
 
+
+      # PATCH /api/v1/admin/orders/:id/advance_status
+      # Advance order to next logical status (used by fulfillment view)
+      def advance_status
+        next_statuses = @order.next_status_options.reject { |s| s == "cancelled" }
+
+        if next_statuses.empty?
+          render json: { error: "Order cannot be advanced from '#{@order.status}'" }, status: :unprocessable_entity
+          return
+        end
+
+        new_status = next_statuses.first
+
+        if @order.update(status: new_status)
+          send_status_notifications(@order) if @order.saved_change_to_status?
+
+          render json: {
+            order: order_json(@order),
+            message: "Order advanced to '#{new_status}'"
+          }
+        else
+          render json: { error: @order.errors.full_messages.join(", ") }, status: :unprocessable_entity
+        end
+      end
 
       private
 

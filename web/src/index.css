@@ -401,3 +401,32 @@ p {
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+
+/* Fulfillment fullscreen mode — hide admin sidebar + top bar */
+body.fulfillment-fullscreen aside,
+body.fulfillment-fullscreen .admin-scope > div:first-child > header {
+  display: none !important;
+}
+body.fulfillment-fullscreen .admin-scope > div:first-child {
+  padding-left: 0 !important;
+}
+
+/* iPad fulfillment touch optimizations */
+.fulfillment-page {
+  touch-action: manipulation;
+  -webkit-overflow-scrolling: touch;
+  /* Safe area for iPads with home indicator */
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* Responsive: stack columns on portrait iPad */
+@media (max-width: 900px) {
+  .fulfillment-page .grid-cols-4 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media (max-width: 600px) {
+  .fulfillment-page .grid-cols-4 {
+    grid-template-columns: 1fr !important;
+  }
+}

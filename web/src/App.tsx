@@ -26,6 +26,7 @@ import AdminCateringPage from './pages/admin/AdminCateringPage';
 import LocationPicker from './components/LocationPicker';
 import AdminLocationsPage from './pages/admin/AdminLocationsPage';
 import AdminPOSPage from './pages/admin/AdminPOSPage';
+import FulfillmentPage from './pages/admin/FulfillmentPage';
 import CheckoutPage from './pages/CheckoutPage';
 import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import OrderHistoryPage from './pages/OrderHistoryPage';
@@ -495,6 +496,7 @@ function AppContent() {
             <Route path="catering" element={<AdminCateringPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
             <Route path="settings/variant-presets" element={<AdminVariantPresetsPage />} />
+            <Route path="fulfillment" element={<FulfillmentPage />} />
           </Route>
           
           <Route path="*" element={<NotFoundPage />} />
