@@ -39,16 +39,21 @@ class Collection < ApplicationRecord
   scope :is_featured, -> { where(is_featured: true) }
   scope :by_collection_type, ->(type) { type.present? ? where(collection_type: type) : all }
 
-  # Currently active: within date range (or no date range set)
-  scope :currently_active, -> {
+  # Within date range (or no date range set) — does NOT check published status
+  scope :within_date_range, -> {
     now = Time.current
     where("starts_at IS NULL OR starts_at <= ?", now)
       .where("ends_at IS NULL OR ends_at >= ?", now)
   }
 
-  # Customer visible: published + within date range
+  # Currently active: published AND within date range (matches active_now? behavior)
+  scope :currently_active, -> {
+    published.within_date_range
+  }
+
+  # Customer visible: alias for currently_active
   scope :customer_visible, -> {
-    published.currently_active
+    currently_active
   }
 
   # Callbacks
