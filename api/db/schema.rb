@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_20_001912) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_20_014323) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -143,20 +143,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_20_001912) do
   end
 
   create_table "collections", force: :cascade do |t|
+    t.boolean "auto_hide", default: false, null: false
+    t.string "banner_text"
     t.string "business_line", default: "three_squares", null: false
+    t.string "collection_type", default: "standard", null: false
     t.datetime "created_at", null: false
     t.text "description"
+    t.datetime "ends_at"
     t.boolean "featured"
     t.string "image_url"
+    t.boolean "is_featured", default: false, null: false
     t.text "meta_description"
     t.string "meta_title"
     t.string "name"
     t.boolean "published", default: false
     t.string "slug"
     t.integer "sort_order"
+    t.datetime "starts_at"
     t.datetime "updated_at", null: false
     t.index ["business_line"], name: "index_collections_on_business_line"
+    t.index ["collection_type"], name: "index_collections_on_collection_type"
+    t.index ["is_featured"], name: "index_collections_on_is_featured"
     t.index ["slug"], name: "index_collections_on_slug", unique: true
+    t.index ["starts_at", "ends_at"], name: "index_collections_on_starts_at_and_ends_at"
   end
 
   create_table "contact_submissions", force: :cascade do |t|

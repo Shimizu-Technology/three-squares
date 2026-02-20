@@ -15,6 +15,32 @@ interface Meta {
   total: number;
 }
 
+const COLLECTION_TYPE_BADGES: Record<string, { label: string; className: string }> = {
+  seasonal: { label: '🍂 Seasonal', className: 'bg-orange-100 text-orange-700' },
+  event: { label: '🎉 Event Special', className: 'bg-purple-100 text-purple-700' },
+  limited_time: { label: '⏰ Limited Time', className: 'bg-red-100 text-red-700' },
+};
+
+function formatDateRange(startsAt?: string | null, endsAt?: string | null): string | null {
+  if (!startsAt && !endsAt) return null;
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  const start = startsAt ? new Date(startsAt).toLocaleDateString(undefined, opts) : null;
+  const end = endsAt ? new Date(endsAt).toLocaleDateString(undefined, opts) : null;
+  if (start && end) return `Available ${start} – ${end}`;
+  if (start) return `Available from ${start}`;
+  if (end) return `Available until ${end}`;
+  return null;
+}
+
+function getCountdownText(endsAt?: string | null): string | null {
+  if (!endsAt) return null;
+  const diff = new Date(endsAt).getTime() - Date.now();
+  if (diff <= 0) return null;
+  const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+  if (days <= 7) return days === 1 ? 'Ends tomorrow!' : `Ends in ${days} days!`;
+  return null;
+}
+
 export default function CollectionsPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
@@ -196,6 +222,19 @@ export default function CollectionsPage() {
                   {featuredCollection.description && (
                     <p className="text-warm-500 mb-4 line-clamp-3">{featuredCollection.description}</p>
                   )}
+                  {featuredCollection.banner_text && (
+                    <p className="text-sm font-semibold text-tsPrimary mb-3">{featuredCollection.banner_text}</p>
+                  )}
+                  {(() => {
+                    const dateRange = formatDateRange(featuredCollection.starts_at, featuredCollection.ends_at);
+                    const countdown = getCountdownText(featuredCollection.ends_at);
+                    return (dateRange || countdown) ? (
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {dateRange && <span className="text-xs text-warm-500 bg-warm-100 px-2 py-0.5 rounded">{dateRange}</span>}
+                        {countdown && <span className="text-xs text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded animate-pulse">{countdown}</span>}
+                      </div>
+                    ) : null;
+                  })()}
                   <p className="text-sm text-warm-400">
                     {featuredCollection.product_count} {featuredCollection.product_count === 1 ? 'product' : 'products'}
                   </p>
@@ -322,14 +361,21 @@ export default function CollectionsPage() {
                         </svg>
                       </div>
                     )}
-                    {collection.featured && (
-                      <div className="absolute top-3 right-3 inline-flex items-center gap-1 bg-tsGold text-gray-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
-                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                          <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                        </svg>
-                        Featured
-                      </div>
-                    )}
+                    <div className="absolute top-3 right-3 flex flex-col gap-1 items-end">
+                      {collection.featured && (
+                        <span className="inline-flex items-center gap-1 bg-tsGold text-gray-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
+                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                          </svg>
+                          Featured
+                        </span>
+                      )}
+                      {collection.collection_type && COLLECTION_TYPE_BADGES[collection.collection_type] && (
+                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold shadow-lg ${COLLECTION_TYPE_BADGES[collection.collection_type].className}`}>
+                          {COLLECTION_TYPE_BADGES[collection.collection_type].label}
+                        </span>
+                      )}
+                    </div>
                   </div>
 
                   {/* Collection Info */}
@@ -342,6 +388,19 @@ export default function CollectionsPage() {
                         {collection.description}
                       </p>
                     )}
+                    {collection.banner_text && (
+                      <p className="text-sm font-medium text-tsPrimary mb-2">{collection.banner_text}</p>
+                    )}
+                    {(() => {
+                      const dateRange = formatDateRange(collection.starts_at, collection.ends_at);
+                      const countdown = getCountdownText(collection.ends_at);
+                      return (dateRange || countdown) ? (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {dateRange && <span className="text-xs text-warm-500 bg-warm-100 px-2 py-0.5 rounded">{dateRange}</span>}
+                          {countdown && <span className="text-xs text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded animate-pulse">{countdown}</span>}
+                        </div>
+                      ) : null;
+                    })()}
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-warm-400">
                         {collection.product_count} {collection.product_count === 1 ? 'product' : 'products'}

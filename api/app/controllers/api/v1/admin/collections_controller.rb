@@ -9,6 +9,7 @@ module Api
         def index
           @collections = Collection.order(sort_order: :asc, name: :asc)
           @collections = @collections.by_business_line(params[:business_line]) if params[:business_line].present?
+          @collections = @collections.by_collection_type(params[:collection_type]) if params[:collection_type].present?
 
           render_success(
             @collections.map { |c| serialize_collection(c) }
@@ -49,6 +50,12 @@ module Api
           end
         end
 
+        # POST /api/v1/admin/collections/auto_hide_expired
+        def auto_hide_expired
+          count = Collection.auto_hide_expired!
+          render_success({ hidden_count: count }, message: "#{count} expired collection(s) hidden")
+        end
+
         private
 
         def set_collection
@@ -67,7 +74,13 @@ module Api
             :sort_order,
             :meta_title,
             :meta_description,
-            :business_line
+            :business_line,
+            :collection_type,
+            :starts_at,
+            :ends_at,
+            :is_featured,
+            :auto_hide,
+            :banner_text
           )
         end
 
@@ -85,6 +98,15 @@ module Api
             product_count: collection.products.count,
             meta_title: collection.meta_title,
             meta_description: collection.meta_description,
+            collection_type: collection.collection_type,
+            starts_at: collection.starts_at&.iso8601,
+            ends_at: collection.ends_at&.iso8601,
+            is_featured: collection.is_featured,
+            auto_hide: collection.auto_hide,
+            banner_text: collection.banner_text,
+            active_now: collection.active_now?,
+            expired: collection.expired?,
+            upcoming: collection.upcoming?,
             created_at: collection.created_at,
             updated_at: collection.updated_at
           }

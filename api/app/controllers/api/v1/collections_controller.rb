@@ -5,8 +5,13 @@ module Api
 
       # GET /api/v1/collections
       def index
-        @collections = Collection.published
+        @collections = Collection.customer_visible
                                  .includes(:products)
+
+        # Filter by featured
+        if params[:featured].present?
+          @collections = @collections.is_featured
+        end
 
         # Search by name or description
         if params[:search].present?
@@ -19,7 +24,7 @@ module Api
 
         # Pagination
         page = params[:page]&.to_i || 1
-        per_page = [ params[:per_page]&.to_i || 12, 50 ].min # Max 50 per page
+        per_page = [ params[:per_page]&.to_i || 12, 50 ].min
 
         # Get total count BEFORE pagination
         total_count = @collections.count
@@ -80,10 +85,10 @@ module Api
       private
 
       def set_collection
-        @collection = Collection.published
+        @collection = Collection.customer_visible
                                 .includes(:products)
                                 .find_by(id: params[:id]) ||
-                      Collection.published
+                      Collection.customer_visible
                                 .includes(:products)
                                 .find_by(slug: params[:id])
 
@@ -103,7 +108,12 @@ module Api
           image_url: collection.image_url,
           featured: collection.featured,
           product_count: collection.products.published.active.count,
-          thumbnail_url: thumbnail_url
+          thumbnail_url: thumbnail_url,
+          collection_type: collection.collection_type,
+          starts_at: collection.starts_at&.iso8601,
+          ends_at: collection.ends_at&.iso8601,
+          is_featured: collection.is_featured,
+          banner_text: collection.banner_text
         }
       end
 

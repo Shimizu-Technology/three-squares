@@ -11,6 +11,32 @@ import { useLocationStore } from '../store/locationStore';
 
 type Collection = ApiCollection;
 
+const COLLECTION_TYPE_BADGES: Record<string, { label: string; className: string }> = {
+  seasonal: { label: '🍂 Seasonal Menu', className: 'bg-orange-100 text-orange-800' },
+  event: { label: '🎉 Event Special', className: 'bg-purple-100 text-purple-800' },
+  limited_time: { label: '⏰ Limited Time', className: 'bg-red-100 text-red-800' },
+};
+
+function formatDateRange(startsAt?: string | null, endsAt?: string | null): string | null {
+  if (!startsAt && !endsAt) return null;
+  const opts: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric' };
+  const start = startsAt ? new Date(startsAt).toLocaleDateString(undefined, opts) : null;
+  const end = endsAt ? new Date(endsAt).toLocaleDateString(undefined, opts) : null;
+  if (start && end) return `Available ${start} – ${end}`;
+  if (start) return `Available from ${start}`;
+  if (end) return `Available until ${end}`;
+  return null;
+}
+
+function getCountdownText(endsAt?: string | null): string | null {
+  if (!endsAt) return null;
+  const diff = new Date(endsAt).getTime() - Date.now();
+  if (diff <= 0) return null;
+  const days = Math.ceil(diff / (1000 * 60 * 60 * 24));
+  if (days <= 7) return days === 1 ? 'Ends tomorrow!' : `Ends in ${days} days!`;
+  return null;
+}
+
 interface Meta {
   page: number;
   per_page: number;
@@ -144,12 +170,30 @@ export default function CollectionDetailPage() {
         <div className="absolute inset-0 bg-linear-to-r from-tsPrimary via-red-700 to-tsPrimary" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
           <FadeIn>
+            {collection.collection_type && COLLECTION_TYPE_BADGES[collection.collection_type] && (
+              <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold mb-3 ${COLLECTION_TYPE_BADGES[collection.collection_type].className}`}>
+                {COLLECTION_TYPE_BADGES[collection.collection_type].label}
+              </span>
+            )}
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mb-3 drop-shadow-md">
               {collection.name}
             </h1>
+            {collection.banner_text && (
+              <p className="text-lg font-semibold text-yellow-200 mb-2">{collection.banner_text}</p>
+            )}
             {collection.description && (
               <p className="text-lg text-white/90 max-w-2xl mb-3">{collection.description}</p>
             )}
+            {(() => {
+              const dateRange = formatDateRange(collection.starts_at, collection.ends_at);
+              const countdown = getCountdownText(collection.ends_at);
+              return (dateRange || countdown) ? (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {dateRange && <span className="text-sm text-white/80 bg-white/20 px-3 py-1 rounded-full">{dateRange}</span>}
+                  {countdown && <span className="text-sm text-yellow-200 font-semibold bg-red-600/40 px-3 py-1 rounded-full animate-pulse">{countdown}</span>}
+                </div>
+              ) : null;
+            })()}
             <p className="text-sm text-white/70">
               {meta?.total || 0} {meta?.total === 1 ? 'product' : 'products'}
             </p>
