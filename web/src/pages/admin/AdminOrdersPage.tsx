@@ -12,6 +12,7 @@ import {
   formatStatus,
 } from '../../components/admin/orders';
 import { SkeletonListPage } from '../../components/admin';
+import { useBusinessLineStore } from '../../store/businessLineStore';
 
 import { configApi, locationsApi } from '../../services/api';
 import { authGet, authPatch, authPost } from '../../services/authApi';
@@ -66,12 +67,22 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
     mode === 'pickup_queue' ? 'confirmed' : mode === 'shipping_queue' ? 'processing' : 'all'
   );
   const [orderTypeFilter, setOrderTypeFilter] = useState('all');
-  const [businessLineFilter, setBusinessLineFilter] = useState(mode === 'shipping_queue' ? 'latte_stone' : 'all');
+  const globalBusinessLine = useBusinessLineStore((s) => s.selected);
+  const [businessLineFilter, setBusinessLineFilter] = useState(
+    mode === 'shipping_queue' ? 'latte_stone' : globalBusinessLine !== 'all' ? globalBusinessLine : 'all'
+  );
   const [fulfillmentFilter, setFulfillmentFilter] = useState(
     mode === 'pickup_queue' ? 'pickup' : mode === 'shipping_queue' ? 'shipping' : 'all'
   );
   const [locationFilter, setLocationFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Sync global business line selector with local filter
+  useEffect(() => {
+    if (mode !== 'shipping_queue') {
+      setBusinessLineFilter(globalBusinessLine !== 'all' ? globalBusinessLine : 'all');
+    }
+  }, [globalBusinessLine, mode]);
   const [datePreset, setDatePreset] = useState('today');
   const [startDate, setStartDate] = useState(() => {
     const today = new Date();

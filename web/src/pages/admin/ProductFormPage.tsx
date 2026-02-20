@@ -8,6 +8,7 @@ import ImageUpload from '../../components/ImageUpload';
 import VariantManager from '../../components/VariantManager';
 import useLockBodyScroll from '../../hooks/useLockBodyScroll';
 import { authDelete, authGet, authPost, authPut } from '../../services/authApi';
+import { useBusinessLineStore } from '../../store/businessLineStore';
 
 interface InventoryAudit {
   id: number;
@@ -54,6 +55,7 @@ interface ProductFormData {
   description: string;
   product_type: string;
   vendor: string;
+  business_line: 'three_squares' | 'latte_stone_cookies' | 'bgpacific';
   base_price_cents: number;
   weight_oz: number;
   published: boolean;
@@ -78,6 +80,7 @@ interface ProductDetailsResponse {
     description?: string;
     product_type?: string;
     vendor?: string;
+    business_line?: 'three_squares' | 'latte_stone_cookies' | 'bgpacific';
     base_price_cents?: number;
     weight_oz?: number;
     published?: boolean;
@@ -132,11 +135,13 @@ export default function ProductFormPage() {
   const [loadingAudits, setLoadingAudits] = useState(false);
   const inventoryModalContentRef = useRef<HTMLDivElement | null>(null);
   const collectionsScrollRef = useRef<HTMLDivElement | null>(null);
+  const selectedBusinessLine = useBusinessLineStore((s) => s.selected);
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
     product_type: 'apparel',
     vendor: 'Three Squares',
+    business_line: selectedBusinessLine !== 'all' ? selectedBusinessLine : 'three_squares',
     base_price_cents: 0,
     weight_oz: 0,
     published: false,
@@ -194,6 +199,7 @@ export default function ProductFormPage() {
         description: product.description || '',
         product_type: product.product_type || 'apparel',
         vendor: product.vendor || 'Three Squares',
+        business_line: product.business_line || 'three_squares',
         base_price_cents: product.base_price_cents || 0,
         weight_oz: product.weight_oz || 0,
         published: product.published || false,
@@ -332,6 +338,7 @@ export default function ProductFormPage() {
           description: updatedProduct.description || '',
           product_type: updatedProduct.product_type || 'apparel',
           vendor: updatedProduct.vendor || 'Three Squares',
+          business_line: updatedProduct.business_line || 'three_squares',
           base_price_cents: updatedProduct.base_price_cents || 0,
           weight_oz: updatedProduct.weight_oz || 0,
           published: updatedProduct.published || false,
@@ -561,6 +568,24 @@ export default function ProductFormPage() {
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 placeholder="Describe your product..."
               />
+            </div>
+
+            {/* Business Line */}
+            <div>
+              <label htmlFor="business_line" className="block text-sm font-medium text-gray-700 mb-1">
+                Business Line
+              </label>
+              <select
+                id="business_line"
+                name="business_line"
+                value={formData.business_line}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
+              >
+                <option value="three_squares">Three Squares</option>
+                <option value="latte_stone_cookies">Latte Stone Cookies</option>
+                <option value="bgpacific">B&amp;G Pacific</option>
+              </select>
             </div>
 
             {/* Product Type */}

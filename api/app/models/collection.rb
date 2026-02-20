@@ -10,6 +10,15 @@ class Collection < ApplicationRecord
   validates :name, presence: true
   validates :slug, presence: true, uniqueness: true, format: { with: /\A[a-z0-9\-]+\z/ }
 
+  # Business line
+  BUSINESS_LINES = %w[three_squares latte_stone_cookies bgpacific].freeze
+  validates :business_line, inclusion: { in: BUSINESS_LINES }
+
+  scope :three_squares, -> { where(business_line: "three_squares") }
+  scope :latte_stone_cookies, -> { where(business_line: "latte_stone_cookies") }
+  scope :bgpacific, -> { where(business_line: "bgpacific") }
+  scope :by_business_line, ->(line) { line.present? ? where(business_line: line) : all }
+
   # Scopes
   scope :published, -> { where(published: true) }
   scope :featured, -> { where(featured: true) }

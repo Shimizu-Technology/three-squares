@@ -2,9 +2,11 @@ import { useRef, useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useUser, useAuth } from '@clerk/clerk-react';
 import axios from 'axios';
-import { ChevronLeft, ChevronRight, ExternalLink, Menu, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, ExternalLink, Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminIcon from '../components/admin/AdminIconMap';
+import BusinessLineSelector from '../components/admin/BusinessLineSelector';
+import { useBusinessLineStore, type BusinessLine } from '../store/businessLineStore';
 
 import { API_BASE_URL } from '../config';
 
@@ -172,23 +174,43 @@ export default function AdminLayout() {
 
   if (!isAdmin) return null;
 
-  // --- Navigation groups (filtered by permissions) ---
+  // --- Navigation groups (filtered by permissions + business line) ---
   const p = permissions;
-  const mainNavigation: NavItem[] = [
+  const selectedLine = useBusinessLineStore((s) => s.selected);
+
+  // Overview — always visible
+  const overviewNavigation: NavItem[] = [
     ...(p?.can_view_analytics ? [{ name: 'Dashboard', path: '/admin', icon: 'dashboard' }] : []),
+    ...(p?.can_view_analytics ? [{ name: 'Analytics', path: '/admin/analytics', icon: 'analytics' }] : []),
+  ];
+
+  // Three Squares section
+  const threeSquaresNavigation: NavItem[] = [
     ...(p?.can_fulfill_orders ? [{ name: 'Orders', path: '/admin/orders', icon: 'orders' }] : []),
     ...(p?.can_manage_products ? [{ name: 'Products', path: '/admin/products', icon: 'products' }] : []),
     ...(p?.can_manage_products ? [{ name: 'Collections', path: '/admin/collections', icon: 'collections' }] : []),
-    ...(p?.can_manage_settings ? [{ name: 'Locations', path: '/admin/locations', icon: 'locations' }] : []),
     ...(p?.can_manage_inventory ? [{ name: 'Inventory', path: '/admin/inventory', icon: 'inventory' }] : []),
-    ...(p?.can_view_analytics ? [{ name: 'Analytics', path: '/admin/analytics', icon: 'analytics' }] : []),
-  ];
-  const specialNavigation: NavItem[] = [
+    ...(p?.can_manage_settings ? [{ name: 'Locations', path: '/admin/locations', icon: 'locations' }] : []),
     ...(p?.can_use_pos ? [{ name: 'POS Mode', path: '/admin/pos', icon: 'pos' }] : []),
-    ...(p?.can_manage_settings ? [{ name: 'Catering', path: '/admin/catering', icon: 'catering' }] : []),
     ...(p?.can_fulfill_orders ? [{ name: 'Pickup Queue', path: '/admin/orders/pickup-queue', icon: 'pickup_queue' }] : []),
     ...(p?.can_fulfill_orders ? [{ name: 'Shipping Queue', path: '/admin/orders/shipping-queue', icon: 'shipping_queue' }] : []),
   ];
+
+  // Latte Stone Cookies section
+  const latteStoneCookiesNavigation: NavItem[] = [
+    ...(p?.can_fulfill_orders ? [{ name: 'Orders', path: '/admin/orders', icon: 'orders' }] : []),
+    ...(p?.can_manage_products ? [{ name: 'Products', path: '/admin/products', icon: 'products' }] : []),
+    ...(p?.can_manage_products ? [{ name: 'Collections', path: '/admin/collections', icon: 'collections' }] : []),
+    ...(p?.can_manage_inventory ? [{ name: 'Inventory', path: '/admin/inventory', icon: 'inventory' }] : []),
+  ];
+
+  // B&G Pacific section
+  const bgpacificNavigation: NavItem[] = [
+    ...(p?.can_fulfill_orders ? [{ name: 'Orders', path: '/admin/orders', icon: 'orders' }] : []),
+    ...(p?.can_manage_settings ? [{ name: 'Catering', path: '/admin/catering', icon: 'catering' }] : []),
+  ];
+
+  // Settings — always visible
   const systemNavigation: NavItem[] = [
     ...(p?.can_manage_users ? [{ name: 'Users', path: '/admin/users', icon: 'users' }] : []),
     ...(p?.can_manage_settings ? [{ name: 'Import', path: '/admin/import', icon: 'import' }] : []),
@@ -196,38 +218,67 @@ export default function AdminLayout() {
     ...(p?.can_manage_settings ? [{ name: 'Variant Presets', path: '/admin/settings/variant-presets', icon: 'presets' }] : []),
   ];
 
-  const NavSection = ({ title, items }: { title: string; items: NavItem[] }) => (
-    <div className="mb-6">
-      <p className={`px-4 mb-2 text-xs font-semibold text-gray-400 uppercase tracking-wider ${isTabletSidebarCollapsed ? 'md:hidden lg:block' : ''}`}>{title}</p>
-      <div className="space-y-1">
-        {items.map((item) => {
-          const isActive = location.pathname === item.path ||
-            (item.path !== '/admin' && location.pathname.startsWith(item.path + '/'));
-          return (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => setSidebarOpen(false)}
-              title={isTabletSidebarCollapsed ? item.name : undefined}
-              className={`flex items-center gap-3 px-4 py-2.5 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
-                isTabletSidebarCollapsed ? 'md:justify-center md:px-2.5 lg:justify-start lg:px-4' : ''
-              } ${
-                isActive
-                  ? 'bg-tsPrimary text-white shadow-md'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <AdminIcon name={item.icon} className="w-5 h-5" />
-              <span className={`font-medium text-sm ${isTabletSidebarCollapsed ? 'md:hidden lg:inline' : ''}`}>{item.name}</span>
-              {isActive && (
-                <div className={`ml-auto w-1.5 h-1.5 bg-white rounded-full ${isTabletSidebarCollapsed ? 'md:hidden lg:block' : ''}`} />
-              )}
-            </Link>
-          );
-        })}
+  // Determine which business line sections to show
+  const showSection = (line: BusinessLine) => selectedLine === 'all' || selectedLine === line;
+
+  const NavSection = ({ title, items, accentColor }: { title: string; items: NavItem[]; accentColor?: string }) => {
+    const [collapsed, setCollapsed] = useState(false);
+    if (items.length === 0) return null;
+
+    return (
+      <div className="mb-4">
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className={`w-full flex items-center justify-between px-4 mb-1 py-1 rounded-md transition-colors ${
+            isTabletSidebarCollapsed ? 'md:hidden lg:flex' : ''
+          } ${accentColor ? `hover:${accentColor}` : 'hover:bg-gray-50'}`}
+        >
+          <div className="flex items-center gap-2">
+            {accentColor && (
+              <div className={`w-2 h-2 rounded-full ${accentColor}`} />
+            )}
+            <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</span>
+          </div>
+          <ChevronDown className={`w-3 h-3 text-gray-400 transition-transform ${collapsed ? '-rotate-90' : ''}`} />
+        </button>
+        {/* Collapsed label for tablet */}
+        {accentColor && (
+          <div className={`hidden ${isTabletSidebarCollapsed ? 'md:flex lg:hidden' : ''} justify-center mb-1`}>
+            <div className={`w-6 h-0.5 rounded-full ${accentColor}`} />
+          </div>
+        )}
+        {!collapsed && (
+          <div className="space-y-0.5">
+            {items.map((item) => {
+              const isActive = location.pathname === item.path ||
+                (item.path !== '/admin' && location.pathname.startsWith(item.path + '/'));
+              return (
+                <Link
+                  key={item.path + title}
+                  to={item.path}
+                  onClick={() => setSidebarOpen(false)}
+                  title={isTabletSidebarCollapsed ? item.name : undefined}
+                  className={`flex items-center gap-3 px-4 py-2 rounded-lg transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
+                    isTabletSidebarCollapsed ? 'md:justify-center md:px-2.5 lg:justify-start lg:px-4' : ''
+                  } ${
+                    isActive
+                      ? 'bg-tsPrimary text-white shadow-md'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  }`}
+                >
+                  <AdminIcon name={item.icon} className="w-5 h-5" />
+                  <span className={`font-medium text-sm ${isTabletSidebarCollapsed ? 'md:hidden lg:inline' : ''}`}>{item.name}</span>
+                  {isActive && (
+                    <div className={`ml-auto w-1.5 h-1.5 bg-white rounded-full ${isTabletSidebarCollapsed ? 'md:hidden lg:block' : ''}`} />
+                  )}
+                </Link>
+              );
+            })}
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   // --- Breadcrumbs ---
   const breadcrumbs = buildBreadcrumbs(location.pathname);
@@ -277,9 +328,17 @@ export default function AdminLayout() {
             event.preventDefault();
           }}
         >
-          <NavSection title="Main" items={mainNavigation} />
-          <NavSection title="Special" items={specialNavigation} />
-          <NavSection title="System" items={systemNavigation} />
+          <NavSection title="Overview" items={overviewNavigation} />
+          {showSection('three_squares') && (
+            <NavSection title="Three Squares" items={threeSquaresNavigation} accentColor="bg-amber-500" />
+          )}
+          {showSection('latte_stone_cookies') && (
+            <NavSection title="Latte Stone Cookies" items={latteStoneCookiesNavigation} accentColor="bg-orange-800" />
+          )}
+          {showSection('bgpacific') && (
+            <NavSection title="B&G Pacific" items={bgpacificNavigation} accentColor="bg-blue-600" />
+          )}
+          <NavSection title="Settings" items={systemNavigation} />
         </nav>
 
         {/* Admin info */}
@@ -323,6 +382,11 @@ export default function AdminLayout() {
                 <ChevronLeft className="w-5 h-5 text-gray-700" />
               )}
             </button>
+          </div>
+
+          {/* Business Line Selector */}
+          <div className="hidden sm:flex items-center">
+            <BusinessLineSelector />
           </div>
 
           {/* Breadcrumbs / Page title */}
