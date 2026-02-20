@@ -162,8 +162,10 @@ module Api
           case order.payment_method
           when "cash"
             process_cash_payment(order)
-          when "stripe", "card_manual"
+          when "card_manual"
             process_manual_card_payment(order)
+          when "stripe"
+            process_stripe_payment(order)
           when "card_present"
             process_terminal_payment(order)
           else

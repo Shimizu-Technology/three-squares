@@ -1366,10 +1366,25 @@ export default function AdminPOSPage() {
             totalCents={cartTotal}
             orderId={manualCardOrderId}
             onSuccess={handleManualCardSuccess}
-            onClose={() => {
+            onClose={async () => {
+              // Cancel the abandoned order to restore inventory
+              if (manualCardOrderId && manualCardApiToken) {
+                try {
+                  await fetch(`${API_BASE}/api/v1/admin/orders/${manualCardOrderId}/cancel`, {
+                    method: 'POST',
+                    headers: {
+                      'Authorization': `Bearer ${manualCardApiToken}`,
+                      'Content-Type': 'application/json',
+                    },
+                  });
+                } catch {
+                  // Best effort — order stays pending if cancel fails
+                }
+              }
               setShowManualCardModal(false);
               setManualCardClientSecret(null);
               setManualCardOrderId(null);
+              setManualCardApiToken('');
             }}
             apiToken={manualCardApiToken}
           />
