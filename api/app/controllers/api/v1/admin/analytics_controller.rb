@@ -35,7 +35,7 @@ module Api
                     Order.all
                   end
 
-          scope = scope.where(location_id: params[:location_id]) if params[:location_id].present?
+          scope = scope.where(location_id: params[:location_id].to_i) if params[:location_id].present?
           scope = apply_period_filter(scope)
           scope
         end
