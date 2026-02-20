@@ -32,6 +32,7 @@ Rails.application.routes.draw do
           member do
             post :notify  # Resend notification email
             post :refund  # Process refund
+            patch :advance_status  # Move order to next logical status (fulfillment)
           end
         end
 

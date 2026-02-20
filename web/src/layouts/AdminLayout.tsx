@@ -50,6 +50,7 @@ const ROUTE_META: Record<string, RouteMeta> = {
   '/admin/import':                   { title: 'CSV Import',       parent: '/admin' },
   '/admin/settings':                 { title: 'Settings',         parent: '/admin' },
   '/admin/settings/variant-presets': { title: 'Variant Presets',   parent: '/admin/settings' },
+  '/admin/fulfillment':              { title: 'Fulfillment',       parent: '/admin' },
 };
 
 // Dynamic route matching for paths like /admin/products/:id/edit
@@ -192,6 +193,7 @@ export default function AdminLayout() {
     ...(p?.can_manage_inventory ? [{ name: 'Inventory', path: '/admin/inventory', icon: 'inventory' }] : []),
     ...(p?.can_manage_settings ? [{ name: 'Locations', path: '/admin/locations', icon: 'locations' }] : []),
     ...(p?.can_use_pos ? [{ name: 'POS Mode', path: '/admin/pos', icon: 'pos' }] : []),
+    ...(p?.can_fulfill_orders ? [{ name: 'Fulfillment', path: '/admin/fulfillment', icon: 'pickup_queue' }] : []),
     ...(p?.can_fulfill_orders ? [{ name: 'Pickup Queue', path: '/admin/orders/pickup-queue', icon: 'pickup_queue' }] : []),
     ...(p?.can_fulfill_orders ? [{ name: 'Shipping Queue', path: '/admin/orders/shipping-queue', icon: 'shipping_queue' }] : []),
   ];
