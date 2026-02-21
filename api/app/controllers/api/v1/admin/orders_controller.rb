@@ -177,7 +177,7 @@ module Api
           if settings.enable_order_emails && @order.customer_email.present?
             EmailService.send_refund_notification(@order, refund.amount_cents, refund.reason)
           end
-          if @order.customer_phone.present?
+          if settings.enable_order_sms && @order.customer_phone.present?
             SmsService.send_refund_notification(@order, refund.amount_cents)
           end
 
