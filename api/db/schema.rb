@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_02_22_010000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -143,18 +143,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
   end
 
   create_table "collections", force: :cascade do |t|
+    t.boolean "auto_hide", default: false, null: false
+    t.string "banner_text"
+    t.string "business_line", default: "three_squares", null: false
+    t.string "collection_type", default: "standard", null: false
     t.datetime "created_at", null: false
     t.text "description"
+    t.datetime "ends_at"
     t.boolean "featured"
     t.string "image_url"
+    t.boolean "is_featured", default: false, null: false
     t.text "meta_description"
     t.string "meta_title"
     t.string "name"
     t.boolean "published", default: false
     t.string "slug"
     t.integer "sort_order"
+    t.datetime "starts_at"
     t.datetime "updated_at", null: false
+    t.index ["business_line"], name: "index_collections_on_business_line"
+    t.index ["collection_type"], name: "index_collections_on_collection_type"
+    t.index ["is_featured"], name: "index_collections_on_is_featured"
     t.index ["slug"], name: "index_collections_on_slug", unique: true
+    t.index ["starts_at", "ends_at"], name: "index_collections_on_starts_at_and_ends_at"
   end
 
   create_table "contact_submissions", force: :cascade do |t|
@@ -373,13 +384,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
   create_table "locations", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.string "address"
+    t.string "admin_email"
+    t.jsonb "admin_sms_phones", default: [], null: false
+    t.boolean "auto_deactivate", default: false, null: false
     t.datetime "created_at", null: false
+    t.text "description"
+    t.datetime "ends_at"
     t.jsonb "hours_json", default: {}, null: false
+    t.string "location_type", default: "permanent", null: false
+    t.bigint "menu_collection_id"
     t.string "name", null: false
     t.string "phone"
+    t.string "qr_code_url"
     t.string "slug", null: false
+    t.datetime "starts_at"
     t.datetime "updated_at", null: false
+    t.index ["active", "location_type"], name: "index_locations_on_active_and_location_type"
     t.index ["active"], name: "index_locations_on_active"
+    t.index ["location_type"], name: "index_locations_on_location_type"
+    t.index ["menu_collection_id"], name: "index_locations_on_menu_collection_id"
     t.index ["slug"], name: "index_locations_on_slug", unique: true
   end
 
@@ -553,6 +576,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
     t.boolean "allow_shipping", default: false, null: false
     t.boolean "archived", default: false, null: false
     t.integer "base_price_cents"
+    t.string "business_line", default: "three_squares", null: false
     t.datetime "created_at", null: false
     t.text "description"
     t.boolean "featured"
@@ -578,6 +602,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
     t.index ["allow_pickup"], name: "index_products_on_allow_pickup"
     t.index ["allow_shipping"], name: "index_products_on_allow_shipping"
     t.index ["archived"], name: "index_products_on_archived"
+    t.index ["business_line"], name: "index_products_on_business_line"
     t.index ["slug"], name: "index_products_on_slug", unique: true
   end
 
@@ -606,9 +631,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
     t.boolean "acai_gallery_show_image_b", default: true, null: false
     t.string "acai_gallery_subtext"
     t.text "admin_sms_phones", default: [], array: true
+    t.boolean "announcement_enabled", default: false, null: false
+    t.string "announcement_style", default: "gold", null: false
+    t.string "announcement_text"
     t.datetime "created_at", null: false
-    t.boolean "enable_order_emails", default: false, null: false
-    t.boolean "enable_order_sms", default: false, null: false
+    t.boolean "enable_order_emails", default: true, null: false
+    t.boolean "enable_order_sms", default: true, null: false
     t.jsonb "fallback_shipping_rates", default: {"domestic"=>[{"rate_cents"=>800, "max_weight_oz"=>16}, {"rate_cents"=>1500, "max_weight_oz"=>48}, {"rate_cents"=>2000, "max_weight_oz"=>80}, {"rate_cents"=>3000, "max_weight_oz"=>160}, {"rate_cents"=>5000, "max_weight_oz"=>nil}], "international"=>[{"rate_cents"=>2500, "max_weight_oz"=>16}, {"rate_cents"=>4000, "max_weight_oz"=>48}, {"rate_cents"=>6000, "max_weight_oz"=>80}, {"rate_cents"=>9000, "max_weight_oz"=>160}, {"rate_cents"=>15000, "max_weight_oz"=>nil}]}, null: false
     t.text "order_notification_emails", default: [], array: true
     t.string "payment_processor", default: "stripe", null: false
@@ -628,6 +656,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
   end
 
   create_table "users", force: :cascade do |t|
+    t.bigint "assigned_location_id"
     t.string "clerk_id"
     t.datetime "created_at", null: false
     t.string "email"
@@ -635,6 +664,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
     t.string "phone"
     t.string "role"
     t.datetime "updated_at", null: false
+    t.index ["assigned_location_id"], name: "index_users_on_assigned_location_id"
     t.index ["clerk_id"], name: "index_users_on_clerk_id", unique: true
     t.index ["email"], name: "index_users_on_email"
     t.index ["role"], name: "index_users_on_role"
@@ -670,6 +700,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
   add_foreign_key "inventory_audits", "product_variants"
   add_foreign_key "inventory_audits", "products"
   add_foreign_key "inventory_audits", "users"
+  add_foreign_key "locations", "collections", column: "menu_collection_id"
   add_foreign_key "order_items", "orders"
   add_foreign_key "order_items", "product_variants"
   add_foreign_key "order_items", "products"
@@ -686,4 +717,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_19_110000) do
   add_foreign_key "product_variants", "products"
   add_foreign_key "refunds", "orders"
   add_foreign_key "refunds", "users"
+  add_foreign_key "users", "locations", column: "assigned_location_id"
 end

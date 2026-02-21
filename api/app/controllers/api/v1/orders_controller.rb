@@ -205,7 +205,7 @@ module Api
             SendOrderConfirmationEmailJob.perform_later(order.id)
           end
 
-          if has_phone
+          if settings.enable_order_sms && has_phone
             SendOrderSmsJob.perform_later(order.id, "placed")
           end
 

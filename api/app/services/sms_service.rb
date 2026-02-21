@@ -191,7 +191,7 @@ class SmsService
         end
       rescue StandardError => e
         Rails.logger.error "[SmsService] Error sending SMS: #{e.class} - #{e.message}"
-        { success: false, error: e.message }
+        raise # Let the job retry mechanism handle it
       end
     end
 
