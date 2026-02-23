@@ -4,10 +4,7 @@ class SendOrderShippedEmailJob < ApplicationJob
   def perform(order_id)
     order = Order.find(order_id)
 
-    # Check if emails are enabled for this order type
-    settings = SiteSetting.instance
-    return unless settings.send_emails_for?(order.order_type)
-
+    # Toggle check is handled by the controller before enqueuing.
     # Send order shipped email with tracking info
     EmailService.send_order_shipped_email(order)
 
