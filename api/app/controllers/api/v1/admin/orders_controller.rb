@@ -173,13 +173,12 @@ module Api
           end
 
           # Send refund notifications (email + SMS)
+          # Email flag checked here; SMS flag + phone presence handled internally by SmsService#sms_enabled?
           settings = SiteSetting.instance
           if settings.enable_order_emails && @order.customer_email.present?
             EmailService.send_refund_notification(@order, refund.amount_cents, refund.reason)
           end
-          if settings.enable_order_sms && @order.customer_phone.present?
-            SmsService.send_refund_notification(@order, refund.amount_cents)
-          end
+          SmsService.send_refund_notification(@order, refund.amount_cents)
 
           render json: {
             message: "Refund processed successfully",
@@ -202,12 +201,13 @@ module Api
       private
 
       # Send email + SMS notifications for the current order status.
-      # Email respects enable_order_emails toggle in controller.
-      # SMS toggle logic is handled internally by SmsService#sms_enabled?.
+      # Email respects enable_order_emails toggle (checked here in controller).
+      # SMS flag check is handled internally by SmsService#sms_enabled? — no guard needed here.
+      # Phone presence check is also handled internally by SmsService, but we guard here
+      # as a lightweight optimization to avoid enqueueing a job that will immediately no-op.
       def send_status_notifications(order)
         settings = SiteSetting.instance
         emails_on = settings.enable_order_emails
-        sms_on = settings.enable_order_sms
 
         has_email = order.customer_email.present?
         has_phone = order.customer_phone.present?
@@ -215,25 +215,25 @@ module Api
         case order.status
         when "confirmed"
           SendOrderStatusEmailJob.perform_later(order.id, "confirmed") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "confirmed") if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, "confirmed") if has_phone
         when "processing"
           SendOrderStatusEmailJob.perform_later(order.id, "processing") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "processing") if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, "processing") if has_phone
         when "ready"
           SendOrderReadyEmailJob.perform_later(order.id) if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "ready") if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, "ready") if has_phone
         when "shipped"
           SendOrderShippedEmailJob.perform_later(order.id) if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "shipped") if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, "shipped") if has_phone
         when "picked_up"
           SendOrderStatusEmailJob.perform_later(order.id, "picked_up") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "picked_up") if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, "picked_up") if has_phone
         when "delivered"
           SendOrderStatusEmailJob.perform_later(order.id, "delivered") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "delivered") if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, "delivered") if has_phone
         when "cancelled"
           SendOrderStatusEmailJob.perform_later(order.id, "cancelled") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "cancelled") if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, "cancelled") if has_phone
         end
       end
 
