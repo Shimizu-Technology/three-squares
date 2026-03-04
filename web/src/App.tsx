@@ -619,6 +619,18 @@ function AppContent() {
                 </div>
               </div>
             </div>
+          {/* Shimizu Technology attribution */}
+          <div className="mt-10 pt-6 border-t border-warm-200 flex justify-center">
+            <a
+              href="https://shimizu-technology.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-warm-400 hover:text-warm-600 transition-colors duration-200"
+            >
+              Built by{" "}
+              <span className="font-medium">Shimizu Technology</span>
+            </a>
+          </div>
           </div>
         </footer>
         )}
