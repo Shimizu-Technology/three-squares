@@ -160,7 +160,9 @@ interface LocationCardProps {
 
 function LocationCard({ location }: LocationCardProps) {
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${location.mapAddress}`;
-  const mapEmbedUrl = `https://www.google.com/maps?q=${encodeURIComponent(location.mapAddress)}&z=15&output=embed`;
+  // Use maps.google.com/maps with &output=embed — no API key required.
+  // mapAddress already uses + for spaces (URL-friendly), so pass through directly.
+  const mapEmbedUrl = `https://maps.google.com/maps?q=${location.mapAddress}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
   
   return (
     <motion.div
@@ -252,13 +254,13 @@ function LocationCard({ location }: LocationCardProps) {
 
       {/* Map Preview */}
       <div className="px-6 pb-6 sm:px-8 sm:pb-8 space-y-3">
-        <div className="w-full h-32 rounded-xl overflow-hidden border border-warm-200">
+        <div className="w-full h-44 rounded-xl overflow-hidden border border-warm-200">
           <iframe
             src={mapEmbedUrl}
             title={`Map of ${location.name}`}
             className="w-full h-full"
             loading="lazy"
-            referrerPolicy="no-referrer"
+            allowFullScreen
           />
         </div>
         <a
