@@ -223,8 +223,12 @@ module Api
           SendOrderReadyEmailJob.perform_later(order.id) if emails_on && has_email
           SendOrderSmsJob.perform_later(order.id, "ready") if has_phone
         when "shipped"
-          SendOrderShippedEmailJob.perform_later(order.id) if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "shipped") if has_phone
+          if order.tracking_number.present?
+            SendOrderShippedEmailJob.perform_later(order.id) if emails_on && has_email
+            SendOrderSmsJob.perform_later(order.id, "shipped") if has_phone
+          else
+            Rails.logger.warn "⚠️ Order ##{order.order_number} marked shipped without tracking number — skipping customer notification"
+          end
         when "picked_up"
           SendOrderStatusEmailJob.perform_later(order.id, "picked_up") if emails_on && has_email
           SendOrderSmsJob.perform_later(order.id, "picked_up") if has_phone
