@@ -78,10 +78,17 @@ module Api
         if @order.update(order_update_params)
           notification_warnings = []
 
-          # Handle status changes — send notifications via both channels
+          # Handle status changes — send notifications via both channels.
+          # Rescue enqueue failures (Redis down) — the status update already
+          # committed, so return success with a warning instead of a 500.
           if @order.saved_change_to_status?
-            sent = send_status_notifications(@order)
-            notification_warnings = sent[:warnings] if sent[:warnings]&.any?
+            begin
+              sent = send_status_notifications(@order)
+              notification_warnings = sent[:warnings] if sent[:warnings]&.any?
+            rescue StandardError => e
+              Rails.logger.error "❌ Failed to enqueue notifications for order ##{@order.order_number}: #{e.message}"
+              notification_warnings = ["Status updated but notifications failed to enqueue — use Notify button to retry"]
+            end
 
             # Restore inventory when order is cancelled
             restore_inventory(@order, current_user) if @order.status == "cancelled"

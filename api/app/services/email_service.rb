@@ -684,13 +684,14 @@ class EmailService
   # Generate order items table rows
   def self.order_items_html(order)
     order.order_items.map do |item|
-      variant_info = item.variant_name.present? ? " (#{item.variant_name})" : ""
+      product_name = CGI.escapeHTML(item.product_name.to_s)
+      variant_info = item.variant_name.present? ? " (#{CGI.escapeHTML(item.variant_name)})" : ""
       <<~HTML
         <tr style="border-bottom: 1px solid #E5E7EB;">
           <td style="padding: 15px; font-size: 14px; color: #111827;">
-            #{item.product_name}#{variant_info}
+            #{product_name}#{variant_info}
           </td>
-          <td style="padding: 15px; text-align: center; font-size: 14px; color: #6B7280;">#{item.quantity}</td>
+          <td style="padding: 15px; text-align: center; font-size: 14px; color: #6B7280;">#{item.quantity.to_i}</td>
           <td style="padding: 15px; text-align: right; font-size: 14px; color: #111827; font-weight: 600;">$#{format_price(item.total_price_cents)}</td>
         </tr>
       HTML
@@ -712,7 +713,7 @@ class EmailService
           <td style="padding: 0 30px 30px 30px;">
             <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); border-radius: 8px; padding: 25px; text-align: center;">
               <p style="color: #ffffff; margin: 0 0 15px 0; font-size: 16px; font-weight: 600;">📦 Tracking Number</p>
-              <p style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 2px;">#{order.tracking_number}</p>
+              <p style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 2px;">#{CGI.escapeHTML(order.tracking_number.to_s)}</p>
             </div>
           </td>
         </tr>

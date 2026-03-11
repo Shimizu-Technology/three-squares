@@ -231,6 +231,12 @@ class SmsService
         ]
       }
 
+      # NOTE: At-least-once delivery. If a network timeout occurs after
+      # ClickSend dispatches the SMS but before we read the response,
+      # the job raises and retries — potentially sending a duplicate.
+      # This is an inherent trade-off with external APIs that don't
+      # support pre-dispatch idempotency keys. Acceptable for order
+      # notifications (a duplicate "your order is ready" is harmless).
       begin
         response = HTTParty.post(
           CLICKSEND_API_URL,
@@ -287,11 +293,11 @@ class SmsService
 
       case digits.length
       when 7
-        # Assume local Guam number — prepend +1671.
-        # NOTE: This is a Guam-specific assumption. A US mainland customer
-        # who enters 7 digits would be misrouted. Log for visibility.
-        Rails.logger.info "[SmsService] Assuming 7-digit number #{digits} is Guam local → +1671#{digits}"
-        "+1671#{digits}"
+        # 7-digit numbers are ambiguous — could be Guam local or an
+        # incomplete US number. Reject instead of guessing, so customers
+        # see a validation error and enter their full number.
+        Rails.logger.warn "[SmsService] Rejected 7-digit number #{digits} — requires area code"
+        nil
       when 10
         # US/Guam number with area code — prepend +1
         "+1#{digits}"
