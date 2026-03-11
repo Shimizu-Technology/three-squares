@@ -11,6 +11,15 @@ class Order < ApplicationRecord
   RETAIL_STATUSES = %w[pending processing shipped delivered cancelled].freeze
   PICKUP_STATUSES = %w[pending confirmed ready picked_up cancelled].freeze
 
+  # Monotonic sequence for notification idempotency. Jobs only execute
+  # if their seq > last_*_seq, preventing both duplicates and out-of-order sends.
+  STATUS_SEQUENCE = VALID_STATUSES.each_with_index.to_h.freeze
+  # => { "pending" => 0, "confirmed" => 1, ..., "cancelled" => 7 }
+
+  def notification_seq
+    STATUS_SEQUENCE[status] || 0
+  end
+
   # Validations
   validates :order_number, presence: true, uniqueness: true
   validates :order_type, inclusion: { in: %w[retail wholesale pickup dine_in] }

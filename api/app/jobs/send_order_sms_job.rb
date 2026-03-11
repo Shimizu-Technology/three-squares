@@ -5,13 +5,16 @@ class SendOrderSmsJob < ApplicationJob
   retry_on StandardError, wait: :polynomially_longer, attempts: 3
   discard_on ActiveRecord::RecordNotFound
 
-  def perform(order_id, event)
+  # @param order_id [Integer]
+  # @param event [String]
+  # @param seq [Integer] monotonic sequence — prevents duplicates AND out-of-order sends
+  def perform(order_id, event, seq)
     order = Order.find(order_id)
 
-    # Atomic idempotency: only send if this SMS event hasn't been sent yet.
+    # Atomic guard: only send if seq > last_sms_seq
     rows = Order.where(id: order.id)
-                .where.not(last_sms_event: event)
-                .update_all(last_sms_event: event)
+                .where("last_sms_seq < ?", seq)
+                .update_all(last_sms_seq: seq)
     return if rows == 0
 
     begin
@@ -29,16 +32,15 @@ class SendOrderSmsJob < ApplicationJob
         return
       end
 
-      # Roll back flag on skip/non-success so the admin Notify button can retry.
-      # Only keep the flag claimed on actual successful delivery.
       if result.is_a?(Hash) && result[:success]
         Rails.logger.info "✅ SMS sent for order ##{order_id} (#{event})"
       else
-        order.update_column(:last_sms_event, nil)
-        Rails.logger.info "↩️ SMS skipped for order ##{order_id} (#{event}) — flag rolled back"
+        # Roll back so retry/resend can re-attempt
+        order.update_column(:last_sms_seq, seq - 1)
+        Rails.logger.info "↩️ SMS skipped for order ##{order_id} (#{event}) — seq rolled back"
       end
     rescue StandardError => e
-      order.update_column(:last_sms_event, nil)
+      order.update_column(:last_sms_seq, seq - 1)
       raise
     end
   end

@@ -129,34 +129,38 @@ class SmsService
       admin_phones = settings.admin_sms_phones || []
       return skip_result("No admin SMS phones configured") if admin_phones.empty?
 
+      # Per-phone idempotency: track which phones already received this
+      # alert in order.metadata so retries don't duplicate admin SMS.
+      already_sent = Array(order.metadata&.dig("admin_sms_sent_phones_#{order.id}"))
+      remaining_phones = admin_phones - already_sent
+      return { success: true, skipped: true } if remaining_phones.empty?
+
       location_name = order.location&.name || "Online"
       source_label = order.source == "pos" ? "POS" : "Online"
       message = "NEW ORDER ##{order.order_number} (#{source_label}) - " \
                 "$#{format_price(order.total_cents)} - #{order.customer_name || 'Guest'} " \
                 "- #{location_name}"
 
-      # Send to each phone individually with per-phone error handling.
-      # If send_sms raises (non-2xx), catch it so we don't re-send to
-      # phones that already received the message on job retry.
-      results = admin_phones.map do |phone|
+      failed = []
+      remaining_phones.each do |phone|
         begin
           send_sms(to: phone, body: message, context: "admin_new_order:#{order.id}")
+          # Record success immediately so a retry skips this phone
+          meta = order.reload.metadata || {}
+          sent_key = "admin_sms_sent_phones_#{order.id}"
+          meta[sent_key] = (Array(meta[sent_key]) + [phone]).uniq
+          order.update_column(:metadata, meta)
         rescue SmsError => e
           Rails.logger.error "[SmsService] Admin SMS failed for #{phone}: #{e.message}"
-          { success: false, error: e.message, phone: phone }
+          failed << phone
         end
       end
 
-      failed = results.select { |r| !r[:success] }
-      # Raise if ANY phone failed so the job retries. Note: on retry,
-      # send_admin_new_order is called again from scratch, which re-sends
-      # to ALL phones (including already-successful ones). This is acceptable
-      # for admin alerts — a duplicate "new order" SMS is low-impact.
       if failed.any?
-        raise SmsError, "Admin SMS failed for #{failed.length}/#{results.length} phones"
+        raise SmsError, "Admin SMS failed for #{failed.length}/#{admin_phones.length} phones: #{failed.join(', ')}"
       end
 
-      { success: true, results: results }
+      { success: true }
     end
 
     private

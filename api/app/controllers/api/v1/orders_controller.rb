@@ -206,7 +206,7 @@ module Api
           end
 
           if settings.enable_order_sms && has_phone
-            SendOrderSmsJob.perform_later(order.id, "placed")
+            SendOrderSmsJob.perform_later(order.id, "placed", order.notification_seq)
           end
 
           # Always send admin notifications (not gated by customer toggles)
@@ -599,7 +599,10 @@ module Api
       end
 
       def order_update_params
-        params.require(:order).permit(:status, :admin_notes, :tracking_number)
+        # Non-admin endpoint: customers can only update their own notes.
+        # Status changes MUST go through admin/orders_controller#update
+        # to ensure notifications are dispatched.
+        params.require(:order).permit(:admin_notes)
       end
 
       # Generate tracking URL based on carrier

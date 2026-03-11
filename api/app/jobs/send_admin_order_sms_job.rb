@@ -7,6 +7,8 @@ class SendAdminOrderSmsJob < ApplicationJob
 
   def perform(order_id)
     order = Order.find(order_id)
+    # send_admin_new_order tracks per-phone success via order.metadata
+    # so retries don't re-send to phones that already received the SMS.
     SmsService.send_admin_new_order(order)
   end
 end

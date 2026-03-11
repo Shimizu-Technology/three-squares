@@ -107,13 +107,8 @@ module Api
           return
         end
 
-        # Clear idempotency flags so the jobs actually re-send.
-        # Without this, last_email_event/last_sms_event would match the
-        # current status and every job would silently exit.
-        @order.update_columns(last_email_event: nil, last_sms_event: nil)
-
-        # Track what was actually enqueued so the response is accurate
-        sent = send_status_notifications(@order)
+        # Force resend: reset seq counters for THIS status only
+        sent = send_status_notifications(@order, force: true)
 
         if sent[:any]
           channels = []
@@ -225,7 +220,9 @@ module Api
       # This avoids enqueueing jobs that will immediately no-op.
       # Returns a hash describing what was actually enqueued:
       #   { any: true/false, email: true/false, sms: true/false, warnings: [...] }
-      def send_status_notifications(order)
+      # @param order [Order]
+      # @param force [Boolean] when true, reset seq counters first (for admin resend)
+      def send_status_notifications(order, force: false)
         settings = SiteSetting.instance
         emails_on = settings.enable_order_emails
         sms_on = settings.enable_order_sms
@@ -233,70 +230,43 @@ module Api
         has_email = order.customer_email.present?
         has_phone = order.customer_phone.present?
 
-        email_sent = false
-        sms_sent = false
         warnings = []
+        event = order.status
+        seq = order.notification_seq
 
-        case order.status
-        when "confirmed"
-          email_sent = enqueue_email(order, "confirmed", emails_on, has_email)
-          sms_sent = enqueue_sms(order, "confirmed", sms_on, has_phone)
-        when "processing"
-          email_sent = enqueue_email(order, "processing", emails_on, has_email)
-          sms_sent = enqueue_sms(order, "processing", sms_on, has_phone)
-        when "ready"
-          if emails_on && has_email
-            SendOrderReadyEmailJob.perform_later(order.id)
-            email_sent = true
-          end
-          sms_sent = enqueue_sms(order, "ready", sms_on, has_phone)
-        when "shipped"
-          if order.tracking_number.present?
-            if emails_on && has_email
-              SendOrderShippedEmailJob.perform_later(order.id)
-              email_sent = true
-            end
-            sms_sent = enqueue_sms(order, "shipped", sms_on, has_phone)
-          else
-            # Shipped without tracking — skip notifications entirely and return early
-            # so we don't add misleading "email/SMS disabled" warnings below.
-            warnings << "No tracking number — shipped notifications require tracking info"
-            Rails.logger.warn "⚠️ Order ##{order.order_number} marked shipped without tracking number — skipping customer notification"
-            return { any: false, email: false, sms: false, warnings: warnings }
-          end
-        when "picked_up"
-          email_sent = enqueue_email(order, "picked_up", emails_on, has_email)
-          sms_sent = enqueue_sms(order, "picked_up", sms_on, has_phone)
-        when "delivered"
-          email_sent = enqueue_email(order, "delivered", emails_on, has_email)
-          sms_sent = enqueue_sms(order, "delivered", sms_on, has_phone)
-        when "cancelled"
-          email_sent = enqueue_email(order, "cancelled", emails_on, has_email)
-          sms_sent = enqueue_sms(order, "cancelled", sms_on, has_phone)
-        else
-          warnings << "No notification template for status '#{order.status}'"
-          Rails.logger.warn "⚠️ No notification handler for status '#{order.status}' on order ##{order.order_number}"
+        # Statuses that don't have notification templates
+        unless Order::STATUS_SEQUENCE.key?(event) && event != "pending"
+          warnings << "No notification template for status '#{event}'"
           return { any: false, email: false, sms: false, warnings: warnings }
         end
 
-        # Only warn about missing contact info — admins already know if they
-        # disabled a channel. "SMS is disabled" noise on every status update is unhelpful.
+        # Shipped requires tracking number
+        if event == "shipped" && order.tracking_number.blank?
+          warnings << "No tracking number — shipped notifications require tracking info"
+          return { any: false, email: false, sms: false, warnings: warnings }
+        end
+
+        # For admin resend: reset seq so the jobs pass the guard
+        if force
+          order.update_columns(last_email_seq: seq - 1, last_sms_seq: seq - 1)
+        end
+
+        email_sent = false
+        sms_sent = false
+
+        if emails_on && has_email
+          SendOrderStatusEmailJob.perform_later(order.id, event, seq)
+          email_sent = true
+        end
+        if sms_on && has_phone
+          SendOrderSmsJob.perform_later(order.id, event, seq)
+          sms_sent = true
+        end
+
         warnings << "Email enabled but customer has no email address" if emails_on && !has_email
         warnings << "SMS enabled but customer has no phone number" if sms_on && !has_phone
 
         { any: email_sent || sms_sent, email: email_sent, sms: sms_sent, warnings: warnings }
-      end
-
-      def enqueue_email(order, event, emails_on, has_email)
-        return false unless emails_on && has_email
-        SendOrderStatusEmailJob.perform_later(order.id, event)
-        true
-      end
-
-      def enqueue_sms(order, event, sms_on, has_phone)
-        return false unless sms_on && has_phone
-        SendOrderSmsJob.perform_later(order.id, event)
-        true
       end
 
       def filtered_orders_query

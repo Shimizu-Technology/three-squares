@@ -6,21 +6,24 @@ class SendOrderStatusEmailJob < ApplicationJob
   discard_on ActiveRecord::RecordNotFound
 
   # @param order_id [Integer]
-  # @param event [String] one of: "confirmed", "processing", "picked_up", "delivered", "cancelled"
-  def perform(order_id, event)
+  # @param event [String] e.g. "confirmed", "processing", "ready", "shipped", etc.
+  # @param seq [Integer] monotonic sequence — prevents duplicates AND out-of-order sends
+  def perform(order_id, event, seq)
     order = Order.find(order_id)
 
-    # Atomic idempotency: only send if this event hasn't been sent yet.
-    # UPDATE WHERE last_email_event != event (or IS NULL) claims the send.
+    # Atomic guard: only send if seq > last_email_seq.
+    # A stale "confirmed" job (seq=1) arriving after "ready" (seq=3) is discarded.
     rows = Order.where(id: order.id)
-                .where.not(last_email_event: event)
-                .update_all(last_email_event: event)
-    return if rows == 0 # Already sent for this event
+                .where("last_email_seq < ?", seq)
+                .update_all(last_email_seq: seq)
+    return if rows == 0
 
     begin
       result = case event
       when "confirmed"  then EmailService.send_order_confirmed_email(order)
       when "processing" then EmailService.send_order_processing_email(order)
+      when "ready"      then EmailService.send_order_ready_email(order)
+      when "shipped"    then EmailService.send_order_shipped_email(order)
       when "picked_up"  then EmailService.send_order_picked_up_email(order)
       when "delivered"  then EmailService.send_order_delivered_email(order)
       when "cancelled"  then EmailService.send_order_cancelled_email(order)
@@ -30,11 +33,11 @@ class SendOrderStatusEmailJob < ApplicationJob
       end
 
       unless result.is_a?(Hash) && result[:success]
-        order.update_column(:last_email_event, nil)
-        raise "Email delivery failed for order ##{order_id} (#{event}): #{result&.dig(:error) || 'unknown error'}"
+        order.update_column(:last_email_seq, seq - 1)
+        raise "Email failed for order ##{order_id} (#{event}): #{result&.dig(:error) || 'unknown'}"
       end
     rescue StandardError => e
-      order.update_column(:last_email_event, nil)
+      order.update_column(:last_email_seq, seq - 1)
       raise
     end
   end

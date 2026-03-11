@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_11_053722) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_11_065609) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -441,8 +441,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_053722) do
     t.string "easypost_shipment_id"
     t.string "fulfillment_type", default: "shipping", null: false
     t.bigint "fundraiser_id"
-    t.string "last_email_event"
-    t.string "last_sms_event"
+    t.integer "last_email_seq", default: 0, null: false
+    t.integer "last_sms_seq", default: 0, null: false
     t.bigint "location_id"
     t.text "notes"
     t.string "order_number"
