@@ -102,7 +102,10 @@ module Api
       # POST /api/v1/admin/orders/:id/notify
       # Resend notification to customer (email + SMS) for current status
       def notify
-        if @order.status.in?(%w[pending])
+        # Block resend for pending (no notification exists) and terminal statuses
+        # (re-notifying "cancelled" or "delivered" would confuse customers)
+        blocked = %w[pending cancelled delivered picked_up]
+        if @order.status.in?(blocked)
           render json: { error: "Cannot resend notification for '#{@order.status}' orders" }, status: :unprocessable_entity
           return
         end
@@ -246,19 +249,27 @@ module Api
           return { any: false, email: false, sms: false, warnings: warnings }
         end
 
-        # For admin resend: reset seq so the jobs pass the guard
+        will_email = emails_on && has_email
+        will_sms = sms_on && has_phone
+
+        # For admin resend: only reset the seq counters for channels that
+        # will actually enqueue a job. Avoids unconditional decrement when
+        # both channels are disabled (which would re-open the dedup window).
         if force
-          order.update_columns(last_email_seq: seq - 1, last_sms_seq: seq - 1)
+          cols = {}
+          cols[:last_email_seq] = seq - 1 if will_email
+          cols[:last_sms_seq] = seq - 1 if will_sms
+          order.update_columns(cols) if cols.any?
         end
 
         email_sent = false
         sms_sent = false
 
-        if emails_on && has_email
+        if will_email
           SendOrderStatusEmailJob.perform_later(order.id, event, seq)
           email_sent = true
         end
-        if sms_on && has_phone
+        if will_sms
           SendOrderSmsJob.perform_later(order.id, event, seq)
           sms_sent = true
         end

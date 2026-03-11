@@ -131,7 +131,7 @@ class SmsService
 
       # Per-phone idempotency: track which phones already received this
       # alert in order.metadata so retries don't duplicate admin SMS.
-      already_sent = Array(order.metadata&.dig("admin_sms_sent_phones_#{order.id}"))
+      already_sent = Array(order.metadata&.dig("admin_sms_sent_phones"))
       remaining_phones = admin_phones - already_sent
       return { success: true, skipped: true } if remaining_phones.empty?
 
@@ -147,7 +147,7 @@ class SmsService
           send_sms(to: phone, body: message, context: "admin_new_order:#{order.id}")
           # Record success immediately so a retry skips this phone
           meta = order.reload.metadata || {}
-          sent_key = "admin_sms_sent_phones_#{order.id}"
+          sent_key = "admin_sms_sent_phones"
           meta[sent_key] = (Array(meta[sent_key]) + [phone]).uniq
           order.update_column(:metadata, meta)
         rescue SmsError => e
