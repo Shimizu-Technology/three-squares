@@ -47,8 +47,13 @@ export default function CollectionDetailPage() {
   useEffect(() => {
     if (selectedLocation?.id !== prevLocationRef.current) {
       prevLocationRef.current = selectedLocation?.id;
-      setCurrentPage(1);
-      // fetchCollectionData will re-fire when currentPage updates to 1
+      if (currentPage === 1) {
+        // Already on page 1 — setCurrentPage(1) would be a no-op, so fetch directly
+        fetchCollectionData();
+      } else {
+        // Reset to page 1 — the effect will re-fire when currentPage updates
+        setCurrentPage(1);
+      }
       return;
     }
     if (slug) {

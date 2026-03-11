@@ -620,7 +620,7 @@ class EmailService
                       <tr>
                         <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
                           <strong style="color: #6B7280; font-size: 14px;">Phone:</strong>
-                          <span style="color: #111827; font-size: 14px; float: right;">#{order.phone || 'N/A'}</span>
+                          <span style="color: #111827; font-size: 14px; float: right;">#{CGI.escapeHTML(order.customer_phone || 'N/A')}</span>
                         </td>
                       </tr>
                       <tr>
@@ -957,7 +957,7 @@ class EmailService
                       <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
                         <strong>Name:</strong> #{order.name}<br>
                         <strong>Email:</strong> #{order.customer_email}<br>
-                        <strong>Phone:</strong> #{order.phone}
+                        <strong>Phone:</strong> #{CGI.escapeHTML(order.customer_phone.to_s)}
                       </p>
                     </div>
                   </td>
