@@ -78,18 +78,24 @@ module Api
         old_status = @order.status
 
         if @order.update(order_update_params)
+          notification_warnings = []
+
           # Handle status changes — send notifications via both channels
           if @order.saved_change_to_status?
-            send_status_notifications(@order)
+            sent = send_status_notifications(@order)
+            notification_warnings = sent[:warnings] if sent[:warnings]&.any?
 
             # Restore inventory when order is cancelled
             restore_inventory(@order, current_user) if @order.status == "cancelled"
           end
 
-          render json: {
+          response = {
             order: detailed_order_json(@order),
             message: "Order updated successfully"
           }
+          response[:notification_warnings] = notification_warnings if notification_warnings.any?
+
+          render json: response
         else
           render json: { error: @order.errors.full_messages.join(", ") }, status: :unprocessable_entity
         end
