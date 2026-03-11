@@ -60,8 +60,13 @@ export default function LocationPicker() {
 
   const confirmSwitch = async () => {
     if (pendingLocation) {
-      await clearCart();
-      setSelectedLocation(pendingLocation);
+      try {
+        await clearCart();
+        setSelectedLocation(pendingLocation);
+      } catch {
+        // Network error clearing cart — close modal, don't switch location.
+        // Cart stays intact at the current location.
+      }
     }
     setShowConfirm(false);
     setPendingLocation(null);

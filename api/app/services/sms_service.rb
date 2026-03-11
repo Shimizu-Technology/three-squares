@@ -222,8 +222,8 @@ class SmsService
         # US/Guam number with area code — prepend +1
         "+1#{digits}"
       when 11
-        # Already has country code (1) — prepend +
-        return nil unless digits.start_with?("1")
+        # Could be US/Guam with country code (1xxx) or international (e.g. 44712345678)
+        # Accept either — both are valid 11-digit E.164 numbers
         "+#{digits}"
       when 12..15
         # International number with country code — assume already complete
