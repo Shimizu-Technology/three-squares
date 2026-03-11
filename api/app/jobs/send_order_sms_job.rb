@@ -19,7 +19,8 @@ class SendOrderSmsJob < ApplicationJob
 
     begin
       result = case event
-      when "placed"     then SmsService.send_order_confirmation(order)
+      # NOTE: "placed" is handled by SendOrderConfirmationSmsJob (boolean flag),
+      # not this seq-based job. Do not add a "placed" branch here.
       when "confirmed"  then SmsService.send_order_confirmed(order)
       when "ready"      then SmsService.send_order_ready(order)
       when "processing" then SmsService.send_order_processing(order)

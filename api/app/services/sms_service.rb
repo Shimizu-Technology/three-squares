@@ -160,7 +160,7 @@ class SmsService
                 metadata = jsonb_set(
                   COALESCE(metadata, '{}'::jsonb),
                   '{admin_sms_sent_phones}',
-                  (COALESCE(metadata->'admin_sms_sent_phones', '[]'::jsonb) || #{Order.connection.quote("[\"#{phone}\"]")}::jsonb)
+                  (COALESCE(metadata->'admin_sms_sent_phones', '[]'::jsonb) || #{Order.connection.quote([phone].to_json)}::jsonb)
                 )
               SQL
             )
@@ -196,10 +196,12 @@ class SmsService
       SiteSetting.instance.enable_order_sms
     end
 
-    # Admin SMS — only requires credentials + configured phones, NOT the
-    # customer toggle. Disabling customer SMS shouldn't silence admin alerts.
+    # Admin SMS — independent toggle from customer SMS. Disabling customer
+    # SMS (enable_order_sms) does NOT silence admin new-order alerts.
     def admin_sms_enabled?
-      sms_configured? && SiteSetting.instance.admin_sms_phones.present?
+      sms_configured? &&
+        SiteSetting.instance.enable_admin_sms &&
+        SiteSetting.instance.admin_sms_phones.present?
     end
 
     def sms_configured?

@@ -54,6 +54,7 @@ module Api
             # Notification channel toggles (consolidated — replaces legacy send_sms_notifications/sms_order_updates)
             enable_order_emails: settings.enable_order_emails,
             enable_order_sms: settings.enable_order_sms,
+            enable_admin_sms: settings.enable_admin_sms,
             admin_sms_phones: settings.admin_sms_phones,
             sms_configured: ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?,
             email_configured: ENV["RESEND_API_KEY"].present?
@@ -73,6 +74,7 @@ module Api
             :placeholder_image_url,
             :enable_order_emails,
             :enable_order_sms,
+            :enable_admin_sms,
             order_notification_emails: [],
             admin_sms_phones: [],
             shipping_origin_address: [
