@@ -211,7 +211,11 @@ module Api
 
           # Admin notifications — email always, SMS only when enabled
           SendAdminNotificationEmailJob.perform_later(order.id)
-          if settings.enable_order_sms && settings.admin_sms_phones.present?
+          # Gate on enable_order_sms only — SmsService.send_admin_new_order
+          # merges global + location-level phones internally. Checking
+          # settings.admin_sms_phones here would skip orders for locations
+          # that only have location-level phones configured.
+          if settings.enable_order_sms
             SendAdminOrderSmsJob.perform_later(order.id)
           end
 
