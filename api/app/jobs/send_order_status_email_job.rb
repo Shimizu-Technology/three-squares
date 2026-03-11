@@ -28,7 +28,9 @@ class SendOrderStatusEmailJob < ApplicationJob
       when "delivered"  then EmailService.send_order_delivered_email(order)
       when "cancelled"  then EmailService.send_order_cancelled_email(order)
       else
-        Rails.logger.warn "[SendOrderStatusEmailJob] Unknown event: #{event}"
+        # Roll back seq so unknown events don't permanently consume a slot
+        Order.where(id: order.id, last_email_seq: seq).update_all(last_email_seq: seq - 1)
+        Rails.logger.warn "[SendOrderStatusEmailJob] Unknown event: #{event} — seq rolled back"
         return
       end
 

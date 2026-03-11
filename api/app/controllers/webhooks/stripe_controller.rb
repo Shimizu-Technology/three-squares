@@ -147,17 +147,21 @@ module Webhooks
         stripe_refunds = charge.respond_to?(:refunds) ? Array(charge.refunds&.data) : []
         stripe_refunds.each do |stripe_refund|
           next if stripe_refund.id.blank?
-          next if Refund.exists?(stripe_refund_id: stripe_refund.id)
 
-          refund = Refund.create!(
-            order: record,
-            amount_cents: stripe_refund.amount,
-            reason: stripe_refund.reason || "Refunded via Stripe Dashboard",
-            status: "completed",
-            stripe_refund_id: stripe_refund.id
-          )
-          SendRefundNotificationJob.perform_later(refund.id)
-          Rails.logger.info "📧 Enqueued refund notification for Stripe Dashboard refund #{stripe_refund.id}"
+          # Use find_or_create_by with the unique index on stripe_refund_id
+          # to handle concurrent webhook deliveries atomically.
+          refund = Refund.find_or_create_by!(stripe_refund_id: stripe_refund.id) do |r|
+            r.order = record
+            r.amount_cents = stripe_refund.amount
+            r.reason = stripe_refund.reason || "Refunded via Stripe Dashboard"
+            r.status = "completed"
+          end
+
+          # Only notify if we just created it (not a duplicate)
+          if refund.previously_new_record?
+            SendRefundNotificationJob.perform_later(refund.id)
+            Rails.logger.info "📧 Enqueued refund notification for Stripe Dashboard refund #{stripe_refund.id}"
+          end
         end
       end
     rescue StandardError => e

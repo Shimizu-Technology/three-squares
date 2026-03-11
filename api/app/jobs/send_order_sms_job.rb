@@ -28,7 +28,9 @@ class SendOrderSmsJob < ApplicationJob
       when "delivered"  then SmsService.send_order_delivered(order)
       when "cancelled"  then SmsService.send_order_cancelled(order)
       else
-        Rails.logger.warn "[SendOrderSmsJob] Unknown event: #{event}"
+        # Roll back seq so unknown events don't permanently consume a slot
+        Order.where(id: order.id, last_sms_seq: seq).update_all(last_sms_seq: seq - 1)
+        Rails.logger.warn "[SendOrderSmsJob] Unknown event: #{event} — seq rolled back"
         return
       end
 

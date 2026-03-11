@@ -16,8 +16,13 @@ class SmsService
       return skip_result("SMS notifications disabled") unless sms_enabled?
 
       location_name = order.location&.name || "Three Squares"
-      message = "Three Squares: Your order ##{order.order_number} has been confirmed! " \
-                "We're preparing it now. Pickup at #{location_name}."
+      message = if order.fulfillment_type == "shipping"
+        "Three Squares: Your order ##{order.order_number} has been confirmed! " \
+        "We're preparing it for shipping."
+      else
+        "Three Squares: Your order ##{order.order_number} has been confirmed! " \
+        "We're preparing it now. Pickup at #{location_name}."
+      end
 
       send_sms(to: order.customer_phone, body: message, context: "order_confirmed:#{order.id}")
     end
