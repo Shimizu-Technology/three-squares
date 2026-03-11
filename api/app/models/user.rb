@@ -30,6 +30,9 @@ class User < ApplicationRecord
   # see that location's data (orders, dashboard, etc.).
   # WARNING: Setting assigned_location_id on an admin intentionally restricts
   # their visibility. To grant an admin global access, leave assigned_location_id nil.
+  # Only admins access the dashboard, so scoping is admin-only by design.
+  # Customers (the only other role) never see dashboard/POS endpoints
+  # regardless of assigned_location_id.
   def location_scoped?
     admin? && assigned_location_id.present?
   end

@@ -4,6 +4,7 @@ import { locationsApi } from '../services/api';
 import { useLocationStore } from '../store/locationStore';
 import type { LocationInfo } from '../store/locationStore';
 import { useCartStore } from '../store/cartStore';
+import toast from 'react-hot-toast';
 
 /**
  * Persistent location picker shown at the top of the ordering experience.
@@ -64,8 +65,10 @@ export default function LocationPicker() {
         await clearCart();
         setSelectedLocation(pendingLocation);
       } catch {
-        // Network error clearing cart — close modal, don't switch location.
-        // Cart stays intact at the current location.
+        // Network error clearing cart — don't switch location, cart stays
+        // intact at the current location. Notify user so they know why
+        // the location didn't change.
+        toast.error('Unable to clear cart. Please check your connection and try again.');
       }
     }
     setShowConfirm(false);
