@@ -136,7 +136,7 @@ class SmsService
 
       # Per-phone idempotency: track which phones already received this
       # alert in order.metadata so retries don't duplicate admin SMS.
-      already_sent = Array(order.metadata&.dig("admin_sms_sent_phones"))
+      already_sent = Array(order.reload.metadata&.dig("admin_sms_sent_phones")).uniq
       remaining_phones = admin_phones - already_sent
       return { success: true, skipped: true } if remaining_phones.empty?
 
@@ -152,14 +152,20 @@ class SmsService
           result = send_sms(to: phone, body: message, context: "admin_new_order:#{order.id}")
 
           if result.is_a?(Hash) && result[:success]
-            # Record success immediately so a retry skips this phone
-            meta = order.reload.metadata || {}
-            meta["admin_sms_sent_phones"] = (Array(meta["admin_sms_sent_phones"]) + [phone]).uniq
-            order.update_column(:metadata, meta)
+            # Atomic JSON append — safe under concurrent Sidekiq retries.
+            # Uses jsonb_set + concatenation instead of read-modify-write
+            # to avoid two workers overwriting each other's phone lists.
+            Order.where(id: order.id).update_all(
+              Arel.sql(<<~SQL.squish)
+                metadata = jsonb_set(
+                  COALESCE(metadata, '{}'::jsonb),
+                  '{admin_sms_sent_phones}',
+                  (COALESCE(metadata->'admin_sms_sent_phones', '[]'::jsonb) || #{Order.connection.quote("[\"#{phone}\"]")}::jsonb)
+                )
+              SQL
+            )
           elsif result&.dig(:skipped)
-            # Invalid phone (normalize_phone returned nil) — log and skip,
-            # do NOT record as sent so it stays visible for debugging.
-            Rails.logger.warn "[SmsService] Admin SMS skipped for #{phone}: #{result[:error]}"
+            Rails.logger.warn "[SmsService] Admin SMS skipped for #{phone}: #{result[:reason]}"
           else
             failed << phone
           end

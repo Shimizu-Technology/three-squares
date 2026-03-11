@@ -137,10 +137,10 @@ module Webhooks
       # the Stripe Dashboard should NOT flip payment_status — can_refund?
       # gates on payment_status == "paid", so a premature flip permanently
       # blocks follow-up refunds from the admin panel.
-      amount_refunded = charge.respond_to?(:amount_refunded) ? charge.amount_refunded : 0
-      amount_total = charge.respond_to?(:amount) ? charge.amount : 0
+      amount_refunded = charge.respond_to?(:amount_refunded) ? charge.amount_refunded.to_i : 0
+      amount_total = charge.respond_to?(:amount) ? charge.amount.to_i : 0
 
-      if amount_refunded >= amount_total
+      if amount_total > 0 && amount_refunded >= amount_total
         record.update_column(:payment_status, "refunded")
         Rails.logger.info "💸 #{target[:type]} ##{record.id} fully refunded — payment_status set to 'refunded'"
       else

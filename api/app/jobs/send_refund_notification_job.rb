@@ -40,7 +40,7 @@ class SendRefundNotificationJob < ApplicationJob
           sms_result = SmsService.send_refund_notification(order, refund.amount_cents)
           unless sms_result.is_a?(Hash) && sms_result[:success]
             refund.update_column(:sms_sent, false)
-            errors << "SMS: #{sms_result&.dig(:error) || 'unknown error'}" unless sms_result&.dig(:skipped)
+            errors << "SMS: #{sms_result&.dig(:reason) || 'unknown error'}" unless sms_result&.dig(:skipped)
           end
         end
       rescue StandardError => e
