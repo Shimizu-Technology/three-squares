@@ -15,7 +15,7 @@ class EmailService
       params = {
         from: from_address,
         to: [ order.email ],
-        subject: "Order Confirmation ##{order.id.to_s.rjust(6, '0')} - Three Squares",
+        subject: "Order Confirmation ##{order.order_number} - Three Squares",
         html: order_confirmation_html(order)
       }
 
@@ -46,7 +46,7 @@ class EmailService
       params = {
         from: from_address,
         to: admin_emails,
-        subject: "🍽️ New Order ##{order.id.to_s.rjust(6, '0')} - #{order.email}",
+        subject: "🍽️ New Order ##{order.order_number} - #{order.email}",
         html: admin_notification_html(order)
       }
 
@@ -488,7 +488,7 @@ class EmailService
                   <td style="padding: 40px 30px; text-align: center;">
                     <h2 style="color: #111827; margin: 0 0 10px 0; font-size: 24px;">Thank You For Your Order! 🎉</h2>
                     #{test_mode_badge}
-                    <p style="color: #6B7280; margin: 20px 0 0 0; font-size: 16px;">Order ##{CGI.escapeHTML(order.id.to_s.rjust(6, '0'))}</p>
+                    <p style="color: #6B7280; margin: 20px 0 0 0; font-size: 16px;">Order ##{CGI.escapeHTML(order.order_number)}</p>
                     <p style="color: #9CA3AF; margin: 5px 0 0 0; font-size: 14px;">#{order.created_at.strftime('%B %d, %Y at %I:%M %p')}</p>
                   </td>
                 </tr>
@@ -605,7 +605,7 @@ class EmailService
                 <!-- Order Info -->
                 <tr>
                   <td style="padding: 30px;">
-                    <h2 style="color: #111827; margin: 0 0 20px 0; font-size: 20px;">Order ##{CGI.escapeHTML(order.id.to_s.rjust(6, '0'))}</h2>
+                    <h2 style="color: #111827; margin: 0 0 20px 0; font-size: 20px;">Order ##{CGI.escapeHTML(order.order_number)}</h2>
       #{'              '}
                     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 20px;">
                       <tr>
