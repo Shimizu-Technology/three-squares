@@ -46,7 +46,7 @@ class EmailService
       params = {
         from: from_address,
         to: admin_emails,
-        subject: "🍽️ New Order ##{order.id.to_s.rjust(6, '0')} - #{order.email}",
+        subject: "🍽️ New Order ##{CGI.escapeHTML(order.id.to_s.rjust(6, '0'))} - #{order.email}",
         html: admin_notification_html(order)
       }
 
@@ -79,13 +79,13 @@ class EmailService
       params = {
         from: from_address,
         to: [ order.email ],
-        subject: "Your Order Has Shipped! 📦 - Order ##{order.order_number}",
+        subject: "Your Order Has Shipped! 📦 - Order ##{CGI.escapeHTML(order.order_number.to_s)}",
         html: order_shipped_html(order)
       }
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Shipped notification email sent to #{order.email} (Order ##{order.order_number})"
+      Rails.logger.info "✅ Shipped notification email sent to #{order.email} (Order ##{CGI.escapeHTML(order.order_number.to_s)})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -104,7 +104,7 @@ class EmailService
     return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
 
     begin
-      subject = "Your Order is Ready for Pickup! 📦 - Order ##{order.order_number}"
+      subject = "Your Order is Ready for Pickup! 📦 - Order ##{CGI.escapeHTML(order.order_number.to_s)}"
 
       params = {
         from: from_address,
@@ -115,7 +115,7 @@ class EmailService
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Ready for pickup email sent to #{order.email} (Order ##{order.order_number})"
+      Rails.logger.info "✅ Ready for pickup email sent to #{order.email} (Order ##{CGI.escapeHTML(order.order_number.to_s)})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -142,13 +142,13 @@ class EmailService
       params = {
         from: from_address,
         to: [ order.email ],
-        subject: "Three Squares — Refund Processed for Order ##{order.order_number}",
+        subject: "Three Squares — Refund Processed for Order ##{CGI.escapeHTML(order.order_number.to_s)}",
         html: refund_notification_html(order, amount_formatted, reason, refund_date)
       }
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Refund notification email sent to #{order.email} (Order ##{order.order_number})"
+      Rails.logger.info "✅ Refund notification email sent to #{order.email} (Order ##{CGI.escapeHTML(order.order_number.to_s)})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -167,7 +167,7 @@ class EmailService
     location_name = order.location&.name || "Three Squares"
     send_status_email(
       order: order,
-      subject: "Your Order is Being Prepared! - Order ##{order.order_number}",
+      subject: "Your Order is Being Prepared! - Order ##{CGI.escapeHTML(order.order_number.to_s)}",
       heading: "We're Preparing Your Order!",
       message: "Great news! Your order is now being prepared at #{location_name}. We'll send you another notification when it's ready for pickup.",
       color: "#2563EB"
@@ -180,7 +180,7 @@ class EmailService
 
     send_status_email(
       order: order,
-      subject: "Your Order is Being Packed! - Order ##{order.order_number}",
+      subject: "Your Order is Being Packed! - Order ##{CGI.escapeHTML(order.order_number.to_s)}",
       heading: "Your Order is Being Packed!",
       message: "Great news! Your order is now being packed and prepared for shipment. We'll send you tracking information once it ships.",
       color: "#2563EB"
@@ -193,7 +193,7 @@ class EmailService
 
     send_status_email(
       order: order,
-      subject: "Order Picked Up - Thank You! - Order ##{order.order_number}",
+      subject: "Order Picked Up - Thank You! - Order ##{CGI.escapeHTML(order.order_number.to_s)}",
       heading: "Thank You for Picking Up Your Order!",
       message: "Your order has been picked up. We hope you enjoy everything! Thank you for choosing Three Squares.",
       color: "#16A34A"
@@ -206,7 +206,7 @@ class EmailService
 
     send_status_email(
       order: order,
-      subject: "Your Order Has Been Delivered! - Order ##{order.order_number}",
+      subject: "Your Order Has Been Delivered! - Order ##{CGI.escapeHTML(order.order_number.to_s)}",
       heading: "Your Order Has Been Delivered!",
       message: "Your order has been delivered. We hope you love everything! Thank you for choosing Three Squares.",
       color: "#16A34A"
@@ -219,7 +219,7 @@ class EmailService
 
     send_status_email(
       order: order,
-      subject: "Order Cancelled - Order ##{order.order_number}",
+      subject: "Order Cancelled - Order ##{CGI.escapeHTML(order.order_number.to_s)}",
       heading: "Your Order Has Been Cancelled",
       message: "Your order ##{order.order_number} has been cancelled. If you paid for this order, a refund will be processed automatically. If you have any questions, please don't hesitate to reach out.",
       color: "#DC2626"
@@ -340,7 +340,7 @@ class EmailService
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Status email sent to #{order.email} (#{heading} - Order ##{order.order_number})"
+      Rails.logger.info "✅ Status email sent to #{order.email} (#{heading} - Order ##{CGI.escapeHTML(order.order_number.to_s)})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -389,7 +389,7 @@ class EmailService
                     <div style="background-color: #{color}10; border: 2px solid #{color}; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
                       <h2 style="color: #{color}; margin: 0; font-size: 24px;">#{CGI.escapeHTML(heading)}</h2>
                     </div>
-                    <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{order.order_number}</p>
+                    <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{CGI.escapeHTML(order.order_number.to_s)}</p>
                     <p style="color: #9CA3AF; margin: 5px 0 0 0; font-size: 14px;">Placed on #{order.created_at.strftime('%B %d, %Y')}</p>
                   </td>
                 </tr>
@@ -423,7 +423,7 @@ class EmailService
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
-                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
+                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{CGI.escapeHTML(contact_email)}" style="color: #C1191F; text-decoration: none;">#{CGI.escapeHTML(contact_email)}</a> | #{CGI.escapeHTML(contact_phone)}</p>
                     <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
@@ -488,7 +488,7 @@ class EmailService
                   <td style="padding: 40px 30px; text-align: center;">
                     <h2 style="color: #111827; margin: 0 0 10px 0; font-size: 24px;">Thank You For Your Order! 🎉</h2>
                     #{test_mode_badge}
-                    <p style="color: #6B7280; margin: 20px 0 0 0; font-size: 16px;">Order ##{order.id.to_s.rjust(6, '0')}</p>
+                    <p style="color: #6B7280; margin: 20px 0 0 0; font-size: 16px;">Order ##{CGI.escapeHTML(order.id.to_s.rjust(6, '0'))}</p>
                     <p style="color: #9CA3AF; margin: 5px 0 0 0; font-size: 14px;">#{order.created_at.strftime('%B %d, %Y at %I:%M %p')}</p>
                   </td>
                 </tr>
@@ -559,7 +559,7 @@ class EmailService
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
-                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
+                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{CGI.escapeHTML(contact_email)}" style="color: #C1191F; text-decoration: none;">#{CGI.escapeHTML(contact_email)}</a> | #{CGI.escapeHTML(contact_phone)}</p>
                     <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
@@ -605,7 +605,7 @@ class EmailService
                 <!-- Order Info -->
                 <tr>
                   <td style="padding: 30px;">
-                    <h2 style="color: #111827; margin: 0 0 20px 0; font-size: 20px;">Order ##{order.id.to_s.rjust(6, '0')}</h2>
+                    <h2 style="color: #111827; margin: 0 0 20px 0; font-size: 20px;">Order ##{CGI.escapeHTML(order.id.to_s.rjust(6, '0'))}</h2>
       #{'              '}
                     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 20px;">
                       <tr>
@@ -749,7 +749,7 @@ class EmailService
                     <div style="background-color: #ECFDF5; border: 2px solid #10B981; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
                       <h2 style="color: #059669; margin: 0; font-size: 24px;">📦 Your Order Has Shipped!</h2>
                     </div>
-                    <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{order.order_number}</p>
+                    <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{CGI.escapeHTML(order.order_number.to_s)}</p>
                     <p style="color: #9CA3AF; margin: 5px 0 0 0; font-size: 14px;">Placed on #{order.created_at.strftime('%B %d, %Y')}</p>
                   </td>
                 </tr>
@@ -792,7 +792,7 @@ class EmailService
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
-                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
+                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{CGI.escapeHTML(contact_email)}" style="color: #C1191F; text-decoration: none;">#{CGI.escapeHTML(contact_email)}</a> | #{CGI.escapeHTML(contact_phone)}</p>
                     <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
@@ -846,7 +846,7 @@ class EmailService
                     <div style="background-color: #F0FDF4; border: 2px solid #22C55E; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
                       <h2 style="color: #16A34A; margin: 0; font-size: 24px;">#{emoji} #{title}</h2>
                     </div>
-                    <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{order.order_number}</p>
+                    <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{CGI.escapeHTML(order.order_number.to_s)}</p>
                     <p style="color: #9CA3AF; margin: 5px 0 0 0; font-size: 14px;">Placed on #{order.created_at.strftime('%B %d, %Y')}</p>
                   </td>
                 </tr>
@@ -899,7 +899,7 @@ class EmailService
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Thank you for your order!</p>
-                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
+                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{CGI.escapeHTML(contact_email)}" style="color: #C1191F; text-decoration: none;">#{CGI.escapeHTML(contact_email)}</a> | #{CGI.escapeHTML(contact_phone)}</p>
                     <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
@@ -1133,7 +1133,7 @@ class EmailService
                       </tr>
                       <tr>
                         <td style="padding:0 16px 12px 16px;color:#6B7280;font-size:14px;font-weight:600;">Email</td>
-                        <td style="padding:0 16px 12px 16px;color:#111827;font-size:14px;"><a href="mailto:#{contact_email}" style="color:#C1191F;text-decoration:none;">#{contact_email}</a></td>
+                        <td style="padding:0 16px 12px 16px;color:#111827;font-size:14px;"><a href="mailto:#{CGI.escapeHTML(contact_email)}" style="color:#C1191F;text-decoration:none;">#{CGI.escapeHTML(contact_email)}</a></td>
                       </tr>
                       <tr>
                         <td style="padding:0 16px 12px 16px;color:#6B7280;font-size:14px;font-weight:600;">Phone</td>
@@ -1274,7 +1274,7 @@ class EmailService
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
-                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
+                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{CGI.escapeHTML(contact_email)}" style="color: #C1191F; text-decoration: none;">#{CGI.escapeHTML(contact_email)}</a> | #{CGI.escapeHTML(contact_phone)}</p>
                     <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>

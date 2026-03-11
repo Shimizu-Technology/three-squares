@@ -123,8 +123,8 @@ class SmsService
 
     # Send SMS to admin phones when a new order comes in
     def send_admin_new_order(order)
-      # sms_enabled? already checks env vars + enable_order_sms toggle
-      return skip_result("SMS notifications disabled") unless sms_enabled?
+      # Admin SMS uses its own toggle — independent of customer SMS setting
+      return skip_result("Admin SMS not configured") unless admin_sms_enabled?
       settings = SiteSetting.instance
       admin_phones = settings.admin_sms_phones || []
       return skip_result("No admin SMS phones configured") if admin_phones.empty?
@@ -170,10 +170,21 @@ class SmsService
     # No fallback to legacy flags — if enable_order_sms is false, SMS is off.
     # The migration defaults enable_order_sms to false, so SMS must be
     # explicitly enabled by an admin after deploy.
+    # Customer SMS toggle — controls order confirmation, status updates, refunds
     def sms_enabled?
-      return false unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
+      return false unless sms_configured?
 
       SiteSetting.instance.enable_order_sms
+    end
+
+    # Admin SMS — only requires credentials + configured phones, NOT the
+    # customer toggle. Disabling customer SMS shouldn't silence admin alerts.
+    def admin_sms_enabled?
+      sms_configured? && SiteSetting.instance.admin_sms_phones.present?
+    end
+
+    def sms_configured?
+      ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
     end
 
     def send_sms(to:, body:, context: nil)

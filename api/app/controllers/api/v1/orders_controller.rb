@@ -206,10 +206,13 @@ module Api
           end
 
           if settings.enable_order_sms && has_phone
-            SendOrderSmsJob.perform_later(order.id, "placed", order.notification_seq)
+            # Claim the seq immediately so a fast admin "confirmed" (seq=2) can't
+            # discard this job. The job uses confirmation_sms_sent boolean instead
+            # of the seq system to avoid the race entirely.
+            SendOrderConfirmationSmsJob.perform_later(order.id)
           end
 
-          # Always send admin notifications (not gated by customer toggles)
+          # Admin notifications — not gated by customer toggles
           SendAdminNotificationEmailJob.perform_later(order.id)
           SendAdminOrderSmsJob.perform_later(order.id)
 
