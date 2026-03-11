@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_11_042003) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_11_053722) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -441,6 +441,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_042003) do
     t.string "easypost_shipment_id"
     t.string "fulfillment_type", default: "shipping", null: false
     t.bigint "fundraiser_id"
+    t.string "last_email_event"
+    t.string "last_sms_event"
     t.bigint "location_id"
     t.text "notes"
     t.string "order_number"
@@ -449,8 +451,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_042003) do
     t.string "payment_intent_id"
     t.string "payment_method"
     t.string "payment_status"
-    t.boolean "refund_email_sent", default: false, null: false
-    t.boolean "refund_sms_sent", default: false, null: false
     t.string "shipping_address_line1"
     t.string "shipping_address_line2"
     t.string "shipping_city"
@@ -612,10 +612,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_042003) do
   create_table "refunds", force: :cascade do |t|
     t.integer "amount_cents", null: false
     t.datetime "created_at", null: false
+    t.boolean "email_sent", default: false, null: false
     t.jsonb "metadata", default: {}
     t.text "notes"
     t.bigint "order_id", null: false
     t.string "reason"
+    t.boolean "sms_sent", default: false, null: false
     t.string "status", default: "pending"
     t.string "stripe_refund_id"
     t.datetime "updated_at", null: false

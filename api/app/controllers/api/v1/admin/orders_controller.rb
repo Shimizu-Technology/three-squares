@@ -193,7 +193,7 @@ module Api
 
           # Send refund notifications asynchronously (email + SMS)
           # Avoids blocking the refund response on slow Resend/ClickSend API calls
-          SendRefundNotificationJob.perform_later(@order.id, refund.amount_cents, refund.reason)
+          SendRefundNotificationJob.perform_later(refund.id)
 
           render json: {
             message: "Refund processed successfully",
