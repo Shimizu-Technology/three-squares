@@ -26,9 +26,17 @@ class User < ApplicationRecord
     role == "customer"
   end
 
-  # Location-scoped staff: when assigned, they only see their location's data
+  # Location-scoped admin: when assigned to a specific location, they only
+  # see that location's data (orders, dashboard, etc.).
+  # WARNING: Setting assigned_location_id on an admin intentionally restricts
+  # their visibility. To grant an admin global access, leave assigned_location_id nil.
   def location_scoped?
     admin? && assigned_location_id.present?
+  end
+
+  # Convenience: true if admin with full cross-location visibility
+  def global_admin?
+    admin? && assigned_location_id.nil?
   end
 
   private

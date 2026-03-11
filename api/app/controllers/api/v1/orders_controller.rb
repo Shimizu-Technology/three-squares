@@ -209,9 +209,9 @@ module Api
             SendOrderSmsJob.perform_later(order.id, "placed")
           end
 
-          # Always send admin notifications (not gated by customer toggles)
+          # Admin notifications — email always, SMS only when enabled
           SendAdminNotificationEmailJob.perform_later(order.id)
-          SendAdminOrderSmsJob.perform_later(order.id)
+          SendAdminOrderSmsJob.perform_later(order.id) if settings.enable_order_sms
 
           render json: {
             success: true,

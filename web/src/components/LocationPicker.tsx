@@ -22,6 +22,16 @@ export default function LocationPicker() {
         const response = await locationsApi.getLocations();
         const locs = response.locations || [];
         setLocations(locs);
+
+        // Validate stored selectedLocation still exists in the API response.
+        // If a location was deactivated, clear the stale selection so the
+        // compact bar doesn't show a location that no longer exists.
+        if (selectedLocation && locs.length > 0) {
+          const stillExists = locs.some((l: LocationInfo) => l.id === selectedLocation.id);
+          if (!stillExists) {
+            setSelectedLocation(locs[0]);
+          }
+        }
       } catch {
         // Silently fail
       }
