@@ -151,22 +151,24 @@ class SmsService
 
     private
 
-    # Customer SMS: requires master toggle AND customer order updates toggle.
+    # Customer SMS: checks the consolidated enable_order_sms toggle.
+    # This is the single source of truth for whether customer SMS notifications
+    # are active. The controller gates job enqueueing on this same flag, so
+    # the service must agree to avoid silent drops.
     # Admin notifications are independent — see admin_sms_enabled? below.
     def sms_enabled?
       return false unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
 
-      settings = SiteSetting.instance
-      settings.send_sms_notifications && settings.sms_order_updates
+      SiteSetting.instance.enable_order_sms
     end
 
-    # Admin SMS: only requires the master toggle (send_sms_notifications).
-    # sms_order_updates is a customer-facing preference and should not
-    # block admin alerts about new orders.
+    # Admin SMS: checks the consolidated enable_order_sms toggle.
+    # Admin new-order alerts fire whenever SMS is enabled — they don't need
+    # a separate customer-preference gate.
     def admin_sms_enabled?
       return false unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
 
-      SiteSetting.instance.send_sms_notifications
+      SiteSetting.instance.enable_order_sms
     end
 
     def send_sms(to:, body:, context: nil)
