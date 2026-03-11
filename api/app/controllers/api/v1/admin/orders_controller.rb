@@ -178,14 +178,9 @@ module Api
             end
           end
 
-          # Send refund notifications (email + SMS)
-          settings = SiteSetting.instance
-          if settings.enable_order_emails && @order.customer_email.present?
-            EmailService.send_refund_notification(@order, refund.amount_cents, refund.reason)
-          end
-          if settings.enable_order_sms && @order.customer_phone.present?
-            SmsService.send_refund_notification(@order, refund.amount_cents)
-          end
+          # Send refund notifications asynchronously (email + SMS)
+          # Avoids blocking the refund API response on slow Resend/ClickSend calls
+          SendRefundNotificationJob.perform_later(@order.id, refund.amount_cents, refund.reason)
 
           render json: {
             message: "Refund processed successfully",
