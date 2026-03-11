@@ -8,11 +8,14 @@ class SendOrderConfirmationSmsJob < ApplicationJob
   # Custom error for retriable skip conditions
   class SmsTemporarilyUnavailable < StandardError; end
 
+  # Rails matches retry_on in LIFO (last-declared-first) order.
+  # StandardError MUST be declared first so the more-specific handler wins.
+  retry_on StandardError, wait: :polynomially_longer, attempts: 5
+
   # Temporary unavailability — log on exhaustion instead of dead job queue
   retry_on SmsTemporarilyUnavailable, wait: :polynomially_longer, attempts: 5 do |job, error|
     Rails.logger.warn "⚠️ SendOrderConfirmationSmsJob exhausted retries for order ##{job.arguments[0]}: #{error.message}"
   end
-  retry_on StandardError, wait: :polynomially_longer, attempts: 5
   discard_on ActiveRecord::RecordNotFound
 
   def perform(order_id)

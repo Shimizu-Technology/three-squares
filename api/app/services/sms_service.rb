@@ -180,9 +180,12 @@ class SmsService
             unclaim_admin_phone(order, phone)
             failed << phone
           end
-        rescue SmsError => e
+        rescue StandardError => e
+          # Catch ALL errors (not just SmsError) — HTTP timeouts, Net::OpenTimeout,
+          # JSON parse errors, etc. would otherwise leave the phone permanently
+          # "claimed" in order metadata with no way to recover except manual DB fix.
           unclaim_admin_phone(order, phone)
-          Rails.logger.error "[SmsService] Admin SMS failed for #{phone}: #{e.message}"
+          Rails.logger.error "[SmsService] Admin SMS failed for #{phone}: #{e.class}: #{e.message}"
           failed << phone
         end
       end

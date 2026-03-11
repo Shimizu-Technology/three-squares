@@ -5,13 +5,17 @@ class SendOrderSmsJob < ApplicationJob
 
   class SmsTemporarilyUnavailable < StandardError; end
 
+  # Rails matches retry_on in LIFO (last-declared-first) order.
+  # StandardError MUST be declared first so that the more-specific
+  # SmsTemporarilyUnavailable handler (declared second) takes priority.
+  retry_on StandardError, wait: :polynomially_longer, attempts: 5
+
   # Temporary unavailability (SMS disabled, carrier skip) — retry with backoff,
   # log warning on exhaustion instead of flooding dead job queue.
   retry_on SmsTemporarilyUnavailable, wait: :polynomially_longer, attempts: 5 do |job, error|
     Rails.logger.warn "⚠️ SendOrderSmsJob exhausted retries for order ##{job.arguments[0]} " \
                       "(#{job.arguments[1]}): #{error.message}"
   end
-  retry_on StandardError, wait: :polynomially_longer, attempts: 5
   discard_on ActiveRecord::RecordNotFound
 
   # @param order_id [Integer]
