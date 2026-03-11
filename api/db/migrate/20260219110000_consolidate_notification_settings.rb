@@ -2,8 +2,8 @@
 
 class ConsolidateNotificationSettings < ActiveRecord::Migration[8.1]
   def up
-    add_column :site_settings, :enable_order_emails, :boolean, default: false, null: false
-    add_column :site_settings, :enable_order_sms, :boolean, default: false, null: false
+    add_column :site_settings, :enable_order_emails, :boolean, default: true, null: false
+    add_column :site_settings, :enable_order_sms, :boolean, default: true, null: false
 
     # Migrate from legacy flags: if ANY legacy email flag was true, enable the
     # consolidated toggle so existing deployments don't silently lose emails.
