@@ -232,9 +232,15 @@ module Api
           SendOrderSmsJob.perform_later(order.id, "ready") if sms_on && has_phone
 
         when "shipped"
-          # Shipping flow: shipped with optional tracking
-          SendOrderShippedEmailJob.perform_later(order.id) if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "shipped") if sms_on && has_phone
+          # Shipping flow: only notify if tracking number is present.
+          # Matches the notify (manual resend) endpoint guard — customers
+          # shouldn't receive "Your Order Has Shipped" with no tracking info.
+          if order.tracking_number.present?
+            SendOrderShippedEmailJob.perform_later(order.id) if emails_on && has_email
+            SendOrderSmsJob.perform_later(order.id, "shipped") if sms_on && has_phone
+          else
+            Rails.logger.info "⏭️ Shipped notifications deferred for Order ##{order.id} — no tracking number yet"
+          end
 
         when "picked_up"
           # Pickup flow: customer picked up
