@@ -148,9 +148,10 @@ class SmsService
       end
 
       failed = results.select { |r| !r[:success] }
-      # Raise if ANY phone failed so the job retries — but only the failed
-      # phones will get a new attempt since successful ones are admin-only
-      # (duplicate admin alerts are acceptable, unlike customer notifications).
+      # Raise if ANY phone failed so the job retries. Note: on retry,
+      # send_admin_new_order is called again from scratch, which re-sends
+      # to ALL phones (including already-successful ones). This is acceptable
+      # for admin alerts — a duplicate "new order" SMS is low-impact.
       if failed.any?
         raise SmsError, "Admin SMS failed for #{failed.length}/#{results.length} phones"
       end
