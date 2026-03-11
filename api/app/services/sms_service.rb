@@ -139,22 +139,18 @@ class SmsService
       # prevents two workers from both reading an empty list and both
       # sending to every phone.
       remaining_phones = nil
-      claimed = false
       order.with_lock do
         already_sent = Array(order.metadata&.dig("admin_sms_sent_phones")).uniq
         remaining_phones = admin_phones - already_sent
         return { success: true, skipped: true } if remaining_phones.empty?
 
-        # Claim all remaining phones upfront — actual sending happens below
+        # Claim all remaining phones upfront — actual sending happens below.
+        # with_lock raises on failure, so if we reach past this block the
+        # claim is guaranteed persisted.
         meta = order.metadata || {}
         meta["admin_sms_sent_phones"] = (already_sent + remaining_phones).uniq
         order.update_column(:metadata, meta)
-        claimed = true
       end
-
-      # If the claim transaction failed, remaining_phones may be set but
-      # not persisted — don't send without a valid claim.
-      raise SmsError, "Failed to claim admin SMS phones" unless claimed
 
       location_name = order.location&.name || "Online"
       source_label = order.source == "pos" ? "POS" : "Online"

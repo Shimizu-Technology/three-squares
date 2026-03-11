@@ -31,7 +31,13 @@ class Order < ApplicationRecord
   }.freeze
 
   def notification_seq
-    STATUS_SEQUENCE[status] || 1
+    seq = STATUS_SEQUENCE[status]
+    unless seq
+      Rails.logger.error "⚠️ notification_seq: unknown status '#{status}' — " \
+                         "add it to STATUS_SEQUENCE before using in production"
+      raise ArgumentError, "Unknown order status '#{status}' has no notification sequence"
+    end
+    seq
   end
 
   # Validations

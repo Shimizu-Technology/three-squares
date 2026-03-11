@@ -164,29 +164,34 @@ module Webhooks
         stripe_refunds.each do |stripe_refund|
           next if stripe_refund.id.blank?
 
-          # create! with rescue on unique constraint — truly atomic.
-          # find_or_create_by! has a SELECT→INSERT race under concurrent
-          # webhook deliveries where both pass the SELECT and one hits
-          # RecordNotUnique on insert.
-          begin
-            # Map the actual Stripe refund status instead of hardcoding "succeeded".
-            # Stripe refunds can be "pending" when charge.refunded fires (card-network
-            # settlement takes days). Our model accepts: pending, succeeded, failed.
-            mapped_status = %w[pending succeeded failed].include?(stripe_refund.status) ?
-                            stripe_refund.status : "pending"
+          # Map the actual Stripe refund status instead of hardcoding "succeeded".
+          # Stripe refunds can be "pending" when charge.refunded fires (card-network
+          # settlement takes days). Our model accepts: pending, succeeded, failed.
+          mapped_status = %w[pending succeeded failed].include?(stripe_refund.status) ?
+                          stripe_refund.status : "pending"
 
-            refund = Refund.create!(
+          # Upsert pattern: create if new, find if already exists.
+          # Separating create from perform_later ensures that on Stripe retry
+          # (e.g., Redis was down on first attempt), the existing Refund record
+          # is found and the notification is still enqueued.
+          refund = begin
+            Refund.create!(
               stripe_refund_id: stripe_refund.id,
               order: record,
               amount_cents: stripe_refund.amount,
               reason: stripe_refund.reason || "Refunded via Stripe Dashboard",
               status: mapped_status
             )
+          rescue ActiveRecord::RecordNotUnique
+            # Another webhook delivery already created this refund — find it
+            Refund.find_by(stripe_refund_id: stripe_refund.id)
+          end
+
+          # Always attempt notification — the job's own email_sent/sms_sent
+          # idempotency columns prevent duplicate sends.
+          if refund
             SendRefundNotificationJob.perform_later(refund.id)
             Rails.logger.info "📧 Enqueued refund notification for Stripe Dashboard refund #{stripe_refund.id}"
-          rescue ActiveRecord::RecordNotUnique
-            # Another webhook delivery already created this refund — safe to skip
-            Rails.logger.info "↩️ Stripe refund #{stripe_refund.id} already recorded — skipping"
           end
         end
       end
