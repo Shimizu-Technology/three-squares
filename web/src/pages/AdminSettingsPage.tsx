@@ -654,6 +654,25 @@ function GeneralSettingsTab({
             />
           </div>
 
+          {/* Style Selector */}
+          <div>
+            <label htmlFor="announcement_style" className="block text-sm font-medium text-gray-700 mb-2">
+              Banner Style
+            </label>
+            <select
+              id="announcement_style"
+              value={settings.announcement_style || 'gold'}
+              onChange={(e) => onUpdateSettings({ announcement_style: e.target.value })}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
+            >
+              <option value="gold">Gold (Default)</option>
+              <option value="info">Info (Blue)</option>
+              <option value="success">Success (Green)</option>
+              <option value="warning">Warning (Amber)</option>
+              <option value="danger">Urgent (Red)</option>
+            </select>
+          </div>
+
           {/* Preview */}
           {settings.announcement_text?.trim() && (
             <div>

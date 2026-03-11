@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { X } from 'lucide-react';
 import useAppConfig from '../hooks/useAppConfig';
@@ -23,11 +23,15 @@ export default function AnnouncementBanner() {
 
   const enabled = config?.announcement_enabled && !!config?.announcement_text?.trim();
   // Tie dismiss key to announcement content so updated messages reappear
-  const dismissKey = `${DISMISS_KEY_PREFIX}${config?.announcement_text?.trim() ?? ''}`;
-  const dismissed = sessionStorage.getItem(dismissKey) === 'true';
+  const dismissKey = useMemo(
+    () => `${DISMISS_KEY_PREFIX}${config?.announcement_text?.trim() ?? ''}`,
+    [config?.announcement_text]
+  );
 
   useEffect(() => {
-    if (enabled && !dismissed) {
+    // Check sessionStorage inside the effect to avoid stale-closure edge cases
+    const isDismissed = sessionStorage.getItem(dismissKey) === 'true';
+    if (enabled && !isDismissed) {
       setMounted(true);
       if (prefersReducedMotion) {
         setVisible(true);
@@ -38,7 +42,7 @@ export default function AnnouncementBanner() {
         });
       }
     }
-  }, [enabled, dismissed, prefersReducedMotion]);
+  }, [enabled, dismissKey, prefersReducedMotion]);
 
   const handleDismiss = () => {
     if (prefersReducedMotion) {
