@@ -140,20 +140,24 @@ module Webhooks
       # Create a Refund record + notify the customer for Dashboard-initiated refunds.
       # Admin-panel refunds already create Refund records in orders_controller#refund,
       # so we check stripe_refund_id to avoid duplicates.
+      # Process ALL refunds in the charge, not just the first.
+      # Concurrent partial refunds or future Stripe API changes could include
+      # multiple refund objects in a single charge.refunded event.
       if record.is_a?(Order)
-        stripe_refund = charge.respond_to?(:refunds) ? charge.refunds&.data&.first : nil
-        stripe_refund_id = stripe_refund&.id
+        stripe_refunds = charge.respond_to?(:refunds) ? Array(charge.refunds&.data) : []
+        stripe_refunds.each do |stripe_refund|
+          next if stripe_refund.id.blank?
+          next if Refund.exists?(stripe_refund_id: stripe_refund.id)
 
-        if stripe_refund_id.present? && !Refund.exists?(stripe_refund_id: stripe_refund_id)
           refund = Refund.create!(
             order: record,
             amount_cents: stripe_refund.amount,
             reason: stripe_refund.reason || "Refunded via Stripe Dashboard",
             status: "completed",
-            stripe_refund_id: stripe_refund_id
+            stripe_refund_id: stripe_refund.id
           )
           SendRefundNotificationJob.perform_later(refund.id)
-          Rails.logger.info "📧 Enqueued refund notification for Stripe Dashboard refund #{stripe_refund_id}"
+          Rails.logger.info "📧 Enqueued refund notification for Stripe Dashboard refund #{stripe_refund.id}"
         end
       end
     rescue StandardError => e

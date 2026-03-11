@@ -252,26 +252,37 @@ module Api
         will_email = emails_on && has_email
         will_sms = sms_on && has_phone
 
-        # For admin resend: only reset the seq counters for channels that
-        # will actually enqueue a job. Avoids unconditional decrement when
-        # both channels are disabled (which would re-open the dedup window).
-        if force
-          cols = {}
-          cols[:last_email_seq] = seq - 1 if will_email
-          cols[:last_sms_seq] = seq - 1 if will_sms
-          order.update_columns(cols) if cols.any?
-        end
-
         email_sent = false
         sms_sent = false
 
-        if will_email
-          SendOrderStatusEmailJob.perform_later(order.id, event, seq)
-          email_sent = true
-        end
-        if will_sms
-          SendOrderSmsJob.perform_later(order.id, event, seq)
-          sms_sent = true
+        if force && (will_email || will_sms)
+          # Atomic: seq reset + job enqueue in one transaction.
+          # If Redis/Sidekiq is down, the transaction rolls back the seq
+          # decrement — admin gets a 500, not a silent success with no send.
+          ActiveRecord::Base.transaction do
+            cols = {}
+            cols[:last_email_seq] = seq - 1 if will_email
+            cols[:last_sms_seq] = seq - 1 if will_sms
+            order.update_columns(cols)
+
+            if will_email
+              SendOrderStatusEmailJob.perform_later(order.id, event, seq)
+              email_sent = true
+            end
+            if will_sms
+              SendOrderSmsJob.perform_later(order.id, event, seq)
+              sms_sent = true
+            end
+          end
+        else
+          if will_email
+            SendOrderStatusEmailJob.perform_later(order.id, event, seq)
+            email_sent = true
+          end
+          if will_sms
+            SendOrderSmsJob.perform_later(order.id, event, seq)
+            sms_sent = true
+          end
         end
 
         warnings << "Email enabled but customer has no email address" if emails_on && !has_email
