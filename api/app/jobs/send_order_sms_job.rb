@@ -29,11 +29,15 @@ class SendOrderSmsJob < ApplicationJob
         return
       end
 
-      # SmsService raises SmsError on non-2xx. Skipped results (disabled/no phone)
-      # return { skipped: true } — not a failure, just a no-op.
-      Rails.logger.info "✅ SMS job complete for order ##{order_id} (#{event}): #{result&.dig(:success) ? 'sent' : 'skipped'}"
+      # Roll back flag on skip/non-success so the admin Notify button can retry.
+      # Only keep the flag claimed on actual successful delivery.
+      if result.is_a?(Hash) && result[:success]
+        Rails.logger.info "✅ SMS sent for order ##{order_id} (#{event})"
+      else
+        order.update_column(:last_sms_event, nil)
+        Rails.logger.info "↩️ SMS skipped for order ##{order_id} (#{event}) — flag rolled back"
+      end
     rescue StandardError => e
-      # Roll back so retry can re-attempt
       order.update_column(:last_sms_event, nil)
       raise
     end
