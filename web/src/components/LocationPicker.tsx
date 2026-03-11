@@ -148,6 +148,7 @@ export default function LocationPicker() {
             <div className="flex gap-3">
               <button
                 onClick={cancelSwitch}
+                autoFocus
                 className="flex-1 px-4 py-2.5 border border-warm-300 rounded-lg text-warm-700 font-medium hover:bg-warm-50 transition"
               >
                 Keep Current

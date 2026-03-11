@@ -72,7 +72,7 @@ export default function AnnouncementBanner() {
         style={{ backgroundColor: STYLE_COLORS[config?.announcement_style ?? 'gold'] ?? STYLE_COLORS.gold }}
       >
         <p className="text-white text-sm font-medium text-center leading-snug">
-          {config.announcement_text}
+          {config?.announcement_text}
         </p>
         <button
           onClick={handleDismiss}
