@@ -145,14 +145,14 @@ class SmsService
     private
 
     # Customer order SMS (order updates, confirmations, refunds)
-    # Requires both send_sms_notifications AND sms_order_updates (or new enable_order_sms)
+    # Single source of truth: enable_order_sms (consolidated toggle).
+    # No fallback to legacy flags — if enable_order_sms is false, SMS is off.
+    # The migration defaults enable_order_sms to false, so SMS must be
+    # explicitly enabled by an admin after deploy.
     def sms_enabled?
       return false unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
 
-      settings = SiteSetting.instance
-      # Primary toggle: enable_order_sms (new consolidated toggle)
-      # Fallback: check legacy toggles for backwards compatibility
-      settings.try(:enable_order_sms) || (settings.send_sms_notifications && settings.sms_order_updates)
+      SiteSetting.instance.enable_order_sms
     end
 
     # Admin SMS (new order alerts) — uses the same consolidated toggle as customer SMS.

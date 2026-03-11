@@ -2,7 +2,10 @@ class FixNotificationDefaults < ActiveRecord::Migration[8.1]
   def up
     change_column_default :site_settings, :enable_order_emails, true
     change_column_default :site_settings, :enable_order_sms, true
-    # Only set defaults where column is nil — don't silently opt in existing records
+    # NOTE: These update_all calls are intentionally no-ops in most environments.
+    # The prior migration (consolidate_notification_settings) used ADD COLUMN ... DEFAULT false,
+    # which backfills existing rows in PostgreSQL, so enable_order_emails/sms will never be nil.
+    # These are kept as a safety net for edge cases (e.g., interrupted migrations, non-PG databases).
     SiteSetting.where(enable_order_emails: nil).update_all(enable_order_emails: true)
     SiteSetting.where(enable_order_sms: nil).update_all(enable_order_sms: true)
   end

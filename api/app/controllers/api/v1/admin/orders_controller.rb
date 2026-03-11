@@ -103,8 +103,21 @@ module Api
           return
         end
 
-        send_status_notifications(@order)
-        render json: { message: "Notification resent for status '#{@order.status}' (email + SMS)" }
+        # Track what was actually enqueued so the response is accurate
+        sent = send_status_notifications(@order)
+
+        if sent[:any]
+          channels = []
+          channels << "email" if sent[:email]
+          channels << "SMS" if sent[:sms]
+          render json: { message: "Notification resent for status '#{@order.status}' (#{channels.join(' + ')})" }
+        else
+          warnings = sent[:warnings] || []
+          render json: {
+            warning: "No notifications sent for status '#{@order.status}'",
+            reasons: warnings
+          }, status: :ok
+        end
       end
 
       # POST /api/v1/admin/orders/:id/refund
@@ -201,40 +214,71 @@ module Api
       # SMS flag check is handled internally by SmsService#sms_enabled? — no guard needed here.
       # Phone presence check is also handled internally by SmsService, but we guard here
       # as a lightweight optimization to avoid enqueueing a job that will immediately no-op.
+      # Returns a hash describing what was actually enqueued:
+      #   { any: true/false, email: true/false, sms: true/false, warnings: [...] }
       def send_status_notifications(order)
         settings = SiteSetting.instance
         emails_on = settings.enable_order_emails
+        sms_on = settings.enable_order_sms
 
         has_email = order.customer_email.present?
         has_phone = order.customer_phone.present?
 
+        email_sent = false
+        sms_sent = false
+        warnings = []
+
         case order.status
         when "confirmed"
-          SendOrderStatusEmailJob.perform_later(order.id, "confirmed") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "confirmed") if has_phone
+          email_sent = enqueue_email(order, "confirmed", emails_on, has_email)
+          sms_sent = enqueue_sms(order, "confirmed", sms_on, has_phone)
         when "processing"
-          SendOrderStatusEmailJob.perform_later(order.id, "processing") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "processing") if has_phone
+          email_sent = enqueue_email(order, "processing", emails_on, has_email)
+          sms_sent = enqueue_sms(order, "processing", sms_on, has_phone)
         when "ready"
-          SendOrderReadyEmailJob.perform_later(order.id) if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "ready") if has_phone
+          if emails_on && has_email
+            SendOrderReadyEmailJob.perform_later(order.id)
+            email_sent = true
+          end
+          sms_sent = enqueue_sms(order, "ready", sms_on, has_phone)
         when "shipped"
           if order.tracking_number.present?
-            SendOrderShippedEmailJob.perform_later(order.id) if emails_on && has_email
-            SendOrderSmsJob.perform_later(order.id, "shipped") if has_phone
+            if emails_on && has_email
+              SendOrderShippedEmailJob.perform_later(order.id)
+              email_sent = true
+            end
+            sms_sent = enqueue_sms(order, "shipped", sms_on, has_phone)
           else
+            warnings << "No tracking number — shipped notifications require tracking info"
             Rails.logger.warn "⚠️ Order ##{order.order_number} marked shipped without tracking number — skipping customer notification"
           end
         when "picked_up"
-          SendOrderStatusEmailJob.perform_later(order.id, "picked_up") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "picked_up") if has_phone
+          email_sent = enqueue_email(order, "picked_up", emails_on, has_email)
+          sms_sent = enqueue_sms(order, "picked_up", sms_on, has_phone)
         when "delivered"
-          SendOrderStatusEmailJob.perform_later(order.id, "delivered") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "delivered") if has_phone
+          email_sent = enqueue_email(order, "delivered", emails_on, has_email)
+          sms_sent = enqueue_sms(order, "delivered", sms_on, has_phone)
         when "cancelled"
-          SendOrderStatusEmailJob.perform_later(order.id, "cancelled") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "cancelled") if has_phone
+          email_sent = enqueue_email(order, "cancelled", emails_on, has_email)
+          sms_sent = enqueue_sms(order, "cancelled", sms_on, has_phone)
         end
+
+        warnings << "Email disabled or no customer email" unless email_sent || !emails_on
+        warnings << "SMS disabled or no customer phone" unless sms_sent || !sms_on
+
+        { any: email_sent || sms_sent, email: email_sent, sms: sms_sent, warnings: warnings }
+      end
+
+      def enqueue_email(order, event, emails_on, has_email)
+        return false unless emails_on && has_email
+        SendOrderStatusEmailJob.perform_later(order.id, event)
+        true
+      end
+
+      def enqueue_sms(order, event, sms_on, has_phone)
+        return false unless sms_on && has_phone
+        SendOrderSmsJob.perform_later(order.id, event)
+        true
       end
 
       def filtered_orders_query
