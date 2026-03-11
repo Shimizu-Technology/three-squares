@@ -162,7 +162,7 @@ function LocationCard({ location }: LocationCardProps) {
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${location.mapAddress}`;
   // Use maps.google.com/maps with &output=embed — no API key required.
   // mapAddress already uses + for spaces (URL-friendly), so pass through directly.
-  const mapEmbedUrl = `https://maps.google.com/maps?q=${location.mapAddress}&t=&z=15&ie=UTF8&iwloc=&output=embed`;
+  const mapEmbedUrl = `https://maps.google.com/maps?q=${location.mapAddress}&z=15&ie=UTF8&iwloc=&output=embed`;
   
   return (
     <motion.div
