@@ -135,11 +135,27 @@ class SmsService
                 "$#{format_price(order.total_cents)} - #{order.customer_name || 'Guest'} " \
                 "- #{location_name}"
 
+      # Send to each phone individually with per-phone error handling.
+      # If send_sms raises (non-2xx), catch it so we don't re-send to
+      # phones that already received the message on job retry.
       results = admin_phones.map do |phone|
-        send_sms(to: phone, body: message, context: "admin_new_order:#{order.id}")
+        begin
+          send_sms(to: phone, body: message, context: "admin_new_order:#{order.id}")
+        rescue SmsError => e
+          Rails.logger.error "[SmsService] Admin SMS failed for #{phone}: #{e.message}"
+          { success: false, error: e.message, phone: phone }
+        end
       end
 
-      { success: results.all? { |r| r[:success] }, results: results }
+      failed = results.select { |r| !r[:success] }
+      # Raise if ANY phone failed so the job retries — but only the failed
+      # phones will get a new attempt since successful ones are admin-only
+      # (duplicate admin alerts are acceptable, unlike customer notifications).
+      if failed.any?
+        raise SmsError, "Admin SMS failed for #{failed.length}/#{results.length} phones"
+      end
+
+      { success: true, results: results }
     end
 
     private

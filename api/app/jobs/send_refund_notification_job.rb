@@ -27,26 +27,23 @@ class SendRefundNotificationJob < ApplicationJob
     end
 
     # --- SMS channel (atomic idempotency, matching email pattern) ---
-    begin
-      sms_rows = Order.where(id: order.id, refund_sms_sent: false)
-                      .update_all(refund_sms_sent: true)
-      if sms_rows > 0
-        sms_result = SmsService.send_refund_notification(order, refund_amount_cents)
-        if sms_result.is_a?(Hash) && sms_result[:success]
-          # Already flagged via update_all above — nothing more needed
-        elsif sms_result.is_a?(Hash) && sms_result[:skipped]
-          # SMS was skipped (disabled or no phone) — roll back so it can
-          # be sent if SMS is later re-enabled
-          order.update_column(:refund_sms_sent, false)
-        else
-          order.update_column(:refund_sms_sent, false)
-          errors << "SMS: #{sms_result&.dig(:error) || 'unknown error'}"
+    # --- SMS channel (atomic idempotency, with pre-guard to avoid unnecessary DB writes) ---
+    if settings.enable_order_sms && order.customer_phone.present?
+      begin
+        sms_rows = Order.where(id: order.id, refund_sms_sent: false)
+                        .update_all(refund_sms_sent: true)
+        if sms_rows > 0
+          sms_result = SmsService.send_refund_notification(order, refund_amount_cents)
+          unless sms_result.is_a?(Hash) && sms_result[:success]
+            order.update_column(:refund_sms_sent, false)
+            errors << "SMS: #{sms_result&.dig(:error) || 'unknown error'}" unless sms_result&.dig(:skipped)
+          end
         end
+      rescue StandardError => e
+        order.update_column(:refund_sms_sent, false)
+        errors << "SMS: #{e.message}"
+        Rails.logger.error "❌ Refund SMS failed for order ##{order.order_number}: #{e.message}"
       end
-    rescue StandardError => e
-      order.update_column(:refund_sms_sent, false)
-      errors << "SMS: #{e.message}"
-      Rails.logger.error "❌ Refund SMS failed for order ##{order.order_number}: #{e.message}"
     end
 
     if errors.any?
