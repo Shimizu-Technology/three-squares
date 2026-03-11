@@ -107,6 +107,11 @@ module Api
           return
         end
 
+        # Clear idempotency flags so the jobs actually re-send.
+        # Without this, last_email_event/last_sms_event would match the
+        # current status and every job would silently exit.
+        @order.update_columns(last_email_event: nil, last_sms_event: nil)
+
         # Track what was actually enqueued so the response is accurate
         sent = send_status_notifications(@order)
 
