@@ -264,6 +264,10 @@ module Api
         when "cancelled"
           email_sent = enqueue_email(order, "cancelled", emails_on, has_email)
           sms_sent = enqueue_sms(order, "cancelled", sms_on, has_phone)
+        else
+          warnings << "No notification template for status '#{order.status}'"
+          Rails.logger.warn "⚠️ No notification handler for status '#{order.status}' on order ##{order.order_number}"
+          return { any: false, email: false, sms: false, warnings: warnings }
         end
 
         # Only warn about disabled channels if they were relevant for this status

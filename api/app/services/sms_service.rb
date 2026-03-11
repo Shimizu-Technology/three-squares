@@ -160,7 +160,7 @@ class SmsService
     def admin_sms_enabled?
       return false unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
 
-      SiteSetting.instance.try(:enable_order_sms) || false
+      SiteSetting.instance.enable_order_sms
     end
 
     def send_sms(to:, body:, context: nil)
