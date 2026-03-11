@@ -127,13 +127,12 @@ class SmsService
       return skip_result("SMS not configured") unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
       return skip_result("SMS notifications disabled") unless admin_sms_enabled?
 
-      # Try location-specific admin phones first, fall back to global
+      # Include both global AND location-specific admin phones (matching email routing).
+      # Global admins should always receive new-order SMS regardless of location config.
+      global_phones = SiteSetting.instance.admin_sms_phones || []
       location = order.location
-      admin_phones = if location&.admin_sms_phones.present? && location.admin_sms_phones.any?
-        location.admin_sms_phones
-      else
-        SiteSetting.instance.admin_sms_phones || []
-      end
+      location_phones = location&.admin_sms_phones.present? ? location.admin_sms_phones : []
+      admin_phones = (global_phones + location_phones).uniq
       return skip_result("No admin SMS phones configured") if admin_phones.empty?
 
       location_name = order.location&.name || "Online"

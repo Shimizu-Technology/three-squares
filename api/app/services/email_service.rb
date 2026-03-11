@@ -666,15 +666,15 @@ class EmailService
                     <!-- Shipping Info -->
                     <h3 style="color: #111827; margin: 30px 0 15px 0; font-size: 16px;">Shipping Details:</h3>
                     <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
-                      <p style="color: #111827; margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">#{order.name}</p>
+                      <p style="color: #111827; margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">#{CGI.escapeHTML(order.name.to_s)}</p>
                       <p style="color: #6B7280; margin: 0; font-size: 14px; line-height: 1.6;">
-                        #{order.shipping_address_line1}<br>
-                        #{order.shipping_address_line2.present? ? "#{order.shipping_address_line2}<br>" : ""}
-                        #{order.shipping_city}, #{order.shipping_state} #{order.shipping_zip}<br>
-                        #{order.shipping_country}
+                        #{CGI.escapeHTML(order.shipping_address_line1.to_s)}<br>
+                        #{order.shipping_address_line2.present? ? "#{CGI.escapeHTML(order.shipping_address_line2)}<br>" : ""}
+                        #{CGI.escapeHTML(order.shipping_city.to_s)}, #{CGI.escapeHTML(order.shipping_state.to_s)} #{CGI.escapeHTML(order.shipping_zip.to_s)}<br>
+                        #{CGI.escapeHTML(order.shipping_country.to_s)}
                       </p>
                       <p style="color: #6B7280; margin: 15px 0 0 0; font-size: 14px;">
-                        <strong>Method:</strong> #{order.shipping_method}
+                        <strong>Method:</strong> #{CGI.escapeHTML(order.shipping_method.to_s)}
                       </p>
                     </div>
                   </td>
@@ -723,11 +723,11 @@ class EmailService
                   <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
                     <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Shipping Address</h3>
                     <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
-                      #{order.name}<br>
-                      #{order.shipping_address_line1}<br>
-                      #{order.shipping_address_line2.present? ? "#{order.shipping_address_line2}<br>" : ""}
-                      #{order.shipping_city}, #{order.shipping_state} #{order.shipping_zip}<br>
-                      #{order.shipping_country}
+                      #{CGI.escapeHTML(order.name.to_s)}<br>
+                      #{CGI.escapeHTML(order.shipping_address_line1.to_s)}<br>
+                      #{order.shipping_address_line2.present? ? "#{CGI.escapeHTML(order.shipping_address_line2)}<br>" : ""}
+                      #{CGI.escapeHTML(order.shipping_city.to_s)}, #{CGI.escapeHTML(order.shipping_state.to_s)} #{CGI.escapeHTML(order.shipping_zip.to_s)}<br>
+                      #{CGI.escapeHTML(order.shipping_country.to_s)}
                     </p>
                   </div>
                 </td>
@@ -735,7 +735,7 @@ class EmailService
                   <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
                     <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Shipping Method</h3>
                     <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
-                      #{order.shipping_method}
+                      #{CGI.escapeHTML(order.shipping_method.to_s)}
                     </p>
                   </div>
                 </td>
@@ -843,14 +843,14 @@ class EmailService
                     <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
                       <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Shipping To:</h3>
                       <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
-                        #{order.name}<br>
-                        #{order.shipping_address_line1}<br>
-                        #{order.shipping_address_line2.present? ? "#{order.shipping_address_line2}<br>" : ""}
-                        #{order.shipping_city}, #{order.shipping_state} #{order.shipping_zip}<br>
-                        #{order.shipping_country}
+                        #{CGI.escapeHTML(order.name.to_s)}<br>
+                        #{CGI.escapeHTML(order.shipping_address_line1.to_s)}<br>
+                        #{order.shipping_address_line2.present? ? "#{CGI.escapeHTML(order.shipping_address_line2)}<br>" : ""}
+                        #{CGI.escapeHTML(order.shipping_city.to_s)}, #{CGI.escapeHTML(order.shipping_state.to_s)} #{CGI.escapeHTML(order.shipping_zip.to_s)}<br>
+                        #{CGI.escapeHTML(order.shipping_country.to_s)}
                       </p>
                       <p style="color: #6B7280; margin: 15px 0 0 0; font-size: 14px;">
-                        <strong>Method:</strong> #{order.shipping_method}
+                        <strong>Method:</strong> #{CGI.escapeHTML(order.shipping_method.to_s)}
                       </p>
                     </div>
                   </td>

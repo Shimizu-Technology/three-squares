@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import api, { collectionsApi, type Collection } from '../services/api';
 
 import { API_BASE_URL } from '../config';
+import { ANNOUNCEMENT_STYLE_HEX } from '../constants/announcementStyles';
 
 // ============================================================================
 // TYPES
@@ -679,13 +680,7 @@ function GeneralSettingsTab({
               <p className="text-sm font-medium text-gray-700 mb-2">Preview</p>
               <div
                 className="relative flex items-center justify-center px-10 py-2 rounded-lg shadow-sm"
-                style={{ backgroundColor: {
-                  gold: '#D4A030',
-                  info: '#2563EB',
-                  success: '#16A34A',
-                  warning: '#D97706',
-                  danger: '#DC2626',
-                }[settings.announcement_style] ?? '#D4A030' }}
+                style={{ backgroundColor: ANNOUNCEMENT_STYLE_HEX[settings.announcement_style] ?? ANNOUNCEMENT_STYLE_HEX.gold }}
               >
                 <p className="text-white text-sm font-medium text-center leading-snug">
                   {settings.announcement_text}
