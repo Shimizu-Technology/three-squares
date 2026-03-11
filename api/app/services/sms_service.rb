@@ -198,7 +198,9 @@ class SmsService
           { success: true, message_id: msg_data["message_id"], status: msg_data["status"] }
         else
           Rails.logger.error "[SmsService] ClickSend error #{response.code}: #{response.body.to_s.truncate(500)}"
-          { success: false, error: "ClickSend API error: #{response.code}" }
+          # Raise so job retry_on can re-attempt delivery on transient failures.
+          # Previously returned { success: false } which the job treated as success.
+          raise SmsError, "ClickSend API error: #{response.code}"
         end
       rescue StandardError => e
         Rails.logger.error "[SmsService] Error sending SMS: #{e.class} - #{e.message}"

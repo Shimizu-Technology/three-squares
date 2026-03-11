@@ -270,9 +270,12 @@ module Api
           return { any: false, email: false, sms: false, warnings: warnings }
         end
 
-        # Only warn about disabled channels if they were relevant for this status
-        warnings << "Email disabled or no customer email" if emails_on && !email_sent && has_email
-        warnings << "SMS disabled or no customer phone" if sms_on && !sms_sent && has_phone
+        # Warn when the channel is enabled but the customer is missing contact info
+        warnings << "Email enabled but customer has no email address" if emails_on && !has_email
+        warnings << "SMS enabled but customer has no phone number" if sms_on && !has_phone
+        # Warn when the channel is disabled entirely
+        warnings << "Email notifications are disabled" if !emails_on
+        warnings << "SMS notifications are disabled" if !sms_on
 
         { any: email_sent || sms_sent, email: email_sent, sms: sms_sent, warnings: warnings }
       end

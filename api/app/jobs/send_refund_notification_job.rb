@@ -15,13 +15,16 @@ class SendRefundNotificationJob < ApplicationJob
 
     # --- Email channel ---
     if settings.enable_order_emails && order.customer_email.present?
-      # Atomic idempotency: only send if we haven't already on a prior attempt.
-      # refund_email_sent defaults to false; UPDATE WHERE prevents duplicate sends.
-      if order.respond_to?(:refund_email_sent) && !order.refund_email_sent
+      # Atomic idempotency: UPDATE WHERE refund_email_sent=false returns 0 rows
+      # if another concurrent job already claimed the send. Matches the pattern
+      # used in SendOrderConfirmationEmailJob.
+      rows = Order.where(id: order.id, refund_email_sent: false)
+                  .update_all(refund_email_sent: true)
+      if rows > 0
         result = EmailService.send_refund_notification(order, refund_amount_cents, reason)
-        if result.is_a?(Hash) && result[:success]
-          order.update_column(:refund_email_sent, true)
-        else
+        unless result.is_a?(Hash) && result[:success]
+          # Roll back flag so retry can attempt again
+          order.update_column(:refund_email_sent, false)
           errors << "Email: #{result&.dig(:error) || 'unknown error'}"
         end
       end
