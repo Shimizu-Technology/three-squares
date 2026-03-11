@@ -14,14 +14,14 @@ class EmailService
     begin
       params = {
         from: from_address,
-        to: [ order.email ],
+        to: [ order.customer_email ],
         subject: "Order Confirmation ##{order.id.to_s.rjust(6, '0')} - Three Squares",
         html: order_confirmation_html(order)
       }
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Order confirmation email sent to #{order.email} (Order ##{order.id})"
+      Rails.logger.info "✅ Order confirmation email sent to #{order.customer_email} (Order ##{order.id})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -53,7 +53,7 @@ class EmailService
       params = {
         from: from_address,
         to: admin_emails,
-        subject: "🍽️ New Order ##{order.id.to_s.rjust(6, '0')} - #{order.email}",
+        subject: "🍽️ New Order ##{order.id.to_s.rjust(6, '0')} - #{order.customer_email}",
         html: admin_notification_html(order)
       }
 
@@ -85,14 +85,14 @@ class EmailService
     begin
       params = {
         from: from_address,
-        to: [ order.email ],
+        to: [ order.customer_email ],
         subject: "Your Order Has Shipped! 📦 - Order ##{order.order_number}",
         html: order_shipped_html(order)
       }
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Shipped notification email sent to #{order.email} (Order ##{order.order_number})"
+      Rails.logger.info "✅ Shipped notification email sent to #{order.customer_email} (Order ##{order.order_number})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -115,14 +115,14 @@ class EmailService
 
       params = {
         from: from_address,
-        to: [ order.email ],
+        to: [ order.customer_email ],
         subject: subject,
         html: order_ready_html(order)
       }
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Ready for pickup email sent to #{order.email} (Order ##{order.order_number})"
+      Rails.logger.info "✅ Ready for pickup email sent to #{order.customer_email} (Order ##{order.order_number})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -148,14 +148,14 @@ class EmailService
 
       params = {
         from: from_address,
-        to: [ order.email ],
+        to: [ order.customer_email ],
         subject: "Three Squares — Refund Processed for Order ##{order.order_number}",
         html: refund_notification_html(order, amount_formatted, reason, refund_date)
       }
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Refund notification email sent to #{order.email} (Order ##{order.order_number})"
+      Rails.logger.info "✅ Refund notification email sent to #{order.customer_email} (Order ##{order.order_number})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -340,14 +340,14 @@ class EmailService
     begin
       params = {
         from: from_address,
-        to: [ order.email ],
+        to: [ order.customer_email ],
         subject: subject,
         html: status_update_html(order: order, heading: heading, message: message, color: color)
       }
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Status email sent to #{order.email} (#{heading} - Order ##{order.order_number})"
+      Rails.logger.info "✅ Status email sent to #{order.customer_email} (#{heading} - Order ##{order.order_number})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -614,7 +614,7 @@ class EmailService
                       <tr>
                         <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
                           <strong style="color: #6B7280; font-size: 14px;">Customer:</strong>
-                          <span style="color: #111827; font-size: 14px; float: right;">#{order.email}</span>
+                          <span style="color: #111827; font-size: 14px; float: right;">#{order.customer_email}</span>
                         </td>
                       </tr>
                       <tr>
@@ -956,7 +956,7 @@ class EmailService
                       <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Pickup Information:</h3>
                       <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
                         <strong>Name:</strong> #{order.name}<br>
-                        <strong>Email:</strong> #{order.email}<br>
+                        <strong>Email:</strong> #{order.customer_email}<br>
                         <strong>Phone:</strong> #{order.phone}
                       </p>
                     </div>
