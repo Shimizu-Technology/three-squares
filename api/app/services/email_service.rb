@@ -46,7 +46,7 @@ class EmailService
       params = {
         from: from_address,
         to: admin_emails,
-        subject: "🍽️ New Order ##{CGI.escapeHTML(order.id.to_s.rjust(6, '0'))} - #{order.email}",
+        subject: "🍽️ New Order ##{order.id.to_s.rjust(6, '0')} - #{order.email}",
         html: admin_notification_html(order)
       }
 
@@ -79,13 +79,13 @@ class EmailService
       params = {
         from: from_address,
         to: [ order.email ],
-        subject: "Your Order Has Shipped! 📦 - Order ##{CGI.escapeHTML(order.order_number.to_s)}",
+        subject: "Your Order Has Shipped! 📦 - Order ##{order.order_number}",
         html: order_shipped_html(order)
       }
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Shipped notification email sent to #{order.email} (Order ##{CGI.escapeHTML(order.order_number.to_s)})"
+      Rails.logger.info "✅ Shipped notification email sent to #{order.email} (Order ##{order.order_number})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -104,7 +104,7 @@ class EmailService
     return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
 
     begin
-      subject = "Your Order is Ready for Pickup! 📦 - Order ##{CGI.escapeHTML(order.order_number.to_s)}"
+      subject = "Your Order is Ready for Pickup! 📦 - Order ##{order.order_number}"
 
       params = {
         from: from_address,
@@ -115,7 +115,7 @@ class EmailService
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Ready for pickup email sent to #{order.email} (Order ##{CGI.escapeHTML(order.order_number.to_s)})"
+      Rails.logger.info "✅ Ready for pickup email sent to #{order.email} (Order ##{order.order_number})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -142,13 +142,13 @@ class EmailService
       params = {
         from: from_address,
         to: [ order.email ],
-        subject: "Three Squares — Refund Processed for Order ##{CGI.escapeHTML(order.order_number.to_s)}",
+        subject: "Three Squares — Refund Processed for Order ##{order.order_number}",
         html: refund_notification_html(order, amount_formatted, reason, refund_date)
       }
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Refund notification email sent to #{order.email} (Order ##{CGI.escapeHTML(order.order_number.to_s)})"
+      Rails.logger.info "✅ Refund notification email sent to #{order.email} (Order ##{order.order_number})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -167,7 +167,7 @@ class EmailService
     location_name = order.location&.name || "Three Squares"
     send_status_email(
       order: order,
-      subject: "Your Order is Being Prepared! - Order ##{CGI.escapeHTML(order.order_number.to_s)}",
+      subject: "Your Order is Being Prepared! - Order ##{order.order_number}",
       heading: "We're Preparing Your Order!",
       message: "Great news! Your order is now being prepared at #{location_name}. We'll send you another notification when it's ready for pickup.",
       color: "#2563EB"
@@ -180,7 +180,7 @@ class EmailService
 
     send_status_email(
       order: order,
-      subject: "Your Order is Being Packed! - Order ##{CGI.escapeHTML(order.order_number.to_s)}",
+      subject: "Your Order is Being Packed! - Order ##{order.order_number}",
       heading: "Your Order is Being Packed!",
       message: "Great news! Your order is now being packed and prepared for shipment. We'll send you tracking information once it ships.",
       color: "#2563EB"
@@ -193,7 +193,7 @@ class EmailService
 
     send_status_email(
       order: order,
-      subject: "Order Picked Up - Thank You! - Order ##{CGI.escapeHTML(order.order_number.to_s)}",
+      subject: "Order Picked Up - Thank You! - Order ##{order.order_number}",
       heading: "Thank You for Picking Up Your Order!",
       message: "Your order has been picked up. We hope you enjoy everything! Thank you for choosing Three Squares.",
       color: "#16A34A"
@@ -206,7 +206,7 @@ class EmailService
 
     send_status_email(
       order: order,
-      subject: "Your Order Has Been Delivered! - Order ##{CGI.escapeHTML(order.order_number.to_s)}",
+      subject: "Your Order Has Been Delivered! - Order ##{order.order_number}",
       heading: "Your Order Has Been Delivered!",
       message: "Your order has been delivered. We hope you love everything! Thank you for choosing Three Squares.",
       color: "#16A34A"
@@ -219,7 +219,7 @@ class EmailService
 
     send_status_email(
       order: order,
-      subject: "Order Cancelled - Order ##{CGI.escapeHTML(order.order_number.to_s)}",
+      subject: "Order Cancelled - Order ##{order.order_number}",
       heading: "Your Order Has Been Cancelled",
       message: "Your order ##{order.order_number} has been cancelled. If you paid for this order, a refund will be processed automatically. If you have any questions, please don't hesitate to reach out.",
       color: "#DC2626"
@@ -340,7 +340,7 @@ class EmailService
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Status email sent to #{order.email} (#{heading} - Order ##{CGI.escapeHTML(order.order_number.to_s)})"
+      Rails.logger.info "✅ Status email sent to #{order.email} (#{heading} - Order ##{order.order_number})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e

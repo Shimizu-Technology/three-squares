@@ -173,8 +173,8 @@ class SmsService
     # Customer order SMS (order updates, confirmations, refunds)
     # Single source of truth: enable_order_sms (consolidated toggle).
     # No fallback to legacy flags — if enable_order_sms is false, SMS is off.
-    # The migration defaults enable_order_sms to false, so SMS must be
-    # explicitly enabled by an admin after deploy.
+    # The migration defaults enable_order_sms to true (via 3-step migration:
+    # add as false → migrate from legacy flags → change default to true).
     # Customer SMS toggle — controls order confirmation, status updates, refunds
     def sms_enabled?
       return false unless sms_configured?

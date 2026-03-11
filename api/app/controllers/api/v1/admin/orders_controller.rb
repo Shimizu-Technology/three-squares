@@ -255,34 +255,23 @@ module Api
         email_sent = false
         sms_sent = false
 
-        if force && (will_email || will_sms)
-          # Atomic: seq reset + job enqueue in one transaction.
-          # If Redis/Sidekiq is down, the transaction rolls back the seq
-          # decrement — admin gets a 500, not a silent success with no send.
-          ActiveRecord::Base.transaction do
-            cols = {}
-            cols[:last_email_seq] = seq - 1 if will_email
-            cols[:last_sms_seq] = seq - 1 if will_sms
-            order.update_columns(cols)
+        # For force-resend: reset seq counters FIRST, then enqueue AFTER commit.
+        # perform_later inside a transaction can fire before commit, causing
+        # the job to read pre-decrement seq and silently discard the send.
+        if force
+          cols = {}
+          cols[:last_email_seq] = seq - 1 if will_email
+          cols[:last_sms_seq] = seq - 1 if will_sms
+          order.update_columns(cols) if cols.any?
+        end
 
-            if will_email
-              SendOrderStatusEmailJob.perform_later(order.id, event, seq)
-              email_sent = true
-            end
-            if will_sms
-              SendOrderSmsJob.perform_later(order.id, event, seq)
-              sms_sent = true
-            end
-          end
-        else
-          if will_email
-            SendOrderStatusEmailJob.perform_later(order.id, event, seq)
-            email_sent = true
-          end
-          if will_sms
-            SendOrderSmsJob.perform_later(order.id, event, seq)
-            sms_sent = true
-          end
+        if will_email
+          SendOrderStatusEmailJob.perform_later(order.id, event, seq)
+          email_sent = true
+        end
+        if will_sms
+          SendOrderSmsJob.perform_later(order.id, event, seq)
+          sms_sent = true
         end
 
         warnings << "Email enabled but customer has no email address" if emails_on && !has_email
