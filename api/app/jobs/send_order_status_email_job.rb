@@ -33,11 +33,12 @@ class SendOrderStatusEmailJob < ApplicationJob
       end
 
       unless result.is_a?(Hash) && result[:success]
-        order.update_column(:last_email_seq, seq - 1)
+        # Conditional rollback: only if no higher-seq job has advanced the counter
+        Order.where(id: order.id, last_email_seq: seq).update_all(last_email_seq: seq - 1)
         raise "Email failed for order ##{order_id} (#{event}): #{result&.dig(:error) || 'unknown'}"
       end
     rescue StandardError => e
-      order.update_column(:last_email_seq, seq - 1)
+      Order.where(id: order.id, last_email_seq: seq).update_all(last_email_seq: seq - 1)
       raise
     end
   end

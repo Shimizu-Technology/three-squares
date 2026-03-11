@@ -35,12 +35,12 @@ class SendOrderSmsJob < ApplicationJob
       if result.is_a?(Hash) && result[:success]
         Rails.logger.info "✅ SMS sent for order ##{order_id} (#{event})"
       else
-        # Roll back so retry/resend can re-attempt
-        order.update_column(:last_sms_seq, seq - 1)
+        # Conditional rollback: only if no higher-seq job has advanced the counter
+        Order.where(id: order.id, last_sms_seq: seq).update_all(last_sms_seq: seq - 1)
         Rails.logger.info "↩️ SMS skipped for order ##{order_id} (#{event}) — seq rolled back"
       end
     rescue StandardError => e
-      order.update_column(:last_sms_seq, seq - 1)
+      Order.where(id: order.id, last_sms_seq: seq).update_all(last_sms_seq: seq - 1)
       raise
     end
   end

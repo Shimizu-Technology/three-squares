@@ -136,7 +136,26 @@ module Webhooks
       # Use update_column to bypass validations — webhook updates must not fail
       record.update_column(:payment_status, "refunded")
       Rails.logger.info "💸 #{target[:type]} ##{record.id} payment_status updated to 'refunded' via Stripe webhook"
-      # Full refund logic (inventory restoration, email, etc.) comes in HAF-17
+
+      # Create a Refund record + notify the customer for Dashboard-initiated refunds.
+      # Admin-panel refunds already create Refund records in orders_controller#refund,
+      # so we check stripe_refund_id to avoid duplicates.
+      if record.is_a?(Order)
+        stripe_refund = charge.respond_to?(:refunds) ? charge.refunds&.data&.first : nil
+        stripe_refund_id = stripe_refund&.id
+
+        if stripe_refund_id.present? && !Refund.exists?(stripe_refund_id: stripe_refund_id)
+          refund = Refund.create!(
+            order: record,
+            amount_cents: stripe_refund.amount,
+            reason: stripe_refund.reason || "Refunded via Stripe Dashboard",
+            status: "completed",
+            stripe_refund_id: stripe_refund_id
+          )
+          SendRefundNotificationJob.perform_later(refund.id)
+          Rails.logger.info "📧 Enqueued refund notification for Stripe Dashboard refund #{stripe_refund_id}"
+        end
+      end
     rescue StandardError => e
       Rails.logger.error "❌ Failed to update payment target ##{record&.id} for refund: #{e.message}"
     end
