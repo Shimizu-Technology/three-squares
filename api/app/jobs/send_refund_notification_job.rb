@@ -8,6 +8,15 @@ class SendRefundNotificationJob < ApplicationJob
   # @param refund_id [Integer] — per-refund idempotency (not per-order)
   def perform(refund_id)
     refund = Refund.find(refund_id)
+
+    # Don't notify the customer until the refund has actually succeeded.
+    # Pending refunds (card-network settlement) will be updated via
+    # charge.refund.updated webhook, which re-enqueues this job.
+    if refund.pending?
+      Rails.logger.info "⏳ Refund ##{refund.id} still pending — skipping notification until settled"
+      return
+    end
+
     order = refund.order
     settings = SiteSetting.instance
     errors = []

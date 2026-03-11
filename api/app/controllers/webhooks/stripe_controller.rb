@@ -69,6 +69,8 @@ module Webhooks
         handle_payment_intent_failed(event.data.object)
       when "charge.refunded"
         handle_charge_refunded(event.data.object)
+      when "charge.refund.updated"
+        handle_charge_refund_updated(event.data.object)
       when "charge.dispute.created"
         handle_charge_dispute_created(event.data.object)
       else
@@ -167,12 +169,18 @@ module Webhooks
           # webhook deliveries where both pass the SELECT and one hits
           # RecordNotUnique on insert.
           begin
+            # Map the actual Stripe refund status instead of hardcoding "succeeded".
+            # Stripe refunds can be "pending" when charge.refunded fires (card-network
+            # settlement takes days). Our model accepts: pending, succeeded, failed.
+            mapped_status = %w[pending succeeded failed].include?(stripe_refund.status) ?
+                            stripe_refund.status : "pending"
+
             refund = Refund.create!(
               stripe_refund_id: stripe_refund.id,
               order: record,
               amount_cents: stripe_refund.amount,
               reason: stripe_refund.reason || "Refunded via Stripe Dashboard",
-              status: "succeeded"
+              status: mapped_status
             )
             SendRefundNotificationJob.perform_later(refund.id)
             Rails.logger.info "📧 Enqueued refund notification for Stripe Dashboard refund #{stripe_refund.id}"
@@ -190,6 +198,32 @@ module Webhooks
       # and retries the webhook. Swallowing these silently loses refund
       # notifications permanently.
       Rails.logger.error "❌ Refund webhook failed for ##{record&.id}: #{e.message}"
+      raise
+    end
+
+    def handle_charge_refund_updated(stripe_refund)
+      refund = Refund.find_by(stripe_refund_id: stripe_refund.id)
+      unless refund
+        Rails.logger.info "ℹ️  charge.refund.updated for unknown refund #{stripe_refund.id} — skipping"
+        return
+      end
+
+      new_status = %w[pending succeeded failed].include?(stripe_refund.status) ?
+                   stripe_refund.status : refund.status
+
+      return if refund.status == new_status
+
+      old_status = refund.status
+      refund.update_column(:status, new_status)
+      Rails.logger.info "💸 Refund #{stripe_refund.id} status: #{old_status} → #{new_status}"
+
+      # Now that the refund has settled, notify the customer
+      if new_status == "succeeded" && old_status == "pending"
+        SendRefundNotificationJob.perform_later(refund.id)
+        Rails.logger.info "📧 Enqueued refund notification for settled refund #{stripe_refund.id}"
+      end
+    rescue StandardError => e
+      Rails.logger.error "❌ charge.refund.updated failed for #{stripe_refund.id}: #{e.message}"
       raise
     end
 
