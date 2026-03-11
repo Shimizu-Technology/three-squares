@@ -12,8 +12,8 @@ class SmsService
   class << self
     # Send SMS to customer when order is confirmed
     def send_order_confirmed(order)
-      return skip_result("No customer phone") unless order.customer_phone.present?
-      return skip_result("SMS notifications disabled") unless sms_enabled?
+      return skip_result("No customer phone", permanent: true) unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled", permanent: !sms_configured?) unless sms_enabled?
 
       location_name = order.location&.name || "Three Squares"
       message = if order.fulfillment_type == "shipping"
@@ -29,8 +29,8 @@ class SmsService
 
     # Send SMS to customer when order is ready for pickup
     def send_order_ready(order)
-      return skip_result("No customer phone") unless order.customer_phone.present?
-      return skip_result("SMS notifications disabled") unless sms_enabled?
+      return skip_result("No customer phone", permanent: true) unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled", permanent: !sms_configured?) unless sms_enabled?
 
       location_name = order.location&.name || "Three Squares"
       message = "Three Squares: Your order ##{order.order_number} is READY for pickup " \
@@ -41,8 +41,8 @@ class SmsService
 
     # Send SMS to customer confirming order placement
     def send_order_confirmation(order)
-      return skip_result("No customer phone") unless order.customer_phone.present?
-      return skip_result("SMS notifications disabled") unless sms_enabled?
+      return skip_result("No customer phone", permanent: true) unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled", permanent: !sms_configured?) unless sms_enabled?
 
       if order.is_pickup_order?
         location_name = order.location&.name || "Three Squares"
@@ -60,8 +60,8 @@ class SmsService
 
     # Send SMS when order is being processed/packed (shipping orders)
     def send_order_processing(order)
-      return skip_result("No customer phone") unless order.customer_phone.present?
-      return skip_result("SMS notifications disabled") unless sms_enabled?
+      return skip_result("No customer phone", permanent: true) unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled", permanent: !sms_configured?) unless sms_enabled?
 
       message = "Three Squares: Your order ##{order.order_number} is now being packed " \
                 "and prepared for shipment! We'll send tracking info once it ships."
@@ -71,8 +71,8 @@ class SmsService
 
     # Send SMS when order ships (shipping orders)
     def send_order_shipped(order)
-      return skip_result("No customer phone") unless order.customer_phone.present?
-      return skip_result("SMS notifications disabled") unless sms_enabled?
+      return skip_result("No customer phone", permanent: true) unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled", permanent: !sms_configured?) unless sms_enabled?
 
       tracking = order.tracking_number.present? ? " Tracking: #{order.tracking_number}" : ""
       message = "Three Squares: Your order ##{order.order_number} has shipped!#{tracking} " \
@@ -83,8 +83,8 @@ class SmsService
 
     # Send SMS when order is picked up
     def send_order_picked_up(order)
-      return skip_result("No customer phone") unless order.customer_phone.present?
-      return skip_result("SMS notifications disabled") unless sms_enabled?
+      return skip_result("No customer phone", permanent: true) unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled", permanent: !sms_configured?) unless sms_enabled?
 
       message = "Three Squares: Your order ##{order.order_number} has been picked up. " \
                 "Thank you for choosing Three Squares! Enjoy your meal."
@@ -94,8 +94,8 @@ class SmsService
 
     # Send SMS when order is delivered
     def send_order_delivered(order)
-      return skip_result("No customer phone") unless order.customer_phone.present?
-      return skip_result("SMS notifications disabled") unless sms_enabled?
+      return skip_result("No customer phone", permanent: true) unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled", permanent: !sms_configured?) unless sms_enabled?
 
       message = "Three Squares: Your order ##{order.order_number} has been delivered! " \
                 "Thank you for choosing Three Squares."
@@ -105,8 +105,8 @@ class SmsService
 
     # Send SMS when order is cancelled
     def send_order_cancelled(order)
-      return skip_result("No customer phone") unless order.customer_phone.present?
-      return skip_result("SMS notifications disabled") unless sms_enabled?
+      return skip_result("No customer phone", permanent: true) unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled", permanent: !sms_configured?) unless sms_enabled?
 
       message = "Three Squares: Your order ##{order.order_number} has been cancelled. " \
                 "If you were charged, a refund will be processed. Questions? Call #{store_phone}."
@@ -116,8 +116,8 @@ class SmsService
 
     # Send SMS for refund
     def send_refund_notification(order, refund_amount_cents)
-      return skip_result("No customer phone") unless order.customer_phone.present?
-      return skip_result("SMS notifications disabled") unless sms_enabled?
+      return skip_result("No customer phone", permanent: true) unless order.customer_phone.present?
+      return skip_result("SMS notifications disabled", permanent: !sms_configured?) unless sms_enabled?
 
       amount = format_price(refund_amount_cents)
       message = "Three Squares: A refund of #{amount} USD has been processed for " \
@@ -139,6 +139,7 @@ class SmsService
       # prevents two workers from both reading an empty list and both
       # sending to every phone.
       remaining_phones = nil
+      claimed = false
       order.with_lock do
         already_sent = Array(order.metadata&.dig("admin_sms_sent_phones")).uniq
         remaining_phones = admin_phones - already_sent
@@ -148,7 +149,12 @@ class SmsService
         meta = order.metadata || {}
         meta["admin_sms_sent_phones"] = (already_sent + remaining_phones).uniq
         order.update_column(:metadata, meta)
+        claimed = true
       end
+
+      # If the claim transaction failed, remaining_phones may be set but
+      # not persisted — don't send without a valid claim.
+      raise SmsError, "Failed to claim admin SMS phones" unless claimed
 
       location_name = order.location&.name || "Online"
       source_label = order.source == "pos" ? "POS" : "Online"
@@ -217,7 +223,7 @@ class SmsService
 
     def send_sms(to:, body:, context: nil)
       normalized = normalize_phone(to)
-      return skip_result("Invalid phone number: #{to}") unless normalized
+      return skip_result("Invalid phone number: #{to}", permanent: true) unless normalized
 
       payload = {
         messages: [
@@ -269,9 +275,11 @@ class SmsService
           # Previously returned { success: false } which the job treated as success.
           raise SmsError, "ClickSend API error: #{response.code}"
         end
+      rescue SmsError
+        raise # Already logged above — let job retry_on handle it
       rescue StandardError => e
-        Rails.logger.error "[SmsService] Error sending SMS: #{e.class} - #{e.message}"
-        raise # Let the job retry mechanism handle it
+        Rails.logger.error "[SmsService] Unexpected error sending SMS: #{e.class} - #{e.message}"
+        raise
       end
     end
 
@@ -320,9 +328,11 @@ class SmsService
       SiteSetting.instance.store_phone.presence || "671-646-2652"
     end
 
-    def skip_result(reason)
-      Rails.logger.info "[SmsService] Skipped: #{reason}"
-      { success: false, skipped: true, reason: reason }
+    # @param permanent [Boolean] true if this skip will persist across retries
+    #   (e.g. missing env vars, feature disabled). Jobs should discard, not retry.
+    def skip_result(reason, permanent: false)
+      Rails.logger.info "[SmsService] Skipped: #{reason}#{permanent ? ' (permanent)' : ''}"
+      { success: false, skipped: true, reason: reason, permanent: permanent }
     end
   end
 end

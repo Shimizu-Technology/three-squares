@@ -46,10 +46,13 @@ class SendOrderSmsJob < ApplicationJob
 
       if result.is_a?(Hash) && result[:success]
         Rails.logger.info "✅ SMS sent for order ##{order_id} (#{event})"
+      elsif result&.dig(:permanent)
+        # Permanent skip (missing credentials, invalid phone) — don't retry.
+        # Roll back seq so admin Notify can re-attempt after config fix.
+        Order.where(id: order.id, last_sms_seq: seq).update_all(last_sms_seq: seq - 1)
+        Rails.logger.info "⏭️ SMS permanently skipped for order ##{order_id} (#{event}): #{result[:reason]}"
       else
-        # Roll back seq and raise so retry_on fires — covers both skips
-        # (SMS temporarily disabled) and failures. Matches the pattern
-        # in SendOrderConfirmationSmsJob.
+        # Transient skip (toggle off) or failure — retry
         Order.where(id: order.id, last_sms_seq: seq).update_all(last_sms_seq: seq - 1)
         raise SmsTemporarilyUnavailable, "SMS #{result&.dig(:skipped) ? 'skipped' : 'failed'} for order ##{order_id} (#{event}): #{result&.dig(:reason) || 'unknown'}"
       end

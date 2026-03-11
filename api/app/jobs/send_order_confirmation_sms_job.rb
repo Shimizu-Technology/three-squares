@@ -28,10 +28,13 @@ class SendOrderConfirmationSmsJob < ApplicationJob
 
       if result.is_a?(Hash) && result[:success]
         Rails.logger.info "✅ Confirmation SMS sent for order ##{order.order_number}"
+      elsif result&.dig(:permanent)
+        # Permanent skip (missing credentials, invalid phone) — don't retry.
+        Order.where(id: order.id, confirmation_sms_sent: true)
+             .update_all(confirmation_sms_sent: false)
+        Rails.logger.info "⏭️ Confirmation SMS permanently skipped for order ##{order.order_number}: #{result[:reason]}"
       elsif result&.dig(:skipped)
-        # SMS is disabled or phone invalid — roll back flag and raise so
-        # retry_on fires. If SMS is re-enabled within the retry window,
-        # the customer still gets their confirmation.
+        # Transient skip (toggle off) — retry in case it's re-enabled
         Order.where(id: order.id, confirmation_sms_sent: true)
              .update_all(confirmation_sms_sent: false)
         raise SmsTemporarilyUnavailable, "SMS skipped: #{result[:reason]} — will retry"
