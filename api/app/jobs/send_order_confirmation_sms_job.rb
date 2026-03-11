@@ -5,13 +5,15 @@
 class SendOrderConfirmationSmsJob < ApplicationJob
   queue_as :default
 
-  # Retry with increasing backoff — covers temporary SMS outages and
-  # the case where enable_order_sms is toggled off then back on.
-  retry_on StandardError, wait: :polynomially_longer, attempts: 5
-  discard_on ActiveRecord::RecordNotFound
-
   # Custom error for retriable skip conditions
   class SmsTemporarilyUnavailable < StandardError; end
+
+  # Temporary unavailability — log on exhaustion instead of dead job queue
+  retry_on SmsTemporarilyUnavailable, wait: :polynomially_longer, attempts: 5 do |job, error|
+    Rails.logger.warn "⚠️ SendOrderConfirmationSmsJob exhausted retries for order ##{job.arguments[0]}: #{error.message}"
+  end
+  retry_on StandardError, wait: :polynomially_longer, attempts: 5
+  discard_on ActiveRecord::RecordNotFound
 
   def perform(order_id)
     order = Order.find(order_id)

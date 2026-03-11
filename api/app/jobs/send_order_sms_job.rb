@@ -2,10 +2,17 @@
 
 class SendOrderSmsJob < ApplicationJob
   queue_as :default
-  retry_on StandardError, wait: :polynomially_longer, attempts: 5
-  discard_on ActiveRecord::RecordNotFound
 
   class SmsTemporarilyUnavailable < StandardError; end
+
+  # Temporary unavailability (SMS disabled, carrier skip) — retry with backoff,
+  # log warning on exhaustion instead of flooding dead job queue.
+  retry_on SmsTemporarilyUnavailable, wait: :polynomially_longer, attempts: 5 do |job, error|
+    Rails.logger.warn "⚠️ SendOrderSmsJob exhausted retries for order ##{job.arguments[0]} " \
+                      "(#{job.arguments[1]}): #{error.message}"
+  end
+  retry_on StandardError, wait: :polynomially_longer, attempts: 5
+  discard_on ActiveRecord::RecordNotFound
 
   # @param order_id [Integer]
   # @param event [String]

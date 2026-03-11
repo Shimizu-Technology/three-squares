@@ -282,6 +282,11 @@ module Api
         email_sent = false
         sms_sent = false
 
+        # Snapshot original seq values BEFORE decrementing, so we can
+        # restore the exact original on enqueue failure (not just `seq`).
+        original_email_seq = order.last_email_seq
+        original_sms_seq = order.last_sms_seq
+
         # Force-resend: reset seq to seq-1 so the job's `last_*_seq < seq`
         # guard passes. Uses >= to handle backward status changes too
         # (e.g. shipped→confirmed: last_email_seq=5, seq=2 → set to 1).
@@ -306,12 +311,12 @@ module Api
             sms_sent = true
           end
         rescue StandardError => e
-          # Restore seq if enqueue failed — don't leave the window open
+          # Restore ORIGINAL seq values if enqueue failed
           if force
             Order.where(id: order.id, last_email_seq: seq - 1)
-                 .update_all(last_email_seq: seq) if will_email && !email_sent
+                 .update_all(last_email_seq: original_email_seq) if will_email && !email_sent
             Order.where(id: order.id, last_sms_seq: seq - 1)
-                 .update_all(last_sms_seq: seq) if will_sms && !sms_sent
+                 .update_all(last_sms_seq: original_sms_seq) if will_sms && !sms_sent
           end
           raise
         end

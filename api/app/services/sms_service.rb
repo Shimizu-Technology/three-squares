@@ -199,9 +199,10 @@ class SmsService
     # Admin SMS — independent toggle from customer SMS. Disabling customer
     # SMS (enable_order_sms) does NOT silence admin new-order alerts.
     def admin_sms_enabled?
-      sms_configured? &&
-        SiteSetting.instance.enable_admin_sms &&
-        SiteSetting.instance.admin_sms_phones.present?
+      return false unless sms_configured?
+
+      settings = SiteSetting.instance
+      settings.enable_admin_sms && settings.admin_sms_phones.present?
     end
 
     def sms_configured?
@@ -239,8 +240,17 @@ class SmsService
         if response.success?
           parsed = response.parsed_response
           msg_data = parsed.dig("data", "messages", 0) || {}
-          Rails.logger.info "[SmsService] SMS sent to #{normalized} (#{context}): status=#{msg_data['status']}"
-          { success: true, message_id: msg_data["message_id"], status: msg_data["status"] }
+          msg_status = msg_data["status"]&.upcase
+
+          # ClickSend returns HTTP 200 even when the message fails at the
+          # carrier level. Check the per-message status field.
+          if msg_status.present? && !%w[SUCCESS QUEUED SENT].include?(msg_status)
+            Rails.logger.error "[SmsService] ClickSend message-level failure for #{normalized}: status=#{msg_status}"
+            raise SmsError, "ClickSend message failed: #{msg_status}"
+          end
+
+          Rails.logger.info "[SmsService] SMS sent to #{normalized} (#{context}): status=#{msg_status}"
+          { success: true, message_id: msg_data["message_id"], status: msg_status }
         else
           Rails.logger.error "[SmsService] ClickSend error #{response.code}: #{response.body.to_s.truncate(500)}"
           # Raise so job retry_on can re-attempt delivery on transient failures.
