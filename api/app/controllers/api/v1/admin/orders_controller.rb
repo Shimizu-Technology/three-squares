@@ -255,9 +255,8 @@ module Api
         email_sent = false
         sms_sent = false
 
-        # For force-resend: reset seq counters FIRST, then enqueue AFTER commit.
-        # perform_later inside a transaction can fire before commit, causing
-        # the job to read pre-decrement seq and silently discard the send.
+        # For force-resend: reset seq, then enqueue. If enqueue fails (Redis
+        # down), restore seq so the dedup window isn't left open.
         if force
           cols = {}
           cols[:last_email_seq] = seq - 1 if will_email
@@ -265,13 +264,24 @@ module Api
           order.update_columns(cols) if cols.any?
         end
 
-        if will_email
-          SendOrderStatusEmailJob.perform_later(order.id, event, seq)
-          email_sent = true
-        end
-        if will_sms
-          SendOrderSmsJob.perform_later(order.id, event, seq)
-          sms_sent = true
+        begin
+          if will_email
+            SendOrderStatusEmailJob.perform_later(order.id, event, seq)
+            email_sent = true
+          end
+          if will_sms
+            SendOrderSmsJob.perform_later(order.id, event, seq)
+            sms_sent = true
+          end
+        rescue StandardError => e
+          # Restore seq counters if enqueue failed — don't leave the window open
+          if force
+            restore = {}
+            restore[:last_email_seq] = seq if will_email && !email_sent
+            restore[:last_sms_seq] = seq if will_sms && !sms_sent
+            order.update_columns(restore) if restore.any?
+          end
+          raise
         end
 
         warnings << "Email enabled but customer has no email address" if emails_on && !has_email

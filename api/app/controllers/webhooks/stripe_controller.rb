@@ -133,9 +133,19 @@ module Webhooks
       end
       record = target[:record]
 
-      # Use update_column to bypass validations — webhook updates must not fail
-      record.update_column(:payment_status, "refunded")
-      Rails.logger.info "💸 #{target[:type]} ##{record.id} payment_status updated to 'refunded' via Stripe webhook"
+      # Only mark as "refunded" when fully refunded. Partial refunds from
+      # the Stripe Dashboard should NOT flip payment_status — can_refund?
+      # gates on payment_status == "paid", so a premature flip permanently
+      # blocks follow-up refunds from the admin panel.
+      amount_refunded = charge.respond_to?(:amount_refunded) ? charge.amount_refunded : 0
+      amount_total = charge.respond_to?(:amount) ? charge.amount : 0
+
+      if amount_refunded >= amount_total
+        record.update_column(:payment_status, "refunded")
+        Rails.logger.info "💸 #{target[:type]} ##{record.id} fully refunded — payment_status set to 'refunded'"
+      else
+        Rails.logger.info "💸 #{target[:type]} ##{record.id} partially refunded ($#{amount_refunded / 100.0} / $#{amount_total / 100.0}) — payment_status stays '#{record.payment_status}'"
+      end
 
       # Create a Refund record + notify the customer for Dashboard-initiated refunds.
       # Admin-panel refunds already create Refund records in orders_controller#refund,
