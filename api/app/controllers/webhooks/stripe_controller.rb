@@ -140,9 +140,13 @@ module Webhooks
       amount_refunded = charge.respond_to?(:amount_refunded) ? charge.amount_refunded.to_i : 0
       amount_total = charge.respond_to?(:amount) ? charge.amount.to_i : 0
 
-      if amount_total > 0 && amount_refunded >= amount_total
+      # Use == not >= to avoid marking over-refunds (Stripe edge case) as
+      # fully refunded. Over-refunds should be flagged for manual review.
+      if amount_total > 0 && amount_refunded == amount_total
         record.update_column(:payment_status, "refunded")
         Rails.logger.info "💸 #{target[:type]} ##{record.id} fully refunded — payment_status set to 'refunded'"
+      elsif amount_refunded > amount_total
+        Rails.logger.warn "⚠️ #{target[:type]} ##{record.id} OVER-REFUNDED ($#{amount_refunded / 100.0} > $#{amount_total / 100.0}) — manual review required"
       else
         Rails.logger.info "💸 #{target[:type]} ##{record.id} partially refunded ($#{amount_refunded / 100.0} / $#{amount_total / 100.0}) — payment_status stays '#{record.payment_status}'"
       end

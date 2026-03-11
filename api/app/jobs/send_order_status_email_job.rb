@@ -34,12 +34,12 @@ class SendOrderStatusEmailJob < ApplicationJob
         return
       end
 
+      # Raise on failure — rescue block handles the rollback
       unless result.is_a?(Hash) && result[:success]
-        # Conditional rollback: only if no higher-seq job has advanced the counter
-        Order.where(id: order.id, last_email_seq: seq).update_all(last_email_seq: seq - 1)
         raise "Email failed for order ##{order_id} (#{event}): #{result&.dig(:error) || 'unknown'}"
       end
     rescue StandardError => e
+      # Single rollback point — conditional to avoid overwriting a higher-seq job
       Order.where(id: order.id, last_email_seq: seq).update_all(last_email_seq: seq - 1)
       raise
     end

@@ -255,19 +255,18 @@ module Api
         email_sent = false
         sms_sent = false
 
-        # For force-resend: conditionally reset seq ONLY if it matches the
-        # current status. Uses WHERE to avoid re-opening the dedup window
-        # for stale in-flight jobs from a prior status.
+        # Force-resend: reset seq to seq-1 so the job's `last_*_seq < seq`
+        # guard passes. Uses >= to handle backward status changes too
+        # (e.g. shipped→confirmed: last_email_seq=5, seq=2 → set to 1).
         if force
           if will_email
-            Order.where(id: order.id, last_email_seq: seq)
+            Order.where(id: order.id).where("last_email_seq >= ?", seq)
                  .update_all(last_email_seq: seq - 1)
           end
           if will_sms
-            Order.where(id: order.id, last_sms_seq: seq)
+            Order.where(id: order.id).where("last_sms_seq >= ?", seq)
                  .update_all(last_sms_seq: seq - 1)
           end
-          order.reload
         end
 
         begin

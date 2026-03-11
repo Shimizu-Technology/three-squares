@@ -258,14 +258,16 @@ class SmsService
 
       case digits.length
       when 7
-        # Local Guam number (no area code) — prepend +1671
+        # Assume local Guam number — prepend +1671.
+        # NOTE: This is a Guam-specific assumption. A US mainland customer
+        # who enters 7 digits would be misrouted. Log for visibility.
+        Rails.logger.info "[SmsService] Assuming 7-digit number #{digits} is Guam local → +1671#{digits}"
         "+1671#{digits}"
       when 10
         # US/Guam number with area code — prepend +1
         "+1#{digits}"
       when 11
-        # Already has country code (1) — prepend +
-        return nil unless digits.start_with?("1")
+        # Could be US/Guam with country code (1xxx) or international
         "+#{digits}"
       when 12..15
         # International number with country code — assume already complete
