@@ -102,15 +102,42 @@ module Api
       # POST /api/v1/admin/orders/:id/notify
       # Resend notification to customer (email + SMS) for current status
       def notify
-        # Block resend for pending (no notification exists) and terminal statuses
-        # (re-notifying "cancelled" or "delivered" would confuse customers)
-        blocked = %w[pending cancelled delivered picked_up]
+        # Terminal statuses — re-notifying would confuse customers
+        blocked = %w[cancelled delivered picked_up]
         if @order.status.in?(blocked)
           render json: { error: "Cannot resend notification for '#{@order.status}' orders" }, status: :unprocessable_entity
           return
         end
 
-        # Force resend: reset seq counters for THIS status only
+        # Pending orders: resend confirmation (email + SMS) instead of status notifications
+        if @order.status == "pending"
+          email_sent = false
+          sms_sent = false
+          settings = SiteSetting.instance
+
+          if settings.enable_order_emails && @order.customer_email.present?
+            @order.update_column(:confirmation_email_sent, false)
+            SendOrderConfirmationEmailJob.perform_later(@order.id)
+            email_sent = true
+          end
+          if settings.enable_order_sms && @order.customer_phone.present?
+            @order.update_column(:confirmation_sms_sent, false)
+            SendOrderConfirmationSmsJob.perform_later(@order.id)
+            sms_sent = true
+          end
+
+          if email_sent || sms_sent
+            channels = []
+            channels << "email" if email_sent
+            channels << "SMS" if sms_sent
+            render json: { message: "Confirmation resent (#{channels.join(' + ')})" }
+          else
+            render json: { error: "No channels available for confirmation resend" }, status: :unprocessable_entity
+          end
+          return
+        end
+
+        # Non-pending: force resend status notifications
         sent = send_status_notifications(@order, force: true)
 
         if sent[:any]
