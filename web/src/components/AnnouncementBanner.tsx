@@ -54,10 +54,10 @@ export default function AnnouncementBanner() {
     <div
       className="overflow-hidden"
       style={prefersReducedMotion ? {
-        maxHeight: '80px',
+        maxHeight: '200px',
         opacity: 1,
       } : {
-        maxHeight: visible ? '80px' : '0px',
+        maxHeight: visible ? '200px' : '0px',
         opacity: visible ? 1 : 0,
         transition: 'max-height 300ms cubic-bezier(0.22, 1, 0.36, 1), opacity 300ms cubic-bezier(0.22, 1, 0.36, 1)',
       }}

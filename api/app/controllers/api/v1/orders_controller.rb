@@ -211,7 +211,9 @@ module Api
 
           # Admin notifications — email always, SMS only when enabled
           SendAdminNotificationEmailJob.perform_later(order.id)
-          SendAdminOrderSmsJob.perform_later(order.id) if settings.enable_order_sms
+          if settings.enable_order_sms && settings.admin_sms_phones.present?
+            SendAdminOrderSmsJob.perform_later(order.id)
+          end
 
           render json: {
             success: true,
