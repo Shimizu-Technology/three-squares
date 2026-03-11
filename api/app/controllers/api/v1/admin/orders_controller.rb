@@ -144,8 +144,15 @@ module Api
           return
         end
 
-        # Non-pending: force resend status notifications
-        sent = send_status_notifications(@order, force: true)
+        # Non-pending: force resend status notifications.
+        # Rescue enqueue failures — match update action's error handling.
+        begin
+          sent = send_status_notifications(@order, force: true)
+        rescue StandardError => e
+          Rails.logger.error "❌ Failed to enqueue resend for order ##{@order.order_number}: #{e.message}"
+          render json: { error: "Notification enqueue failed — please try again", details: e.message }, status: :service_unavailable
+          return
+        end
 
         if sent[:any]
           channels = []
