@@ -315,24 +315,36 @@ module Api
           end
         end
 
-        begin
-          if will_email
+        # Enqueue each channel independently so a partial failure (e.g.
+        # email enqueues but SMS raises) only rolls back the failed channel.
+        # A single rescue block would leave the successful channel's seq
+        # decremented, causing duplicates on the next Notify click.
+        if will_email
+          begin
             SendOrderStatusEmailJob.perform_later(order.id, event, seq)
             email_sent = true
+          rescue StandardError => e
+            if force
+              Order.where(id: order.id, last_email_seq: seq - 1)
+                   .update_all(last_email_seq: original_email_seq)
+            end
+            Rails.logger.error "❌ Failed to enqueue email for order ##{order.order_number}: #{e.message}"
+            warnings << "Email notification failed to enqueue"
           end
-          if will_sms
+        end
+
+        if will_sms
+          begin
             SendOrderSmsJob.perform_later(order.id, event, seq)
             sms_sent = true
+          rescue StandardError => e
+            if force
+              Order.where(id: order.id, last_sms_seq: seq - 1)
+                   .update_all(last_sms_seq: original_sms_seq)
+            end
+            Rails.logger.error "❌ Failed to enqueue SMS for order ##{order.order_number}: #{e.message}"
+            warnings << "SMS notification failed to enqueue"
           end
-        rescue StandardError => e
-          # Restore ORIGINAL seq values if enqueue failed
-          if force
-            Order.where(id: order.id, last_email_seq: seq - 1)
-                 .update_all(last_email_seq: original_email_seq) if will_email && !email_sent
-            Order.where(id: order.id, last_sms_seq: seq - 1)
-                 .update_all(last_sms_seq: original_sms_seq) if will_sms && !sms_sent
-          end
-          raise
         end
 
         warnings << "Email enabled but customer has no email address" if emails_on && !has_email

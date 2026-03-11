@@ -11,12 +11,24 @@ class Order < ApplicationRecord
   RETAIL_STATUSES = %w[pending processing shipped delivered cancelled].freeze
   PICKUP_STATUSES = %w[pending confirmed ready picked_up cancelled].freeze
 
-  # Monotonic sequence for notification idempotency. Jobs only execute
+  # Explicit sequence map for notification idempotency. Jobs only execute
   # if their seq > last_*_seq, preventing both duplicates and out-of-order sends.
   # Starts at 1 (not 0) so "pending/placed" (seq=1) passes the default
   # last_*_seq=0 guard. 0 is reserved as "no notification sent yet".
-  STATUS_SEQUENCE = VALID_STATUSES.each_with_index.map { |s, i| [s, i + 1] }.to_h.freeze
-  # => { "pending" => 1, "confirmed" => 2, ..., "cancelled" => 8 }
+  #
+  # IMPORTANT: Use an explicit hash, NOT positional index from VALID_STATUSES.
+  # Inserting a new status between existing ones would silently shift all
+  # downstream seq values, breaking idempotency for in-flight jobs.
+  STATUS_SEQUENCE = {
+    "pending"    => 1,
+    "confirmed"  => 2,
+    "processing" => 3,
+    "ready"      => 4,
+    "shipped"    => 5,
+    "picked_up"  => 6,
+    "delivered"  => 7,
+    "cancelled"  => 8
+  }.freeze
 
   def notification_seq
     STATUS_SEQUENCE[status] || 1
