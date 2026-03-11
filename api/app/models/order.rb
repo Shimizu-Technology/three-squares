@@ -13,11 +13,13 @@ class Order < ApplicationRecord
 
   # Monotonic sequence for notification idempotency. Jobs only execute
   # if their seq > last_*_seq, preventing both duplicates and out-of-order sends.
-  STATUS_SEQUENCE = VALID_STATUSES.each_with_index.to_h.freeze
-  # => { "pending" => 0, "confirmed" => 1, ..., "cancelled" => 7 }
+  # Starts at 1 (not 0) so "pending/placed" (seq=1) passes the default
+  # last_*_seq=0 guard. 0 is reserved as "no notification sent yet".
+  STATUS_SEQUENCE = VALID_STATUSES.each_with_index.map { |s, i| [s, i + 1] }.to_h.freeze
+  # => { "pending" => 1, "confirmed" => 2, ..., "cancelled" => 8 }
 
   def notification_seq
-    STATUS_SEQUENCE[status] || 0
+    STATUS_SEQUENCE[status] || 1
   end
 
   # Validations
@@ -54,7 +56,9 @@ class Order < ApplicationRecord
 
   # Callbacks
   before_validation :generate_order_number, if: -> { order_number.blank? }
-  after_update :restore_inventory_for_cancellation, if: -> { saved_change_to_status? && status == "cancelled" }
+  # NOTE: Inventory restoration on cancellation is handled by
+  # admin/orders_controller#update (which passes current_user for audit trail).
+  # Do NOT add an after_update callback here — it would double-restore.
 
   # Convenience aliases for customer fields
   def email
