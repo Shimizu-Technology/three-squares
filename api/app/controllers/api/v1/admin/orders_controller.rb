@@ -75,8 +75,6 @@ module Api
       # PATCH/PUT /api/v1/admin/orders/:id
       # Update order (status, tracking, notes)
       def update
-        old_status = @order.status
-
         if @order.update(order_update_params)
           notification_warnings = []
 
@@ -276,12 +274,10 @@ module Api
           return { any: false, email: false, sms: false, warnings: warnings }
         end
 
-        # Warn when the channel is enabled but the customer is missing contact info
+        # Only warn about missing contact info — admins already know if they
+        # disabled a channel. "SMS is disabled" noise on every status update is unhelpful.
         warnings << "Email enabled but customer has no email address" if emails_on && !has_email
         warnings << "SMS enabled but customer has no phone number" if sms_on && !has_phone
-        # Warn when the channel is disabled entirely
-        warnings << "Email notifications are disabled" if !emails_on
-        warnings << "SMS notifications are disabled" if !sms_on
 
         { any: email_sent || sms_sent, email: email_sent, sms: sms_sent, warnings: warnings }
       end
