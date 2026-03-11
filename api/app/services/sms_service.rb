@@ -125,7 +125,7 @@ class SmsService
     # Routes to location-specific phones if configured, falls back to global
     def send_admin_new_order(order)
       return skip_result("SMS not configured") unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
-      return skip_result("SMS notifications disabled") unless SiteSetting.instance.send_sms_notifications
+      return skip_result("SMS notifications disabled") unless admin_sms_enabled?
 
       # Try location-specific admin phones first, fall back to global
       location = order.location
@@ -151,11 +151,22 @@ class SmsService
 
     private
 
+    # Customer SMS: requires master toggle AND customer order updates toggle.
+    # Admin notifications are independent — see admin_sms_enabled? below.
     def sms_enabled?
       return false unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
 
       settings = SiteSetting.instance
       settings.send_sms_notifications && settings.sms_order_updates
+    end
+
+    # Admin SMS: only requires the master toggle (send_sms_notifications).
+    # sms_order_updates is a customer-facing preference and should not
+    # block admin alerts about new orders.
+    def admin_sms_enabled?
+      return false unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
+
+      SiteSetting.instance.send_sms_notifications
     end
 
     def send_sms(to:, body:, context: nil)
