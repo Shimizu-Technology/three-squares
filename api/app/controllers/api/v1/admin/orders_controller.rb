@@ -103,6 +103,12 @@ module Api
           return
         end
 
+        # Guard shipped resends — don't send customers a broken/empty tracking link
+        if @order.status == "shipped" && @order.tracking_number.blank?
+          render json: { error: "Cannot resend shipped notification without a tracking number. Add tracking info first." }, status: :unprocessable_entity
+          return
+        end
+
         send_status_notifications(@order)
         render json: { message: "Notification resent for status '#{@order.status}' (email + SMS)" }
       end

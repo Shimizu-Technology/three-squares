@@ -39,13 +39,14 @@ class EmailService
   def self.send_admin_notification(order)
     return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
 
-    # Route to location-specific admin email if configured, fall back to global
+    # Include both global admins AND location-specific admin (if configured).
+    # Global admins should always receive new-order alerts regardless of location config.
+    settings = SiteSetting.instance
+    admin_emails = settings.order_notification_emails || [ "shimizutechnology@gmail.com" ]
+
     location = order.location
-    admin_emails = if location&.admin_email.present?
-      [ location.admin_email ]
-    else
-      settings = SiteSetting.instance
-      settings.order_notification_emails || [ "shimizutechnology@gmail.com" ]
+    if location&.admin_email.present? && !admin_emails.include?(location.admin_email)
+      admin_emails = admin_emails + [ location.admin_email ]
     end
 
     begin
