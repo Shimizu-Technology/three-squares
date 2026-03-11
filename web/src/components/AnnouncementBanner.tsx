@@ -5,6 +5,16 @@ import useAppConfig from '../hooks/useAppConfig';
 
 const DISMISS_KEY = 'announcement-banner-dismissed';
 
+// Maps announcement_style values from SiteSetting to background colors.
+// Extend this map when adding new style options to AdminSettingsPage.
+const STYLE_COLORS: Record<string, string> = {
+  gold:  'var(--color-accent-warm, #D4A030)',
+  info:  '#2563EB', // blue-600
+  success: '#16A34A', // green-600
+  warning: '#D97706', // amber-600
+  danger:  '#DC2626', // red-600
+};
+
 export default function AnnouncementBanner() {
   const config = useAppConfig();
   const prefersReducedMotion = useReducedMotion();
@@ -57,7 +67,7 @@ export default function AnnouncementBanner() {
     >
       <div
         className="relative flex items-center justify-center px-4 pr-10 py-2 shadow-sm sm:px-10"
-        style={{ backgroundColor: 'var(--color-accent-warm, #D4A030)' }}
+        style={{ backgroundColor: STYLE_COLORS[config?.announcement_style ?? 'gold'] ?? STYLE_COLORS.gold }}
       >
         <p className="text-white text-sm font-medium text-center leading-snug">
           {config.announcement_text}
