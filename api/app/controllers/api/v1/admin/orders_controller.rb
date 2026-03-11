@@ -98,6 +98,9 @@ module Api
       # POST /api/v1/admin/orders/:id/notify
       # Resend notification to customer (email + SMS) for current status
       def notify
+        # Cancelled IS notified automatically on status change (send_status_notifications
+        # handles it), but resending a cancellation email could confuse customers into
+        # thinking a NEW cancellation occurred. Pending has no status email to resend.
         if @order.status.in?(%w[pending cancelled])
           render json: { error: "Cannot resend notification for '#{@order.status}' orders" }, status: :unprocessable_entity
           return

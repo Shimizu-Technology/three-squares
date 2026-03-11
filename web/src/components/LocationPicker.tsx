@@ -30,10 +30,18 @@ export default function LocationPicker() {
         if (selectedLocation && locs.length > 0) {
           const stillExists = locs.some((l: LocationInfo) => l.id === selectedLocation.id);
           if (!stillExists) {
-            // Stale location was deactivated — clear cart and selection.
-            // Setting to null re-presents the picker so the user explicitly
-            // chooses a new location instead of being silently redirected.
-            await clearCart();
+            // Stale location was deactivated — clear selection so the picker
+            // re-presents and the user explicitly chooses a valid location.
+            // Always clear selection even if clearCart fails (network error) —
+            // a stale deactivated location would show 0 products and break
+            // product/collection pages that filter by location ID.
+            try {
+              await clearCart();
+            } catch {
+              // Cart-clear failed (network error). Clear selection anyway —
+              // orphaned cart items are harmless, but a deactivated location
+              // in localStorage would break the whole ordering experience.
+            }
             setSelectedLocation(null);
           }
         }

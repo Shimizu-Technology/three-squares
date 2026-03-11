@@ -413,7 +413,7 @@ class EmailService
                 <!-- Status Banner -->
                 <tr>
                   <td style="padding: 40px 30px; text-align: center;">
-                    <div style="background-color: #{color}10; border: 2px solid #{color}; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                    <div style="background-color: #{hex_to_rgba(color, 0.06)}; border: 2px solid #{color}; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
                       <h2 style="color: #{color}; margin: 0; font-size: 24px;">#{CGI.escapeHTML(heading)}</h2>
                     </div>
                     <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{order.order_number}</p>
@@ -1354,6 +1354,16 @@ class EmailService
       </body>
       </html>
     HTML
+  end
+
+  # Convert 6-digit hex (#RRGGBB) to rgba() for email clients that don't
+  # support 8-digit hex opacity (Outlook 2007-2021, older Android mail).
+  def self.hex_to_rgba(hex, alpha = 1.0)
+    hex = hex.delete("#")
+    r = hex[0..1].to_i(16)
+    g = hex[2..3].to_i(16)
+    b = hex[4..5].to_i(16)
+    "rgba(#{r}, #{g}, #{b}, #{alpha})"
   end
 
 end
