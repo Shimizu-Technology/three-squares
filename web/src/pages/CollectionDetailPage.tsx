@@ -41,6 +41,12 @@ export default function CollectionDetailPage() {
     return Array.from(types).sort();
   }, [products]);
 
+  // Reset pagination when location changes to avoid requesting a page that
+  // doesn't exist at the new location (e.g., page 3 → empty grid).
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedLocation?.id]);
+
   useEffect(() => {
     if (slug) {
       fetchCollectionData();

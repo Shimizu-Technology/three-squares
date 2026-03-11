@@ -161,13 +161,11 @@ class SmsService
       SiteSetting.instance.enable_order_sms
     end
 
-    # Admin SMS: checks the consolidated enable_order_sms toggle.
-    # Admin new-order alerts fire whenever SMS is enabled — they don't need
-    # a separate customer-preference gate.
+    # Admin SMS: same check as customer SMS (both use enable_order_sms).
+    # Separate method kept for semantic clarity — if admin SMS ever needs
+    # independent gating, only this method needs to change.
     def admin_sms_enabled?
-      return false unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
-
-      SiteSetting.instance.enable_order_sms
+      sms_enabled?
     end
 
     def send_sms(to:, body:, context: nil)
