@@ -215,17 +215,18 @@ module Webhooks
 
       old_status = refund.status
 
-      # Enqueue notification BEFORE updating status. If the enqueue fails
-      # (e.g. Redis down), Stripe retries the webhook and the idempotency
-      # guard (refund.status == new_status) won't short-circuit because
-      # status hasn't been updated yet.
+      # Update status BEFORE enqueuing the notification job. A fast Sidekiq
+      # worker could pick up the job and check refund.pending? before the DB
+      # write commits — that would silently skip the notification with no
+      # retry. The per-refund email_sent/sms_sent idempotency columns already
+      # protect against duplicates on Stripe webhook retries if enqueue fails.
+      refund.update_column(:status, new_status)
+      Rails.logger.info "💸 Refund #{stripe_refund.id} status: #{old_status} → #{new_status}"
+
       if new_status == "succeeded" && old_status == "pending"
         SendRefundNotificationJob.perform_later(refund.id)
         Rails.logger.info "📧 Enqueued refund notification for settled refund #{stripe_refund.id}"
       end
-
-      refund.update_column(:status, new_status)
-      Rails.logger.info "💸 Refund #{stripe_refund.id} status: #{old_status} → #{new_status}"
     rescue StandardError => e
       Rails.logger.error "❌ charge.refund.updated failed for #{stripe_refund.id}: #{e.message}"
       raise
