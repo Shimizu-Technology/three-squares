@@ -168,7 +168,7 @@ module Webhooks
             r.order = record
             r.amount_cents = stripe_refund.amount
             r.reason = stripe_refund.reason || "Refunded via Stripe Dashboard"
-            r.status = "completed"
+            r.status = "succeeded"
           end
 
           # Only notify if we just created it (not a duplicate)
@@ -178,8 +178,15 @@ module Webhooks
           end
         end
       end
+    rescue ActiveRecord::RecordNotFound => e
+      # Order not found — log and return 200 (Stripe retrying won't help)
+      Rails.logger.error "❌ Refund webhook: record not found — #{e.message}"
     rescue StandardError => e
-      Rails.logger.error "❌ Failed to update payment target ##{record&.id} for refund: #{e.message}"
+      # DB failures, job queue errors — re-raise so Stripe gets a 500
+      # and retries the webhook. Swallowing these silently loses refund
+      # notifications permanently.
+      Rails.logger.error "❌ Refund webhook failed for ##{record&.id}: #{e.message}"
+      raise
     end
 
     def handle_charge_dispute_created(dispute)

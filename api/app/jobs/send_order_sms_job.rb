@@ -2,8 +2,10 @@
 
 class SendOrderSmsJob < ApplicationJob
   queue_as :default
-  retry_on StandardError, wait: :polynomially_longer, attempts: 3
+  retry_on StandardError, wait: :polynomially_longer, attempts: 5
   discard_on ActiveRecord::RecordNotFound
+
+  class SmsTemporarilyUnavailable < StandardError; end
 
   # @param order_id [Integer]
   # @param event [String]
@@ -38,10 +40,14 @@ class SendOrderSmsJob < ApplicationJob
       if result.is_a?(Hash) && result[:success]
         Rails.logger.info "✅ SMS sent for order ##{order_id} (#{event})"
       else
-        # Conditional rollback: only if no higher-seq job has advanced the counter
+        # Roll back seq and raise so retry_on fires — covers both skips
+        # (SMS temporarily disabled) and failures. Matches the pattern
+        # in SendOrderConfirmationSmsJob.
         Order.where(id: order.id, last_sms_seq: seq).update_all(last_sms_seq: seq - 1)
-        Rails.logger.info "↩️ SMS skipped for order ##{order_id} (#{event}) — seq rolled back"
+        raise SmsTemporarilyUnavailable, "SMS #{result&.dig(:skipped) ? 'skipped' : 'failed'} for order ##{order_id} (#{event}): #{result&.dig(:reason) || 'unknown'}"
       end
+    rescue SmsTemporarilyUnavailable
+      raise # Let retry_on handle it
     rescue StandardError => e
       Order.where(id: order.id, last_sms_seq: seq).update_all(last_sms_seq: seq - 1)
       raise
