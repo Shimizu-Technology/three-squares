@@ -128,17 +128,27 @@ class SmsService
 
     # Send SMS to admin phones when a new order comes in
     def send_admin_new_order(order)
-      # Admin SMS uses its own toggle — independent of customer SMS setting
-      return skip_result("Admin SMS not configured") unless admin_sms_enabled?
       settings = SiteSetting.instance
+      # Admin SMS uses its own toggle — independent of customer SMS setting
+      return skip_result("Admin SMS not configured") unless sms_configured? && settings.enable_admin_sms
       admin_phones = settings.admin_sms_phones || []
       return skip_result("No admin SMS phones configured") if admin_phones.empty?
 
-      # Per-phone idempotency: track which phones already received this
-      # alert in order.metadata so retries don't duplicate admin SMS.
-      already_sent = Array(order.reload.metadata&.dig("admin_sms_sent_phones")).uniq
-      remaining_phones = admin_phones - already_sent
-      return { success: true, skipped: true } if remaining_phones.empty?
+      # Atomic claim: lock the order row, read already-sent phones, and
+      # write ALL remaining phones to metadata in one transaction. This
+      # prevents two workers from both reading an empty list and both
+      # sending to every phone.
+      remaining_phones = nil
+      order.with_lock do
+        already_sent = Array(order.metadata&.dig("admin_sms_sent_phones")).uniq
+        remaining_phones = admin_phones - already_sent
+        return { success: true, skipped: true } if remaining_phones.empty?
+
+        # Claim all remaining phones upfront — actual sending happens below
+        meta = order.metadata || {}
+        meta["admin_sms_sent_phones"] = (already_sent + remaining_phones).uniq
+        order.update_column(:metadata, meta)
+      end
 
       location_name = order.location&.name || "Online"
       source_label = order.source == "pos" ? "POS" : "Online"
@@ -146,30 +156,26 @@ class SmsService
                 "$#{format_price(order.total_cents)} - #{order.customer_name || 'Guest'} " \
                 "- #{location_name}"
 
+      # Phones were claimed upfront — now send. On failure, un-claim the
+      # failed phone so retry can re-attempt.
       failed = []
       remaining_phones.each do |phone|
         begin
           result = send_sms(to: phone, body: message, context: "admin_new_order:#{order.id}")
 
           if result.is_a?(Hash) && result[:success]
-            # Atomic JSON append — safe under concurrent Sidekiq retries.
-            # Uses jsonb_set + concatenation instead of read-modify-write
-            # to avoid two workers overwriting each other's phone lists.
-            Order.where(id: order.id).update_all(
-              Arel.sql(<<~SQL.squish)
-                metadata = jsonb_set(
-                  COALESCE(metadata, '{}'::jsonb),
-                  '{admin_sms_sent_phones}',
-                  (COALESCE(metadata->'admin_sms_sent_phones', '[]'::jsonb) || #{Order.connection.quote([phone].to_json)}::jsonb)
-                )
-              SQL
-            )
+            # Already claimed in metadata — nothing to update
+            Rails.logger.info "[SmsService] Admin SMS sent to #{phone}"
           elsif result&.dig(:skipped)
+            # Un-claim skipped phone so it's visible for debugging
+            unclaim_admin_phone(order, phone)
             Rails.logger.warn "[SmsService] Admin SMS skipped for #{phone}: #{result[:reason]}"
           else
+            unclaim_admin_phone(order, phone)
             failed << phone
           end
         rescue SmsError => e
+          unclaim_admin_phone(order, phone)
           Rails.logger.error "[SmsService] Admin SMS failed for #{phone}: #{e.message}"
           failed << phone
         end
@@ -261,6 +267,19 @@ class SmsService
         Rails.logger.error "[SmsService] Error sending SMS: #{e.class} - #{e.message}"
         raise # Let the job retry mechanism handle it
       end
+    end
+
+    # Remove a phone from the claimed admin_sms_sent_phones list on failure
+    def unclaim_admin_phone(order, phone)
+      Order.where(id: order.id).update_all(
+        Arel.sql(<<~SQL.squish)
+          metadata = jsonb_set(
+            COALESCE(metadata, '{}'::jsonb),
+            '{admin_sms_sent_phones}',
+            (COALESCE(metadata->'admin_sms_sent_phones', '[]'::jsonb) - #{Order.connection.quote(phone)})
+          )
+        SQL
+      )
     end
 
     def normalize_phone(phone)

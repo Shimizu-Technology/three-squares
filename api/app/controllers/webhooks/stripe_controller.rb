@@ -162,19 +162,23 @@ module Webhooks
         stripe_refunds.each do |stripe_refund|
           next if stripe_refund.id.blank?
 
-          # Use find_or_create_by with the unique index on stripe_refund_id
-          # to handle concurrent webhook deliveries atomically.
-          refund = Refund.find_or_create_by!(stripe_refund_id: stripe_refund.id) do |r|
-            r.order = record
-            r.amount_cents = stripe_refund.amount
-            r.reason = stripe_refund.reason || "Refunded via Stripe Dashboard"
-            r.status = "succeeded"
-          end
-
-          # Only notify if we just created it (not a duplicate)
-          if refund.previously_new_record?
+          # create! with rescue on unique constraint — truly atomic.
+          # find_or_create_by! has a SELECT→INSERT race under concurrent
+          # webhook deliveries where both pass the SELECT and one hits
+          # RecordNotUnique on insert.
+          begin
+            refund = Refund.create!(
+              stripe_refund_id: stripe_refund.id,
+              order: record,
+              amount_cents: stripe_refund.amount,
+              reason: stripe_refund.reason || "Refunded via Stripe Dashboard",
+              status: "succeeded"
+            )
             SendRefundNotificationJob.perform_later(refund.id)
             Rails.logger.info "📧 Enqueued refund notification for Stripe Dashboard refund #{stripe_refund.id}"
+          rescue ActiveRecord::RecordNotUnique
+            # Another webhook delivery already created this refund — safe to skip
+            Rails.logger.info "↩️ Stripe refund #{stripe_refund.id} already recorded — skipping"
           end
         end
       end
