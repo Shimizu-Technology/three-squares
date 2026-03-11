@@ -42,11 +42,11 @@ class EmailService
     # Include both global admins AND location-specific admin (if configured).
     # Global admins should always receive new-order alerts regardless of location config.
     settings = SiteSetting.instance
-    admin_emails = settings.order_notification_emails || [ "shimizutechnology@gmail.com" ]
+    admin_emails = (settings.order_notification_emails || [ "shimizutechnology@gmail.com" ]).map(&:downcase).uniq
 
     location = order.location
-    if location&.admin_email.present? && !admin_emails.include?(location.admin_email)
-      admin_emails = admin_emails + [ location.admin_email ]
+    if location&.admin_email.present? && !admin_emails.include?(location.admin_email.downcase)
+      admin_emails = admin_emails + [ location.admin_email.downcase ]
     end
 
     begin
@@ -614,7 +614,7 @@ class EmailService
                       <tr>
                         <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
                           <strong style="color: #6B7280; font-size: 14px;">Customer:</strong>
-                          <span style="color: #111827; font-size: 14px; float: right;">#{order.customer_email}</span>
+                          <span style="color: #111827; font-size: 14px; float: right;">#{CGI.escapeHTML(order.customer_email.to_s)}</span>
                         </td>
                       </tr>
                       <tr>
@@ -626,7 +626,7 @@ class EmailService
                       <tr>
                         <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
                           <strong style="color: #6B7280; font-size: 14px;">Location:</strong>
-                          <span style="color: #111827; font-size: 14px; float: right;">#{order.location&.name || 'N/A'}</span>
+                          <span style="color: #111827; font-size: 14px; float: right;">#{CGI.escapeHTML(order.location&.name || 'N/A')}</span>
                         </td>
                       </tr>
                       <tr>
