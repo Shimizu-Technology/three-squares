@@ -214,14 +214,18 @@ module Webhooks
       return if refund.status == new_status
 
       old_status = refund.status
-      refund.update_column(:status, new_status)
-      Rails.logger.info "💸 Refund #{stripe_refund.id} status: #{old_status} → #{new_status}"
 
-      # Now that the refund has settled, notify the customer
+      # Enqueue notification BEFORE updating status. If the enqueue fails
+      # (e.g. Redis down), Stripe retries the webhook and the idempotency
+      # guard (refund.status == new_status) won't short-circuit because
+      # status hasn't been updated yet.
       if new_status == "succeeded" && old_status == "pending"
         SendRefundNotificationJob.perform_later(refund.id)
         Rails.logger.info "📧 Enqueued refund notification for settled refund #{stripe_refund.id}"
       end
+
+      refund.update_column(:status, new_status)
+      Rails.logger.info "💸 Refund #{stripe_refund.id} status: #{old_status} → #{new_status}"
     rescue StandardError => e
       Rails.logger.error "❌ charge.refund.updated failed for #{stripe_refund.id}: #{e.message}"
       raise
