@@ -255,13 +255,19 @@ module Api
         email_sent = false
         sms_sent = false
 
-        # For force-resend: reset seq, then enqueue. If enqueue fails (Redis
-        # down), restore seq so the dedup window isn't left open.
+        # For force-resend: conditionally reset seq ONLY if it matches the
+        # current status. Uses WHERE to avoid re-opening the dedup window
+        # for stale in-flight jobs from a prior status.
         if force
-          cols = {}
-          cols[:last_email_seq] = seq - 1 if will_email
-          cols[:last_sms_seq] = seq - 1 if will_sms
-          order.update_columns(cols) if cols.any?
+          if will_email
+            Order.where(id: order.id, last_email_seq: seq)
+                 .update_all(last_email_seq: seq - 1)
+          end
+          if will_sms
+            Order.where(id: order.id, last_sms_seq: seq)
+                 .update_all(last_sms_seq: seq - 1)
+          end
+          order.reload
         end
 
         begin
@@ -274,12 +280,12 @@ module Api
             sms_sent = true
           end
         rescue StandardError => e
-          # Restore seq counters if enqueue failed — don't leave the window open
+          # Restore seq if enqueue failed — don't leave the window open
           if force
-            restore = {}
-            restore[:last_email_seq] = seq if will_email && !email_sent
-            restore[:last_sms_seq] = seq if will_sms && !sms_sent
-            order.update_columns(restore) if restore.any?
+            Order.where(id: order.id, last_email_seq: seq - 1)
+                 .update_all(last_email_seq: seq) if will_email && !email_sent
+            Order.where(id: order.id, last_sms_seq: seq - 1)
+                 .update_all(last_sms_seq: seq) if will_sms && !sms_sent
           end
           raise
         end
