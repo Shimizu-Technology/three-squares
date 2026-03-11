@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_11_023703) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_11_031039) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -449,6 +449,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_023703) do
     t.string "payment_intent_id"
     t.string "payment_method"
     t.string "payment_status"
+    t.boolean "refund_email_sent", default: false, null: false
+    t.boolean "refund_sms_sent", default: false, null: false
     t.string "shipping_address_line1"
     t.string "shipping_address_line2"
     t.string "shipping_city"

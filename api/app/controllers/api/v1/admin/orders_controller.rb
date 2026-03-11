@@ -210,10 +210,10 @@ module Api
       private
 
       # Send email + SMS notifications for the current order status.
-      # Email respects enable_order_emails toggle (checked here in controller).
-      # SMS flag check is handled internally by SmsService#sms_enabled? — no guard needed here.
-      # Phone presence check is also handled internally by SmsService, but we guard here
-      # as a lightweight optimization to avoid enqueueing a job that will immediately no-op.
+      # Both channels are gated here before enqueueing:
+      #   - Email: checked against enable_order_emails + customer_email presence
+      #   - SMS: checked against enable_order_sms + customer_phone presence
+      # This avoids enqueueing jobs that will immediately no-op.
       # Returns a hash describing what was actually enqueued:
       #   { any: true/false, email: true/false, sms: true/false, warnings: [...] }
       def send_status_notifications(order)
