@@ -10,7 +10,7 @@ class SendOrderStatusEmailJob < ApplicationJob
   def perform(order_id, event)
     order = Order.find(order_id)
 
-    case event
+    result = case event
     when "confirmed"
       EmailService.send_order_confirmed_email(order)
     when "processing"
@@ -23,6 +23,13 @@ class SendOrderStatusEmailJob < ApplicationJob
       EmailService.send_order_cancelled_email(order)
     else
       Rails.logger.warn "[SendOrderStatusEmailJob] Unknown event: #{event}"
+      return
+    end
+
+    # EmailService methods return { success: bool, error: ... } hashes.
+    # Raise on failure so retry_on can re-attempt delivery.
+    unless result.is_a?(Hash) && result[:success]
+      raise "Email delivery failed for order ##{order_id} (#{event}): #{result&.dig(:error) || 'unknown error'}"
     end
   end
 end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_02_22_010000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_11_023703) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -432,6 +432,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_02_22_010000) do
     t.text "admin_notes"
     t.integer "cash_change_cents"
     t.integer "cash_received_cents"
+    t.boolean "confirmation_email_sent", default: false, null: false
     t.datetime "created_at", null: false
     t.integer "created_by_user_id"
     t.string "customer_email"

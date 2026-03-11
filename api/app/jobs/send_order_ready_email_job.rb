@@ -5,10 +5,13 @@ class SendOrderReadyEmailJob < ApplicationJob
 
   def perform(order_id)
     order = Order.find(order_id)
+    result = EmailService.send_order_ready_email(order)
 
-    # Toggle check is handled by the controller before enqueuing.
-    # Send order ready for pickup email
-    EmailService.send_order_ready_email(order)
+    # EmailService returns { success: bool, error: ... } — raise on failure
+    # so retry_on can re-attempt delivery instead of silently dropping.
+    unless result.is_a?(Hash) && result[:success]
+      raise "Ready email failed for order ##{order_id}: #{result&.dig(:error) || 'unknown error'}"
+    end
 
     Rails.logger.info "✅ Sent ready for pickup notification email for order #{order.order_number}"
   end
