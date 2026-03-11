@@ -20,14 +20,12 @@ class SendOrderConfirmationSmsJob < ApplicationJob
     begin
       result = SmsService.send_order_confirmation(order)
 
-      if result.is_a?(Hash) && result[:success]
-        Rails.logger.info "✅ Confirmation SMS sent for order ##{order.order_number}"
-      else
-        # Roll back so retry can re-attempt (skip is not a failure)
-        unless result&.dig(:skipped)
-          Order.where(id: order.id, confirmation_sms_sent: true)
-               .update_all(confirmation_sms_sent: false)
-        end
+      unless result.is_a?(Hash) && result[:success]
+        # Roll back on ANY non-success (including skips). If SMS was
+        # temporarily disabled, the flag should not stay permanently set —
+        # the admin Notify button or a re-enable + manual resend should work.
+        Order.where(id: order.id, confirmation_sms_sent: true)
+             .update_all(confirmation_sms_sent: false)
       end
     rescue StandardError => e
       Order.where(id: order.id, confirmation_sms_sent: true)

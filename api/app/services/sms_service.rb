@@ -149,12 +149,20 @@ class SmsService
       failed = []
       remaining_phones.each do |phone|
         begin
-          send_sms(to: phone, body: message, context: "admin_new_order:#{order.id}")
-          # Record success immediately so a retry skips this phone
-          meta = order.reload.metadata || {}
-          sent_key = "admin_sms_sent_phones"
-          meta[sent_key] = (Array(meta[sent_key]) + [phone]).uniq
-          order.update_column(:metadata, meta)
+          result = send_sms(to: phone, body: message, context: "admin_new_order:#{order.id}")
+
+          if result.is_a?(Hash) && result[:success]
+            # Record success immediately so a retry skips this phone
+            meta = order.reload.metadata || {}
+            meta["admin_sms_sent_phones"] = (Array(meta["admin_sms_sent_phones"]) + [phone]).uniq
+            order.update_column(:metadata, meta)
+          elsif result&.dig(:skipped)
+            # Invalid phone (normalize_phone returned nil) — log and skip,
+            # do NOT record as sent so it stays visible for debugging.
+            Rails.logger.warn "[SmsService] Admin SMS skipped for #{phone}: #{result[:error]}"
+          else
+            failed << phone
+          end
         rescue SmsError => e
           Rails.logger.error "[SmsService] Admin SMS failed for #{phone}: #{e.message}"
           failed << phone

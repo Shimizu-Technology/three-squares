@@ -4,9 +4,11 @@ class SiteSetting < ApplicationRecord
   validates :payment_test_mode, inclusion: { in: [ true, false ] }
   validate :validate_shipping_origin_address
 
-  # Singleton accessor
+  # Singleton accessor — memoized per-thread to avoid redundant DB queries
+  # within a single request/job. Thread-local storage is automatically cleaned
+  # up when the thread ends (Puma/Sidekiq thread pools).
   def self.instance
-    first_or_create!(
+    Thread.current[:site_setting_instance] ||= first_or_create!(
       payment_test_mode: true,
       payment_processor: "stripe",
       send_customer_emails: false, # Legacy field - kept for backwards compatibility
@@ -28,6 +30,13 @@ class SiteSetting < ApplicationRecord
         phone: "671-646-2652"
       }
     )
+  end
+
+  # Bust the per-thread cache when settings are updated
+  after_commit :clear_instance_cache
+
+  def clear_instance_cache
+    Thread.current[:site_setting_instance] = nil
   end
 
   # Check if customer emails are enabled for a specific order type
