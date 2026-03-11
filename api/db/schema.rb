@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_11_031039) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_11_042003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -633,7 +633,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_031039) do
     t.boolean "acai_gallery_show_image_a", default: true, null: false
     t.boolean "acai_gallery_show_image_b", default: true, null: false
     t.string "acai_gallery_subtext"
-    t.text "admin_sms_phones", default: [], array: true
+    t.jsonb "admin_sms_phones", default: [], null: false
     t.boolean "announcement_enabled", default: false, null: false
     t.string "announcement_style", default: "gold", null: false
     t.string "announcement_text"
@@ -648,10 +648,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_031039) do
     t.boolean "send_acai_emails", default: false, null: false
     t.boolean "send_customer_emails", default: false, null: false
     t.boolean "send_retail_emails", default: false, null: false
-    t.boolean "send_sms_notifications", default: false, null: false
     t.boolean "send_wholesale_emails", default: false, null: false
     t.jsonb "shipping_origin_address", default: {}
-    t.boolean "sms_order_updates", default: false, null: false
     t.string "store_email"
     t.string "store_name", default: "Hafaloha"
     t.string "store_phone"

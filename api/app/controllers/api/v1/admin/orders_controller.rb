@@ -114,9 +114,9 @@ module Api
         else
           warnings = sent[:warnings] || []
           render json: {
-            warning: "No notifications sent for status '#{@order.status}'",
+            error: "No notifications sent for status '#{@order.status}'",
             reasons: warnings
-          }, status: :ok
+          }, status: :unprocessable_entity
         end
       end
 
