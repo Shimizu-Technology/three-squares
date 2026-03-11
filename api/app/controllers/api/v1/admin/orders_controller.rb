@@ -98,7 +98,7 @@ module Api
       # POST /api/v1/admin/orders/:id/notify
       # Resend notification to customer (email + SMS) for current status
       def notify
-        if @order.status.in?(%w[pending cancelled])
+        if @order.status.in?(%w[pending])
           render json: { error: "Cannot resend notification for '#{@order.status}' orders" }, status: :unprocessable_entity
           return
         end

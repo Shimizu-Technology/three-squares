@@ -30,8 +30,13 @@ class SendRefundNotificationJob < ApplicationJob
     # --- SMS channel ---
     begin
       if order.respond_to?(:refund_sms_sent) && !order.refund_sms_sent
-        SmsService.send_refund_notification(order, refund_amount_cents)
-        order.update_column(:refund_sms_sent, true)
+        sms_result = SmsService.send_refund_notification(order, refund_amount_cents)
+        # Only mark as sent if SMS was actually delivered (not skipped/disabled).
+        # SmsService returns { success: true } on send, { skipped: true } when
+        # disabled or no phone. Don't lock out future SMS for skipped sends.
+        if sms_result.is_a?(Hash) && sms_result[:success]
+          order.update_column(:refund_sms_sent, true)
+        end
       end
     rescue StandardError => e
       errors << "SMS: #{e.message}"
