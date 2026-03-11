@@ -3,7 +3,7 @@ import { useReducedMotion } from 'framer-motion';
 import { X } from 'lucide-react';
 import useAppConfig from '../hooks/useAppConfig';
 
-const DISMISS_KEY = 'announcement-banner-dismissed';
+const DISMISS_KEY_PREFIX = 'announcement-dismissed:';
 
 // Maps announcement_style values from SiteSetting to background colors.
 // Extend this map when adding new style options to AdminSettingsPage.
@@ -22,7 +22,9 @@ export default function AnnouncementBanner() {
   const [mounted, setMounted] = useState(false);
 
   const enabled = config?.announcement_enabled && !!config?.announcement_text?.trim();
-  const dismissed = sessionStorage.getItem(DISMISS_KEY) === 'true';
+  // Tie dismiss key to announcement content so updated messages reappear
+  const dismissKey = `${DISMISS_KEY_PREFIX}${config?.announcement_text?.trim() ?? ''}`;
+  const dismissed = sessionStorage.getItem(dismissKey) === 'true';
 
   useEffect(() => {
     if (enabled && !dismissed) {
@@ -41,12 +43,12 @@ export default function AnnouncementBanner() {
   const handleDismiss = () => {
     if (prefersReducedMotion) {
       setMounted(false);
-      sessionStorage.setItem(DISMISS_KEY, 'true');
+      sessionStorage.setItem(dismissKey, 'true');
     } else {
       setVisible(false);
       setTimeout(() => {
         setMounted(false);
-        sessionStorage.setItem(DISMISS_KEY, 'true');
+        sessionStorage.setItem(dismissKey, 'true');
       }, 300);
     }
   };

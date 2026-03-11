@@ -183,6 +183,12 @@ function AppContent() {
   const isAdminPage = location.pathname.startsWith('/admin');
   const routeTransitionKey = isAdminPage ? '/admin' : location.pathname;
 
+  // LocationPicker is only relevant on pages tied to ordering/menu browsing
+  const ORDERING_PATHS = ['/', '/products', '/shop', '/collections', '/cart', '/checkout', '/menu', '/pos'];
+  const isOrderingPage = ORDERING_PATHS.some(
+    (p) => location.pathname === p || location.pathname.startsWith(p + '/')
+  );
+
   return (
     <>
       <SmoothScroll>
@@ -446,8 +452,8 @@ function AppContent() {
         </nav>
         )}
 
-        {/* Location picker for ordering pages */}
-        {!isAdminPage && <LocationPicker />}
+        {/* Location picker — only on pages where location context matters */}
+        {!isAdminPage && isOrderingPage && <LocationPicker />}
 
         {/* Routes with page transitions */}
         <AnimatePresence mode="wait">
