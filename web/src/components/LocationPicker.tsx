@@ -136,10 +136,10 @@ export default function LocationPicker() {
       {/* Cart clear confirmation modal */}
       {showConfirm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
+          <div role="dialog" aria-modal="true" aria-labelledby="cart-clear-title" className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
             <div className="flex items-center gap-3 mb-4">
               <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0" />
-              <h3 className="text-lg font-semibold text-warm-900">Change Location?</h3>
+              <h3 id="cart-clear-title" className="text-lg font-semibold text-warm-900">Change Location?</h3>
             </div>
             <p className="text-warm-600 mb-6">
               Switching to <strong>{pendingLocation?.name}</strong> will clear your cart.
