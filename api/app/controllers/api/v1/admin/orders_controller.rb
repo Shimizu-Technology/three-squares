@@ -249,8 +249,11 @@ module Api
             end
             sms_sent = enqueue_sms(order, "shipped", sms_on, has_phone)
           else
+            # Shipped without tracking — skip notifications entirely and return early
+            # so we don't add misleading "email/SMS disabled" warnings below.
             warnings << "No tracking number — shipped notifications require tracking info"
             Rails.logger.warn "⚠️ Order ##{order.order_number} marked shipped without tracking number — skipping customer notification"
+            return { any: false, email: false, sms: false, warnings: warnings }
           end
         when "picked_up"
           email_sent = enqueue_email(order, "picked_up", emails_on, has_email)
@@ -263,8 +266,9 @@ module Api
           sms_sent = enqueue_sms(order, "cancelled", sms_on, has_phone)
         end
 
-        warnings << "Email disabled or no customer email" unless email_sent || !emails_on
-        warnings << "SMS disabled or no customer phone" unless sms_sent || !sms_on
+        # Only warn about disabled channels if they were relevant for this status
+        warnings << "Email disabled or no customer email" if emails_on && !email_sent && has_email
+        warnings << "SMS disabled or no customer phone" if sms_on && !sms_sent && has_phone
 
         { any: email_sent || sms_sent, email: email_sent, sms: sms_sent, warnings: warnings }
       end
