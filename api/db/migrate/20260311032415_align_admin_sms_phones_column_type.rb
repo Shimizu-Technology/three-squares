@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 # Align admin_sms_phones column type between site_settings (text[]) and
 # locations (jsonb). Both store the same data — an array of phone strings.
 # Standardize on jsonb for consistency.

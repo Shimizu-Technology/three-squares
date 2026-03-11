@@ -41,13 +41,16 @@ export default function CollectionDetailPage() {
     return Array.from(types).sort();
   }, [products]);
 
-  // Reset pagination when location changes to avoid requesting a page that
-  // doesn't exist at the new location (e.g., page 3 → empty grid).
+  // Single effect for data fetching. Resets page to 1 on location change
+  // to avoid requesting a page that doesn't exist at the new location.
+  const prevLocationRef = useRef(selectedLocation?.id);
   useEffect(() => {
-    setCurrentPage(1);
-  }, [selectedLocation?.id]);
-
-  useEffect(() => {
+    if (selectedLocation?.id !== prevLocationRef.current) {
+      prevLocationRef.current = selectedLocation?.id;
+      setCurrentPage(1);
+      // fetchCollectionData will re-fire when currentPage updates to 1
+      return;
+    }
     if (slug) {
       fetchCollectionData();
     }
