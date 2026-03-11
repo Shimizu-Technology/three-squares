@@ -29,10 +29,11 @@ export default function LocationPicker() {
         if (selectedLocation && locs.length > 0) {
           const stillExists = locs.some((l: LocationInfo) => l.id === selectedLocation.id);
           if (!stillExists) {
-            // Stale location was deactivated — clear cart since items may
-            // not be available at the fallback location, then auto-select.
+            // Stale location was deactivated — clear cart and selection.
+            // Setting to null re-presents the picker so the user explicitly
+            // chooses a new location instead of being silently redirected.
             await clearCart();
-            setSelectedLocation(locs[0]);
+            setSelectedLocation(null);
           }
         }
       } catch {
