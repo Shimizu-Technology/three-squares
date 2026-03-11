@@ -155,13 +155,12 @@ class SmsService
       settings.try(:enable_order_sms) || (settings.send_sms_notifications && settings.sms_order_updates)
     end
 
-    # Admin SMS (new order alerts) — only requires send_sms_notifications
-    # Does NOT require sms_order_updates (that's for customer-facing notifications)
+    # Admin SMS (new order alerts) — uses the same consolidated toggle as customer SMS.
+    # If SMS is off, it's off for everything. Admins who want alerts must keep SMS enabled.
     def admin_sms_enabled?
       return false unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
 
-      settings = SiteSetting.instance
-      settings.try(:enable_order_sms) || settings.try(:send_sms_notifications)
+      SiteSetting.instance.try(:enable_order_sms) || false
     end
 
     def send_sms(to:, body:, context: nil)
