@@ -208,14 +208,6 @@ class SmsService
       SiteSetting.instance.enable_order_sms
     end
 
-    # Admin SMS — independent toggle from customer SMS. Disabling customer
-    # SMS (enable_order_sms) does NOT silence admin new-order alerts.
-    def admin_sms_enabled?
-      return false unless sms_configured?
-
-      settings = SiteSetting.instance
-      settings.enable_admin_sms && settings.admin_sms_phones.present?
-    end
 
     def sms_configured?
       ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?

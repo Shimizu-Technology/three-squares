@@ -16,7 +16,10 @@ class SendOrderStatusEmailJob < ApplicationJob
     rows = Order.where(id: order.id)
                 .where("last_email_seq < ?", seq)
                 .update_all(last_email_seq: seq)
-    return if rows == 0
+    if rows == 0
+      Rails.logger.info "⏭️ SendOrderStatusEmailJob skipped for order ##{order_id} (#{event}, seq=#{seq}) — higher seq already processed (possible force-resend race)"
+      return
+    end
 
     begin
       result = case event
