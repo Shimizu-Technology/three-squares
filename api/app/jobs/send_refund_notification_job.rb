@@ -13,41 +13,42 @@ class SendRefundNotificationJob < ApplicationJob
     settings = SiteSetting.instance
     errors = []
 
-    # --- Email channel ---
+    # --- Email channel (atomic idempotency) ---
     if settings.enable_order_emails && order.customer_email.present?
-      # Atomic idempotency: UPDATE WHERE refund_email_sent=false returns 0 rows
-      # if another concurrent job already claimed the send. Matches the pattern
-      # used in SendOrderConfirmationEmailJob.
       rows = Order.where(id: order.id, refund_email_sent: false)
                   .update_all(refund_email_sent: true)
       if rows > 0
         result = EmailService.send_refund_notification(order, refund_amount_cents, reason)
         unless result.is_a?(Hash) && result[:success]
-          # Roll back flag so retry can attempt again
           order.update_column(:refund_email_sent, false)
           errors << "Email: #{result&.dig(:error) || 'unknown error'}"
         end
       end
     end
 
-    # --- SMS channel ---
+    # --- SMS channel (atomic idempotency, matching email pattern) ---
     begin
-      if order.respond_to?(:refund_sms_sent) && !order.refund_sms_sent
+      sms_rows = Order.where(id: order.id, refund_sms_sent: false)
+                      .update_all(refund_sms_sent: true)
+      if sms_rows > 0
         sms_result = SmsService.send_refund_notification(order, refund_amount_cents)
-        # Only mark as sent if SMS was actually delivered (not skipped/disabled).
-        # SmsService returns { success: true } on send, { skipped: true } when
-        # disabled or no phone. Don't lock out future SMS for skipped sends.
         if sms_result.is_a?(Hash) && sms_result[:success]
-          order.update_column(:refund_sms_sent, true)
+          # Already flagged via update_all above — nothing more needed
+        elsif sms_result.is_a?(Hash) && sms_result[:skipped]
+          # SMS was skipped (disabled or no phone) — roll back so it can
+          # be sent if SMS is later re-enabled
+          order.update_column(:refund_sms_sent, false)
+        else
+          order.update_column(:refund_sms_sent, false)
+          errors << "SMS: #{sms_result&.dig(:error) || 'unknown error'}"
         end
       end
     rescue StandardError => e
+      order.update_column(:refund_sms_sent, false)
       errors << "SMS: #{e.message}"
       Rails.logger.error "❌ Refund SMS failed for order ##{order.order_number}: #{e.message}"
     end
 
-    # Raise if ANY channel failed so retry_on can re-attempt the failed channel.
-    # The idempotency flags above prevent the successful channel from re-sending.
     if errors.any?
       raise "Refund notification failed: #{errors.join('; ')}"
     end
