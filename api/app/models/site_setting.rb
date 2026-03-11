@@ -1,5 +1,5 @@
 class SiteSetting < ApplicationRecord
-  VALID_ANNOUNCEMENT_STYLES = %w[gold red blue green purple].freeze
+  VALID_ANNOUNCEMENT_STYLES = %w[gold info success warning danger].freeze
 
   # Singleton pattern - only one record should ever exist
   validates :payment_processor, presence: true, inclusion: { in: %w[stripe paypal] }
