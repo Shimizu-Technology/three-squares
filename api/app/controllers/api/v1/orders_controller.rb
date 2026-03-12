@@ -195,6 +195,12 @@ module Api
           message: settings.payment_test_mode? ? "Test order created successfully!" : "Order placed successfully!"
         }, status: :created
       rescue CheckoutValidationError => e
+        # Amount-mismatch in verify_payment_intent raises this AFTER Stripe
+        # has already captured money. Must attempt reversal if payment exists.
+        if order&.payment_intent_id.present?
+          log_payment_reconciliation_required(order, e)
+          attempt_payment_reversal(order) unless order_finalized
+        end
         render json: { success: false, error: e.message, message: e.message }, status: :unprocessable_entity
       rescue InventoryCommitError => e
         log_payment_reconciliation_required(order, e)
