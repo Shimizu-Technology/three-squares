@@ -192,7 +192,7 @@ module Api
         render json: {
           success: true,
           order: order_json(order),
-          message: settings.payment_test_mode? ? "Test order created successfully!" : "Order placed successfully!"
+          message: settings.payment_test_mode ? "Test order created successfully!" : "Order placed successfully!"
         }, status: :created
       rescue CheckoutValidationError => e
         # Amount-mismatch in verify_payment_intent raises this AFTER Stripe
@@ -225,8 +225,10 @@ module Api
           render json: { success: false, error: message, message: message }, status: :unprocessable_entity
         end
       rescue ActiveRecord::RecordNotUnique => e
-        log_payment_reconciliation_required(order, e)
-        attempt_payment_reversal(order) unless order_finalized
+        unless order_finalized
+          log_payment_reconciliation_required(order, e)
+          attempt_payment_reversal(order)
+        end
         message = "Could not finalize order due to a temporary conflict. Please try again."
         render json: { success: false, error: message, message: message }, status: :conflict
       rescue StandardError => e
@@ -236,10 +238,8 @@ module Api
         end
         Rails.logger.error "Order creation error: #{e.class} - #{e.message}"
         Rails.logger.error e.backtrace.first(5).join("\n")
-        # Guard against double-render: if the success render on line ~192
-        # itself raises (e.g., order_json hits a NoMethodError), performed?
-        # is already true and a second render would raise DoubleRenderError,
-        # leaving the client with no response for a committed+paid order.
+        # Defensive guard: if Rails has already written a response body
+        # (unexpected framework-level error), avoid raising DoubleRenderError.
         return if performed?
         message = order_finalized ? "Order placed but notification failed." : "Failed to create order. Please try again."
         status = order_finalized ? :created : :internal_server_error
