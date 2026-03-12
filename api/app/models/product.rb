@@ -173,8 +173,12 @@ class Product < ApplicationRecord
       is_default: true
     )
     variant.skip_weight_validation = true unless allow_shipping?
-    variant.save!
-  rescue ActiveRecord::RecordInvalid => e
+    # Savepoint so a DB-level unique constraint violation doesn't
+    # poison the outer product transaction.
+    ActiveRecord::Base.transaction(requires_new: true) do
+      variant.save!
+    end
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
     Rails.logger.error "❌ Failed to create default variant: #{e.message}"
     # Don't fail the product save if variant creation fails
   end
@@ -246,8 +250,14 @@ class Product < ApplicationRecord
       next unless variant.sku&.match?(/\A.+-(?=\w*[A-F])[0-9A-F]{8}-.+\z/)
 
       begin
-        variant.sku = nil # Clear so before_validation :generate_sku fires
-        variant.save!(validate: true) # Regenerates with real product.id
+        # Wrap in a savepoint so a DB-level unique constraint violation
+        # (RecordNotUnique) doesn't poison the outer product INSERT
+        # transaction. Without requires_new, PostgreSQL aborts the entire
+        # transaction even though Ruby rescues the exception.
+        ActiveRecord::Base.transaction(requires_new: true) do
+          variant.sku = nil # Clear so before_validation :generate_sku fires
+          variant.save!(validate: true) # Regenerates with real product.id
+        end
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
         Rails.logger.error "❌ Failed to regenerate SKU for variant #{variant.id}: #{e.message}"
         # Don't roll back the product — a hex SKU is cosmetic, not fatal.
