@@ -64,6 +64,12 @@ class ProcessPaymentReversalJob < ApplicationJob
       Rails.logger.error "PAYMENT_REVERSAL_INVALID_REQUEST reference=#{payment_reference} code=#{e.code} error=#{e.class}: #{e.message}"
     end
   rescue Stripe::StripeError => e
+    # AuthenticationError and PermissionError are permanent config failures;
+    # re-raise without logging so the job-level discard_on handlers log them
+    # at the correct severity. Without this guard, every permanent error
+    # produces two log entries: a misleading PAYMENT_REVERSAL_FAILED
+    # (implying transient) followed by the accurate AUTH/PERMISSION_FAILURE.
+    raise if e.is_a?(Stripe::AuthenticationError) || e.is_a?(Stripe::PermissionError)
     Rails.logger.error "PAYMENT_REVERSAL_FAILED reference=#{payment_reference} error=#{e.class}: #{e.message}"
     raise
   end
