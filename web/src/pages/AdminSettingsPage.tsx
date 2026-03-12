@@ -149,7 +149,7 @@ export default function AdminSettingsPage() {
       };
       setSettings(mergedSettings);
       setLastSavedSiteSettings(mergedSettings);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to load settings:', err);
       toast.error('Failed to load settings. Please try again.');
     } finally {
@@ -165,7 +165,7 @@ export default function AdminSettingsPage() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSections(response.data.sections);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch sections:', err);
       toast.error('Failed to load homepage sections');
     } finally {
@@ -177,7 +177,7 @@ export default function AdminSettingsPage() {
     try {
       const response = await collectionsApi.getCollections({ per_page: 200 });
       setCollections(response.collections);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to fetch collections:', err);
     }
   }, []);
@@ -243,7 +243,7 @@ export default function AdminSettingsPage() {
         : 'Test mode enabled - Payments will be simulated';
 
       toast.success(message, { duration: 4000 });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update settings:', err);
       toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update payment mode' : 'Failed to update payment mode');
     } finally {
@@ -278,7 +278,7 @@ export default function AdminSettingsPage() {
         : `${label} order emails disabled`;
 
       toast.success(message, { duration: 3000 });
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to toggle email setting:', err);
       toast.error('Failed to update email setting');
     } finally {
@@ -298,7 +298,7 @@ export default function AdminSettingsPage() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       return response.data as SiteSettings;
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update settings:', err);
       const errorMsg =
         err.response?.data?.errors?.join(', ') ||
@@ -345,7 +345,7 @@ export default function AdminSettingsPage() {
       setPlaceholderUploading(true);
       setSettings({ ...settings, placeholder_image_url: placeholderImageUrl });
       toast.success('Placeholder image ready. Click Save to apply.');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update placeholder image:', err);
       toast.error(err.response?.data?.error || 'Failed to update placeholder image');
     } finally {
@@ -377,7 +377,7 @@ export default function AdminSettingsPage() {
 
       await updatePlaceholderImage(blobUrl);
       setShowPlaceholderUrlInput(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to upload placeholder image:', err);
       toast.error(err.response?.data?.error || 'Failed to upload placeholder image');
       setPlaceholderUploading(false);
@@ -431,7 +431,7 @@ export default function AdminSettingsPage() {
       await fetchSections();
       setEditingSection(null);
       setShowNewForm(false);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save section:', err);
       toast.error('Failed to save section');
     } finally {
@@ -449,7 +449,7 @@ export default function AdminSettingsPage() {
       });
       toast.success('Section deleted');
       await fetchSections();
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to delete section:', err);
       toast.error('Failed to delete section');
     }
@@ -1445,7 +1445,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
 
       setFormData((prev) => ({ ...prev, [field]: blobUrl }));
       toast.success('Image uploaded');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to upload image:', err);
       toast.error(err.response?.data?.error || 'Failed to upload image');
     } finally {

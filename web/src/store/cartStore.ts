@@ -122,7 +122,7 @@ export const useCartStore = create<CartStore>()(
           // Refresh cart
           await get().fetchCart();
           set({ isLoading: false });
-        } catch (error) {
+        } catch (error: any) {
           console.error('Failed to update quantity:', error);
           set({ isLoading: false });
           
