@@ -4,30 +4,29 @@ class ProcessPaymentReversalJob < ApplicationJob
   # Bound retries so the job eventually lands in the dead queue for
   # manual intervention if Stripe is persistently unavailable.
   # Idempotency key prevents duplicate refunds across retries.
+  #
   # IMPORTANT: Active Job evaluates handlers in LIFO (reverse declaration)
   # order. Declare least-specific FIRST so most-specific handlers win.
   #
-  # 1. StandardError (least specific — checked last at runtime)
+  # 1. StandardError (least specific — checked last at runtime).
+  #    Catches non-Stripe errors (OpenSSL, SocketError, etc.) and
+  #    InvalidRequestError (terminal PI refs) that bubble up from perform.
   discard_on StandardError do |job, error|
     Rails.logger.error "PAYMENT_REVERSAL_UNEXPECTED_ERROR reference=#{job.arguments.first} error=#{error.class}: #{error.message}"
   end
-  # 2. Stripe::StripeError — transient errors, retry with backoff
+  # 2. Stripe::StripeError — transient errors, retry with backoff.
   retry_on Stripe::StripeError, wait: :polynomially_longer, attempts: 10
-  # 3. InvalidRequestError — terminal PI states + invalid refs (more specific than StripeError)
-  discard_on Stripe::InvalidRequestError do |job, error|
-    if error.code == "payment_intent_unexpected_state"
-      Rails.logger.error "PAYMENT_REVERSAL_PI_STATE_GAVE_UP reference=#{job.arguments.first} code=#{error.code} error=#{error.message}"
-    else
-      Rails.logger.error "PAYMENT_REVERSAL_INVALID_REQUEST reference=#{job.arguments.first} code=#{error.code} error=#{error.message}"
-    end
-  end
-  # 4. Permanent Stripe config errors — most specific, checked first
+  # 3. Permanent Stripe config errors — most specific, checked first.
   discard_on Stripe::AuthenticationError do |job, error|
     Rails.logger.error "PAYMENT_REVERSAL_AUTH_FAILURE reference=#{job.arguments.first} error=#{error.class}: #{error.message}"
   end
   discard_on Stripe::PermissionError do |job, error|
     Rails.logger.error "PAYMENT_REVERSAL_PERMISSION_FAILURE reference=#{job.arguments.first} error=#{error.class}: #{error.message}"
   end
+
+  # Maximum manual retries for payment_intent_unexpected_state before
+  # giving up. Tracked via job metadata to survive re-enqueues.
+  PI_STATE_MAX_RETRIES = 10
 
   def perform(payment_reference, order_number = "pending")
     return if payment_reference.blank?
@@ -40,10 +39,6 @@ class ProcessPaymentReversalJob < ApplicationJob
                   end
 
     idempotency_key = "order-finalize-failed-refund:#{payment_reference}"
-    # Omit the `reason` field — Stripe's built-in reasons don't include
-    # "system error reversal." Using "requested_by_customer" is misleading
-    # and can affect dispute/chargeback signals. The metadata block
-    # documents the true cause for auditing.
     Stripe::Refund.create(
       refund_args.merge(
         metadata: {
@@ -58,28 +53,48 @@ class ProcessPaymentReversalJob < ApplicationJob
     Rails.logger.info "PAYMENT_REVERSAL_ATTEMPTED reference=#{payment_reference} order_number=#{order_number}"
   rescue Stripe::InvalidRequestError => e
     if e.code == "charge_already_refunded"
-      # Idempotent success — refund already exists. Log at info and complete.
+      # Idempotent success — refund already exists.
       Rails.logger.info "PAYMENT_REVERSAL_ALREADY_REFUNDED reference=#{payment_reference} order_number=#{order_number}"
     elsif e.code == "payment_intent_unexpected_state"
-      # PI state may change (e.g., after chargeback resolves) — re-raise
-      # so retry_on Stripe::StripeError schedules another attempt.
-      # If retries exhaust, discard_on InvalidRequestError fires with
-      # a PI_STATE_GAVE_UP label instead of misleading UNEXPECTED_ERROR.
-      Rails.logger.warn "PAYMENT_REVERSAL_PI_STATE_TRANSIENT reference=#{payment_reference} code=#{e.code} error=#{e.message}"
-      raise
+      # PI state can change over time (e.g., after chargeback resolves).
+      # Manual retry_job bypasses LIFO handler resolution — discard_on
+      # StandardError would otherwise swallow the re-raise since
+      # InvalidRequestError < StripeError < StandardError.
+      pi_state_attempt = (self.class.pi_state_attempts[job_id] || 0) + 1
+      self.class.pi_state_attempts[job_id] = pi_state_attempt
+
+      if pi_state_attempt <= PI_STATE_MAX_RETRIES
+        wait_time = (2**[pi_state_attempt, 8].min).seconds
+        Rails.logger.warn(
+          "PAYMENT_REVERSAL_PI_STATE_TRANSIENT reference=#{payment_reference} " \
+          "code=#{e.code} attempt=#{pi_state_attempt}/#{PI_STATE_MAX_RETRIES} " \
+          "next_retry_in=#{wait_time}s"
+        )
+        retry_job(wait: wait_time)
+      else
+        self.class.pi_state_attempts.delete(job_id)
+        Rails.logger.error(
+          "PAYMENT_REVERSAL_PI_STATE_GAVE_UP reference=#{payment_reference} " \
+          "code=#{e.code} attempts=#{PI_STATE_MAX_RETRIES} error=#{e.message}"
+        )
+      end
     else
-      # All other InvalidRequestErrors (invalid PI id, etc.) — re-raise
-      # to discard_on InvalidRequestError handler for consistent logging.
+      # Terminal InvalidRequestError (invalid PI id, etc.) — re-raise to
+      # discard_on StandardError for consistent logging + discard.
       raise
     end
   rescue Stripe::StripeError => e
-    # AuthenticationError and PermissionError are permanent config failures;
-    # re-raise without logging so the job-level discard_on handlers log them
-    # at the correct severity. Without this guard, every permanent error
-    # produces two log entries: a misleading PAYMENT_REVERSAL_FAILED
-    # (implying transient) followed by the accurate AUTH/PERMISSION_FAILURE.
+    # Auth/Permission errors are permanent config failures; re-raise
+    # without logging so job-level discard_on handles them at correct severity.
     raise if e.is_a?(Stripe::AuthenticationError) || e.is_a?(Stripe::PermissionError)
     Rails.logger.error "PAYMENT_REVERSAL_FAILED reference=#{payment_reference} error=#{e.class}: #{e.message}"
     raise
+  end
+
+  # Thread-safe in-memory counter for PI state retries.
+  # Acceptable for single-process workers; multi-process deployments
+  # should move to job metadata or a DB counter.
+  def self.pi_state_attempts
+    @pi_state_attempts ||= Concurrent::Map.new
   end
 end

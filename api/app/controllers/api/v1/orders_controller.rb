@@ -203,18 +203,21 @@ module Api
         }, status: :created
       rescue CheckoutValidationError => e
         if order&.payment_intent_id.present? && e.captured && !order_finalized
-          log_payment_reconciliation_required(order, e)
           if e.captured == true
-            # Confirmed captured (succeeded) — safe to auto-reverse.
+            # Confirmed captured (succeeded) — log + auto-reverse.
+            log_payment_reconciliation_required(order, e)
             attempt_payment_reversal(order)
           else
             # captured == :unknown (transient Stripe error) — we don't
-            # know if money was taken. Log for manual review but do NOT
-            # enqueue an automatic reversal — refunding an uncaptured PI
-            # would fail with InvalidRequestError on every retry attempt.
+            # know if money was taken. Single log entry for manual review;
+            # do NOT call log_payment_reconciliation_required (that would
+            # emit two distinct alert keywords for one event, potentially
+            # doubling PagerDuty/Slack alerts).
             Rails.logger.error(
-              "PAYMENT_REVERSAL_MANUAL_REVIEW_NEEDED reference=#{order.payment_intent_id} " \
-              "reason=capture_status_unknown order_number=#{order.order_number || 'pending'}"
+              "PAYMENT_RECONCILIATION_REQUIRED capture_status=unknown " \
+              "payment_intent_id=#{order.payment_intent_id} " \
+              "order_number=#{order.order_number || 'pending'} " \
+              "error_class=#{e.class} action=manual_review_needed"
             )
           end
         end
