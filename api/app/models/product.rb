@@ -239,9 +239,9 @@ class Product < ApplicationRecord
   end
 
   # When a ProductVariant is built on an unsaved Product (e.g., nested
-  # attributes), generate_sku uses SecureRandom.hex(4) as the product_id
-  # discriminator because product.id is nil. The before_validation callback
-  # only fires when sku.blank?, so once set it's never regenerated.
+  # attributes), generate_sku uses "X" + SecureRandom.hex(3) as the
+  # product_id discriminator because product.id is nil. The before_validation
+  # callback only fires when sku.blank?, so once set it's never regenerated.
   # This after_create callback replaces any hex-based SKUs with the real
   # product id so SKUs are deterministic and searchable.
   def regenerate_variant_skus_with_id

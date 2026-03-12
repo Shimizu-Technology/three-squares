@@ -202,13 +202,21 @@ module Api
           message: settings.payment_test_mode ? "Test order created successfully!" : "Order placed successfully!"
         }, status: :created
       rescue CheckoutValidationError => e
-        # Only log reconciliation + attempt reversal when Stripe confirmed
-        # capture (e.captured == true) or capture status is unknown
-        # (e.captured == :unknown, truthy). For non-captured PIs
-        # (e.captured == false), money was never taken — skip both.
         if order&.payment_intent_id.present? && e.captured && !order_finalized
           log_payment_reconciliation_required(order, e)
-          attempt_payment_reversal(order)
+          if e.captured == true
+            # Confirmed captured (succeeded) — safe to auto-reverse.
+            attempt_payment_reversal(order)
+          else
+            # captured == :unknown (transient Stripe error) — we don't
+            # know if money was taken. Log for manual review but do NOT
+            # enqueue an automatic reversal — refunding an uncaptured PI
+            # would fail with InvalidRequestError on every retry attempt.
+            Rails.logger.error(
+              "PAYMENT_REVERSAL_MANUAL_REVIEW_NEEDED reference=#{order.payment_intent_id} " \
+              "reason=capture_status_unknown order_number=#{order.order_number || 'pending'}"
+            )
+          end
         end
         render json: { success: false, error: e.message, message: e.message }, status: :unprocessable_entity
       rescue InventoryCommitError => e
@@ -670,6 +678,13 @@ module Api
         Rails.logger.info "PAYMENT_REVERSAL_ENQUEUED reference=#{payment_reference} order_number=#{order.order_number || 'pending'}"
       rescue StandardError => e
         Rails.logger.error "PAYMENT_REVERSAL_ENQUEUE_FAILED reference=#{payment_reference} error=#{e.class}: #{e.message}"
+        # Secondary audit signal: if the job backend is down, no automatic
+        # reversal will happen. Log at a distinct level so alerting can
+        # catch enqueue failures separately from reconciliation warnings.
+        Rails.logger.error(
+          "PAYMENT_REVERSAL_MANUAL_REVIEW_NEEDED reference=#{payment_reference} " \
+          "reason=enqueue_failed order_number=#{order&.order_number || 'pending'}"
+        )
       end
 
       def clear_cart(cart_items)
