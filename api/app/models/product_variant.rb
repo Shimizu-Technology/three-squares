@@ -203,7 +203,11 @@ class ProductVariant < ApplicationRecord
     # to prevent cross-product collisions. Two products with the same
     # slug/prefix and same variant_key (e.g., both have "red") would
     # otherwise generate identical SKUs.
-    discriminator = product.id.present? ? product.id : SecureRandom.hex(4)
+    # Prefix temporary discriminators with "X" so they are unconditionally
+    # distinguishable from real numeric product IDs. SecureRandom.hex(3)
+    # produces 6 hex chars → "X" + 6 chars = 7-char sentinel that can
+    # never collide with a numeric id.
+    discriminator = product.id.present? ? product.id : "X#{SecureRandom.hex(3)}"
     self.sku = "#{base}-#{discriminator}-#{variant_key}".upcase
   end
 end

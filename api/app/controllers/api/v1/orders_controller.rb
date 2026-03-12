@@ -518,11 +518,12 @@ module Api
           verification = verify_payment_intent(payment_intent_id, order.total_cents)
           unless verification[:success]
             # Only set payment_intent_id when Stripe confirms the PI was
-            # captured (succeeded). For non-captured PIs (requires_action,
-            # requires_payment_method, etc.) money was never taken — setting
-            # the id would trigger spurious PAYMENT_RECONCILIATION_REQUIRED
-            # logs and a reversal job that fails with InvalidRequestError.
-            if verification[:captured]
+            # captured (succeeded) or when capture status is unknown (transient
+            # Stripe error). For non-captured PIs (requires_action, etc.)
+            # money was never taken — setting the id would trigger spurious
+            # reversal jobs. For :unknown, we set the id so the rescue block
+            # can emit a reconciliation log for manual review.
+            if verification[:captured] # true or :unknown — both truthy
               order.payment_intent_id = payment_intent_id
             end
             raise CheckoutValidationError, verification[:error]
@@ -798,11 +799,15 @@ module Api
 
           { success: true, captured: true }
         rescue Stripe::InvalidRequestError => e
+          # Invalid PI id — money was never captured.
           Rails.logger.error "Invalid PaymentIntent ID: #{e.message}"
-          { success: false, error: "Invalid payment reference" }
+          { success: false, captured: false, error: "Invalid payment reference" }
         rescue Stripe::StripeError => e
+          # Transient Stripe error — we don't know if money was captured.
+          # Flag captured: :unknown so the caller can emit a reconciliation
+          # audit log for manual review.
           Rails.logger.error "Stripe verification error: #{e.message}"
-          { success: false, error: "Payment verification failed. Please try again." }
+          { success: false, captured: :unknown, error: "Payment verification failed. Please try again." }
         end
       end
 

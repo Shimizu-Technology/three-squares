@@ -243,11 +243,10 @@ class Product < ApplicationRecord
   # product id so SKUs are deterministic and searchable.
   def regenerate_variant_skus_with_id
     product_variants.reload.each do |variant|
-      # Hex discriminators look like "...-A3F8B2D1-..." (8 hex chars
-      # containing at least one A-F letter). Real product ids are purely
-      # numeric, so requiring [A-F] prevents false-positives on 8-digit
-      # numeric ids (e.g., product id 10000042).
-      next unless variant.sku&.match?(/\A.+-(?=\w*[A-F])[0-9A-F]{8}-.+\z/)
+      # Temporary discriminators use an "X" prefix (e.g., "X1A2B3C")
+      # that can never appear in a real numeric product id. Simple,
+      # zero-false-positive detection.
+      next unless variant.sku&.match?(/\A.+-X[0-9A-F]{6}-.+\z/i)
 
       begin
         # Wrap in a savepoint so a DB-level unique constraint violation
