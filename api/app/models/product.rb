@@ -161,7 +161,8 @@ class Product < ApplicationRecord
 
     Rails.logger.info "🔧 Auto-creating default variant for #{inventory_level} inventory: #{name}"
 
-    default_sku = "#{(sku_prefix.presence || slug).to_s.upcase}-DEFAULT-P#{id}"
+    # Format: BASE-{id}-DEFAULT — matches generate_sku's BASE-{id}-{variant_key}
+    default_sku = "#{(sku_prefix.presence || slug).to_s.upcase}-#{id}-DEFAULT"
     variant = product_variants.new(
       size: "Default",
       sku: default_sku,
@@ -238,9 +239,11 @@ class Product < ApplicationRecord
   # product id so SKUs are deterministic and searchable.
   def regenerate_variant_skus_with_id
     product_variants.reload.each do |variant|
-      # Hex discriminators look like "...-A3F8B2D1-..." (8 hex chars).
-      # Real product ids are numeric. Only fix hex-based ones.
-      next unless variant.sku&.match?(/\A.+-[0-9A-F]{8}-.+\z/)
+      # Hex discriminators look like "...-A3F8B2D1-..." (8 hex chars
+      # containing at least one A-F letter). Real product ids are purely
+      # numeric, so requiring [A-F] prevents false-positives on 8-digit
+      # numeric ids (e.g., product id 10000042).
+      next unless variant.sku&.match?(/\A.+-(?=\w*[A-F])[0-9A-F]{8}-.+\z/)
 
       variant.sku = nil # Clear so before_validation :generate_sku fires
       variant.save!(validate: true) # Regenerates with real product.id

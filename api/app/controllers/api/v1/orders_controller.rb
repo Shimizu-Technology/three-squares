@@ -515,18 +515,20 @@ module Api
         end
 
         if payment_intent_id.present?
-          # Set payment_intent_id BEFORE verification so that if
-          # verify_payment_intent raises CheckoutValidationError (amount
-          # mismatch), the rescue block can find the PI and trigger a
-          # reversal. Without this, the guard was dead code.
-          order.payment_intent_id = payment_intent_id
-
           verification = verify_payment_intent(payment_intent_id, order.total_cents)
           unless verification[:success]
-            # payment_intent_id is already set on order for reversal
+            # Only set payment_intent_id when Stripe confirms the PI was
+            # captured (succeeded). For non-captured PIs (requires_action,
+            # requires_payment_method, etc.) money was never taken — setting
+            # the id would trigger spurious PAYMENT_RECONCILIATION_REQUIRED
+            # logs and a reversal job that fails with InvalidRequestError.
+            if verification[:captured]
+              order.payment_intent_id = payment_intent_id
+            end
             raise CheckoutValidationError, verification[:error]
           end
 
+          order.payment_intent_id = payment_intent_id
           order.payment_status = "paid"
           return verification
         end
@@ -783,16 +785,18 @@ module Api
           intent = Stripe::PaymentIntent.retrieve(payment_intent_id)
 
           unless intent.status == "succeeded"
-            return { success: false, error: "Payment has not been completed (status: #{intent.status})" }
+            # Money was never captured — no reversal needed.
+            return { success: false, captured: false, error: "Payment has not been completed (status: #{intent.status})" }
           end
 
+          # PI succeeded — money IS captured from this point.
           # Verify amount matches (allow small rounding differences)
           if (intent.amount - expected_amount_cents).abs > 1
             Rails.logger.warn "Payment amount mismatch: expected #{expected_amount_cents}, got #{intent.amount}"
-            return { success: false, error: "Payment amount does not match order total" }
+            return { success: false, captured: true, error: "Payment amount does not match order total" }
           end
 
-          { success: true }
+          { success: true, captured: true }
         rescue Stripe::InvalidRequestError => e
           Rails.logger.error "Invalid PaymentIntent ID: #{e.message}"
           { success: false, error: "Invalid payment reference" }
