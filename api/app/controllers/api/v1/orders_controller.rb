@@ -218,7 +218,12 @@ module Api
             )
           end
         end
-        render json: { success: false, error: e.message, message: e.message }, status: :unprocessable_entity
+        # Use 500 when money was confirmed captured — signals a server-side
+        # payment processing failure, not a client validation error. 422
+        # would mislead frontends into showing "fix your input" instead of
+        # "payment error — a refund is being processed."
+        status = e.captured == true ? :internal_server_error : :unprocessable_entity
+        render json: { success: false, error: e.message, message: e.message }, status: status
       rescue InventoryCommitError => e
         unless order_finalized
           log_payment_reconciliation_required(order, e)

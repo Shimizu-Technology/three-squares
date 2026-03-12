@@ -247,10 +247,10 @@ class Product < ApplicationRecord
   def regenerate_variant_skus_with_id
     # Skip the reload + scan when no variants exist yet (the common
     # case for products created without nested attributes).
-    # Use loaded? to check if the association cache is populated —
-    # if so, trust it (any?); otherwise hit the DB (exists?) to
-    # avoid stale cache from pre-build/removed variants.
-    return unless product_variants.loaded? ? product_variants.any? : product_variants.exists?
+    # Always hit the DB — stale association cache from build/clear
+    # or before_create callbacks could suppress regeneration.
+    # One EXISTS query per product create is acceptable (admin-only).
+    return unless product_variants.exists?
 
     product_variants.reload.each do |variant|
       # Temporary discriminators use an "X" prefix (e.g., "X1A2B3C")
