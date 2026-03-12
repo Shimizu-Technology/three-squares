@@ -13,6 +13,7 @@ interface OrderItem {
   unit_price_cents: number;
   total_price_cents: number;
   product_sku: string;
+  special_instructions?: string;
 }
 
 interface Order {
@@ -41,6 +42,8 @@ interface Order {
   tracking_number?: string;
   tracking_url?: string;
   can_track?: boolean;
+  // Notes
+  notes?: string;
   // Common
   order_items: OrderItem[];
   created_at: string;
@@ -254,6 +257,14 @@ export default function OrderConfirmationPage() {
             </div>
           </div>
 
+          {/* Customer Notes */}
+          {order.notes && (
+            <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+              <p className="text-sm font-medium text-amber-800 mb-1">Order Notes</p>
+              <p className="text-sm text-amber-700">{order.notes}</p>
+            </div>
+          )}
+
           {/* Items */}
           <div className="mb-6">
             <h3 className="font-semibold text-gray-900 mb-3">Items Ordered</h3>
@@ -269,6 +280,9 @@ export default function OrderConfirmationPage() {
                       <p className="text-sm text-gray-600">{item.variant_name}</p>
                     )}
                     <p className="text-sm text-gray-500">SKU: {item.product_sku}</p>
+                    {item.special_instructions && (
+                      <p className="text-xs text-amber-600 mt-1 italic">{item.special_instructions}</p>
+                    )}
                   </div>
                   <div className="text-right ml-4">
                     <p className="text-sm text-gray-600">Qty: {item.quantity}</p>

@@ -62,6 +62,26 @@ function CheckoutForm() {
   const [specialInstructions, setSpecialInstructions] = useState<Record<number, string>>({});
   const [expandedInstructions, setExpandedInstructions] = useState<Record<number, boolean>>({});
 
+  // Clean up stale specialInstructions/expandedInstructions when cart items change
+  useEffect(() => {
+    if (!cart?.items) return;
+    const validIds = new Set(cart.items.map((item: { id: number }) => item.id));
+    setSpecialInstructions((prev) => {
+      const next: Record<number, string> = {};
+      for (const [id, val] of Object.entries(prev)) {
+        if (validIds.has(Number(id))) next[Number(id)] = val;
+      }
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
+    setExpandedInstructions((prev) => {
+      const next: Record<number, boolean> = {};
+      for (const [id, val] of Object.entries(prev)) {
+        if (validIds.has(Number(id))) next[Number(id)] = val;
+      }
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
+  }, [cart?.items]);
+
   // Loading/error states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
