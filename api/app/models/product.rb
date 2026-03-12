@@ -241,6 +241,10 @@ class Product < ApplicationRecord
   # This after_create callback replaces any hex-based SKUs with the real
   # product id so SKUs are deterministic and searchable.
   def regenerate_variant_skus_with_id
+    # Skip the reload + scan when no variants exist yet (the common
+    # case for products created without nested attributes).
+    return unless product_variants.any?
+
     product_variants.reload.each do |variant|
       # Temporary discriminators use an "X" prefix (e.g., "X1A2B3C")
       # that can never appear in a real numeric product id. Simple,

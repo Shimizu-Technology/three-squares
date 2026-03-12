@@ -203,13 +203,17 @@ module Api
         end
         render json: { success: false, error: e.message, message: e.message }, status: :unprocessable_entity
       rescue InventoryCommitError => e
-        log_payment_reconciliation_required(order, e)
-        attempt_payment_reversal(order) unless order_finalized
+        unless order_finalized
+          log_payment_reconciliation_required(order, e)
+          attempt_payment_reversal(order)
+        end
         message = "One or more items are no longer available. Your payment will be reconciled automatically."
         render json: { success: false, error: message, message: message, details: e.message }, status: :unprocessable_entity
       rescue ActiveRecord::RecordInvalid => e
-        log_payment_reconciliation_required(order, e)
-        attempt_payment_reversal(order) unless order_finalized
+        unless order_finalized
+          log_payment_reconciliation_required(order, e)
+          attempt_payment_reversal(order)
+        end
         message = "Failed to create order"
         # e.record could be Order, ProductVariant, or Product (from
         # deduct_inventory). Only expose validation errors if it's the
@@ -784,7 +788,7 @@ module Api
 
         if settings.payment_test_mode && payment_intent_id.start_with?("test_pi_")
           # Test mode: accept test payment intents
-          return { success: true }
+          return { success: true, captured: true }
         end
 
         begin
