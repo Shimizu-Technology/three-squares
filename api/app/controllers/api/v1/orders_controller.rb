@@ -526,7 +526,14 @@ module Api
 
         begin
           attempts += 1
-          order.save!
+          # Use a savepoint (requires_new: true) so that a DB-level
+          # RecordNotUnique rolls back only this nested transaction,
+          # not the outer finalize_order! transaction. Without this,
+          # PostgreSQL marks the outer transaction as aborted and all
+          # subsequent SQL fails with PG::InFailedSqlTransaction.
+          ActiveRecord::Base.transaction(requires_new: true) do
+            order.save!
+          end
         rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           raise unless order_number_conflict?(order, e) && attempts < max_attempts
 

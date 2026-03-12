@@ -1,6 +1,11 @@
 class ProcessPaymentReversalJob < ApplicationJob
   queue_as :default
 
+  # Bound retries so the job eventually lands in the dead queue for
+  # manual intervention if Stripe is persistently unavailable.
+  # Idempotency key prevents duplicate refunds across retries.
+  retry_on Stripe::StripeError, wait: :polynomially_longer, attempts: 10
+
   def perform(payment_reference, order_number = "pending")
     return if payment_reference.blank?
     return unless payment_reference.start_with?("pi_", "ch_")
