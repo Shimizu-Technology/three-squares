@@ -979,7 +979,7 @@ function CheckoutForm() {
                         <button
                           type="button"
                           onClick={() => setExpandedInstructions((prev) => ({ ...prev, [item.id]: true }))}
-                          className="text-xs text-tsPrimary hover:text-primary-dark transition"
+                          className="text-xs text-tsPrimary hover:text-tsPrimary/80 transition"
                         >
                           + Special instructions
                         </button>
