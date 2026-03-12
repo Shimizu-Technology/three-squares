@@ -8,6 +8,7 @@ export interface OrderItem {
   quantity: number;
   unit_price_cents: number;
   total_price_cents: number;
+  special_instructions?: string;
 }
 
 export interface Refund {

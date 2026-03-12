@@ -731,8 +731,9 @@ module Api
           location_name: order.location&.name,
           created_at: order.created_at.iso8601,
           item_count: order.order_items.count,
+          notes: order.notes,
           order_items: order.order_items.map do |item|
-            {
+            item_json = {
               id: item.id,
               product_name: item.product_name,
               variant_name: item.variant_name,
@@ -741,6 +742,8 @@ module Api
               unit_price_cents: item.unit_price_cents,
               total_price_cents: item.total_price_cents
             }
+            item_json[:special_instructions] = item.special_instructions if item.special_instructions.present?
+            item_json
           end
         }
 
@@ -778,7 +781,7 @@ module Api
           admin_notes: order.admin_notes,
           notes: order.notes,
           order_items: order.order_items.map do |item|
-            {
+            item_json = {
               id: item.id,
               product_name: item.product_name,
               variant_name: item.variant_name,
@@ -787,6 +790,8 @@ module Api
               unit_price_cents: item.unit_price_cents,
               total_price_cents: item.total_price_cents
             }
+            item_json[:special_instructions] = item.special_instructions if item.special_instructions.present?
+            item_json
           end
         }
 

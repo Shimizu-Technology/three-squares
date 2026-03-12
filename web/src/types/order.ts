@@ -30,10 +30,12 @@ export interface CreateOrderRequest {
   phone: string;
   fulfillment_type: 'pickup' | 'shipping';
   location_id?: number;
+  notes?: string;
   shipping_address: ShippingAddress;
   shipping_method: ShippingMethod;
   payment_method: PaymentMethod;
   payment_intent_id?: string;
+  item_special_instructions?: Record<string, string>;
 }
 
 export interface OrderItem {

@@ -299,6 +299,11 @@ export default function OrderDetailModal({
                     <p className="text-sm text-gray-600 mt-2">
                       {formatCurrency(item.unit_price_cents)} &times; {item.quantity}
                     </p>
+                    {item.special_instructions && (
+                      <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
+                        <span className="font-medium">Note:</span> {item.special_instructions}
+                      </p>
+                    )}
                   </div>
                   <p className="font-semibold text-lg">{formatCurrency(item.total_price_cents)}</p>
                 </div>
