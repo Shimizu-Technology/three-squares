@@ -245,8 +245,14 @@ class Product < ApplicationRecord
       # numeric ids (e.g., product id 10000042).
       next unless variant.sku&.match?(/\A.+-(?=\w*[A-F])[0-9A-F]{8}-.+\z/)
 
-      variant.sku = nil # Clear so before_validation :generate_sku fires
-      variant.save!(validate: true) # Regenerates with real product.id
+      begin
+        variant.sku = nil # Clear so before_validation :generate_sku fires
+        variant.save!(validate: true) # Regenerates with real product.id
+      rescue ActiveRecord::RecordInvalid => e
+        Rails.logger.error "❌ Failed to regenerate SKU for variant #{variant.id}: #{e.message}"
+        # Don't roll back the product — a hex SKU is cosmetic, not fatal.
+        # SKU can be corrected manually or on next admin save.
+      end
     end
   end
 end
