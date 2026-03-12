@@ -245,22 +245,27 @@ module Api
           attempt_payment_reversal(order)
         end
         message = "Failed to create order"
-        # e.record could be Order, ProductVariant, or Product (from
-        # deduct_inventory). Only expose validation errors if it's the
-        # Order — internal model errors are implementation details.
+        # RecordInvalid fires after authorize_payment! — payment is always
+        # captured. Use 500 (not 422) to signal server-side failure.
+        # Only expose Order validation errors; internal model errors
+        # (ProductVariant, Product from deduct_inventory) are logged.
         if e.record.is_a?(Order)
-          render json: { success: false, error: message, message: message, errors: e.record.errors.full_messages }, status: :unprocessable_entity
+          render json: { success: false, error: message, message: message, errors: e.record.errors.full_messages }, status: :internal_server_error
         else
           Rails.logger.error "RecordInvalid on #{e.record.class}: #{e.record.errors.full_messages}"
-          render json: { success: false, error: message, message: message }, status: :unprocessable_entity
+          render json: { success: false, error: message, message: message }, status: :internal_server_error
         end
       rescue ActiveRecord::RecordNotUnique => e
         unless order_finalized
           log_payment_reconciliation_required(order, e)
           attempt_payment_reversal(order)
         end
-        message = "Could not finalize order due to a temporary conflict. Please try again."
-        render json: { success: false, error: message, message: message }, status: :conflict
+        # RecordNotUnique fires after authorize_payment! — payment is always
+        # captured and a reversal is in flight. "Please try again" would cause
+        # a second charge with no corresponding order. Use 500 with a message
+        # that communicates the refund, not a retry prompt.
+        message = "Could not finalize order. Your payment will be refunded automatically."
+        render json: { success: false, error: message, message: message }, status: :internal_server_error
       rescue StandardError => e
         unless order_finalized
           log_payment_reconciliation_required(order, e)
