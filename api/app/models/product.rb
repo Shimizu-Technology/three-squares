@@ -248,7 +248,7 @@ class Product < ApplicationRecord
       begin
         variant.sku = nil # Clear so before_validation :generate_sku fires
         variant.save!(validate: true) # Regenerates with real product.id
-      rescue ActiveRecord::RecordInvalid => e
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
         Rails.logger.error "❌ Failed to regenerate SKU for variant #{variant.id}: #{e.message}"
         # Don't roll back the product — a hex SKU is cosmetic, not fatal.
         # SKU can be corrected manually or on next admin save.
