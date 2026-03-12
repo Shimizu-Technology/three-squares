@@ -211,7 +211,15 @@ module Api
         log_payment_reconciliation_required(order, e)
         attempt_payment_reversal(order) unless order_finalized
         message = "Failed to create order"
-        render json: { success: false, error: message, message: message, errors: e.record.errors.full_messages }, status: :unprocessable_entity
+        # e.record could be Order, ProductVariant, or Product (from
+        # deduct_inventory). Only expose validation errors if it's the
+        # Order — internal model errors are implementation details.
+        if e.record.is_a?(Order)
+          render json: { success: false, error: message, message: message, errors: e.record.errors.full_messages }, status: :unprocessable_entity
+        else
+          Rails.logger.error "RecordInvalid on #{e.record.class}: #{e.record.errors.full_messages}"
+          render json: { success: false, error: message, message: message }, status: :unprocessable_entity
+        end
       rescue ActiveRecord::RecordNotUnique => e
         log_payment_reconciliation_required(order, e)
         attempt_payment_reversal(order) unless order_finalized
@@ -502,11 +510,19 @@ module Api
         end
 
         if payment_intent_id.present?
+          # Set payment_intent_id BEFORE verification so that if
+          # verify_payment_intent raises CheckoutValidationError (amount
+          # mismatch), the rescue block can find the PI and trigger a
+          # reversal. Without this, the guard was dead code.
+          order.payment_intent_id = payment_intent_id
+
           verification = verify_payment_intent(payment_intent_id, order.total_cents)
-          raise CheckoutValidationError, verification[:error] unless verification[:success]
+          unless verification[:success]
+            # payment_intent_id is already set on order for reversal
+            raise CheckoutValidationError, verification[:error]
+          end
 
           order.payment_status = "paid"
-          order.payment_intent_id = payment_intent_id
           return verification
         end
 
