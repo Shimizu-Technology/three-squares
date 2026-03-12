@@ -206,9 +206,9 @@ module Api
         # capture (e.captured == true) or capture status is unknown
         # (e.captured == :unknown, truthy). For non-captured PIs
         # (e.captured == false), money was never taken — skip both.
-        if order&.payment_intent_id.present? && e.captured
+        if order&.payment_intent_id.present? && e.captured && !order_finalized
           log_payment_reconciliation_required(order, e)
-          attempt_payment_reversal(order) unless order_finalized
+          attempt_payment_reversal(order)
         end
         render json: { success: false, error: e.message, message: e.message }, status: :unprocessable_entity
       rescue InventoryCommitError => e
@@ -250,9 +250,22 @@ module Api
         # Defensive guard: if Rails has already written a response body
         # (unexpected framework-level error), avoid raising DoubleRenderError.
         return if performed?
-        message = order_finalized ? "Order placed but notification failed." : "Failed to create order. Please try again."
-        status = order_finalized ? :created : :internal_server_error
-        render json: { success: order_finalized, error: message, message: message }, status: status
+        if order_finalized
+          # Order is committed + paid. order_json(order) likely caused the
+          # exception, so calling it again is unsafe. Return minimal
+          # identifiers so the frontend can still show a confirmation.
+          render json: {
+            success: true,
+            message: "Order placed but notification failed.",
+            order: { id: order.id, order_number: order.order_number }
+          }, status: :created
+        else
+          render json: {
+            success: false,
+            error: "Failed to create order. Please try again.",
+            message: "Failed to create order. Please try again."
+          }, status: :internal_server_error
+        end
       end
 
       # GET /api/v1/orders/:id
