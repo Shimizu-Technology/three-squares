@@ -199,15 +199,11 @@ class ProductVariant < ApplicationRecord
   # (e.g., two products both generating "TSQ-TSHIRT-DEFAULT")
   def generate_sku
     base = product.sku_prefix || product.slug
-    if variant_key == "default"
-      # Always include a unique discriminator for default variants to
-      # prevent cross-product SKU collisions. Use product.id when
-      # available; fall back to a random hex for nested-attributes
-      # flows where the parent product hasn't been persisted yet.
-      discriminator = product.id.present? ? product.id : SecureRandom.hex(4)
-      self.sku = "#{base}-#{discriminator}-#{variant_key}".upcase
-    else
-      self.sku = "#{base}-#{variant_key}".upcase
-    end
+    # Always include product_id (or random fallback) in ALL variant SKUs
+    # to prevent cross-product collisions. Two products with the same
+    # slug/prefix and same variant_key (e.g., both have "red") would
+    # otherwise generate identical SKUs.
+    discriminator = product.id.present? ? product.id : SecureRandom.hex(4)
+    self.sku = "#{base}-#{discriminator}-#{variant_key}".upcase
   end
 end

@@ -17,12 +17,16 @@ class ProcessPaymentReversalJob < ApplicationJob
                   end
 
     idempotency_key = "order-finalize-failed-refund:#{payment_reference}"
+    # Omit the `reason` field — Stripe's built-in reasons don't include
+    # "system error reversal." Using "requested_by_customer" is misleading
+    # and can affect dispute/chargeback signals. The metadata block
+    # documents the true cause for auditing.
     Stripe::Refund.create(
       refund_args.merge(
-        reason: "requested_by_customer",
         metadata: {
           reconciliation_reason: "order_finalize_failed",
-          order_number: order_number
+          order_number: order_number,
+          initiated_by: "system_auto_reversal"
         }
       ),
       { idempotency_key: idempotency_key }

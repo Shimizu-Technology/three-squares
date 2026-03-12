@@ -159,24 +159,34 @@ module Api
 
         authorize_payment!(order, settings)
 
+        order_finalized = false
         finalize_order!(order, cart_items)
+        order_finalized = true
 
-        # Send customer notifications — respects per-channel toggles
+        # Send customer notifications — respects per-channel toggles.
+        # These run AFTER finalize, so failures here should NOT trigger
+        # payment reversal (the order is legitimately committed).
         has_email = order.customer_email.present?
         has_phone = order.customer_phone.present?
 
-        if settings.enable_order_emails && has_email
-          SendOrderConfirmationEmailJob.perform_later(order.id)
-        end
+        begin
+          if settings.enable_order_emails && has_email
+            SendOrderConfirmationEmailJob.perform_later(order.id)
+          end
 
-        if settings.enable_order_sms && has_phone
-          SendOrderConfirmationSmsJob.perform_later(order.id)
-        end
+          if settings.enable_order_sms && has_phone
+            SendOrderConfirmationSmsJob.perform_later(order.id)
+          end
 
-        # Admin notifications — not gated by customer toggles
-        SendAdminNotificationEmailJob.perform_later(order.id)
-        if settings.enable_order_sms
-          SendAdminOrderSmsJob.perform_later(order.id)
+          # Admin notifications — not gated by customer toggles
+          SendAdminNotificationEmailJob.perform_later(order.id)
+          if settings.enable_order_sms
+            SendAdminOrderSmsJob.perform_later(order.id)
+          end
+        rescue StandardError => notify_error
+          # Notification enqueue failed (Redis down, etc.) — log but don't
+          # fail the checkout. The order is committed and payment is valid.
+          Rails.logger.error "Post-checkout notification error: #{notify_error.class} - #{notify_error.message}"
         end
 
         render json: {
@@ -188,26 +198,29 @@ module Api
         render json: { success: false, error: e.message, message: e.message }, status: :unprocessable_entity
       rescue InventoryCommitError => e
         log_payment_reconciliation_required(order, e)
-        attempt_payment_reversal(order)
+        attempt_payment_reversal(order) unless order_finalized
         message = "One or more items are no longer available. Your payment will be reconciled automatically."
         render json: { success: false, error: message, message: message, details: e.message }, status: :unprocessable_entity
       rescue ActiveRecord::RecordInvalid => e
         log_payment_reconciliation_required(order, e)
-        attempt_payment_reversal(order)
+        attempt_payment_reversal(order) unless order_finalized
         message = "Failed to create order"
         render json: { success: false, error: message, message: message, errors: e.record.errors.full_messages }, status: :unprocessable_entity
       rescue ActiveRecord::RecordNotUnique => e
         log_payment_reconciliation_required(order, e)
-        attempt_payment_reversal(order)
+        attempt_payment_reversal(order) unless order_finalized
         message = "Could not finalize order due to a temporary conflict. Please try again."
         render json: { success: false, error: message, message: message }, status: :conflict
       rescue StandardError => e
-        log_payment_reconciliation_required(order, e)
-        attempt_payment_reversal(order)
+        unless order_finalized
+          log_payment_reconciliation_required(order, e)
+          attempt_payment_reversal(order)
+        end
         Rails.logger.error "Order creation error: #{e.class} - #{e.message}"
         Rails.logger.error e.backtrace.first(5).join("\n")
-        message = "Failed to create order. Please try again."
-        render json: { success: false, error: message, message: message }, status: :internal_server_error
+        message = order_finalized ? "Order placed but notification failed." : "Failed to create order. Please try again."
+        status = order_finalized ? :created : :internal_server_error
+        render json: { success: !order_finalized ? false : true, error: message, message: message }, status: status
       end
 
       # GET /api/v1/orders/:id
