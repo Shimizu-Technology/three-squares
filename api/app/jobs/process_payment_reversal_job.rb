@@ -4,21 +4,21 @@ class ProcessPaymentReversalJob < ApplicationJob
   # Bound retries so the job eventually lands in the dead queue for
   # manual intervention if Stripe is persistently unavailable.
   # Idempotency key prevents duplicate refunds across retries.
-  # Permanent Stripe config errors — will never self-heal through retries.
-  # Discard immediately so the job lands in the dead queue for manual
-  # intervention instead of burning ~10-15 minutes of polynomial backoff
-  # while a customer sits charged with no refund in flight.
+  # IMPORTANT: Active Job evaluates handlers in LIFO (reverse declaration)
+  # order. Declare least-specific FIRST so most-specific handlers win.
+  #
+  # 1. StandardError (least specific — checked last at runtime)
+  discard_on StandardError do |job, error|
+    Rails.logger.error "PAYMENT_REVERSAL_UNEXPECTED_ERROR reference=#{job.arguments.first} error=#{error.class}: #{error.message}"
+  end
+  # 2. Stripe::StripeError — transient errors, retry with backoff
+  retry_on Stripe::StripeError, wait: :polynomially_longer, attempts: 10
+  # 3. Permanent Stripe config errors — most specific, checked first
   discard_on Stripe::AuthenticationError do |job, error|
     Rails.logger.error "PAYMENT_REVERSAL_AUTH_FAILURE reference=#{job.arguments.first} error=#{error.class}: #{error.message}"
   end
   discard_on Stripe::PermissionError do |job, error|
     Rails.logger.error "PAYMENT_REVERSAL_PERMISSION_FAILURE reference=#{job.arguments.first} error=#{error.class}: #{error.message}"
-  end
-  # Transient Stripe errors (network, rate limit, API errors) — retry with backoff.
-  retry_on Stripe::StripeError, wait: :polynomially_longer, attempts: 10
-  # Non-Stripe exceptions (OpenSSL, SocketError, etc.) — not retriable.
-  discard_on StandardError do |job, error|
-    Rails.logger.error "PAYMENT_REVERSAL_UNEXPECTED_ERROR reference=#{job.arguments.first} error=#{error.class}: #{error.message}"
   end
 
   def perform(payment_reference, order_number = "pending")
