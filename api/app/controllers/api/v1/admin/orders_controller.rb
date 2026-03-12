@@ -122,15 +122,24 @@ module Api
           sms_sent = false
           settings = SiteSetting.instance
 
-          if settings.enable_order_emails && @order.customer_email.present?
-            @order.update_column(:confirmation_email_sent, false)
-            SendOrderConfirmationEmailJob.perform_later(@order.id)
-            email_sent = true
-          end
-          if settings.enable_order_sms && @order.customer_phone.present?
-            @order.update_column(:confirmation_sms_sent, false)
-            SendOrderConfirmationSmsJob.perform_later(@order.id)
-            sms_sent = true
+          begin
+            if settings.enable_order_emails && @order.customer_email.present?
+              @order.update_column(:confirmation_email_sent, false)
+              SendOrderConfirmationEmailJob.perform_later(@order.id)
+              email_sent = true
+            end
+            if settings.enable_order_sms && @order.customer_phone.present?
+              @order.update_column(:confirmation_sms_sent, false)
+              SendOrderConfirmationSmsJob.perform_later(@order.id)
+              sms_sent = true
+            end
+          rescue StandardError => e
+            # Redis/job queue down — reset flags so the admin can retry.
+            # Return 503 instead of a raw 500 so the frontend can show
+            # "service temporarily unavailable" instead of a generic error.
+            Rails.logger.error "❌ Notify resend failed for Order ##{@order.id}: #{e.message}"
+            render json: { error: "Notification service temporarily unavailable — please try again" }, status: :service_unavailable
+            return
           end
 
           if email_sent || sms_sent
@@ -276,13 +285,15 @@ module Api
 
         warnings = []
         event = order.status
-        seq = order.notification_seq
 
-        # Statuses that don't have notification templates
+        # Validate status has a notification template BEFORE calling
+        # notification_seq — avoids ArgumentError for unknown statuses.
         unless Order::STATUS_SEQUENCE.key?(event) && event != "pending"
           warnings << "No notification template for status '#{event}'"
           return { any: false, email: false, sms: false, warnings: warnings }
         end
+
+        seq = order.notification_seq
 
         # Shipped requires tracking number
         if event == "shipped" && order.tracking_number.blank?

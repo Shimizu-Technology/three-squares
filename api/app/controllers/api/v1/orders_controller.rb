@@ -603,9 +603,10 @@ module Api
 
       def order_update_params
         # Non-admin endpoint: customers can only update their own notes.
+        # admin_notes is admin-only — permit :notes (customer field) only.
         # Status changes MUST go through admin/orders_controller#update
         # to ensure notifications are dispatched.
-        params.require(:order).permit(:admin_notes)
+        params.require(:order).permit(:notes)
       end
 
       # Generate tracking URL based on carrier
