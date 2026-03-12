@@ -5,6 +5,9 @@ class ProcessPaymentReversalJob < ApplicationJob
   # manual intervention if Stripe is persistently unavailable.
   # Idempotency key prevents duplicate refunds across retries.
   retry_on Stripe::StripeError, wait: :polynomially_longer, attempts: 10
+  discard_on StandardError do |job, error|
+    Rails.logger.error "PAYMENT_REVERSAL_UNEXPECTED_ERROR reference=#{job.arguments.first} error=#{error.class}: #{error.message}"
+  end
 
   def perform(payment_reference, order_number = "pending")
     return if payment_reference.blank?

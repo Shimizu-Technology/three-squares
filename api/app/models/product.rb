@@ -40,6 +40,10 @@ class Product < ApplicationRecord
   before_validation :generate_slug, if: -> { slug.blank? }
   before_validation :generate_sku_prefix, if: -> { sku_prefix.blank? }
   after_save :ensure_default_variant, if: -> { saved_change_to_inventory_level? || ([ "product", "none" ].include?(inventory_level) && product_variants.none?) }
+  # Fires on every product creation but short-circuits immediately when
+  # no variants exist (the common case). Costs one EXISTS query for
+  # products created without nested attributes; acceptable given how
+  # rarely products are created (admin-only operation).
   after_create :regenerate_variant_skus_with_id
   after_update :handle_inventory_level_change, if: -> { saved_change_to_inventory_level? }
 
