@@ -3,7 +3,14 @@
 module Api
   module V1
     class OrdersController < ApplicationController
-      class CheckoutValidationError < StandardError; end
+      class CheckoutValidationError < StandardError
+        attr_reader :captured
+
+        def initialize(msg, captured: false)
+          super(msg)
+          @captured = captured
+        end
+      end
       class InventoryCommitError < StandardError; end
 
       COOKIE_COLLECTION_SLUGS = %w[cookies cookie-boxes mini-cookies].freeze
@@ -195,9 +202,11 @@ module Api
           message: settings.payment_test_mode ? "Test order created successfully!" : "Order placed successfully!"
         }, status: :created
       rescue CheckoutValidationError => e
-        # Amount-mismatch in verify_payment_intent raises this AFTER Stripe
-        # has already captured money. Must attempt reversal if payment exists.
-        if order&.payment_intent_id.present?
+        # Only log reconciliation + attempt reversal when Stripe confirmed
+        # capture (e.captured == true) or capture status is unknown
+        # (e.captured == :unknown, truthy). For non-captured PIs
+        # (e.captured == false), money was never taken — skip both.
+        if order&.payment_intent_id.present? && e.captured
           log_payment_reconciliation_required(order, e)
           attempt_payment_reversal(order) unless order_finalized
         end
@@ -530,7 +539,7 @@ module Api
             if verification[:captured] # true or :unknown — both truthy
               order.payment_intent_id = payment_intent_id
             end
-            raise CheckoutValidationError, verification[:error]
+            raise CheckoutValidationError.new(verification[:error], captured: verification[:captured])
           end
 
           order.payment_intent_id = payment_intent_id
@@ -556,6 +565,11 @@ module Api
         Rails.logger.info "💾 Finalizing order inside transaction..."
         Rails.logger.info "   Order attributes: #{order.attributes.slice('order_type', 'status', 'email', 'phone', 'customer_name', 'shipping_city', 'shipping_state', 'payment_status').inspect}"
 
+        # IMPORTANT: Do not call perform_later inside this transaction.
+        # With DB-backed job backends (Solid Queue, GoodJob, etc.), job
+        # records are written to the same DB and would be silently rolled
+        # back along with the order on failure. All job enqueues must
+        # happen AFTER this transaction commits.
         ActiveRecord::Base.transaction do
           save_order_with_retry!(order)
           Rails.logger.info "✅ Order saved successfully! Order ##{order.order_number}"
