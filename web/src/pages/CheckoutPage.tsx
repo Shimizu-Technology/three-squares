@@ -929,15 +929,32 @@ function CheckoutForm() {
                     </div>
                     <div className="ml-20 mt-1">
                       {expandedInstructions[item.id] ? (
-                        <input
-                          type="text"
-                          value={specialInstructions[item.id] || ''}
-                          onChange={(e) => setSpecialInstructions((prev) => ({ ...prev, [item.id]: e.target.value }))}
-                          placeholder="e.g., no onions, extra sauce"
-                          maxLength={200}
-                          className="w-full px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded focus:ring-1 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
-                          autoFocus
-                        />
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={specialInstructions[item.id] || ''}
+                            onChange={(e) => setSpecialInstructions((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                            placeholder="e.g., no onions, extra sauce"
+                            maxLength={200}
+                            className="w-full px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded focus:ring-1 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExpandedInstructions((prev) => ({ ...prev, [item.id]: false }));
+                              setSpecialInstructions((prev) => {
+                                const next = { ...prev };
+                                delete next[item.id];
+                                return next;
+                              });
+                            }}
+                            className="text-xs text-gray-400 hover:text-gray-600 transition p-1"
+                            aria-label="Remove special instructions"
+                          >
+                            &times;
+                          </button>
+                        </div>
                       ) : (
                         <button
                           type="button"
