@@ -54,6 +54,7 @@ class Order < ApplicationRecord
   # Guest orders (no user_id) must have contact email — unless staff-created (POS walk-ins)
   validates :customer_email, presence: { message: "is required for guest checkout" }, if: -> { user_id.nil? && !staff_created? }
   validates :customer_email, format: { with: URI::MailTo::EMAIL_REGEXP, message: "is not a valid email address" }, allow_blank: true
+  validates :notes, length: { maximum: 500 }, allow_blank: true
 
   # Scopes
   scope :retail, -> { where(order_type: "retail") }

@@ -448,6 +448,7 @@ module Api
           fulfillment_type: fulfillment_type,
           location_id: (fulfillment_type == "pickup" ? location_id : nil),
           status: "pending",
+          notes: order_params[:notes],
           email: order_params[:customer_email] || order_params[:email],  # HAF-13: prefer canonical name
           phone: order_params[:customer_phone] || order_params[:phone],  # HAF-13: prefer canonical name
           name: order_params[:customer_name] || shipping_address[:name],  # HAF-13: prefer canonical name
@@ -467,6 +468,7 @@ module Api
 
         # Calculate totals
         subtotal_cents = 0
+        special_instructions_map = order_params[:item_special_instructions] || {}
 
         cart_items.each do |cart_item|
           item_price = cart_item.product_variant.price_cents
@@ -480,7 +482,8 @@ module Api
             total_price_cents: item_total,
             product_name: cart_item.product.name,
             product_sku: cart_item.product_variant.sku,
-            variant_name: cart_item.product_variant.display_name
+            variant_name: cart_item.product_variant.display_name,
+            special_instructions: special_instructions_map[cart_item.id.to_s].presence
           )
 
           subtotal_cents += item_total
@@ -729,8 +732,9 @@ module Api
           shipping_method: order.shipping_method,
           created_at: order.created_at.iso8601,
           item_count: order.order_items.count,
+          notes: order.notes,
           order_items: order.order_items.map do |item|
-            {
+            item_json = {
               id: item.id,
               product_name: item.product_name,
               variant_name: item.variant_name,
@@ -739,6 +743,8 @@ module Api
               unit_price_cents: item.unit_price_cents,
               total_price_cents: item.total_price_cents
             }
+            item_json[:special_instructions] = item.special_instructions if item.special_instructions.present?
+            item_json
           end
         }
 
@@ -778,8 +784,9 @@ module Api
           total_formatted: "$#{'%.2f' % ((order.total_cents || 0) / 100.0)}",
           created_at: order.created_at.iso8601,
           shipping_method: order.shipping_method,
+          notes: order.notes,
           order_items: order.order_items.map do |item|
-            {
+            item_json = {
               id: item.id,
               product_name: item.product_name,
               variant_name: item.variant_name,
@@ -788,6 +795,8 @@ module Api
               unit_price_cents: item.unit_price_cents,
               total_price_cents: item.total_price_cents
             }
+            item_json[:special_instructions] = item.special_instructions if item.special_instructions.present?
+            item_json
           end
         }
 
@@ -813,12 +822,13 @@ module Api
         params.require(:order).permit(
           :email, :phone, :payment_intent_id,
           :customer_name, :customer_email, :customer_phone,
-          :fulfillment_type, :location_id,
+          :fulfillment_type, :location_id, :notes,
           :shipping_address_line1, :shipping_address_line2,
           :shipping_city, :shipping_state, :shipping_zip, :shipping_country,
           shipping_address: [ :name, :street1, :street2, :city, :state, :zip, :country ],
           shipping_method: [ :carrier, :service, :rate_cents, :rate_id ],
-          payment_method: [ :token, :type ]
+          payment_method: [ :token, :type ],
+          item_special_instructions: {}
         )
       end
 

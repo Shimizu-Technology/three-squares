@@ -8,6 +8,7 @@ class OrderItem < ApplicationRecord
   validates :unit_price_cents, numericality: { greater_than_or_equal_to: 0 }
   validates :total_price_cents, numericality: { greater_than_or_equal_to: 0 }
   validates :product_name, presence: true  # Required since product is optional
+  validates :special_instructions, length: { maximum: 200 }, allow_blank: true
 
   # Callbacks
   before_validation :set_defaults, if: :new_record?

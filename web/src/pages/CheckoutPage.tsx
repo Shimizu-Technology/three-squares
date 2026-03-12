@@ -57,6 +57,31 @@ function CheckoutForm() {
   // Payment state
   const [paymentReady, setPaymentReady] = useState(false);
 
+  // Notes / special instructions
+  const [orderNotes, setOrderNotes] = useState('');
+  const [specialInstructions, setSpecialInstructions] = useState<Record<number, string>>({});
+  const [expandedInstructions, setExpandedInstructions] = useState<Record<number, boolean>>({});
+
+  // Clean up stale specialInstructions/expandedInstructions when cart items change
+  useEffect(() => {
+    if (!cart?.items) return;
+    const validIds = new Set(cart.items.map((item: { id: number }) => item.id));
+    setSpecialInstructions((prev) => {
+      const next: Record<number, string> = {};
+      for (const [id, val] of Object.entries(prev)) {
+        if (validIds.has(Number(id))) next[Number(id)] = val;
+      }
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
+    setExpandedInstructions((prev) => {
+      const next: Record<number, boolean> = {};
+      for (const [id, val] of Object.entries(prev)) {
+        if (validIds.has(Number(id))) next[Number(id)] = val;
+      }
+      return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
+  }, [cart?.items]);
+
   // Loading/error states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -296,6 +321,14 @@ function CheckoutForm() {
         };
       }
 
+      // Build item special instructions (only non-empty)
+      const itemInstructions: Record<string, string> = {};
+      for (const [cartItemId, text] of Object.entries(specialInstructions)) {
+        if (text.trim()) {
+          itemInstructions[cartItemId] = text.trim();
+        }
+      }
+
       if (isTestMode) {
         // Test mode: skip Stripe, create order directly
         const orderData = {
@@ -306,6 +339,8 @@ function CheckoutForm() {
           shipping_address: orderShippingAddress,
           shipping_method: orderShippingMethod,
           payment_method: { type: 'test' },
+          notes: orderNotes.trim() || undefined,
+          item_special_instructions: Object.keys(itemInstructions).length > 0 ? itemInstructions : undefined,
         };
         const response = await ordersApi.createOrder(orderData, token, sessionId);
         if (response.success) {
@@ -363,6 +398,8 @@ function CheckoutForm() {
           shipping_method: orderShippingMethod,
           payment_method: { type: 'stripe' },
           payment_intent_id: paymentIntent.id,
+          notes: orderNotes.trim() || undefined,
+          item_special_instructions: Object.keys(itemInstructions).length > 0 ? itemInstructions : undefined,
         };
         const response = await ordersApi.createOrder(orderData, token, sessionId);
         if (response.success) {
@@ -782,6 +819,32 @@ function CheckoutForm() {
                 onPaymentReady={handlePaymentReady}
               />
 
+              {/* Order Notes */}
+              <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-10 h-10 bg-tsSurface rounded-full flex items-center justify-center">
+                    <svg className="w-5 h-5 text-tsPrimary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Order Notes</h2>
+                    <p className="text-sm text-gray-500">Optional - delivery instructions, allergies, etc.</p>
+                  </div>
+                </div>
+                <textarea
+                  value={orderNotes}
+                  onChange={(e) => setOrderNotes(e.target.value)}
+                  placeholder="e.g., Please deliver to the side door, food allergies, etc."
+                  rows={3}
+                  maxLength={500}
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition resize-none text-sm"
+                />
+                {orderNotes.length > 0 && (
+                  <p className="text-xs text-gray-400 mt-1 text-right">{orderNotes.length}/500</p>
+                )}
+              </div>
+
               {/* HAF-118: Validation Issues - Show cart sync problems before checkout */}
               {validationIssues && validationIssues.length > 0 && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
@@ -863,25 +926,65 @@ function CheckoutForm() {
               {/* Items */}
               <div className="space-y-4 mb-4 max-h-64 overflow-y-auto">
                 {items.map((item) => (
-                  <div key={item.id} className="flex items-center">
-                    <div className="shrink-0 w-16 h-16 rounded-md overflow-hidden border border-gray-200">
-                      {item.product.primary_image_url ? (
-                        <OptimizedImage
-                          src={item.product.primary_image_url}
-                          alt={item.product.name}
-                          context="cart"
-                          className="w-full h-full object-cover"
-                        />
+                  <div key={item.id}>
+                    <div className="flex items-center">
+                      <div className="shrink-0 w-16 h-16 rounded-md overflow-hidden border border-gray-200">
+                        {item.product.primary_image_url ? (
+                          <OptimizedImage
+                            src={item.product.primary_image_url}
+                            alt={item.product.name}
+                            context="cart"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <PlaceholderImage variant="thumbnail" className="bg-gray-100" />
+                        )}
+                      </div>
+                      <div className="ml-4 grow">
+                        <p className="text-sm font-medium text-gray-900">{item.product.name}</p>
+                        <p className="text-xs text-gray-500">{item.product_variant.display_name}</p>
+                        <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
+                      </div>
+                      <p className="text-sm font-medium text-gray-900">{formatPrice(item.subtotal_cents)}</p>
+                    </div>
+                    <div className="ml-20 mt-1">
+                      {expandedInstructions[item.id] ? (
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            value={specialInstructions[item.id] || ''}
+                            onChange={(e) => setSpecialInstructions((prev) => ({ ...prev, [item.id]: e.target.value }))}
+                            placeholder="e.g., no onions, extra sauce"
+                            maxLength={200}
+                            className="w-full px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded focus:ring-1 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
+                            autoFocus
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setExpandedInstructions((prev) => ({ ...prev, [item.id]: false }));
+                              setSpecialInstructions((prev) => {
+                                const next = { ...prev };
+                                delete next[item.id];
+                                return next;
+                              });
+                            }}
+                            className="text-xs text-gray-400 hover:text-gray-600 transition p-1"
+                            aria-label="Remove special instructions"
+                          >
+                            &times;
+                          </button>
+                        </div>
                       ) : (
-                        <PlaceholderImage variant="thumbnail" className="bg-gray-100" />
+                        <button
+                          type="button"
+                          onClick={() => setExpandedInstructions((prev) => ({ ...prev, [item.id]: true }))}
+                          className="text-xs text-tsPrimary hover:text-tsPrimary/80 transition"
+                        >
+                          + Special instructions
+                        </button>
                       )}
                     </div>
-                    <div className="ml-4 grow">
-                      <p className="text-sm font-medium text-gray-900">{item.product.name}</p>
-                      <p className="text-xs text-gray-500">{item.product_variant.display_name}</p>
-                      <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
-                    </div>
-                    <p className="text-sm font-medium text-gray-900">{formatPrice(item.subtotal_cents)}</p>
                   </div>
                 ))}
               </div>
