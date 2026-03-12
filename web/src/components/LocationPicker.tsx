@@ -42,6 +42,14 @@ export default function LocationPicker() {
     fetchLocations();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Escape key dismisses modal (only when a location is already selected)
+  useEffect(() => {
+    if (!showPicker || !selectedLocation) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowPicker(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showPicker, selectedLocation, setShowPicker]);
+
   if (locations.length <= 1) return null;
 
   const cartHasItems = (cart?.items?.length ?? 0) > 0;
@@ -83,7 +91,10 @@ export default function LocationPicker() {
     <>
       {/* Location selection modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/40 backdrop-blur-sm p-0 sm:p-4"
+          onClick={(e) => { if (selectedLocation && e.target === e.currentTarget) setShowPicker(false); }}
+        >
           <div
             role="dialog"
             aria-modal="true"

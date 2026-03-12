@@ -97,7 +97,7 @@ export default function HomePage() {
   const config = useAppConfig();
 
   const storefrontCards = useMemo(() => {
-    if (!config) return allStorefrontCards;
+    if (!config) return [];
     const enableMap: Record<string, boolean | undefined> = {
       three_squares: config.enable_storefront_three_squares,
       latte_stone: config.enable_storefront_latte_stone,

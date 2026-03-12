@@ -17,9 +17,9 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
   const cart = useCartStore((state) => state.cart);
   const config = useAppConfig();
 
-  const showThreeSquares = config?.enable_storefront_three_squares !== false;
-  const showLatteStone = config?.enable_storefront_latte_stone !== false;
-  const showCatering = config?.enable_storefront_catering !== false;
+  const showThreeSquares = config ? config.enable_storefront_three_squares !== false : false;
+  const showLatteStone = config ? config.enable_storefront_latte_stone !== false : false;
+  const showCatering = config ? config.enable_storefront_catering !== false : false;
   const storefrontCount = [showThreeSquares, showLatteStone, showCatering].filter(Boolean).length;
 
   // Fetch collections on mount
