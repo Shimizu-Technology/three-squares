@@ -593,7 +593,12 @@ module Api
       end
 
       def log_payment_reconciliation_required(order, error)
-        return if order.blank? || order.payment_status != "paid" || order.payment_intent_id.blank?
+        return if order.blank? || order.payment_intent_id.blank?
+        # Allow "pending" in addition to "paid" — the amount-mismatch path
+        # in verify_payment_intent raises before setting status to "paid",
+        # but Stripe has already captured money. Without this, the audit
+        # log is silently skipped while the reversal still fires.
+        return unless %w[paid pending].include?(order.payment_status)
 
         Rails.logger.error(
           "PAYMENT_RECONCILIATION_REQUIRED order_finalize_failed payment_intent_id=#{order.payment_intent_id} " \

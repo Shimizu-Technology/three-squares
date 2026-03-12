@@ -40,6 +40,7 @@ class Product < ApplicationRecord
   before_validation :generate_slug, if: -> { slug.blank? }
   before_validation :generate_sku_prefix, if: -> { sku_prefix.blank? }
   after_save :ensure_default_variant, if: -> { saved_change_to_inventory_level? || ([ "product", "none" ].include?(inventory_level) && product_variants.none?) }
+  after_create :regenerate_variant_skus_with_id
   after_update :handle_inventory_level_change, if: -> { saved_change_to_inventory_level? }
 
   # Money handling
@@ -227,5 +228,22 @@ class Product < ApplicationRecord
     return if allow_pickup? || allow_shipping?
 
     errors.add(:base, "Product must allow pickup, shipping, or both")
+  end
+
+  # When a ProductVariant is built on an unsaved Product (e.g., nested
+  # attributes), generate_sku uses SecureRandom.hex(4) as the product_id
+  # discriminator because product.id is nil. The before_validation callback
+  # only fires when sku.blank?, so once set it's never regenerated.
+  # This after_create callback replaces any hex-based SKUs with the real
+  # product id so SKUs are deterministic and searchable.
+  def regenerate_variant_skus_with_id
+    product_variants.reload.each do |variant|
+      # Hex discriminators look like "...-A3F8B2D1-..." (8 hex chars).
+      # Real product ids are numeric. Only fix hex-based ones.
+      next unless variant.sku&.match?(/\A.+-[0-9A-F]{8}-.+\z/)
+
+      variant.sku = nil # Clear so before_validation :generate_sku fires
+      variant.save!(validate: true) # Regenerates with real product.id
+    end
   end
 end
