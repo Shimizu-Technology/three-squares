@@ -9,6 +9,7 @@ module Api
         settings = SiteSetting.instance
 
         render json: {
+          app_mode: settings.payment_test_mode ? "test" : "production",
           payment_test_mode: settings.payment_test_mode,
           payment_processor: settings.payment_processor,
           stripe_publishable_key: stripe_publishable_key(settings),

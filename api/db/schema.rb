@@ -453,8 +453,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_214656) do
     t.string "payment_intent_id"
     t.string "payment_method"
     t.string "payment_status"
-    t.boolean "refund_email_sent", default: false, null: false
-    t.boolean "refund_sms_sent", default: false, null: false
     t.string "shipping_address_line1"
     t.string "shipping_address_line2"
     t.string "shipping_city"
