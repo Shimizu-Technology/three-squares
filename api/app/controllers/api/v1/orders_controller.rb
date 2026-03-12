@@ -580,6 +580,10 @@ module Api
         rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
           raise unless order_number_conflict?(order, e) && attempts < max_attempts
 
+          # Exponential backoff (1ms, 2ms, 4ms, ... capped at ~32ms) to
+          # spread out retries under burst traffic. Without this, all 10
+          # attempts fire in microseconds and compete for the same sequence.
+          sleep(0.001 * (2**[attempts, 5].min))
           Rails.logger.warn "Order number collision while saving order, retrying (attempt #{attempts}/#{max_attempts})"
           order.order_number = nil
           retry
@@ -610,14 +614,15 @@ module Api
       end
 
       def attempt_payment_reversal(order)
-        return if order.blank? || order.payment_intent_id.blank?
+        # Assign payment_reference early so it's available in the rescue
+        # block even if a guard clause raises (e.g., corrupted AR object).
+        payment_reference = order&.payment_intent_id
+        return if order.blank? || payment_reference.blank?
         # Allow reversal when payment_status is "paid" OR when a
         # payment_intent_id exists but status is still "pending" — the
         # latter covers verify_payment_intent amount-mismatch where Stripe
         # captured money but we raised before setting status to "paid".
         return unless %w[paid pending].include?(order.payment_status)
-
-        payment_reference = order.payment_intent_id
         # Skip synthetic non-Stripe IDs (e.g., test_charge_... from local test mode).
         return unless payment_reference.start_with?("pi_", "ch_")
 

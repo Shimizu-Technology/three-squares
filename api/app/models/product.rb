@@ -161,11 +161,10 @@ class Product < ApplicationRecord
 
     Rails.logger.info "🔧 Auto-creating default variant for #{inventory_level} inventory: #{name}"
 
-    # Format: BASE-{id}-DEFAULT — matches generate_sku's BASE-{id}-{variant_key}
-    default_sku = "#{(sku_prefix.presence || slug).to_s.upcase}-#{id}-DEFAULT"
+    # Omit sku: — let ProductVariant#generate_sku build it from
+    # product.id + variant_key. Single source of truth for SKU format.
     variant = product_variants.new(
       size: "Default",
-      sku: default_sku,
       price_cents: base_price_cents,
       available: true,
       stock_quantity: 0, # Not used for product-level or none
