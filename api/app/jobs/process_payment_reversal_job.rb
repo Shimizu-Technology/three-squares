@@ -36,7 +36,7 @@ class ProcessPaymentReversalJob < ApplicationJob
   rescue Stripe::InvalidRequestError => e
     # Distinguish idempotent success (already refunded) from genuinely
     # invalid requests so logs stay clean while real errors are visible.
-    if e.message.to_s.include?("already been refunded")
+    if e.code == "charge_already_refunded"
       Rails.logger.info "PAYMENT_REVERSAL_ALREADY_REFUNDED reference=#{payment_reference} order_number=#{order_number}"
     else
       Rails.logger.error "PAYMENT_REVERSAL_INVALID_REQUEST reference=#{payment_reference} error=#{e.class}: #{e.message}"
