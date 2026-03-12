@@ -202,6 +202,7 @@ export const collectionsApi = {
       per_page?: number;
       product_type?: string;
       search?: string;
+      location_id?: number;
     }
   ): Promise<CollectionDetailResponse> => {
     const response = await api.get(`/collections/${slug}`, { params });

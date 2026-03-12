@@ -197,16 +197,27 @@ module Api
           # Clear cart
           clear_cart(cart_items)
 
-          # Send confirmation emails (asynchronously via Sidekiq)
-          # Check per-order-type email settings
-          if settings.send_emails_for?(order.order_type)
+          # Send customer notifications — respects per-channel toggles
+          has_email = order.customer_email.present?
+          has_phone = order.customer_phone.present?
+
+          if settings.enable_order_emails && has_email
             SendOrderConfirmationEmailJob.perform_later(order.id)
-          else
-            Rails.logger.info "📧 Customer email disabled for #{order.order_type} orders - skipping confirmation email for Order ##{order.order_number}"
           end
 
-          # Always send admin notifications
+          if settings.enable_order_sms && has_phone
+            SendOrderSmsJob.perform_later(order.id, "placed")
+          end
+
+          # Admin notifications — email always, SMS only when enabled
           SendAdminNotificationEmailJob.perform_later(order.id)
+          # Gate on enable_order_sms only — SmsService.send_admin_new_order
+          # merges global + location-level phones internally. Checking
+          # settings.admin_sms_phones here would skip orders for locations
+          # that only have location-level phones configured.
+          if settings.enable_order_sms
+            SendAdminOrderSmsJob.perform_later(order.id)
+          end
 
           render json: {
             success: true,

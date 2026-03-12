@@ -76,7 +76,7 @@ module Api
             customer_name: pos_params[:customer_name] || "Walk-in",
             customer_email: pos_params[:customer_email],
             customer_phone: pos_params[:customer_phone],
-            location_id: pos_params[:location_id],
+            location_id: current_user.location_scoped? ? current_user.assigned_location_id : pos_params[:location_id],
             notes: pos_params[:special_instructions],
             payment_method: pos_params[:payment_method] || "cash",
             status: "pending",

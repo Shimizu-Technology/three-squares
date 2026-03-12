@@ -14,14 +14,14 @@ class EmailService
     begin
       params = {
         from: from_address,
-        to: [ order.email ],
+        to: [ order.customer_email ],
         subject: "Order Confirmation ##{order.id.to_s.rjust(6, '0')} - Three Squares",
         html: order_confirmation_html(order)
       }
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Order confirmation email sent to #{order.email} (Order ##{order.id})"
+      Rails.logger.info "✅ Order confirmation email sent to #{order.customer_email} (Order ##{order.id})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -39,14 +39,21 @@ class EmailService
   def self.send_admin_notification(order)
     return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
 
+    # Include both global admins AND location-specific admin (if configured).
+    # Global admins should always receive new-order alerts regardless of location config.
     settings = SiteSetting.instance
-    admin_emails = settings.order_notification_emails || [ "shimizutechnology@gmail.com" ]
+    admin_emails = (settings.order_notification_emails || [ "shimizutechnology@gmail.com" ]).map(&:downcase).uniq
+
+    location = order.location
+    if location&.admin_email.present? && !admin_emails.include?(location.admin_email.downcase)
+      admin_emails = admin_emails + [ location.admin_email.downcase ]
+    end
 
     begin
       params = {
         from: from_address,
         to: admin_emails,
-        subject: "🍽️ New Order ##{order.id.to_s.rjust(6, '0')} - #{order.email}",
+        subject: "🍽️ New Order ##{order.id.to_s.rjust(6, '0')} - #{order.customer_email}",
         html: admin_notification_html(order)
       }
 
@@ -78,14 +85,14 @@ class EmailService
     begin
       params = {
         from: from_address,
-        to: [ order.email ],
+        to: [ order.customer_email ],
         subject: "Your Order Has Shipped! 📦 - Order ##{order.order_number}",
         html: order_shipped_html(order)
       }
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Shipped notification email sent to #{order.email} (Order ##{order.order_number})"
+      Rails.logger.info "✅ Shipped notification email sent to #{order.customer_email} (Order ##{order.order_number})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -108,14 +115,14 @@ class EmailService
 
       params = {
         from: from_address,
-        to: [ order.email ],
+        to: [ order.customer_email ],
         subject: subject,
         html: order_ready_html(order)
       }
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Ready for pickup email sent to #{order.email} (Order ##{order.order_number})"
+      Rails.logger.info "✅ Ready for pickup email sent to #{order.customer_email} (Order ##{order.order_number})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -141,14 +148,14 @@ class EmailService
 
       params = {
         from: from_address,
-        to: [ order.email ],
+        to: [ order.customer_email ],
         subject: "Three Squares — Refund Processed for Order ##{order.order_number}",
         html: refund_notification_html(order, amount_formatted, reason, refund_date)
       }
 
       response = Resend::Emails.send(params)
 
-      Rails.logger.info "✅ Refund notification email sent to #{order.email} (Order ##{order.order_number})"
+      Rails.logger.info "✅ Refund notification email sent to #{order.customer_email} (Order ##{order.order_number})"
       { success: true, message_id: response["id"] }
 
     rescue Resend::Error => e
@@ -158,6 +165,72 @@ class EmailService
       Rails.logger.error "Email Error: #{e.class} - #{e.message}"
       { success: false, error: "Failed to send refund notification" }
     end
+  end
+
+  # Send order confirmed/preparing email (pickup orders)
+  def self.send_order_confirmed_email(order)
+    return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
+
+    location_name = order.location&.name || "Three Squares"
+    send_status_email(
+      order: order,
+      subject: "Your Order is Being Prepared! - Order ##{order.order_number}",
+      heading: "We're Preparing Your Order!",
+      message: "Great news! Your order is now being prepared at #{location_name}. We'll send you another notification when it's ready for pickup.",
+      color: "#2563EB"
+    )
+  end
+
+  # Send order processing email (shipping orders)
+  def self.send_order_processing_email(order)
+    return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
+
+    send_status_email(
+      order: order,
+      subject: "Your Order is Being Packed! - Order ##{order.order_number}",
+      heading: "Your Order is Being Packed!",
+      message: "Great news! Your order is now being packed and prepared for shipment. We'll send you tracking information once it ships.",
+      color: "#2563EB"
+    )
+  end
+
+  # Send order picked up confirmation email
+  def self.send_order_picked_up_email(order)
+    return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
+
+    send_status_email(
+      order: order,
+      subject: "Order Picked Up - Thank You! - Order ##{order.order_number}",
+      heading: "Thank You for Picking Up Your Order!",
+      message: "Your order has been picked up. We hope you enjoy everything! Thank you for choosing Three Squares.",
+      color: "#16A34A"
+    )
+  end
+
+  # Send order delivered confirmation email
+  def self.send_order_delivered_email(order)
+    return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
+
+    send_status_email(
+      order: order,
+      subject: "Your Order Has Been Delivered! - Order ##{order.order_number}",
+      heading: "Your Order Has Been Delivered!",
+      message: "Your order has been delivered. We hope you love everything! Thank you for choosing Three Squares.",
+      color: "#16A34A"
+    )
+  end
+
+  # Send order cancelled email
+  def self.send_order_cancelled_email(order)
+    return { success: false, error: "Resend API key not configured" } unless ENV["RESEND_API_KEY"].present?
+
+    send_status_email(
+      order: order,
+      subject: "Order Cancelled - Order ##{order.order_number}",
+      heading: "Your Order Has Been Cancelled",
+      message: "Your order ##{order.order_number} has been cancelled. If you paid for this order, a refund will be processed automatically. If you have any questions, please don't hesitate to reach out.",
+      color: "#DC2626"
+    )
   end
 
   # Send contact form submission notification to admin
@@ -262,6 +335,138 @@ class EmailService
     end
   end
 
+  # Generic status update email sender — used by confirmed, processing, picked_up, delivered, cancelled
+  def self.send_status_email(order:, subject:, heading:, message:, color:)
+    begin
+      params = {
+        from: from_address,
+        to: [ order.customer_email ],
+        subject: subject,
+        html: status_update_html(order: order, heading: heading, message: message, color: color)
+      }
+
+      response = Resend::Emails.send(params)
+
+      Rails.logger.info "✅ Status email sent to #{order.customer_email} (#{heading} - Order ##{order.order_number})"
+      { success: true, message_id: response["id"] }
+
+    rescue Resend::Error => e
+      if Rails.env.development? && e.message.include?("domain is not verified")
+        Rails.logger.info "ℹ️  Resend domain not verified (expected in development): #{e.message}"
+      else
+        Rails.logger.error "Resend Error sending status email: #{e.message}"
+      end
+      { success: false, error: e.message }
+    rescue StandardError => e
+      Rails.logger.error "Email Error: #{e.class} - #{e.message}"
+      { success: false, error: "Failed to send status email" }
+    end
+  end
+
+  # Reusable HTML template for order status update emails
+  def self.status_update_html(order:, heading:, message:, color:)
+    contact_email = store_contact_email
+    contact_phone = store_contact_phone
+
+    # Build pickup location block for pickup orders
+    location_section = if order.is_pickup_order? && order.location.present?
+      loc = order.location
+      <<~LOC
+        <tr>
+          <td style="padding: 0 30px 30px 30px;">
+            <div style="background-color: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 20px;">
+              <h3 style="color: #92400E; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Pickup Location</h3>
+              <p style="color: #78350F; margin: 0; font-size: 15px; line-height: 1.6;">
+                <strong>#{CGI.escapeHTML(loc.name)}</strong><br>
+                #{CGI.escapeHTML(loc.address.to_s)}#{loc.phone.present? ? "<br>#{CGI.escapeHTML(loc.phone)}" : ""}
+              </p>
+            </div>
+          </td>
+        </tr>
+      LOC
+    else
+      ""
+    end
+
+    <<~HTML
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>#{CGI.escapeHTML(heading)}</title>
+      </head>
+      <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+        <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 20px 0;">
+          <tr>
+            <td align="center">
+              <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+
+                <!-- Header -->
+                <tr>
+                  <td style="background-color: #C1191F; padding: 32px 24px; text-align: center;">
+                    <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: 0.5px; text-shadow: 0 2px 6px rgba(0,0,0,0.25);">Three Squares</h1>
+                    <p style="color: #FFE08A; margin: 8px 0 0 0; font-size: 14px; font-weight: 600;">Chamorro Pride. Island Style.</p>
+                  </td>
+                </tr>
+
+                <!-- Status Banner -->
+                <tr>
+                  <td style="padding: 40px 30px; text-align: center;">
+                    <div style="background-color: #{hex_to_rgba(color, 0.06)}; border: 2px solid #{color}; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
+                      <h2 style="color: #{color}; margin: 0; font-size: 24px;">#{CGI.escapeHTML(heading)}</h2>
+                    </div>
+                    <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{order.order_number}</p>
+                    <p style="color: #9CA3AF; margin: 5px 0 0 0; font-size: 14px;">Placed on #{order.created_at.strftime('%B %d, %Y')}</p>
+                  </td>
+                </tr>
+
+                <!-- Message -->
+                <tr>
+                  <td style="padding: 0 30px 30px 30px;">
+                    <p style="color: #374151; font-size: 16px; line-height: 1.6; margin: 0;">#{CGI.escapeHTML(message)}</p>
+                  </td>
+                </tr>
+
+                <!-- Pickup Location (if applicable) -->
+                #{location_section}
+
+                <!-- Order Items Summary -->
+                <tr>
+                  <td style="padding: 0 30px 30px 30px;">
+                    <h3 style="color: #111827; margin: 0 0 15px 0; font-size: 18px; font-weight: 600;">Your Order:</h3>
+                    <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #E5E7EB; border-radius: 8px; overflow: hidden;">
+                      <tbody>
+                        #{order_items_html(order)}
+                      </tbody>
+                      <tfoot>
+                        <tr style="background-color: #F9FAFB; border-top: 2px solid #E5E7EB;">
+                          <td colspan="2" style="padding: 15px; text-align: right; font-size: 16px; color: #111827; font-weight: bold;">Total:</td>
+                          <td style="padding: 15px; text-align: right; font-size: 16px; color: #C1191F; font-weight: bold;">$#{format_price(order.total_cents)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                  <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
+                    <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
+                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
+                    <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+      </body>
+      </html>
+    HTML
+  end
+
   private
 
   # Configurable from address - uses RESEND_FROM_EMAIL env var
@@ -350,35 +555,8 @@ class EmailService
                   </td>
                 </tr>
 
-                <!-- Shipping Address -->
-                <tr>
-                  <td style="padding: 0 30px 30px 30px;">
-                    <table width="100%" cellpadding="0" cellspacing="0">
-                      <tr>
-                        <td width="50%" style="padding-right: 10px;">
-                          <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
-                            <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Shipping Address</h3>
-                            <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
-                              #{order.name}<br>
-                              #{order.shipping_address_line1}<br>
-                              #{order.shipping_address_line2.present? ? "#{order.shipping_address_line2}<br>" : ""}
-                              #{order.shipping_city}, #{order.shipping_state} #{order.shipping_zip}<br>
-                              #{order.shipping_country}
-                            </p>
-                          </div>
-                        </td>
-                        <td width="50%" style="padding-left: 10px;">
-                          <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
-                            <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Shipping Method</h3>
-                            <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
-                              #{order.shipping_method}
-                            </p>
-                          </div>
-                        </td>
-                      </tr>
-                    </table>
-                  </td>
-                </tr>
+                <!-- Fulfillment Details -->
+                #{order_fulfillment_section_html(order)}
 
                 <!-- Footer -->
                 <tr>
@@ -436,13 +614,25 @@ class EmailService
                       <tr>
                         <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
                           <strong style="color: #6B7280; font-size: 14px;">Customer:</strong>
-                          <span style="color: #111827; font-size: 14px; float: right;">#{order.email}</span>
+                          <span style="color: #111827; font-size: 14px; float: right;">#{CGI.escapeHTML(order.customer_email.to_s)}</span>
                         </td>
                       </tr>
                       <tr>
                         <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
                           <strong style="color: #6B7280; font-size: 14px;">Phone:</strong>
-                          <span style="color: #111827; font-size: 14px; float: right;">#{order.phone || 'N/A'}</span>
+                          <span style="color: #111827; font-size: 14px; float: right;">#{CGI.escapeHTML(order.customer_phone || 'N/A')}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
+                          <strong style="color: #6B7280; font-size: 14px;">Location:</strong>
+                          <span style="color: #111827; font-size: 14px; float: right;">#{CGI.escapeHTML(order.location&.name || 'N/A')}</span>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td style="padding: 10px 0; border-bottom: 1px solid #E5E7EB;">
+                          <strong style="color: #6B7280; font-size: 14px;">Type:</strong>
+                          <span style="color: #111827; font-size: 14px; float: right;">#{order.fulfillment_type&.titleize || 'N/A'}</span>
                         </td>
                       </tr>
                       <tr>
@@ -476,15 +666,15 @@ class EmailService
                     <!-- Shipping Info -->
                     <h3 style="color: #111827; margin: 30px 0 15px 0; font-size: 16px;">Shipping Details:</h3>
                     <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
-                      <p style="color: #111827; margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">#{order.name}</p>
+                      <p style="color: #111827; margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">#{CGI.escapeHTML(order.name.to_s)}</p>
                       <p style="color: #6B7280; margin: 0; font-size: 14px; line-height: 1.6;">
-                        #{order.shipping_address_line1}<br>
-                        #{order.shipping_address_line2.present? ? "#{order.shipping_address_line2}<br>" : ""}
-                        #{order.shipping_city}, #{order.shipping_state} #{order.shipping_zip}<br>
-                        #{order.shipping_country}
+                        #{CGI.escapeHTML(order.shipping_address_line1.to_s)}<br>
+                        #{order.shipping_address_line2.present? ? "#{CGI.escapeHTML(order.shipping_address_line2)}<br>" : ""}
+                        #{CGI.escapeHTML(order.shipping_city.to_s)}, #{CGI.escapeHTML(order.shipping_state.to_s)} #{CGI.escapeHTML(order.shipping_zip.to_s)}<br>
+                        #{CGI.escapeHTML(order.shipping_country.to_s)}
                       </p>
                       <p style="color: #6B7280; margin: 15px 0 0 0; font-size: 14px;">
-                        <strong>Method:</strong> #{order.shipping_method}
+                        <strong>Method:</strong> #{CGI.escapeHTML(order.shipping_method.to_s)}
                       </p>
                     </div>
                   </td>
@@ -504,6 +694,59 @@ class EmailService
       </body>
       </html>
     HTML
+  end
+
+  # Generate fulfillment details section (pickup location or shipping address)
+  def self.order_fulfillment_section_html(order)
+    if order.is_pickup_order? && order.location.present?
+      loc = order.location
+      <<~HTML
+        <tr>
+          <td style="padding: 0 30px 30px 30px;">
+            <div style="background-color: #FEF3C7; border: 1px solid #F59E0B; border-radius: 8px; padding: 20px;">
+              <h3 style="color: #92400E; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Pickup Location</h3>
+              <p style="color: #78350F; margin: 0; font-size: 15px; line-height: 1.6;">
+                <strong>#{CGI.escapeHTML(loc.name)}</strong><br>
+                #{CGI.escapeHTML(loc.address.to_s)}#{loc.phone.present? ? "<br>#{CGI.escapeHTML(loc.phone)}" : ""}
+              </p>
+            </div>
+          </td>
+        </tr>
+      HTML
+    elsif order.shipping_address_line1.present?
+      <<~HTML
+        <tr>
+          <td style="padding: 0 30px 30px 30px;">
+            <table width="100%" cellpadding="0" cellspacing="0">
+              <tr>
+                <td width="50%" style="padding-right: 10px;">
+                  <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
+                    <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Shipping Address</h3>
+                    <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
+                      #{CGI.escapeHTML(order.name.to_s)}<br>
+                      #{CGI.escapeHTML(order.shipping_address_line1.to_s)}<br>
+                      #{order.shipping_address_line2.present? ? "#{CGI.escapeHTML(order.shipping_address_line2)}<br>" : ""}
+                      #{CGI.escapeHTML(order.shipping_city.to_s)}, #{CGI.escapeHTML(order.shipping_state.to_s)} #{CGI.escapeHTML(order.shipping_zip.to_s)}<br>
+                      #{CGI.escapeHTML(order.shipping_country.to_s)}
+                    </p>
+                  </div>
+                </td>
+                <td width="50%" style="padding-left: 10px;">
+                  <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
+                    <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Shipping Method</h3>
+                    <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
+                      #{CGI.escapeHTML(order.shipping_method.to_s)}
+                    </p>
+                  </div>
+                </td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+      HTML
+    else
+      ""
+    end
   end
 
   # Generate order items table rows
@@ -600,14 +843,14 @@ class EmailService
                     <div style="background-color: #F9FAFB; border-radius: 8px; padding: 20px;">
                       <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Shipping To:</h3>
                       <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
-                        #{order.name}<br>
-                        #{order.shipping_address_line1}<br>
-                        #{order.shipping_address_line2.present? ? "#{order.shipping_address_line2}<br>" : ""}
-                        #{order.shipping_city}, #{order.shipping_state} #{order.shipping_zip}<br>
-                        #{order.shipping_country}
+                        #{CGI.escapeHTML(order.name.to_s)}<br>
+                        #{CGI.escapeHTML(order.shipping_address_line1.to_s)}<br>
+                        #{order.shipping_address_line2.present? ? "#{CGI.escapeHTML(order.shipping_address_line2)}<br>" : ""}
+                        #{CGI.escapeHTML(order.shipping_city.to_s)}, #{CGI.escapeHTML(order.shipping_state.to_s)} #{CGI.escapeHTML(order.shipping_zip.to_s)}<br>
+                        #{CGI.escapeHTML(order.shipping_country.to_s)}
                       </p>
                       <p style="color: #6B7280; margin: 15px 0 0 0; font-size: 14px;">
-                        <strong>Method:</strong> #{order.shipping_method}
+                        <strong>Method:</strong> #{CGI.escapeHTML(order.shipping_method.to_s)}
                       </p>
                     </div>
                   </td>
@@ -713,8 +956,8 @@ class EmailService
                       <h3 style="color: #111827; margin: 0 0 10px 0; font-size: 16px; font-weight: 600;">Pickup Information:</h3>
                       <p style="color: #6B7280; margin: 5px 0; font-size: 14px; line-height: 1.6;">
                         <strong>Name:</strong> #{order.name}<br>
-                        <strong>Email:</strong> #{order.email}<br>
-                        <strong>Phone:</strong> #{order.phone}
+                        <strong>Email:</strong> #{order.customer_email}<br>
+                        <strong>Phone:</strong> #{CGI.escapeHTML(order.customer_phone.to_s)}
                       </p>
                     </div>
                   </td>
@@ -1111,6 +1354,16 @@ class EmailService
       </body>
       </html>
     HTML
+  end
+
+  # Convert 6-digit hex (#RRGGBB) to rgba() for email clients that don't
+  # support 8-digit hex opacity (Outlook 2007-2021, older Android mail).
+  def self.hex_to_rgba(hex, alpha = 1.0)
+    hex = hex.delete("#")
+    r = hex[0..1].to_i(16)
+    g = hex[2..3].to_i(16)
+    b = hex[4..5].to_i(16)
+    "rgba(#{r}, #{g}, #{b}, #{alpha})"
   end
 
 end

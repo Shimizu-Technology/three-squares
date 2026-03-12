@@ -78,19 +78,12 @@ module Api
         old_status = @order.status
 
         if @order.update(order_update_params)
-          # Handle status changes
+          # Handle status changes — send notifications via both channels
           if @order.saved_change_to_status?
-            case @order.status
-            when "shipped"
-              # Send shipping notification with tracking
-              SendOrderShippedEmailJob.perform_later(@order.id) if @order.tracking_number.present?
-            when "ready"
-              # Send ready for pickup notification
-              SendOrderReadyEmailJob.perform_later(@order.id)
-            when "cancelled"
-              # Restore inventory when order is cancelled
-              restore_inventory(@order, current_user)
-            end
+            send_status_notifications(@order)
+
+            # Restore inventory when order is cancelled
+            restore_inventory(@order, current_user) if @order.status == "cancelled"
           end
 
           render json: {
@@ -103,22 +96,24 @@ module Api
       end
 
       # POST /api/v1/admin/orders/:id/notify
-      # Resend notification email to customer
+      # Resend notification to customer (email + SMS) for current status
       def notify
-        case @order.status
-        when "shipped"
-          if @order.tracking_number.present?
-            SendOrderShippedEmailJob.perform_later(@order.id)
-            render json: { message: "Shipping notification sent to customer" }
-          else
-            render json: { error: "Order has no tracking number" }, status: :unprocessable_entity
-          end
-        when "ready"
-          SendOrderReadyEmailJob.perform_later(@order.id)
-          render json: { message: "Ready for pickup notification sent to customer" }
-        else
-          render json: { error: "Cannot send notification for orders with status '#{@order.status}'" }, status: :unprocessable_entity
+        # Cancelled IS notified automatically on status change (send_status_notifications
+        # handles it), but resending a cancellation email could confuse customers into
+        # thinking a NEW cancellation occurred. Pending has no status email to resend.
+        if @order.status.in?(%w[pending cancelled])
+          render json: { error: "Cannot resend notification for '#{@order.status}' orders" }, status: :unprocessable_entity
+          return
         end
+
+        # Guard shipped resends — don't send customers a broken/empty tracking link
+        if @order.status == "shipped" && @order.tracking_number.blank?
+          render json: { error: "Cannot resend shipped notification without a tracking number. Add tracking info first." }, status: :unprocessable_entity
+          return
+        end
+
+        send_status_notifications(@order)
+        render json: { message: "Notification resent for status '#{@order.status}' (email + SMS)" }
       end
 
       # POST /api/v1/admin/orders/:id/refund
@@ -186,8 +181,9 @@ module Api
             end
           end
 
-          # Send refund notification email
-          EmailService.send_refund_notification(@order, refund.amount_cents, refund.reason)
+          # Send refund notifications asynchronously (email + SMS)
+          # Avoids blocking the refund API response on slow Resend/ClickSend calls
+          SendRefundNotificationJob.perform_later(@order.id, refund.amount_cents, refund.reason)
 
           render json: {
             message: "Refund processed successfully",
@@ -209,6 +205,60 @@ module Api
 
       private
 
+      # Send email + SMS notifications for the current order status.
+      # Respects enable_order_emails / enable_order_sms toggles independently.
+      def send_status_notifications(order)
+        settings = SiteSetting.instance
+        emails_on = settings.enable_order_emails
+        sms_on = settings.enable_order_sms
+
+        has_email = order.customer_email.present?
+        has_phone = order.customer_phone.present?
+
+        case order.status
+        when "confirmed"
+          # Pickup flow: order is being prepared
+          SendOrderStatusEmailJob.perform_later(order.id, "confirmed") if emails_on && has_email
+          SendOrderSmsJob.perform_later(order.id, "confirmed") if sms_on && has_phone
+
+        when "processing"
+          # Shipping flow: order is being packed
+          SendOrderStatusEmailJob.perform_later(order.id, "processing") if emails_on && has_email
+          SendOrderSmsJob.perform_later(order.id, "processing") if sms_on && has_phone
+
+        when "ready"
+          # Pickup flow: ready for pickup
+          SendOrderReadyEmailJob.perform_later(order.id) if emails_on && has_email
+          SendOrderSmsJob.perform_later(order.id, "ready") if sms_on && has_phone
+
+        when "shipped"
+          # Shipping flow: only notify if tracking number is present.
+          # Matches the notify (manual resend) endpoint guard — customers
+          # shouldn't receive "Your Order Has Shipped" with no tracking info.
+          if order.tracking_number.present?
+            SendOrderShippedEmailJob.perform_later(order.id) if emails_on && has_email
+            SendOrderSmsJob.perform_later(order.id, "shipped") if sms_on && has_phone
+          else
+            Rails.logger.info "⏭️ Shipped notifications deferred for Order ##{order.id} — no tracking number yet"
+          end
+
+        when "picked_up"
+          # Pickup flow: customer picked up
+          SendOrderStatusEmailJob.perform_later(order.id, "picked_up") if emails_on && has_email
+          SendOrderSmsJob.perform_later(order.id, "picked_up") if sms_on && has_phone
+
+        when "delivered"
+          # Shipping flow: delivered
+          SendOrderStatusEmailJob.perform_later(order.id, "delivered") if emails_on && has_email
+          SendOrderSmsJob.perform_later(order.id, "delivered") if sms_on && has_phone
+
+        when "cancelled"
+          # Both flows: cancelled
+          SendOrderStatusEmailJob.perform_later(order.id, "cancelled") if emails_on && has_email
+          SendOrderSmsJob.perform_later(order.id, "cancelled") if sms_on && has_phone
+        end
+      end
+
       def filtered_orders_query
         orders_query = Order
           .includes(order_items: { product_variant: { product: :collections } }, user: [], location: [])
@@ -218,7 +268,12 @@ module Api
         orders_query = orders_query.where(payment_status: params[:payment_status]) if params[:payment_status].present?
         orders_query = orders_query.where(order_type: params[:order_type]) if params[:order_type].present?
         orders_query = orders_query.where(fulfillment_type: params[:fulfillment_type]) if params[:fulfillment_type].present?
-        orders_query = orders_query.where(location_id: params[:location_id].to_i) if params[:location_id].present?
+        # Location scoping: staff assigned to a location only see that location's orders
+        if current_user&.location_scoped?
+          orders_query = orders_query.where(location_id: current_user.assigned_location_id)
+        elsif params[:location_id].present?
+          orders_query = orders_query.where(location_id: params[:location_id].to_i)
+        end
 
         if params[:search].present?
           search_term = "%#{params[:search]}%"
@@ -566,6 +621,9 @@ module Api
           shipping_state: order.shipping_state,
           shipping_zip: order.shipping_zip,
           shipping_country: order.shipping_country,
+          fulfillment_type: order.fulfillment_type,
+          location_id: order.location_id,
+          location_name: order.location&.name,
           created_at: order.created_at.iso8601,
           item_count: order.order_items.count,
           order_items: order.order_items.map do |item|
@@ -599,6 +657,9 @@ module Api
           tax_cents: order.tax_cents,
           total_cents: order.total_cents,
           total_formatted: "$#{'%.2f' % (order.total_cents / 100.0)}",
+          fulfillment_type: order.fulfillment_type,
+          location_id: order.location_id,
+          location_name: order.location&.name,
           created_at: order.created_at.iso8601,
           updated_at: order.updated_at.iso8601,
           shipping_method: order.shipping_method,

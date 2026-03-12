@@ -46,6 +46,13 @@ module Api
                              .includes(:product_variants, :product_images)
                              .order(featured: :desc, created_at: :desc)
 
+        # Filter by location if provided
+        if params[:location_id].present?
+          products = products.joins(:product_locations)
+            .where(product_locations: { location_id: params[:location_id].to_i, available: true })
+            .distinct
+        end
+
         # Apply filters if provided
         products = products.where(product_type: params[:product_type]) if params[:product_type].present?
 

@@ -8,6 +8,7 @@ class User < ApplicationRecord
   after_initialize :set_default_role, if: :new_record?
 
   # Associations
+  belongs_to :assigned_location, class_name: "Location", optional: true
   has_many :cart_items, dependent: :destroy
   has_many :imports, dependent: :destroy
   has_many :orders, dependent: :nullify  # Keep orders but remove user association on delete
@@ -23,6 +24,22 @@ class User < ApplicationRecord
 
   def customer?
     role == "customer"
+  end
+
+  # Location-scoped admin: when assigned to a specific location, they only
+  # see that location's data (orders, dashboard, etc.).
+  # WARNING: Setting assigned_location_id on an admin intentionally restricts
+  # their visibility. To grant an admin global access, leave assigned_location_id nil.
+  # Only admins access the dashboard, so scoping is admin-only by design.
+  # Customers (the only other role) never see dashboard/POS endpoints
+  # regardless of assigned_location_id.
+  def location_scoped?
+    admin? && assigned_location_id.present?
+  end
+
+  # Convenience: true if admin with full cross-location visibility
+  def global_admin?
+    admin? && assigned_location_id.nil?
   end
 
   private

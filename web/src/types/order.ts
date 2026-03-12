@@ -85,5 +85,8 @@ export interface AppConfig {
     email: string;
     phone: string;
   };
+  announcement_enabled?: boolean;
+  announcement_text?: string | null;
+  announcement_style?: string;
 }
 

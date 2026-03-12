@@ -94,8 +94,11 @@ module Webhooks
       Rails.logger.info "✅ #{target[:type]} ##{record.id} payment_status updated to 'paid' via Stripe webhook"
 
       if target[:type] == "Order"
-        SendOrderConfirmationEmailJob.perform_later(record.id)
-        Rails.logger.info "📧 Order confirmation email enqueued for Order ##{record.id}"
+        # Only send email if enabled — SMS already sent in checkout flow
+        if SiteSetting.instance.enable_order_emails && record.customer_email.present?
+          SendOrderConfirmationEmailJob.perform_later(record.id)
+          Rails.logger.info "📧 Order confirmation email enqueued for Order ##{record.id}"
+        end
       end
     rescue StandardError => e
       Rails.logger.error "❌ Failed to update payment target ##{record&.id}: #{e.message}"

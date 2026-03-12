@@ -589,7 +589,9 @@ missing_variant_products.find_each do |product|
     weight_oz: product.weight_oz,
     is_default: true
   )
-  variant.skip_weight_validation = true unless product.allow_shipping?
+  # Only skip weight validation for non-shipping products.
+  # Shipping-enabled variants need weight_oz for rate calculations.
+  variant.skip_weight_validation = true unless product.try(:allow_shipping?)
   variant.save!
   backfilled_variant_count += 1
 end

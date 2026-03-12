@@ -66,7 +66,7 @@ module Api
         end
 
         def user_params
-          params.require(:user).permit(:role)
+          params.require(:user).permit(:role, :assigned_location_id)
         end
 
         def user_json(user)
@@ -78,6 +78,9 @@ module Api
             role: user.role,
             is_admin: user.admin?,
             clerk_id: user.clerk_id,
+            assigned_location_id: user.assigned_location_id,
+            assigned_location_name: user.assigned_location&.name,
+            location_scoped: user.location_scoped?,
             created_at: user.created_at.iso8601,
             updated_at: user.updated_at.iso8601
           }

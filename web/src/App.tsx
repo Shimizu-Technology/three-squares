@@ -23,6 +23,7 @@ import AdminInventoryPage from './pages/admin/AdminInventoryPage';
 import AdminUsersPage from './pages/admin/AdminUsersPage';
 import AdminVariantPresetsPage from './pages/admin/AdminVariantPresetsPage';
 import AdminCateringPage from './pages/admin/AdminCateringPage';
+import LocationPicker from './components/LocationPicker';
 import AdminLocationsPage from './pages/admin/AdminLocationsPage';
 import AdminPOSPage from './pages/admin/AdminPOSPage';
 import CheckoutPage from './pages/CheckoutPage';
@@ -47,6 +48,7 @@ import NavDropdown from './components/NavDropdown'; // Import NavDropdown
 import MobileNavDropdown from './components/MobileNavDropdown'; // Import MobileNavDropdown
 import { useCartStore } from './store/cartStore'; // Import cart store
 import { API_BASE_URL } from './config';
+import AnnouncementBanner from './components/AnnouncementBanner';
 
 // Custom UserButton with Admin Dashboard Link and My Orders
 function CustomUserButton({ isAdmin }: { isAdmin: boolean }) {
@@ -181,6 +183,12 @@ function AppContent() {
   const isAdminPage = location.pathname.startsWith('/admin');
   const routeTransitionKey = isAdminPage ? '/admin' : location.pathname;
 
+  // LocationPicker is only relevant on pages tied to ordering/menu browsing
+  const ORDERING_PATHS = ['/', '/products', '/shop', '/collections', '/cart', '/checkout', '/menu', '/pos'];
+  const isOrderingPage = ORDERING_PATHS.some(
+    (p) => location.pathname === p || location.pathname.startsWith(p + '/')
+  );
+
   return (
     <>
       <SmoothScroll>
@@ -221,6 +229,9 @@ function AppContent() {
       <div className="min-h-screen bg-warm-50">
         {/* Cart Drawer */}
         <CartDrawer />
+
+        {/* Announcement Banner - Above nav, customer-facing only */}
+        {!isAdminPage && <AnnouncementBanner />}
 
         {/* Navigation - Hidden when printing and on admin pages */}
         {!isAdminPage && (
@@ -441,6 +452,9 @@ function AppContent() {
         </nav>
         )}
 
+        {/* Location picker — only on pages where location context matters */}
+        {!isAdminPage && isOrderingPage && <LocationPicker />}
+
         {/* Routes with page transitions */}
         <AnimatePresence mode="wait">
         <Routes location={location} key={routeTransitionKey}>
@@ -506,7 +520,7 @@ function AppContent() {
                 />
                 <p className="text-[11px] uppercase tracking-wide text-warm-500 mt-2">by B&amp;G Pacific</p>
                 <p className="text-warm-500 text-sm mt-4 leading-relaxed">
-                  Good Food, Good Mood, Good Service<br />
+                  Good Food. Great Vibes. Quality Service.<br />
                   Guam-style comfort food & catering
                 </p>
                 <div className="flex space-x-4 mt-4">
@@ -599,6 +613,9 @@ function AppContent() {
                   </a><br />
                   <a href="https://wa.me/16718646656" className="hover:text-warm-900 transition">
                     WhatsApp: (671) 864-6656
+                  </a><br />
+                  <a href="mailto:sales@bgpacific.com" className="hover:text-warm-900 transition">
+                    sales@bgpacific.com
                   </a>
                 </address>
               </div>
