@@ -232,6 +232,11 @@ module Api
         end
         Rails.logger.error "Order creation error: #{e.class} - #{e.message}"
         Rails.logger.error e.backtrace.first(5).join("\n")
+        # Guard against double-render: if the success render on line ~192
+        # itself raises (e.g., order_json hits a NoMethodError), performed?
+        # is already true and a second render would raise DoubleRenderError,
+        # leaving the client with no response for a committed+paid order.
+        return if performed?
         message = order_finalized ? "Order placed but notification failed." : "Failed to create order. Please try again."
         status = order_finalized ? :created : :internal_server_error
         render json: { success: order_finalized, error: message, message: message }, status: status
@@ -597,7 +602,12 @@ module Api
       end
 
       def attempt_payment_reversal(order)
-        return if order.blank? || order.payment_status != "paid" || order.payment_intent_id.blank?
+        return if order.blank? || order.payment_intent_id.blank?
+        # Allow reversal when payment_status is "paid" OR when a
+        # payment_intent_id exists but status is still "pending" — the
+        # latter covers verify_payment_intent amount-mismatch where Stripe
+        # captured money but we raised before setting status to "paid".
+        return unless %w[paid pending].include?(order.payment_status)
 
         payment_reference = order.payment_intent_id
         # Skip synthetic non-Stripe IDs (e.g., test_charge_... from local test mode).
