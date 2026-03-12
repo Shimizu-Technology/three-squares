@@ -55,7 +55,7 @@ const defaultCategoryCards: Array<{
     subtitle: "Two convenient spots on Guam",
     button_text: "Find Us",
     button_link: "/locations",
-    image_url: "/images/Three_Squares_%40_Donki.png"
+    image_url: "/images/three-squares-donki.png"
   }
 ];
 
