@@ -157,9 +157,9 @@ module Api
           return render json: { success: false, error: message, message: message, errors: order.errors.full_messages }, status: :unprocessable_entity
         end
 
+        order_finalized = false
         authorize_payment!(order, settings)
 
-        order_finalized = false
         finalize_order!(order, cart_items)
         order_finalized = true
 
@@ -234,7 +234,7 @@ module Api
         Rails.logger.error e.backtrace.first(5).join("\n")
         message = order_finalized ? "Order placed but notification failed." : "Failed to create order. Please try again."
         status = order_finalized ? :created : :internal_server_error
-        render json: { success: !order_finalized ? false : true, error: message, message: message }, status: status
+        render json: { success: order_finalized, error: message, message: message }, status: status
       end
 
       # GET /api/v1/orders/:id
