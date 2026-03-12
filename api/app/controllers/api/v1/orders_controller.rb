@@ -232,8 +232,13 @@ module Api
           log_payment_reconciliation_required(order, e)
           attempt_payment_reversal(order)
         end
+        # InventoryCommitError fires AFTER authorize_payment! succeeds —
+        # payment is always captured at this point. Use 500, not 422.
+        # Log e.message server-side (contains internal SKU + product_id);
+        # do NOT expose via details: — SKU format now embeds product_id.
+        Rails.logger.error "INVENTORY_COMMIT_FAILED order=#{order&.order_number || 'pending'} detail=#{e.message}"
         message = "One or more items are no longer available. Your payment will be reconciled automatically."
-        render json: { success: false, error: message, message: message, details: e.message }, status: :unprocessable_entity
+        render json: { success: false, error: message, message: message }, status: :internal_server_error
       rescue ActiveRecord::RecordInvalid => e
         unless order_finalized
           log_payment_reconciliation_required(order, e)
