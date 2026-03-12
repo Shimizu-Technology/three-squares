@@ -195,8 +195,14 @@ class ProductVariant < ApplicationRecord
   end
 
   # Generate SKU from variant key
+  # Include product_id for default variants to prevent cross-product collisions
+  # (e.g., two products both generating "TSQ-TSHIRT-DEFAULT")
   def generate_sku
     base = product.sku_prefix || product.slug
-    self.sku = "#{base}-#{variant_key}".upcase
+    if variant_key == "default" && product.id.present?
+      self.sku = "#{base}-#{product.id}-#{variant_key}".upcase
+    else
+      self.sku = "#{base}-#{variant_key}".upcase
+    end
   end
 end
