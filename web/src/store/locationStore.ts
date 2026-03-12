@@ -5,8 +5,8 @@ export interface LocationInfo {
   id: number;
   name: string;
   slug: string;
-  address?: string;
-  phone?: string;
+  address?: string | null;
+  phone?: string | null;
   hours_json?: Record<string, string>;
 }
 
