@@ -15,7 +15,7 @@ class EmailService
       params = {
         from: from_address,
         to: [ order.customer_email ],
-        subject: "Order Confirmation ##{order.id.to_s.rjust(6, '0')} - Three Squares",
+        subject: "Order Confirmation ##{order.order_number} - Three Squares",
         html: order_confirmation_html(order)
       }
 
@@ -53,7 +53,7 @@ class EmailService
       params = {
         from: from_address,
         to: admin_emails,
-        subject: "🍽️ New Order ##{order.id.to_s.rjust(6, '0')} - #{order.customer_email}",
+        subject: "🍽️ New Order ##{order.order_number} - #{order.customer_email}",
         html: admin_notification_html(order)
       }
 
@@ -416,7 +416,7 @@ class EmailService
                     <div style="background-color: #{hex_to_rgba(color, 0.06)}; border: 2px solid #{color}; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
                       <h2 style="color: #{color}; margin: 0; font-size: 24px;">#{CGI.escapeHTML(heading)}</h2>
                     </div>
-                    <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{order.order_number}</p>
+                    <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{CGI.escapeHTML(order.order_number.to_s)}</p>
                     <p style="color: #9CA3AF; margin: 5px 0 0 0; font-size: 14px;">Placed on #{order.created_at.strftime('%B %d, %Y')}</p>
                   </td>
                 </tr>
@@ -453,7 +453,7 @@ class EmailService
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
-                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
+                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{CGI.escapeHTML(contact_email)}" style="color: #C1191F; text-decoration: none;">#{CGI.escapeHTML(contact_email)}</a> | #{CGI.escapeHTML(contact_phone)}</p>
                     <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
@@ -518,7 +518,7 @@ class EmailService
                   <td style="padding: 40px 30px; text-align: center;">
                     <h2 style="color: #111827; margin: 0 0 10px 0; font-size: 24px;">Thank You For Your Order! 🎉</h2>
                     #{test_mode_badge}
-                    <p style="color: #6B7280; margin: 20px 0 0 0; font-size: 16px;">Order ##{order.id.to_s.rjust(6, '0')}</p>
+                    <p style="color: #6B7280; margin: 20px 0 0 0; font-size: 16px;">Order ##{CGI.escapeHTML(order.order_number)}</p>
                     <p style="color: #9CA3AF; margin: 5px 0 0 0; font-size: 14px;">#{order.created_at.strftime('%B %d, %Y at %I:%M %p')}</p>
                   </td>
                 </tr>
@@ -562,7 +562,7 @@ class EmailService
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
-                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
+                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{CGI.escapeHTML(contact_email)}" style="color: #C1191F; text-decoration: none;">#{CGI.escapeHTML(contact_email)}</a> | #{CGI.escapeHTML(contact_phone)}</p>
                     <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
@@ -608,7 +608,7 @@ class EmailService
                 <!-- Order Info -->
                 <tr>
                   <td style="padding: 30px;">
-                    <h2 style="color: #111827; margin: 0 0 20px 0; font-size: 20px;">Order ##{order.id.to_s.rjust(6, '0')}</h2>
+                    <h2 style="color: #111827; margin: 0 0 20px 0; font-size: 20px;">Order ##{CGI.escapeHTML(order.order_number)}</h2>
       #{'              '}
                     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 20px;">
                       <tr>
@@ -752,13 +752,14 @@ class EmailService
   # Generate order items table rows
   def self.order_items_html(order)
     order.order_items.map do |item|
-      variant_info = item.variant_name.present? ? " (#{item.variant_name})" : ""
+      product_name = CGI.escapeHTML(item.product_name.to_s)
+      variant_info = item.variant_name.present? ? " (#{CGI.escapeHTML(item.variant_name)})" : ""
       <<~HTML
         <tr style="border-bottom: 1px solid #E5E7EB;">
           <td style="padding: 15px; font-size: 14px; color: #111827;">
-            #{item.product_name}#{variant_info}
+            #{product_name}#{variant_info}
           </td>
-          <td style="padding: 15px; text-align: center; font-size: 14px; color: #6B7280;">#{item.quantity}</td>
+          <td style="padding: 15px; text-align: center; font-size: 14px; color: #6B7280;">#{item.quantity.to_i}</td>
           <td style="padding: 15px; text-align: right; font-size: 14px; color: #111827; font-weight: 600;">$#{format_price(item.total_price_cents)}</td>
         </tr>
       HTML
@@ -780,7 +781,7 @@ class EmailService
           <td style="padding: 0 30px 30px 30px;">
             <div style="background: linear-gradient(135deg, #10B981 0%, #059669 100%); border-radius: 8px; padding: 25px; text-align: center;">
               <p style="color: #ffffff; margin: 0 0 15px 0; font-size: 16px; font-weight: 600;">📦 Tracking Number</p>
-              <p style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 2px;">#{order.tracking_number}</p>
+              <p style="color: #ffffff; margin: 0; font-size: 24px; font-weight: bold; letter-spacing: 2px;">#{CGI.escapeHTML(order.tracking_number.to_s)}</p>
             </div>
           </td>
         </tr>
@@ -817,7 +818,7 @@ class EmailService
                     <div style="background-color: #ECFDF5; border: 2px solid #10B981; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
                       <h2 style="color: #059669; margin: 0; font-size: 24px;">📦 Your Order Has Shipped!</h2>
                     </div>
-                    <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{order.order_number}</p>
+                    <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{CGI.escapeHTML(order.order_number.to_s)}</p>
                     <p style="color: #9CA3AF; margin: 5px 0 0 0; font-size: 14px;">Placed on #{order.created_at.strftime('%B %d, %Y')}</p>
                   </td>
                 </tr>
@@ -860,7 +861,7 @@ class EmailService
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
-                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
+                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{CGI.escapeHTML(contact_email)}" style="color: #C1191F; text-decoration: none;">#{CGI.escapeHTML(contact_email)}</a> | #{CGI.escapeHTML(contact_phone)}</p>
                     <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
@@ -914,7 +915,7 @@ class EmailService
                     <div style="background-color: #F0FDF4; border: 2px solid #22C55E; border-radius: 8px; padding: 20px; margin-bottom: 20px;">
                       <h2 style="color: #16A34A; margin: 0; font-size: 24px;">#{emoji} #{title}</h2>
                     </div>
-                    <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{order.order_number}</p>
+                    <p style="color: #6B7280; margin: 10px 0 0 0; font-size: 16px;">Order ##{CGI.escapeHTML(order.order_number.to_s)}</p>
                     <p style="color: #9CA3AF; margin: 5px 0 0 0; font-size: 14px;">Placed on #{order.created_at.strftime('%B %d, %Y')}</p>
                   </td>
                 </tr>
@@ -967,7 +968,7 @@ class EmailService
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Thank you for your order!</p>
-                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
+                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{CGI.escapeHTML(contact_email)}" style="color: #C1191F; text-decoration: none;">#{CGI.escapeHTML(contact_email)}</a> | #{CGI.escapeHTML(contact_phone)}</p>
                     <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>
@@ -1201,7 +1202,7 @@ class EmailService
                       </tr>
                       <tr>
                         <td style="padding:0 16px 12px 16px;color:#6B7280;font-size:14px;font-weight:600;">Email</td>
-                        <td style="padding:0 16px 12px 16px;color:#111827;font-size:14px;"><a href="mailto:#{contact_email}" style="color:#C1191F;text-decoration:none;">#{contact_email}</a></td>
+                        <td style="padding:0 16px 12px 16px;color:#111827;font-size:14px;"><a href="mailto:#{CGI.escapeHTML(contact_email)}" style="color:#C1191F;text-decoration:none;">#{CGI.escapeHTML(contact_email)}</a></td>
                       </tr>
                       <tr>
                         <td style="padding:0 16px 12px 16px;color:#6B7280;font-size:14px;font-weight:600;">Phone</td>
@@ -1342,7 +1343,7 @@ class EmailService
                 <tr>
                   <td style="background-color: #F9FAFB; padding: 30px; text-align: center; border-top: 1px solid #E5E7EB;">
                     <p style="color: #6B7280; margin: 0 0 10px 0; font-size: 14px;">Questions about your order?</p>
-                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{contact_email}" style="color: #C1191F; text-decoration: none;">#{contact_email}</a> | #{contact_phone}</p>
+                    <p style="color: #C1191F; margin: 0; font-size: 14px;"><a href="mailto:#{CGI.escapeHTML(contact_email)}" style="color: #C1191F; text-decoration: none;">#{CGI.escapeHTML(contact_email)}</a> | #{CGI.escapeHTML(contact_phone)}</p>
                     <p style="color: #9CA3AF; margin: 20px 0 0 0; font-size: 12px;">&copy; #{Time.current.year} Three Squares. All rights reserved.</p>
                   </td>
                 </tr>

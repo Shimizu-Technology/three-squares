@@ -11,6 +11,35 @@ class Order < ApplicationRecord
   RETAIL_STATUSES = %w[pending processing shipped delivered cancelled].freeze
   PICKUP_STATUSES = %w[pending confirmed ready picked_up cancelled].freeze
 
+  # Explicit sequence map for notification idempotency. Jobs only execute
+  # if their seq > last_*_seq, preventing both duplicates and out-of-order sends.
+  # Starts at 1 (not 0) so "pending/placed" (seq=1) passes the default
+  # last_*_seq=0 guard. 0 is reserved as "no notification sent yet".
+  #
+  # IMPORTANT: Use an explicit hash, NOT positional index from VALID_STATUSES.
+  # Inserting a new status between existing ones would silently shift all
+  # downstream seq values, breaking idempotency for in-flight jobs.
+  STATUS_SEQUENCE = {
+    "pending"    => 1,
+    "confirmed"  => 2,
+    "processing" => 3,
+    "ready"      => 4,
+    "shipped"    => 5,
+    "picked_up"  => 6,
+    "delivered"  => 7,
+    "cancelled"  => 8
+  }.freeze
+
+  def notification_seq
+    seq = STATUS_SEQUENCE[status]
+    unless seq
+      Rails.logger.error "⚠️ notification_seq: unknown status '#{status}' — " \
+                         "add it to STATUS_SEQUENCE before using in production"
+      raise ArgumentError, "Unknown order status '#{status}' has no notification sequence"
+    end
+    seq
+  end
+
   # Validations
   validates :order_number, presence: true, uniqueness: true
   validates :order_type, inclusion: { in: %w[retail wholesale pickup dine_in] }
@@ -45,7 +74,9 @@ class Order < ApplicationRecord
 
   # Callbacks
   before_validation :generate_order_number, if: -> { order_number.blank? }
-  after_update :restore_inventory_for_cancellation, if: -> { saved_change_to_status? && status == "cancelled" }
+  # NOTE: Inventory restoration on cancellation is handled by
+  # admin/orders_controller#update (which passes current_user for audit trail).
+  # Do NOT add an after_update callback here — it would double-restore.
 
   # Convenience aliases for customer fields
   def email

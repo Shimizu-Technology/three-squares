@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_11_032415) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_11_214656) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -433,6 +433,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_032415) do
     t.integer "cash_change_cents"
     t.integer "cash_received_cents"
     t.boolean "confirmation_email_sent", default: false, null: false
+    t.boolean "confirmation_sms_sent", default: false, null: false
     t.datetime "created_at", null: false
     t.integer "created_by_user_id"
     t.string "customer_email"
@@ -441,7 +442,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_032415) do
     t.string "easypost_shipment_id"
     t.string "fulfillment_type", default: "shipping", null: false
     t.bigint "fundraiser_id"
+    t.integer "last_email_seq", default: 0, null: false
+    t.integer "last_sms_seq", default: 0, null: false
     t.bigint "location_id"
+    t.jsonb "metadata", default: {}, null: false
     t.text "notes"
     t.string "order_number"
     t.string "order_type"
@@ -612,10 +616,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_032415) do
   create_table "refunds", force: :cascade do |t|
     t.integer "amount_cents", null: false
     t.datetime "created_at", null: false
+    t.boolean "email_sent", default: false, null: false
     t.jsonb "metadata", default: {}
     t.text "notes"
     t.bigint "order_id", null: false
     t.string "reason"
+    t.boolean "sms_sent", default: false, null: false
     t.string "status", default: "pending"
     t.string "stripe_refund_id"
     t.datetime "updated_at", null: false
@@ -638,6 +644,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_032415) do
     t.string "announcement_style", default: "gold", null: false
     t.string "announcement_text"
     t.datetime "created_at", null: false
+    t.boolean "enable_admin_sms", default: true, null: false
     t.boolean "enable_order_emails", default: true, null: false
     t.boolean "enable_order_sms", default: true, null: false
     t.jsonb "fallback_shipping_rates", default: {"domestic"=>[{"rate_cents"=>800, "max_weight_oz"=>16}, {"rate_cents"=>1500, "max_weight_oz"=>48}, {"rate_cents"=>2000, "max_weight_oz"=>80}, {"rate_cents"=>3000, "max_weight_oz"=>160}, {"rate_cents"=>5000, "max_weight_oz"=>nil}], "international"=>[{"rate_cents"=>2500, "max_weight_oz"=>16}, {"rate_cents"=>4000, "max_weight_oz"=>48}, {"rate_cents"=>6000, "max_weight_oz"=>80}, {"rate_cents"=>9000, "max_weight_oz"=>160}, {"rate_cents"=>15000, "max_weight_oz"=>nil}]}, null: false
@@ -648,10 +655,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_11_032415) do
     t.boolean "send_acai_emails", default: false, null: false
     t.boolean "send_customer_emails", default: false, null: false
     t.boolean "send_retail_emails", default: false, null: false
-    t.boolean "send_sms_notifications", default: false, null: false
     t.boolean "send_wholesale_emails", default: false, null: false
     t.jsonb "shipping_origin_address", default: {}
-    t.boolean "sms_order_updates", default: false, null: false
     t.string "store_email"
     t.string "store_name", default: "Hafaloha"
     t.string "store_phone"

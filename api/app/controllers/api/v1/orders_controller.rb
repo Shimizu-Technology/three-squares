@@ -206,10 +206,13 @@ module Api
           end
 
           if settings.enable_order_sms && has_phone
-            SendOrderSmsJob.perform_later(order.id, "placed")
+            # Claim the seq immediately so a fast admin "confirmed" (seq=2) can't
+            # discard this job. The job uses confirmation_sms_sent boolean instead
+            # of the seq system to avoid the race entirely.
+            SendOrderConfirmationSmsJob.perform_later(order.id)
           end
 
-          # Admin notifications — email always, SMS only when enabled
+          # Admin notifications — not gated by customer toggles
           SendAdminNotificationEmailJob.perform_later(order.id)
           # Gate on enable_order_sms only — SmsService.send_admin_new_order
           # merges global + location-level phones internally. Checking
@@ -605,7 +608,11 @@ module Api
       end
 
       def order_update_params
-        params.require(:order).permit(:status, :admin_notes, :tracking_number)
+        # Non-admin endpoint: customers can only update their own notes.
+        # admin_notes is admin-only — permit :notes (customer field) only.
+        # Status changes MUST go through admin/orders_controller#update
+        # to ensure notifications are dispatched.
+        params.require(:order).permit(:notes)
       end
 
       # Generate tracking URL based on carrier

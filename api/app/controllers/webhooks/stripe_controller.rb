@@ -69,6 +69,8 @@ module Webhooks
         handle_payment_intent_failed(event.data.object)
       when "charge.refunded"
         handle_charge_refunded(event.data.object)
+      when "charge.refund.updated"
+        handle_charge_refund_updated(event.data.object)
       when "charge.dispute.created"
         handle_charge_dispute_created(event.data.object)
       else
@@ -133,12 +135,106 @@ module Webhooks
       end
       record = target[:record]
 
-      # Use update_column to bypass validations — webhook updates must not fail
-      record.update_column(:payment_status, "refunded")
-      Rails.logger.info "💸 #{target[:type]} ##{record.id} payment_status updated to 'refunded' via Stripe webhook"
-      # Full refund logic (inventory restoration, email, etc.) comes in HAF-17
+      # Only mark as "refunded" when fully refunded. Partial refunds from
+      # the Stripe Dashboard should NOT flip payment_status — can_refund?
+      # gates on payment_status == "paid", so a premature flip permanently
+      # blocks follow-up refunds from the admin panel.
+      amount_refunded = charge.respond_to?(:amount_refunded) ? charge.amount_refunded.to_i : 0
+      amount_total = charge.respond_to?(:amount) ? charge.amount.to_i : 0
+
+      # Use == not >= to avoid marking over-refunds (Stripe edge case) as
+      # fully refunded. Over-refunds should be flagged for manual review.
+      if amount_total > 0 && amount_refunded == amount_total
+        record.update_column(:payment_status, "refunded")
+        Rails.logger.info "💸 #{target[:type]} ##{record.id} fully refunded — payment_status set to 'refunded'"
+      elsif amount_refunded > amount_total
+        Rails.logger.warn "⚠️ #{target[:type]} ##{record.id} OVER-REFUNDED ($#{amount_refunded / 100.0} > $#{amount_total / 100.0}) — manual review required"
+      else
+        Rails.logger.info "💸 #{target[:type]} ##{record.id} partially refunded ($#{amount_refunded / 100.0} / $#{amount_total / 100.0}) — payment_status stays '#{record.payment_status}'"
+      end
+
+      # Create a Refund record + notify the customer for Dashboard-initiated refunds.
+      # Admin-panel refunds already create Refund records in orders_controller#refund,
+      # so we check stripe_refund_id to avoid duplicates.
+      # Process ALL refunds in the charge, not just the first.
+      # Concurrent partial refunds or future Stripe API changes could include
+      # multiple refund objects in a single charge.refunded event.
+      if record.is_a?(Order)
+        stripe_refunds = charge.respond_to?(:refunds) ? Array(charge.refunds&.data) : []
+        stripe_refunds.each do |stripe_refund|
+          next if stripe_refund.id.blank?
+
+          # Map the actual Stripe refund status instead of hardcoding "succeeded".
+          # Stripe refunds can be "pending" when charge.refunded fires (card-network
+          # settlement takes days). Our model accepts: pending, succeeded, failed.
+          mapped_status = %w[pending succeeded failed].include?(stripe_refund.status) ?
+                          stripe_refund.status : "pending"
+
+          # Upsert pattern: create if new, find if already exists.
+          # Separating create from perform_later ensures that on Stripe retry
+          # (e.g., Redis was down on first attempt), the existing Refund record
+          # is found and the notification is still enqueued.
+          refund = begin
+            Refund.create!(
+              stripe_refund_id: stripe_refund.id,
+              order: record,
+              amount_cents: stripe_refund.amount,
+              reason: stripe_refund.reason || "Refunded via Stripe Dashboard",
+              status: mapped_status
+            )
+          rescue ActiveRecord::RecordNotUnique
+            # Another webhook delivery already created this refund — find it
+            Refund.find_by(stripe_refund_id: stripe_refund.id)
+          end
+
+          # Always attempt notification — the job's own email_sent/sms_sent
+          # idempotency columns prevent duplicate sends.
+          if refund
+            SendRefundNotificationJob.perform_later(refund.id)
+            Rails.logger.info "📧 Enqueued refund notification for Stripe Dashboard refund #{stripe_refund.id}"
+          end
+        end
+      end
+    rescue ActiveRecord::RecordNotFound => e
+      # Order not found — log and return 200 (Stripe retrying won't help)
+      Rails.logger.error "❌ Refund webhook: record not found — #{e.message}"
     rescue StandardError => e
-      Rails.logger.error "❌ Failed to update payment target ##{record&.id} for refund: #{e.message}"
+      # DB failures, job queue errors — re-raise so Stripe gets a 500
+      # and retries the webhook. Swallowing these silently loses refund
+      # notifications permanently.
+      Rails.logger.error "❌ Refund webhook failed for ##{record&.id}: #{e.message}"
+      raise
+    end
+
+    def handle_charge_refund_updated(stripe_refund)
+      refund = Refund.find_by(stripe_refund_id: stripe_refund.id)
+      unless refund
+        Rails.logger.info "ℹ️  charge.refund.updated for unknown refund #{stripe_refund.id} — skipping"
+        return
+      end
+
+      new_status = %w[pending succeeded failed].include?(stripe_refund.status) ?
+                   stripe_refund.status : refund.status
+
+      return if refund.status == new_status
+
+      old_status = refund.status
+
+      # Update status BEFORE enqueuing the notification job. A fast Sidekiq
+      # worker could pick up the job and check refund.pending? before the DB
+      # write commits — that would silently skip the notification with no
+      # retry. The per-refund email_sent/sms_sent idempotency columns already
+      # protect against duplicates on Stripe webhook retries if enqueue fails.
+      refund.update_column(:status, new_status)
+      Rails.logger.info "💸 Refund #{stripe_refund.id} status: #{old_status} → #{new_status}"
+
+      if new_status == "succeeded" && old_status == "pending"
+        SendRefundNotificationJob.perform_later(refund.id)
+        Rails.logger.info "📧 Enqueued refund notification for settled refund #{stripe_refund.id}"
+      end
+    rescue StandardError => e
+      Rails.logger.error "❌ charge.refund.updated failed for #{stripe_refund.id}: #{e.message}"
+      raise
     end
 
     def handle_charge_dispute_created(dispute)

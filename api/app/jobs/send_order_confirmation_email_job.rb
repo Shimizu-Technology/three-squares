@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 class SendOrderConfirmationEmailJob < ApplicationJob
   queue_as :default
   retry_on StandardError, wait: :polynomially_longer, attempts: 3
@@ -6,30 +8,25 @@ class SendOrderConfirmationEmailJob < ApplicationJob
   def perform(order_id)
     order = Order.find(order_id)
 
-    # Atomic idempotency — prevents duplicate emails when enqueued from
-    # both the checkout controller and the Stripe webhook handler.
+    # Atomic idempotency guard: UPDATE ... WHERE confirmation_email_sent = false
+    # returns 0 rows if another job already claimed this send.
     rows = Order.where(id: order.id, confirmation_email_sent: false)
                 .update_all(confirmation_email_sent: true)
-    if rows == 0
-      Rails.logger.info "⏭️ Confirmation email already sent for Order ##{order.id} — skipping"
-      return
-    end
+    return if rows == 0
 
-    result = EmailService.send_order_confirmation(order)
+    begin
+      result = EmailService.send_order_confirmation(order)
 
-    if result[:success]
+      unless result.is_a?(Hash) && result[:success]
+        raise "Email send failed: #{result&.dig(:error) || 'unknown error'}"
+      end
+
       Rails.logger.info "✅ Order confirmation email sent for Order ##{order.id}"
-    else
-      # Roll back flag so retry or re-enqueue can try again
-      Order.where(id: order.id).update_all(confirmation_email_sent: false)
-      Rails.logger.error "❌ Failed to send confirmation email for Order ##{order.id}: #{result[:error]}"
-      raise "Confirmation email failed: #{result[:error]}"
+    rescue StandardError => e
+      # Conditional rollback — only if we still own the flag
+      Order.where(id: order.id, confirmation_email_sent: true)
+           .update_all(confirmation_email_sent: false)
+      raise
     end
-  rescue ActiveRecord::RecordNotFound
-    raise # Let discard_on handle it
-  rescue StandardError => e
-    # Roll back flag on any unexpected error so retries work
-    Order.where(id: order_id).update_all(confirmation_email_sent: false) rescue nil
-    raise
   end
 end

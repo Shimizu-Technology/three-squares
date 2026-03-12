@@ -75,21 +75,32 @@ module Api
       # PATCH/PUT /api/v1/admin/orders/:id
       # Update order (status, tracking, notes)
       def update
-        old_status = @order.status
-
         if @order.update(order_update_params)
-          # Handle status changes — send notifications via both channels
+          notification_warnings = []
+
+          # Handle status changes — send notifications via both channels.
+          # Rescue enqueue failures (Redis down) — the status update already
+          # committed, so return success with a warning instead of a 500.
           if @order.saved_change_to_status?
-            send_status_notifications(@order)
+            begin
+              sent = send_status_notifications(@order)
+              notification_warnings = sent[:warnings] if sent[:warnings]&.any?
+            rescue StandardError => e
+              Rails.logger.error "❌ Failed to enqueue notifications for order ##{@order.order_number}: #{e.message}"
+              notification_warnings = ["Status updated but notifications failed to enqueue — use Notify button to retry"]
+            end
 
             # Restore inventory when order is cancelled
             restore_inventory(@order, current_user) if @order.status == "cancelled"
           end
 
-          render json: {
+          response = {
             order: detailed_order_json(@order),
             message: "Order updated successfully"
           }
+          response[:notification_warnings] = notification_warnings if notification_warnings.any?
+
+          render json: response
         else
           render json: { error: @order.errors.full_messages.join(", ") }, status: :unprocessable_entity
         end
@@ -98,22 +109,72 @@ module Api
       # POST /api/v1/admin/orders/:id/notify
       # Resend notification to customer (email + SMS) for current status
       def notify
-        # Cancelled IS notified automatically on status change (send_status_notifications
-        # handles it), but resending a cancellation email could confuse customers into
-        # thinking a NEW cancellation occurred. Pending has no status email to resend.
-        if @order.status.in?(%w[pending cancelled])
+        # Terminal statuses — re-notifying would confuse customers
+        blocked = %w[cancelled delivered picked_up]
+        if @order.status.in?(blocked)
           render json: { error: "Cannot resend notification for '#{@order.status}' orders" }, status: :unprocessable_entity
           return
         end
 
-        # Guard shipped resends — don't send customers a broken/empty tracking link
-        if @order.status == "shipped" && @order.tracking_number.blank?
-          render json: { error: "Cannot resend shipped notification without a tracking number. Add tracking info first." }, status: :unprocessable_entity
+        # Pending orders: resend confirmation (email + SMS) instead of status notifications
+        if @order.status == "pending"
+          email_sent = false
+          sms_sent = false
+          settings = SiteSetting.instance
+
+          begin
+            if settings.enable_order_emails && @order.customer_email.present?
+              @order.update_column(:confirmation_email_sent, false)
+              SendOrderConfirmationEmailJob.perform_later(@order.id)
+              email_sent = true
+            end
+            if settings.enable_order_sms && @order.customer_phone.present?
+              @order.update_column(:confirmation_sms_sent, false)
+              SendOrderConfirmationSmsJob.perform_later(@order.id)
+              sms_sent = true
+            end
+          rescue StandardError => e
+            # Redis/job queue down — reset flags so the admin can retry.
+            # Return 503 instead of a raw 500 so the frontend can show
+            # "service temporarily unavailable" instead of a generic error.
+            Rails.logger.error "❌ Notify resend failed for Order ##{@order.id}: #{e.message}"
+            render json: { error: "Notification service temporarily unavailable — please try again" }, status: :service_unavailable
+            return
+          end
+
+          if email_sent || sms_sent
+            channels = []
+            channels << "email" if email_sent
+            channels << "SMS" if sms_sent
+            render json: { message: "Confirmation resent (#{channels.join(' + ')})" }
+          else
+            render json: { error: "No channels available for confirmation resend" }, status: :unprocessable_entity
+          end
           return
         end
 
-        send_status_notifications(@order)
-        render json: { message: "Notification resent for status '#{@order.status}' (email + SMS)" }
+        # Non-pending: force resend status notifications.
+        # Rescue enqueue failures — match update action's error handling.
+        begin
+          sent = send_status_notifications(@order, force: true)
+        rescue StandardError => e
+          Rails.logger.error "❌ Failed to enqueue resend for order ##{@order.order_number}: #{e.message}"
+          render json: { error: "Notification enqueue failed — please try again", details: e.message }, status: :service_unavailable
+          return
+        end
+
+        if sent[:any]
+          channels = []
+          channels << "email" if sent[:email]
+          channels << "SMS" if sent[:sms]
+          render json: { message: "Notification resent for status '#{@order.status}' (#{channels.join(' + ')})" }
+        else
+          warnings = sent[:warnings] || []
+          render json: {
+            error: "No notifications sent for status '#{@order.status}'",
+            reasons: warnings
+          }, status: :unprocessable_entity
+        end
       end
 
       # POST /api/v1/admin/orders/:id/refund
@@ -182,8 +243,8 @@ module Api
           end
 
           # Send refund notifications asynchronously (email + SMS)
-          # Avoids blocking the refund API response on slow Resend/ClickSend calls
-          SendRefundNotificationJob.perform_later(@order.id, refund.amount_cents, refund.reason)
+          # Avoids blocking the refund response on slow Resend/ClickSend API calls
+          SendRefundNotificationJob.perform_later(refund.id)
 
           render json: {
             message: "Refund processed successfully",
@@ -206,8 +267,15 @@ module Api
       private
 
       # Send email + SMS notifications for the current order status.
-      # Respects enable_order_emails / enable_order_sms toggles independently.
-      def send_status_notifications(order)
+      # Both channels are gated here before enqueueing:
+      #   - Email: checked against enable_order_emails + customer_email presence
+      #   - SMS: checked against enable_order_sms + customer_phone presence
+      # This avoids enqueueing jobs that will immediately no-op.
+      # Returns a hash describing what was actually enqueued:
+      #   { any: true/false, email: true/false, sms: true/false, warnings: [...] }
+      # @param order [Order]
+      # @param force [Boolean] when true, reset seq counters first (for admin resend)
+      def send_status_notifications(order, force: false)
         settings = SiteSetting.instance
         emails_on = settings.enable_order_emails
         sms_on = settings.enable_order_sms
@@ -215,48 +283,85 @@ module Api
         has_email = order.customer_email.present?
         has_phone = order.customer_phone.present?
 
-        case order.status
-        when "confirmed"
-          # Pickup flow: order is being prepared
-          SendOrderStatusEmailJob.perform_later(order.id, "confirmed") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "confirmed") if sms_on && has_phone
+        warnings = []
+        event = order.status
 
-        when "processing"
-          # Shipping flow: order is being packed
-          SendOrderStatusEmailJob.perform_later(order.id, "processing") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "processing") if sms_on && has_phone
-
-        when "ready"
-          # Pickup flow: ready for pickup
-          SendOrderReadyEmailJob.perform_later(order.id) if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "ready") if sms_on && has_phone
-
-        when "shipped"
-          # Shipping flow: only notify if tracking number is present.
-          # Matches the notify (manual resend) endpoint guard — customers
-          # shouldn't receive "Your Order Has Shipped" with no tracking info.
-          if order.tracking_number.present?
-            SendOrderShippedEmailJob.perform_later(order.id) if emails_on && has_email
-            SendOrderSmsJob.perform_later(order.id, "shipped") if sms_on && has_phone
-          else
-            Rails.logger.info "⏭️ Shipped notifications deferred for Order ##{order.id} — no tracking number yet"
-          end
-
-        when "picked_up"
-          # Pickup flow: customer picked up
-          SendOrderStatusEmailJob.perform_later(order.id, "picked_up") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "picked_up") if sms_on && has_phone
-
-        when "delivered"
-          # Shipping flow: delivered
-          SendOrderStatusEmailJob.perform_later(order.id, "delivered") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "delivered") if sms_on && has_phone
-
-        when "cancelled"
-          # Both flows: cancelled
-          SendOrderStatusEmailJob.perform_later(order.id, "cancelled") if emails_on && has_email
-          SendOrderSmsJob.perform_later(order.id, "cancelled") if sms_on && has_phone
+        # Validate status has a notification template BEFORE calling
+        # notification_seq — avoids ArgumentError for unknown statuses.
+        unless Order::STATUS_SEQUENCE.key?(event) && event != "pending"
+          warnings << "No notification template for status '#{event}'"
+          return { any: false, email: false, sms: false, warnings: warnings }
         end
+
+        seq = order.notification_seq
+
+        # Shipped requires tracking number
+        if event == "shipped" && order.tracking_number.blank?
+          warnings << "No tracking number — shipped notifications require tracking info"
+          return { any: false, email: false, sms: false, warnings: warnings }
+        end
+
+        will_email = emails_on && has_email
+        will_sms = sms_on && has_phone
+
+        email_sent = false
+        sms_sent = false
+
+        # Snapshot original seq values BEFORE decrementing, so we can
+        # restore the exact original on enqueue failure (not just `seq`).
+        original_email_seq = order.last_email_seq
+        original_sms_seq = order.last_sms_seq
+
+        # Force-resend: reset seq to seq-1 so the job's `last_*_seq < seq`
+        # guard passes. Uses >= to handle backward status changes too
+        # (e.g. shipped→confirmed: last_email_seq=5, seq=2 → set to 1).
+        if force
+          if will_email
+            Order.where(id: order.id).where("last_email_seq >= ?", seq)
+                 .update_all(last_email_seq: seq - 1)
+          end
+          if will_sms
+            Order.where(id: order.id).where("last_sms_seq >= ?", seq)
+                 .update_all(last_sms_seq: seq - 1)
+          end
+        end
+
+        # Enqueue each channel independently so a partial failure (e.g.
+        # email enqueues but SMS raises) only rolls back the failed channel.
+        # A single rescue block would leave the successful channel's seq
+        # decremented, causing duplicates on the next Notify click.
+        if will_email
+          begin
+            SendOrderStatusEmailJob.perform_later(order.id, event, seq)
+            email_sent = true
+          rescue StandardError => e
+            if force
+              Order.where(id: order.id, last_email_seq: seq - 1)
+                   .update_all(last_email_seq: original_email_seq)
+            end
+            Rails.logger.error "❌ Failed to enqueue email for order ##{order.order_number}: #{e.message}"
+            warnings << "Email notification failed to enqueue"
+          end
+        end
+
+        if will_sms
+          begin
+            SendOrderSmsJob.perform_later(order.id, event, seq)
+            sms_sent = true
+          rescue StandardError => e
+            if force
+              Order.where(id: order.id, last_sms_seq: seq - 1)
+                   .update_all(last_sms_seq: original_sms_seq)
+            end
+            Rails.logger.error "❌ Failed to enqueue SMS for order ##{order.order_number}: #{e.message}"
+            warnings << "SMS notification failed to enqueue"
+          end
+        end
+
+        warnings << "Email enabled but customer has no email address" if emails_on && !has_email
+        warnings << "SMS enabled but customer has no phone number" if sms_on && !has_phone
+
+        { any: email_sent || sms_sent, email: email_sent, sms: sms_sent, warnings: warnings }
       end
 
       def filtered_orders_query

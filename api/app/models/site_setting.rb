@@ -7,7 +7,10 @@ class SiteSetting < ApplicationRecord
   validates :announcement_style, inclusion: { in: VALID_ANNOUNCEMENT_STYLES }, allow_nil: true
   validate :validate_shipping_origin_address
 
-  # Singleton accessor
+  # Singleton accessor — always queries DB to ensure Sidekiq workers see
+  # the latest admin settings. Single-row table, so this is fast (~0.1ms).
+  # Do NOT memoize with Thread.current — Sidekiq threads are long-lived
+  # and would serve stale toggle values after admin settings changes.
   def self.instance
     first_or_create!(
       payment_test_mode: true,
