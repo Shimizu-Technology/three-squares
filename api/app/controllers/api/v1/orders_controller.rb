@@ -3,10 +3,14 @@
 module Api
   module V1
     class OrdersController < ApplicationController
+      class CheckoutValidationError < StandardError; end
+      class InventoryCommitError < StandardError; end
+
       COOKIE_COLLECTION_SLUGS = %w[cookies cookie-boxes mini-cookies].freeze
 
       rescue_from ActionController::ParameterMissing do |e|
-        render json: { error: "Missing required parameter: #{e.param}. Wrap your request body in an '#{e.param}' key." }, status: :bad_request
+        message = "Missing required parameter: #{e.param}. Wrap your request body in an '#{e.param}' key."
+        render json: { success: false, error: message, message: message }, status: :bad_request
       end
       include Authenticatable
       skip_before_action :authenticate_request, only: [ :create, :show ] # Allow guest checkout and order viewing
@@ -120,13 +124,15 @@ module Api
         cart_items = get_cart_items
 
         if cart_items.empty?
-          return render json: { error: "Cart is empty" }, status: :unprocessable_entity
+          message = "Cart is empty"
+          return render json: { success: false, error: message, message: message }, status: :unprocessable_entity
         end
 
         # Validate cart items are still available
         validation_errors = validate_cart_items(cart_items)
         if validation_errors.any?
-          return render json: { error: "Cart validation failed", issues: validation_errors }, status: :unprocessable_entity
+          message = "Cart validation failed"
+          return render json: { success: false, error: message, message: message, issues: validation_errors }, status: :unprocessable_entity
         end
 
         fulfillment_type = normalized_fulfillment_type
@@ -137,105 +143,71 @@ module Api
           location_id: location_id
         )
         if fulfillment_issues.any?
-          return render json: { error: "Cart fulfillment validation failed", issues: fulfillment_issues }, status: :unprocessable_entity
+          message = "Cart fulfillment validation failed"
+          return render json: { success: false, error: message, message: message, issues: fulfillment_issues }, status: :unprocessable_entity
         end
 
         # Create order
         order = build_order(cart_items, fulfillment_type: fulfillment_type, location_id: location_id)
+        order.payment_status ||= "pending"
 
-        # Process payment
-        payment_intent_id = order_params[:payment_intent_id]
-        payment_method_params = order_params[:payment_method] || {}
-        payment_type = payment_method_params[:type]
-
-        if payment_type == "test" && settings.payment_test_mode
-          # Test mode: simulate payment
-          payment_result = PaymentService.process_payment(
-            amount_cents: order.total_cents,
-            payment_method: payment_method_params,
-            order: order,
-            customer_email: order.email,
-            test_mode: true
-          )
-          unless payment_result[:success]
-            return render json: { error: payment_result[:error] }, status: :unprocessable_entity
-          end
-          order.payment_status = "paid"
-          order.payment_intent_id = payment_result[:charge_id]
-        elsif payment_intent_id.present?
-          # Real Stripe payment: verify the PaymentIntent succeeded
-          verification = verify_payment_intent(payment_intent_id, order.total_cents)
-          unless verification[:success]
-            return render json: { error: verification[:error] }, status: :unprocessable_entity
-          end
-          order.payment_status = "paid"
-          order.payment_intent_id = payment_intent_id
-        else
-          # Legacy token-based flow
-          payment_result = PaymentService.process_payment(
-            amount_cents: order.total_cents,
-            payment_method: payment_method_params,
-            order: order,
-            customer_email: order.email,
-            test_mode: settings.payment_test_mode
-          )
-          unless payment_result[:success]
-            return render json: { error: payment_result[:error] }, status: :unprocessable_entity
-          end
-          order.payment_status = "paid"
-          order.payment_intent_id = payment_result[:charge_id]
+        # Validate before authorizing payment so we do not charge invalid orders.
+        unless order.valid?
+          message = "Order validation failed"
+          return render json: { success: false, error: message, message: message, errors: order.errors.full_messages }, status: :unprocessable_entity
         end
 
-        Rails.logger.info "💾 Attempting to save order..."
-        Rails.logger.info "   Order attributes: #{order.attributes.slice('order_type', 'status', 'email', 'phone', 'customer_name', 'shipping_city', 'shipping_state', 'payment_status').inspect}"
+        authorize_payment!(order, settings)
 
-        if order.save
-          Rails.logger.info "✅ Order saved successfully! Order ##{order.order_number}"
-          # Deduct inventory (with locking to prevent race conditions) and create audit trail
-          deduct_inventory(cart_items, order)
+        finalize_order!(order, cart_items)
 
-          # Clear cart
-          clear_cart(cart_items)
+        # Send customer notifications — respects per-channel toggles
+        has_email = order.customer_email.present?
+        has_phone = order.customer_phone.present?
 
-          # Send customer notifications — respects per-channel toggles
-          has_email = order.customer_email.present?
-          has_phone = order.customer_phone.present?
-
-          if settings.enable_order_emails && has_email
-            SendOrderConfirmationEmailJob.perform_later(order.id)
-          end
-
-          if settings.enable_order_sms && has_phone
-            # Claim the seq immediately so a fast admin "confirmed" (seq=2) can't
-            # discard this job. The job uses confirmation_sms_sent boolean instead
-            # of the seq system to avoid the race entirely.
-            SendOrderConfirmationSmsJob.perform_later(order.id)
-          end
-
-          # Admin notifications — not gated by customer toggles
-          SendAdminNotificationEmailJob.perform_later(order.id)
-          # Gate on enable_order_sms only — SmsService.send_admin_new_order
-          # merges global + location-level phones internally. Checking
-          # settings.admin_sms_phones here would skip orders for locations
-          # that only have location-level phones configured.
-          if settings.enable_order_sms
-            SendAdminOrderSmsJob.perform_later(order.id)
-          end
-
-          render json: {
-            success: true,
-            order: order_json(order),
-            message: settings.payment_test_mode? ? "Test order created successfully!" : "Order placed successfully!"
-          }, status: :created
-        else
-          Rails.logger.error "❌ Order validation failed:"
-          order.errors.full_messages.each { |msg| Rails.logger.error "   - #{msg}" }
-          render json: { error: "Failed to create order", errors: order.errors.full_messages }, status: :unprocessable_entity
+        if settings.enable_order_emails && has_email
+          SendOrderConfirmationEmailJob.perform_later(order.id)
         end
+
+        if settings.enable_order_sms && has_phone
+          SendOrderConfirmationSmsJob.perform_later(order.id)
+        end
+
+        # Admin notifications — not gated by customer toggles
+        SendAdminNotificationEmailJob.perform_later(order.id)
+        if settings.enable_order_sms
+          SendAdminOrderSmsJob.perform_later(order.id)
+        end
+
+        render json: {
+          success: true,
+          order: order_json(order),
+          message: settings.payment_test_mode? ? "Test order created successfully!" : "Order placed successfully!"
+        }, status: :created
+      rescue CheckoutValidationError => e
+        render json: { success: false, error: e.message, message: e.message }, status: :unprocessable_entity
+      rescue InventoryCommitError => e
+        log_payment_reconciliation_required(order, e)
+        attempt_payment_reversal(order)
+        message = "One or more items are no longer available. Your payment will be reconciled automatically."
+        render json: { success: false, error: message, message: message, details: e.message }, status: :unprocessable_entity
+      rescue ActiveRecord::RecordInvalid => e
+        log_payment_reconciliation_required(order, e)
+        attempt_payment_reversal(order)
+        message = "Failed to create order"
+        render json: { success: false, error: message, message: message, errors: e.record.errors.full_messages }, status: :unprocessable_entity
+      rescue ActiveRecord::RecordNotUnique => e
+        log_payment_reconciliation_required(order, e)
+        attempt_payment_reversal(order)
+        message = "Could not finalize order due to a temporary conflict. Please try again."
+        render json: { success: false, error: message, message: message }, status: :conflict
       rescue StandardError => e
+        log_payment_reconciliation_required(order, e)
+        attempt_payment_reversal(order)
         Rails.logger.error "Order creation error: #{e.class} - #{e.message}"
         Rails.logger.error e.backtrace.first(5).join("\n")
-        render json: { error: "Failed to create order. Please try again." }, status: :internal_server_error
+        message = "Failed to create order. Please try again."
+        render json: { success: false, error: message, message: message }, status: :internal_server_error
       end
 
       # GET /api/v1/orders/:id
@@ -449,7 +421,7 @@ module Api
               previous_stock = variant.stock_quantity
               new_stock = previous_stock - item.quantity
               if new_stock < 0
-                raise StandardError, "Not enough stock for #{variant.sku}"
+                raise InventoryCommitError, "Not enough stock for #{variant.sku}"
               end
               variant.update!(stock_quantity: new_stock)
 
@@ -468,7 +440,7 @@ module Api
               previous_stock = product.product_stock_quantity || 0
               new_stock = previous_stock - item.quantity
               if new_stock < 0
-                raise StandardError, "Not enough stock for #{product.name}"
+                raise InventoryCommitError, "Not enough stock for #{product.name}"
               end
               product.update!(product_stock_quantity: new_stock)
 
@@ -488,6 +460,111 @@ module Api
             next
           end
         end
+      end
+
+      def authorize_payment!(order, settings)
+        payment_intent_id = order_params[:payment_intent_id]
+        payment_method_params = order_params[:payment_method] || {}
+        payment_type = payment_method_params[:type]
+
+        if payment_type == "test" && settings.payment_test_mode
+          payment_result = PaymentService.process_payment(
+            amount_cents: order.total_cents,
+            payment_method: payment_method_params,
+            order: order,
+            customer_email: order.email,
+            test_mode: true
+          )
+          raise CheckoutValidationError, payment_result[:error] unless payment_result[:success]
+
+          order.payment_status = "paid"
+          order.payment_intent_id = payment_result[:charge_id]
+          return payment_result
+        end
+
+        if payment_intent_id.present?
+          verification = verify_payment_intent(payment_intent_id, order.total_cents)
+          raise CheckoutValidationError, verification[:error] unless verification[:success]
+
+          order.payment_status = "paid"
+          order.payment_intent_id = payment_intent_id
+          return verification
+        end
+
+        payment_result = PaymentService.process_payment(
+          amount_cents: order.total_cents,
+          payment_method: payment_method_params,
+          order: order,
+          customer_email: order.email,
+          test_mode: settings.payment_test_mode
+        )
+        raise CheckoutValidationError, payment_result[:error] unless payment_result[:success]
+
+        order.payment_status = "paid"
+        order.payment_intent_id = payment_result[:charge_id]
+        payment_result
+      end
+
+      def finalize_order!(order, cart_items)
+        Rails.logger.info "💾 Finalizing order inside transaction..."
+        Rails.logger.info "   Order attributes: #{order.attributes.slice('order_type', 'status', 'email', 'phone', 'customer_name', 'shipping_city', 'shipping_state', 'payment_status').inspect}"
+
+        ActiveRecord::Base.transaction do
+          save_order_with_retry!(order)
+          Rails.logger.info "✅ Order saved successfully! Order ##{order.order_number}"
+
+          # Deduct inventory (with locking to prevent race conditions) and create audit trail
+          deduct_inventory(cart_items, order)
+
+          # Clear cart only after order and inventory were committed
+          clear_cart(cart_items)
+        end
+      end
+
+      def save_order_with_retry!(order, max_attempts: 10)
+        attempts = 0
+
+        begin
+          attempts += 1
+          order.save!
+        rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
+          raise unless order_number_conflict?(order, e) && attempts < max_attempts
+
+          Rails.logger.warn "Order number collision while saving order, retrying (attempt #{attempts}/#{max_attempts})"
+          order.order_number = nil
+          retry
+        end
+      end
+
+      def order_number_conflict?(order, error)
+        if error.is_a?(ActiveRecord::RecordNotUnique)
+          return error.message.include?("index_orders_on_order_number") || error.message.include?("order_number")
+        end
+
+        return false unless error.is_a?(ActiveRecord::RecordInvalid)
+        error.record == order && order.errors.of_kind?(:order_number, :taken)
+      end
+
+      def log_payment_reconciliation_required(order, error)
+        return if order.blank? || order.payment_status != "paid" || order.payment_intent_id.blank?
+
+        Rails.logger.error(
+          "PAYMENT_RECONCILIATION_REQUIRED order_finalize_failed payment_intent_id=#{order.payment_intent_id} " \
+          "order_number=#{order.order_number || 'pending'} error_class=#{error.class} error_message=#{error.message}"
+        )
+      end
+
+      def attempt_payment_reversal(order)
+        return if order.blank? || order.payment_status != "paid" || order.payment_intent_id.blank?
+
+        payment_reference = order.payment_intent_id
+        # Skip synthetic non-Stripe IDs (e.g., test_charge_... from local test mode).
+        return unless payment_reference.start_with?("pi_", "ch_")
+
+        ProcessPaymentReversalJob.perform_later(payment_reference, order.order_number || "pending")
+        Rails.logger.info "PAYMENT_REVERSAL_ENQUEUED reference=#{payment_reference} order_number=#{order.order_number || 'pending'}"
+      rescue StandardError => e
+        Rails.logger.error "PAYMENT_REVERSAL_ENQUEUE_FAILED reference=#{payment_reference} error=#{e.class}: #{e.message}"
       end
 
       def clear_cart(cart_items)
