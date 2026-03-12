@@ -39,6 +39,9 @@ interface SiteSettings {
   announcement_enabled: boolean;
   announcement_text: string;
   announcement_style: string;
+  enable_storefront_three_squares: boolean;
+  enable_storefront_latte_stone: boolean;
+  enable_storefront_catering: boolean;
 }
 
 const REQUIRED_ORIGIN_FIELDS: Array<keyof SiteSettings['shipping_origin_address']> = [
@@ -281,6 +284,36 @@ export default function AdminSettingsPage() {
     } catch (err: any) {
       console.error('Failed to toggle email setting:', err);
       toast.error('Failed to update email setting');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleToggleStorefront = async (field: 'enable_storefront_three_squares' | 'enable_storefront_latte_stone' | 'enable_storefront_catering') => {
+    if (!settings) return;
+
+    try {
+      setSaving(true);
+      const newValue = !settings[field];
+      const token = await getToken();
+      const response = await axios.put(
+        `${API_BASE_URL}/api/v1/admin/site_settings`,
+        { site_setting: { [field]: newValue } },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setSettings((prev) => (prev ? { ...prev, ...response.data } : response.data));
+      setLastSavedSiteSettings((prev) => (prev ? { ...prev, ...response.data } : response.data));
+
+      const labels: Record<string, string> = {
+        enable_storefront_three_squares: 'Three Squares',
+        enable_storefront_latte_stone: 'Latte Stone Cookies',
+        enable_storefront_catering: 'Catering',
+      };
+      toast.success(`${labels[field]} storefront ${newValue ? 'enabled' : 'disabled'}`, { duration: 3000 });
+    } catch (err: unknown) {
+      console.error('Failed to toggle storefront:', err);
+      toast.error('Failed to update storefront setting');
     } finally {
       setSaving(false);
     }
@@ -544,6 +577,7 @@ export default function AdminSettingsPage() {
             onTogglePlaceholderUrlInput={() => setShowPlaceholderUrlInput((prev) => !prev)}
             onSaveSiteSettings={handleSaveSiteSettings}
             onDiscardSiteSettings={handleDiscardSiteSettings}
+            onToggleStorefront={handleToggleStorefront}
           />
         )}
 
@@ -587,6 +621,7 @@ interface GeneralSettingsTabProps {
   onTogglePlaceholderUrlInput: () => void;
   onSaveSiteSettings: () => void;
   onDiscardSiteSettings: () => void;
+  onToggleStorefront: (field: 'enable_storefront_three_squares' | 'enable_storefront_latte_stone' | 'enable_storefront_catering') => void;
 }
 
 function GeneralSettingsTab({
@@ -604,6 +639,7 @@ function GeneralSettingsTab({
   onTogglePlaceholderUrlInput,
   onSaveSiteSettings,
   onDiscardSiteSettings,
+  onToggleStorefront,
 }: GeneralSettingsTabProps) {
   const missingOriginFields = getMissingOriginFields(settings.shipping_origin_address);
   const isDefaultPlaceholder =
@@ -831,6 +867,41 @@ function GeneralSettingsTab({
             </span>
           </div>
         </div>
+        </div>
+      </div>
+
+      {/* Storefronts Card */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900">Storefronts</h2>
+          <p className="text-sm text-gray-500 mt-1">Enable or disable storefronts visible to customers on the website</p>
+        </div>
+        <div className="p-6 space-y-1">
+          {([
+            { field: 'enable_storefront_three_squares' as const, label: 'Three Squares', desc: 'Daily comfort food and local favorites' },
+            { field: 'enable_storefront_latte_stone' as const, label: 'Latte Stone Cookies', desc: 'Artisan shortbread cookies' },
+            { field: 'enable_storefront_catering' as const, label: 'Catering', desc: 'Party trays and catering packages' },
+          ]).map(({ field, label, desc }) => (
+            <div key={field} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
+              <div>
+                <p className="font-medium text-gray-900">{label}</p>
+                <p className="text-sm text-gray-500">{desc}</p>
+              </div>
+              <button
+                onClick={() => onToggleStorefront(field)}
+                disabled={saving}
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ${
+                  settings[field] ? 'bg-green-500' : 'bg-gray-200'
+                } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                <span
+                  className={`inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                    settings[field] ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+          ))}
         </div>
       </div>
 

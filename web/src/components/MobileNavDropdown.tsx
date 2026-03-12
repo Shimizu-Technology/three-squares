@@ -2,6 +2,7 @@ import { useState, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { collectionsApi, type Collection } from '../services/api';
 import { useCartStore } from '../store/cartStore';
+import useAppConfig from '../hooks/useAppConfig';
 
 interface MobileNavDropdownProps {
   onItemClick: () => void;
@@ -13,6 +14,12 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const cart = useCartStore((state) => state.cart);
+  const config = useAppConfig();
+
+  const showThreeSquares = config?.enable_storefront_three_squares !== false;
+  const showLatteStone = config?.enable_storefront_latte_stone !== false;
+  const showCatering = config?.enable_storefront_catering !== false;
+  const storefrontCount = [showThreeSquares, showLatteStone, showCatering].filter(Boolean).length;
 
   // Fetch collections on mount
   useEffect(() => {
@@ -110,42 +117,52 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
               All Products
             </Link>
 
-            <p className={`text-xs uppercase tracking-wider font-semibold py-2 ${darkMode ? 'text-white/40' : 'text-warm-400'}`}>
-              Shop by Business
-            </p>
-            <Link
-              to="/shop/three-squares"
-              className={`flex items-center gap-2 py-2 ${
-                darkMode
-                  ? 'text-white/80 hover:text-tsGold'
-                  : 'text-warm-700 hover:text-tsPrimary'
-              }`}
-              onClick={(event) => handleStorefrontClick(event, 'three_squares', 'Three Squares')}
-            >
-              Three Squares
-            </Link>
-            <Link
-              to="/shop/latte-stone-cookies"
-              className={`flex items-center gap-2 py-2 ${
-                darkMode
-                  ? 'text-white/80 hover:text-tsGold'
-                  : 'text-warm-700 hover:text-tsPrimary'
-              }`}
-              onClick={(event) => handleStorefrontClick(event, 'latte_stone', 'Latte Stone Cookies')}
-            >
-              Latte Stone Cookies
-            </Link>
-            <Link
-              to="/shop/catering"
-              className={`flex items-center gap-2 py-2 ${
-                darkMode
-                  ? 'text-white/80 hover:text-tsGold'
-                  : 'text-warm-700 hover:text-tsPrimary'
-              }`}
-              onClick={(event) => handleStorefrontClick(event, 'catering', 'Catering')}
-            >
-              Catering
-            </Link>
+            {storefrontCount > 1 && (
+              <>
+                <p className={`text-xs uppercase tracking-wider font-semibold py-2 ${darkMode ? 'text-white/40' : 'text-warm-400'}`}>
+                  Shop by Business
+                </p>
+                {showThreeSquares && (
+                  <Link
+                    to="/shop/three-squares"
+                    className={`flex items-center gap-2 py-2 ${
+                      darkMode
+                        ? 'text-white/80 hover:text-tsGold'
+                        : 'text-warm-700 hover:text-tsPrimary'
+                    }`}
+                    onClick={(event) => handleStorefrontClick(event, 'three_squares', 'Three Squares')}
+                  >
+                    Three Squares
+                  </Link>
+                )}
+                {showLatteStone && (
+                  <Link
+                    to="/shop/latte-stone-cookies"
+                    className={`flex items-center gap-2 py-2 ${
+                      darkMode
+                        ? 'text-white/80 hover:text-tsGold'
+                        : 'text-warm-700 hover:text-tsPrimary'
+                    }`}
+                    onClick={(event) => handleStorefrontClick(event, 'latte_stone', 'Latte Stone Cookies')}
+                  >
+                    Latte Stone Cookies
+                  </Link>
+                )}
+                {showCatering && (
+                  <Link
+                    to="/shop/catering"
+                    className={`flex items-center gap-2 py-2 ${
+                      darkMode
+                        ? 'text-white/80 hover:text-tsGold'
+                        : 'text-warm-700 hover:text-tsPrimary'
+                    }`}
+                    onClick={(event) => handleStorefrontClick(event, 'catering', 'Catering')}
+                  >
+                    Catering
+                  </Link>
+                )}
+              </>
+            )}
 
             {/* Collections */}
             {loading ? (

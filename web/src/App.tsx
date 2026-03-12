@@ -46,6 +46,7 @@ import SmoothScroll from './components/SmoothScroll'; // Import SmoothScroll
 import { AnimatePresence } from 'framer-motion'; // Page transitions
 import NavDropdown from './components/NavDropdown'; // Import NavDropdown
 import MobileNavDropdown from './components/MobileNavDropdown'; // Import MobileNavDropdown
+import LocationPill from './components/LocationPill'; // Import LocationPill
 import { useCartStore } from './store/cartStore'; // Import cart store
 import { API_BASE_URL } from './config';
 import AnnouncementBanner from './components/AnnouncementBanner';
@@ -250,27 +251,30 @@ function AppContent() {
                 </span>
               </Link>
 
+              {/* Location Pill - visible on ordering pages */}
+              {isOrderingPage && <LocationPill />}
+
               {/* Desktop Navigation Links */}
-              <div className="hidden md:flex items-center space-x-10">
+              <div className="hidden lg:flex items-center space-x-8">
                 {/* Shop Dropdown */}
                 <NavDropdown onItemClick={handleNavClick} darkMode={false} />
                 <Link
                   to="/catering"
-                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2"
+                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2 whitespace-nowrap"
                   onClick={handleNavClick}
                 >
                   Catering
                 </Link>
                 <Link
                   to="/locations"
-                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2"
+                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2 whitespace-nowrap"
                   onClick={handleNavClick}
                 >
                   Locations
                 </Link>
                 <Link
                   to="/about"
-                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2"
+                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2 whitespace-nowrap"
                   onClick={handleNavClick}
                 >
                   About Us
@@ -278,16 +282,16 @@ function AppContent() {
               </div>
 
               {/* Right Side: Search, Cart, Auth, Mobile Menu */}
-              <div className="flex items-center space-x-3 md:space-x-4">
-                {/* Search Bar - Desktop */}
-                <form onSubmit={handleSearch} className="hidden lg:block">
+              <div className="flex items-center space-x-3 lg:space-x-4">
+                {/* Search Bar - Desktop (xl+) */}
+                <form onSubmit={handleSearch} className="hidden xl:block">
                   <div className="relative">
                     <input
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       placeholder="Search menu..."
-                      className="pl-10 pr-4 py-2.5 bg-white border border-warm-200 rounded-full focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary w-56 xl:w-64 transition-all text-sm text-warm-900 placeholder-warm-400"
+                      className="pl-10 pr-4 py-2.5 bg-white border border-warm-200 rounded-full focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary w-56 transition-all text-sm text-warm-900 placeholder-warm-400"
                     />
                     <svg
                       className="absolute left-3.5 top-1/2 transform -translate-y-1/2 w-4 h-4 text-warm-400"
@@ -305,10 +309,10 @@ function AppContent() {
                   </div>
                 </form>
 
-                {/* Search Icon - Tablet */}
+                {/* Search Icon - Desktop (lg to xl) */}
                 <button
                   type="button"
-                  className="hidden md:flex lg:hidden p-2.5 min-w-[44px] min-h-[44px] items-center justify-center text-warm-600 hover:text-tsPrimary transition rounded-lg"
+                  className="hidden lg:flex xl:hidden p-2.5 min-w-[44px] min-h-[44px] items-center justify-center text-warm-600 hover:text-tsPrimary transition rounded-lg"
                   onClick={() => {
                     const input = document.querySelector('input[placeholder="Search menu..."]') as HTMLInputElement;
                     if (input) input.focus();
@@ -324,7 +328,7 @@ function AppContent() {
                 <CartIcon darkMode={false} />
 
                 {/* Auth - Desktop */}
-                <div className="hidden md:flex items-center">
+                <div className="hidden sm:flex items-center">
                   <SignedOut>
                     <SignInButton mode="modal">
                       <button className="text-sm px-5 py-2.5 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition font-medium">
@@ -338,10 +342,10 @@ function AppContent() {
                   </SignedIn>
                 </div>
 
-                {/* Mobile Menu Button */}
+                {/* Mobile/Tablet Menu Button (< lg) */}
                 <button
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="md:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-warm-600 hover:text-tsPrimary transition rounded-lg"
+                  className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-warm-600 hover:text-tsPrimary transition rounded-lg"
                   aria-label="Toggle menu"
                 >
                   {mobileMenuOpen ? (
@@ -360,7 +364,7 @@ function AppContent() {
 
           {/* Mobile Menu */}
           {mobileMenuOpen && (
-            <div className="md:hidden border-t border-warm-100 bg-white animate-slide-down">
+            <div className="lg:hidden border-t border-warm-100 bg-white animate-slide-down">
               <div className="px-4 py-4 space-y-4">
                 {/* Mobile Search */}
                 <form onSubmit={handleSearch}>
@@ -452,7 +456,7 @@ function AppContent() {
         </nav>
         )}
 
-        {/* Location picker — only on pages where location context matters */}
+        {/* Location picker modal — renders as fixed overlay when active */}
         {!isAdminPage && isOrderingPage && <LocationPicker />}
 
         {/* Routes with page transitions */}

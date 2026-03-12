@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, type MouseEvent as ReactMouseEvent } from 
 import { Link } from 'react-router-dom';
 import { collectionsApi, type Collection } from '../services/api';
 import { useCartStore } from '../store/cartStore';
+import useAppConfig from '../hooks/useAppConfig';
 
 interface NavDropdownProps {
   onItemClick: () => void;
@@ -14,6 +15,12 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cart = useCartStore((state) => state.cart);
+  const config = useAppConfig();
+
+  const showThreeSquares = config?.enable_storefront_three_squares !== false;
+  const showLatteStone = config?.enable_storefront_latte_stone !== false;
+  const showCatering = config?.enable_storefront_catering !== false;
+  const storefrontCount = [showThreeSquares, showLatteStone, showCatering].filter(Boolean).length;
 
   // Fetch collections on mount
   useEffect(() => {
@@ -146,30 +153,40 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
 
             {collections.length > 0 && <div className="border-t border-warm-100 my-1" />}
 
-            <p className="px-5 py-2 text-[11px] font-semibold uppercase tracking-wider text-warm-400">
-              Shop by Business
-            </p>
-            <Link
-              to="/shop/three-squares"
-              className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
-              onClick={(event) => handleStorefrontClick(event, 'three_squares', 'Three Squares')}
-            >
-              Three Squares
-            </Link>
-            <Link
-              to="/shop/latte-stone-cookies"
-              className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
-              onClick={(event) => handleStorefrontClick(event, 'latte_stone', 'Latte Stone Cookies')}
-            >
-              Latte Stone Cookies
-            </Link>
-            <Link
-              to="/shop/catering"
-              className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
-              onClick={(event) => handleStorefrontClick(event, 'catering', 'Catering')}
-            >
-              Catering
-            </Link>
+            {storefrontCount > 1 && (
+              <>
+                <p className="px-5 py-2 text-[11px] font-semibold uppercase tracking-wider text-warm-400">
+                  Shop by Business
+                </p>
+                {showThreeSquares && (
+                  <Link
+                    to="/shop/three-squares"
+                    className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
+                    onClick={(event) => handleStorefrontClick(event, 'three_squares', 'Three Squares')}
+                  >
+                    Three Squares
+                  </Link>
+                )}
+                {showLatteStone && (
+                  <Link
+                    to="/shop/latte-stone-cookies"
+                    className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
+                    onClick={(event) => handleStorefrontClick(event, 'latte_stone', 'Latte Stone Cookies')}
+                  >
+                    Latte Stone Cookies
+                  </Link>
+                )}
+                {showCatering && (
+                  <Link
+                    to="/shop/catering"
+                    className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
+                    onClick={(event) => handleStorefrontClick(event, 'catering', 'Catering')}
+                  >
+                    Catering
+                  </Link>
+                )}
+              </>
+            )}
 
             <div className="border-t border-warm-100 my-1" />
 
