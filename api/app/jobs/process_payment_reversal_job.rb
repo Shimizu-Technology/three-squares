@@ -1,22 +1,22 @@
 class ProcessPaymentReversalJob < ApplicationJob
   queue_as :default
 
-  # Bound retries so the job eventually lands in the dead queue for
-  # manual intervention if Stripe is persistently unavailable.
-  # Idempotency key prevents duplicate refunds across retries.
-  #
   # IMPORTANT: Active Job evaluates handlers in LIFO (reverse declaration)
   # order. Declare least-specific FIRST so most-specific handlers win.
   #
-  # 1. StandardError (least specific — checked last at runtime).
-  #    Catches non-Stripe errors (OpenSSL, SocketError, etc.) and
-  #    InvalidRequestError (terminal PI refs) that bubble up from perform.
+  # 1. StandardError (least specific — checked last at runtime)
   discard_on StandardError do |job, error|
     Rails.logger.error "PAYMENT_REVERSAL_UNEXPECTED_ERROR reference=#{job.arguments.first} error=#{error.class}: #{error.message}"
   end
-  # 2. Stripe::StripeError — transient errors, retry with backoff.
+  # 2. Stripe::StripeError — transient errors, retry with backoff
   retry_on Stripe::StripeError, wait: :polynomially_longer, attempts: 10
-  # 3. Permanent Stripe config errors — most specific, checked first.
+  # 3. InvalidRequestError — declared AFTER retry_on so LIFO checks it
+  #    BEFORE retry_on. Terminal errors (invalid PI id, etc.) discard
+  #    immediately instead of burning 10 retries against Stripe.
+  discard_on Stripe::InvalidRequestError do |job, error|
+    Rails.logger.error "PAYMENT_REVERSAL_TERMINAL reference=#{job.arguments.first} code=#{error.code} error=#{error.message}"
+  end
+  # 4. Permanent Stripe config errors — most specific, checked first
   discard_on Stripe::AuthenticationError do |job, error|
     Rails.logger.error "PAYMENT_REVERSAL_AUTH_FAILURE reference=#{job.arguments.first} error=#{error.class}: #{error.message}"
   end
@@ -51,15 +51,17 @@ class ProcessPaymentReversalJob < ApplicationJob
     )
 
     Rails.logger.info "PAYMENT_REVERSAL_ATTEMPTED reference=#{payment_reference} order_number=#{order_number}"
+    # Clean up any PI state retry counter from prior attempts.
+    self.class.pi_state_attempts.delete(job_id)
   rescue Stripe::InvalidRequestError => e
     if e.code == "charge_already_refunded"
       # Idempotent success — refund already exists.
       Rails.logger.info "PAYMENT_REVERSAL_ALREADY_REFUNDED reference=#{payment_reference} order_number=#{order_number}"
+      self.class.pi_state_attempts.delete(job_id)
     elsif e.code == "payment_intent_unexpected_state"
       # PI state can change over time (e.g., after chargeback resolves).
       # Manual retry_job bypasses LIFO handler resolution — discard_on
-      # StandardError would otherwise swallow the re-raise since
-      # InvalidRequestError < StripeError < StandardError.
+      # InvalidRequestError would otherwise immediately discard.
       pi_state_attempt = (self.class.pi_state_attempts[job_id] || 0) + 1
       self.class.pi_state_attempts[job_id] = pi_state_attempt
 
@@ -80,12 +82,12 @@ class ProcessPaymentReversalJob < ApplicationJob
       end
     else
       # Terminal InvalidRequestError (invalid PI id, etc.) — re-raise to
-      # discard_on StandardError for consistent logging + discard.
+      # discard_on InvalidRequestError (checked before retry_on by LIFO).
       raise
     end
   rescue Stripe::StripeError => e
-    # Auth/Permission errors are permanent config failures; re-raise
-    # without logging so job-level discard_on handles them at correct severity.
+    # Auth/Permission errors are permanent; re-raise without logging so
+    # job-level discard_on handles them at correct severity.
     raise if e.is_a?(Stripe::AuthenticationError) || e.is_a?(Stripe::PermissionError)
     Rails.logger.error "PAYMENT_REVERSAL_FAILED reference=#{payment_reference} error=#{e.class}: #{e.message}"
     raise
