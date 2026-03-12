@@ -81,8 +81,9 @@ class ProcessPaymentReversalJob < ApplicationJob
         )
       end
     else
-      # Terminal InvalidRequestError (invalid PI id, etc.) — re-raise to
-      # discard_on InvalidRequestError (checked before retry_on by LIFO).
+      # Terminal InvalidRequestError (invalid PI id, etc.) — clean up any
+      # accumulated PI state counter before re-raising to discard_on.
+      self.class.pi_state_attempts.delete(job_id)
       raise
     end
   rescue Stripe::StripeError => e
