@@ -14,7 +14,7 @@ const stripEmoji = (text: string): string =>
 // Default fallback content - Three Squares focused
 const defaultHero = {
   title: "Good Food. Good Mood.",
-  subtitle: "Guam-style comfort food made with love. Dine in, take out, or let us cater your next event.",
+  subtitle: "Guam-style comfort food made with love since 2016. Dine in, take out, or let us cater your next event.",
   badge_text: "Three Squares",
   button_text: "View Our Menu",
   button_link: "/products",
@@ -55,7 +55,7 @@ const defaultCategoryCards: Array<{
     subtitle: "Two convenient spots on Guam",
     button_text: "Find Us",
     button_link: "/locations",
-    image_url: "/images/Three_Squares_%40_Donki.png"
+    image_url: "/images/three-squares-donki.png"
   }
 ];
 
@@ -69,7 +69,7 @@ const storefrontCards = [
   },
   {
     title: 'Latte Stone Cookies',
-    subtitle: 'Gift-ready cookie boxes with shipping and pickup options.',
+    subtitle: 'Artisan shortbread cookies baked in small batches, cut in the iconic shape of the latte stone. Shipped nationwide.',
     cta: 'Shop Cookies',
     to: '/shop/latte-stone-cookies',
     image_url: '/images/IMG-4158.jpg',
@@ -405,14 +405,16 @@ export default function HomePage() {
                   Good Food, Good Mood, Good Service
                 </h2>
                 <p className="text-warm-600 mb-6 leading-relaxed">
-                  Three Squares is your home for authentic Guam-style comfort food. 
-                  From local favorites like Loco Moco and Tinaktak to our famous 
-                  fried chicken, every dish is made fresh with quality ingredients.
+                  Locally owned and operated since 2016, Three Squares is your home 
+                  for authentic Guam-style comfort food. From local favorites like 
+                  Loco Moco and Tinaktak to our famous fried chicken, every dish is 
+                  made fresh with quality ingredients.
                 </p>
                 <p className="text-warm-600 mb-8 leading-relaxed">
                   As part of B&G Pacific, we also provide full-service catering 
                   for corporate events, weddings, fiestas, and private gatherings. 
-                  We&apos;re proud to be HUBZone certified.
+                  We&apos;re proud to be HUBZone certified and rated by over 140 
+                  reviewers on Yelp.
                 </p>
                 <Link
                   to="/about"

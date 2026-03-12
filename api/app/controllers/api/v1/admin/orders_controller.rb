@@ -373,7 +373,12 @@ module Api
         orders_query = orders_query.where(payment_status: params[:payment_status]) if params[:payment_status].present?
         orders_query = orders_query.where(order_type: params[:order_type]) if params[:order_type].present?
         orders_query = orders_query.where(fulfillment_type: params[:fulfillment_type]) if params[:fulfillment_type].present?
-        orders_query = orders_query.where(location_id: params[:location_id].to_i) if params[:location_id].present?
+        # Location scoping: staff assigned to a location only see that location's orders
+        if current_user&.location_scoped?
+          orders_query = orders_query.where(location_id: current_user.assigned_location_id)
+        elsif params[:location_id].present?
+          orders_query = orders_query.where(location_id: params[:location_id].to_i)
+        end
 
         if params[:search].present?
           search_term = "%#{params[:search]}%"
@@ -721,6 +726,9 @@ module Api
           shipping_state: order.shipping_state,
           shipping_zip: order.shipping_zip,
           shipping_country: order.shipping_country,
+          fulfillment_type: order.fulfillment_type,
+          location_id: order.location_id,
+          location_name: order.location&.name,
           created_at: order.created_at.iso8601,
           item_count: order.order_items.count,
           order_items: order.order_items.map do |item|
@@ -754,6 +762,9 @@ module Api
           tax_cents: order.tax_cents,
           total_cents: order.total_cents,
           total_formatted: "$#{'%.2f' % (order.total_cents / 100.0)}",
+          fulfillment_type: order.fulfillment_type,
+          location_id: order.location_id,
+          location_name: order.location&.name,
           created_at: order.created_at.iso8601,
           updated_at: order.updated_at.iso8601,
           shipping_method: order.shipping_method,

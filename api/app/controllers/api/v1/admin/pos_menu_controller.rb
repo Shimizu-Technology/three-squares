@@ -14,10 +14,16 @@ module Api
           products = Product.published
             .includes(:product_variants, :product_images, :collections)
 
-          # Filter by location if provided
-          if params[:location_id].present?
+          # Filter by location — auto-scope for location-locked staff
+          effective_location_id = if current_user.location_scoped?
+            current_user.assigned_location_id
+          elsif params[:location_id].present?
+            params[:location_id].to_i
+          end
+
+          if effective_location_id
             products = products.joins(:product_locations)
-              .where(product_locations: { location_id: params[:location_id], available: true })
+              .where(product_locations: { location_id: effective_location_id, available: true })
               .distinct
           end
 

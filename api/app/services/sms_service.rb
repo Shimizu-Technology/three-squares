@@ -127,11 +127,17 @@ class SmsService
     end
 
     # Send SMS to admin phones when a new order comes in
+    # Routes to location-specific phones if configured, falls back to global
     def send_admin_new_order(order)
-      settings = SiteSetting.instance
-      # Admin SMS uses its own toggle — independent of customer SMS setting
-      return skip_result("Admin SMS not configured") unless sms_configured? && settings.enable_admin_sms
-      admin_phones = settings.admin_sms_phones || []
+      return skip_result("SMS not configured") unless ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
+      return skip_result("SMS notifications disabled") unless admin_sms_enabled?
+
+      # Include both global AND location-specific admin phones (matching email routing).
+      # Global admins should always receive new-order SMS regardless of location config.
+      global_phones = SiteSetting.instance.admin_sms_phones || []
+      location = order.location
+      location_phones = location&.admin_sms_phones.present? ? location.admin_sms_phones : []
+      admin_phones = (global_phones + location_phones).uniq
       return skip_result("No admin SMS phones configured") if admin_phones.empty?
 
       # Atomic claim: lock the order row, read already-sent phones, and
@@ -195,21 +201,26 @@ class SmsService
 
     private
 
-    # Customer order SMS (order updates, confirmations, refunds)
-    # Single source of truth: enable_order_sms (consolidated toggle).
-    # No fallback to legacy flags — if enable_order_sms is false, SMS is off.
-    # The migration defaults enable_order_sms to true (via 3-step migration:
-    # add as false → migrate from legacy flags → change default to true).
-    # Customer SMS toggle — controls order confirmation, status updates, refunds
+    # Customer SMS: checks the consolidated enable_order_sms toggle.
+    # This is the single source of truth for whether customer SMS notifications
+    # are active. The controller gates job enqueueing on this same flag, so
+    # the service must agree to avoid silent drops.
+    # Admin notifications are independent — see admin_sms_enabled? below.
     def sms_enabled?
       return false unless sms_configured?
 
       SiteSetting.instance.enable_order_sms
     end
 
-
     def sms_configured?
       ENV["CLICKSEND_USERNAME"].present? && ENV["CLICKSEND_API_KEY"].present?
+    end
+
+    # Admin SMS: same check as customer SMS (both use enable_order_sms).
+    # Separate method kept for semantic clarity — if admin SMS ever needs
+    # independent gating, only this method needs to change.
+    def admin_sms_enabled?
+      sms_enabled?
     end
 
     def send_sms(to:, body:, context: nil)
@@ -301,7 +312,8 @@ class SmsService
         # US/Guam number with area code — prepend +1
         "+1#{digits}"
       when 11
-        # Could be US/Guam with country code (1xxx) or international
+        # Could be US/Guam with country code (1xxx) or international (e.g. 44712345678)
+        # Accept either — both are valid 11-digit E.164 numbers
         "+#{digits}"
       when 12..15
         # International number with country code — assume already complete

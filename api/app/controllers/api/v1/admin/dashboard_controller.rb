@@ -12,13 +12,16 @@ module Api
 
         # GET /api/v1/admin/dashboard/stats
         def stats
-          total_orders = Order.count
-          total_revenue_cents = Order.where(payment_status: "paid").sum(:total_cents)
-          pending_orders = Order.where(status: "pending").count
+          # Scope queries to assigned location for location-locked staff
+          base_scope = current_user.location_scoped? ? Order.where(location_id: current_user.assigned_location_id) : Order.all
+
+          total_orders = base_scope.count
+          total_revenue_cents = base_scope.where(payment_status: "paid").sum(:total_cents)
+          pending_orders = base_scope.where(status: "pending").count
           total_products = Product.where(published: true).count
-          business_line_breakdown = business_line_breakdown_data
-          fulfillment_breakdown = Order.group(:fulfillment_type).count
-          location_breakdown = location_breakdown_data
+          business_line_breakdown = business_line_breakdown_data(base_scope)
+          fulfillment_breakdown = base_scope.group(:fulfillment_type).count
+          location_breakdown = location_breakdown_data(base_scope)
 
           render json: {
             total_orders: total_orders,
@@ -34,17 +37,19 @@ module Api
         # GET /api/v1/admin/dashboard/chart_data
         # Returns daily order counts and revenue for the last 30 days
         def chart_data
+          base_scope = current_user.location_scoped? ? Order.where(location_id: current_user.assigned_location_id) : Order.all
+
           days = (params[:days] || 30).to_i.clamp(7, 90)
           start_date = days.days.ago.beginning_of_day
 
           # Orders per day
-          orders_by_day = Order
+          orders_by_day = base_scope
             .where("created_at >= ?", start_date)
             .group("DATE(created_at)")
             .count
 
           # Revenue per day (paid orders only)
-          revenue_by_day = Order
+          revenue_by_day = base_scope
             .where("created_at >= ?", start_date)
             .where(payment_status: "paid")
             .group("DATE(created_at)")
@@ -67,13 +72,13 @@ module Api
           last_week_start = 1.week.ago.beginning_of_week
           last_week_end = this_week_start
 
-          this_week_revenue = Order.where(payment_status: "paid")
+          this_week_revenue = base_scope.where(payment_status: "paid")
             .where("created_at >= ?", this_week_start).sum(:total_cents)
-          last_week_revenue = Order.where(payment_status: "paid")
+          last_week_revenue = base_scope.where(payment_status: "paid")
             .where("created_at >= ? AND created_at < ?", last_week_start, last_week_end).sum(:total_cents)
 
-          this_week_orders = Order.where("created_at >= ?", this_week_start).count
-          last_week_orders = Order.where("created_at >= ? AND created_at < ?", last_week_start, last_week_end).count
+          this_week_orders = base_scope.where("created_at >= ?", this_week_start).count
+          last_week_orders = base_scope.where("created_at >= ? AND created_at < ?", last_week_start, last_week_end).count
 
           render json: {
             series: series,
@@ -86,8 +91,8 @@ module Api
 
         private
 
-        def business_line_breakdown_data
-          retail_orders = Order.where(order_type: "retail")
+        def business_line_breakdown_data(scope)
+          retail_orders = scope.where(order_type: "retail")
           latte_stone_orders = retail_orders
             .joins(order_items: { product_variant: { product: :collections } })
             .where(collections: { slug: COOKIE_COLLECTION_SLUGS })
@@ -104,15 +109,15 @@ module Api
               revenue_cents: latte_stone_orders.where(payment_status: "paid").sum(:total_cents)
             },
             "catering" => {
-              orders: Order.where(order_type: "wholesale").count,
-              revenue_cents: Order.where(order_type: "wholesale", payment_status: "paid").sum(:total_cents)
+              orders: scope.where(order_type: "wholesale").count,
+              revenue_cents: scope.where(order_type: "wholesale", payment_status: "paid").sum(:total_cents)
             }
           }
         end
 
-        def location_breakdown_data
-          grouped_orders = Order.left_joins(:location).group("locations.name").count
-          grouped_revenue = Order.left_joins(:location).where(payment_status: "paid").group("locations.name").sum(:total_cents)
+        def location_breakdown_data(scope)
+          grouped_orders = scope.left_joins(:location).group("locations.name").count
+          grouped_revenue = scope.left_joins(:location).where(payment_status: "paid").group("locations.name").sum(:total_cents)
 
           grouped_orders.map do |location_name, count|
             label = location_name.presence || "Shipping / No Pickup Location"

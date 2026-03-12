@@ -21,7 +21,10 @@ module Api
             name: settings.store_name,
             email: settings.store_email,
             phone: settings.store_phone
-          }
+          },
+          announcement_enabled: settings.announcement_enabled,
+          announcement_text: settings.announcement_text,
+          announcement_style: settings.announcement_style
         }
       end
 

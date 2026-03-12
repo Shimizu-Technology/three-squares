@@ -214,7 +214,13 @@ module Api
 
           # Admin notifications — not gated by customer toggles
           SendAdminNotificationEmailJob.perform_later(order.id)
-          SendAdminOrderSmsJob.perform_later(order.id)
+          # Gate on enable_order_sms only — SmsService.send_admin_new_order
+          # merges global + location-level phones internally. Checking
+          # settings.admin_sms_phones here would skip orders for locations
+          # that only have location-level phones configured.
+          if settings.enable_order_sms
+            SendAdminOrderSmsJob.perform_later(order.id)
+          end
 
           render json: {
             success: true,
