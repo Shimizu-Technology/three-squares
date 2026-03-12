@@ -614,6 +614,10 @@ module Api
           # Exponential backoff (1ms, 2ms, 4ms, ... capped at ~32ms) to
           # spread out retries under burst traffic. Without this, all 10
           # attempts fire in microseconds and compete for the same sequence.
+          # NOTE: sleep occurs inside the outer finalize_order! transaction,
+          # keeping the connection occupied during backoff. Acceptable given
+          # the ~32ms cap and low collision probability in production;
+          # revisit if pool exhaustion appears.
           sleep(0.001 * (2**[attempts, 5].min))
           Rails.logger.warn "Order number collision while saving order, retrying (attempt #{attempts}/#{max_attempts})"
           order.order_number = nil
@@ -632,6 +636,11 @@ module Api
 
       def log_payment_reconciliation_required(order, error)
         return if order.blank? || order.payment_intent_id.blank?
+        # Skip synthetic non-Stripe IDs (e.g., test_charge_... from test
+        # mode). These can never be reversed or reconciled — logging them
+        # produces false-alarm PAYMENT_RECONCILIATION_REQUIRED entries in
+        # test environments on every inventory failure after a test payment.
+        return unless order.payment_intent_id.start_with?("pi_", "ch_")
         # Allow "pending" in addition to "paid" — the amount-mismatch path
         # in verify_payment_intent raises before setting status to "paid",
         # but Stripe has already captured money. Without this, the audit
