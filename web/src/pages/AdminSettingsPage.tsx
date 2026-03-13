@@ -4,6 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import api, { collectionsApi, type Collection } from '../services/api';
+import { invalidateAppConfig } from '../hooks/useAppConfig';
 
 import { API_BASE_URL } from '../config';
 import { ANNOUNCEMENT_STYLE_HEX } from '../constants/announcementStyles';
@@ -242,6 +243,7 @@ export default function AdminSettingsPage() {
         ? 'Production mode enabled - Real payments will be processed'
         : 'Test mode enabled - Payments will be simulated';
 
+      invalidateAppConfig();
       toast.success(message, { duration: 4000 });
     } catch (err: any) {
       console.error('Failed to update settings:', err);
@@ -329,6 +331,9 @@ export default function AdminSettingsPage() {
       const merged = { ...settings, ...responseData };
       setSettings(merged);
       setLastSavedSiteSettings(merged);
+      // Invalidate the app config cache so public-facing pages pick up changes
+      // within the TTL window (no page reload required for visitors)
+      invalidateAppConfig();
       toast.success('Settings saved');
     }
   };
