@@ -30,6 +30,8 @@ module Api
             stats: {
               total: User.count,
               admins: User.admins.count,
+              managers: User.managers.count,
+              staff: User.staff_members.count,
               customers: User.customers.count
             }
           }
@@ -42,16 +44,22 @@ module Api
 
         # PATCH /api/v1/admin/users/:id
         def update
-          # Prevent removing your own admin access
-          if @user.id == current_user.id && params[:user][:role] == "customer"
-            return render json: { error: "You cannot remove your own admin access" }, status: :unprocessable_entity
+          requested_role = params.dig(:user, :role)
+
+          if requested_role.present?
+            requested_level = User::ROLE_HIERARCHY.fetch(requested_role, 0)
+
+            if requested_level > current_user.role_level
+              return render json: { error: "You cannot assign a role above your own level" }, status: :forbidden
+            end
+
+            if @user.id == current_user.id && requested_level < current_user.role_level
+              return render json: { error: "You cannot demote your own role" }, status: :unprocessable_entity
+            end
           end
 
           if @user.update(user_params)
-            render json: {
-              user: user_json(@user),
-              message: "User updated successfully"
-            }
+            render json: { user: user_json(@user), message: "User updated successfully" }
           else
             render json: { error: @user.errors.full_messages.join(", ") }, status: :unprocessable_entity
           end
@@ -76,11 +84,14 @@ module Api
             name: user.name,
             phone: user.phone,
             role: user.role,
+            role_level: user.role_level,
             is_admin: user.admin?,
-            clerk_id: user.clerk_id,
+            is_manager: user.manager?,
+            is_staff: user.staff?,
             assigned_location_id: user.assigned_location_id,
             assigned_location_name: user.assigned_location&.name,
             location_scoped: user.location_scoped?,
+            clerk_id: user.clerk_id,
             created_at: user.created_at.iso8601,
             updated_at: user.updated_at.iso8601
           }

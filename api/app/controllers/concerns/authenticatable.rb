@@ -84,9 +84,12 @@ module Authenticatable
       u.role = ADMIN_EMAILS.include?(email) ? "admin" : "customer"
     end
 
-    # Always sync admin status on login (handles users created before admin list was updated)
-    expected_role = ADMIN_EMAILS.include?(email) ? "admin" : user.role
-    user.update!(role: expected_role, email: email) if user.role != expected_role || user.email != email
+    # Only auto-promote customers to admin, never override staff/manager roles
+    if user.customer? && ADMIN_EMAILS.include?(email.downcase)
+      user.update_columns(role: "admin")
+    end
+
+    user.update_columns(email: email) if user.email != email
 
     user
   end
@@ -98,6 +101,14 @@ module Authenticatable
   # Helper to check if user is admin
   def require_admin!
     render json: { error: "Forbidden" }, status: :forbidden unless current_user&.admin?
+  end
+
+  def require_manager!
+    render json: { error: "Forbidden" }, status: :forbidden unless current_user&.manager_or_above?
+  end
+
+  def require_staff!
+    render json: { error: "Forbidden" }, status: :forbidden unless current_user&.staff_or_above?
   end
 
   # Helper to make authentication optional
