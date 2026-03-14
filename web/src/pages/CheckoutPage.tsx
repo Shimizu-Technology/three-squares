@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { useCartStore } from '../store/cartStore';
 import { configApi, locationsApi, ordersApi, shippingApi, paymentIntentsApi, formatPrice } from '../services/api';
+import { authGet } from '../services/authApi';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import StripeProvider from '../components/payment/StripeProvider';
@@ -112,6 +113,27 @@ function CheckoutForm() {
     () => pickupLocations.filter((location) => compatiblePickupLocationIds.includes(location.id)),
     [pickupLocations, compatiblePickupLocationIds]
   );
+
+  // Pre-populate form from user profile when signed in
+  useEffect(() => {
+    if (!isSignedIn || !authLoaded) return;
+
+    authGet<{
+      email: string | null;
+      name: string | null;
+      phone: string | null;
+    }>('/me', getToken)
+      .then((response) => {
+        const profile = response.data;
+        // Only pre-fill if fields are currently empty (don't override user edits)
+        if (profile.email && !email) setEmail(profile.email);
+        if (profile.name && !name) setName(profile.name);
+        if (profile.phone && !phone) setPhone(profile.phone);
+      })
+      .catch(() => {
+        // Silently fail — user can fill in manually
+      });
+  }, [isSignedIn, authLoaded]);
 
   // Load app config
   useEffect(() => {
