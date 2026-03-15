@@ -185,15 +185,10 @@ export default function AdminUsersPage() {
       );
       setUsers(users.map(u => u.id === editingUser.id ? response.data.user : u));
       toast.success(response.data.message);
-      // Refresh stats
-      const updatedUser = response.data.user;
-      setStats(prev => ({
-        ...prev,
-        admins: users.filter(u => u.id === editingUser.id ? updatedUser.is_admin : u.is_admin).length,
-        managers: users.filter(u => u.id === editingUser.id ? updatedUser.is_manager : u.is_manager).length,
-        staff: users.filter(u => u.id === editingUser.id ? updatedUser.is_staff : u.is_staff).length,
-        customers: users.filter(u => u.id === editingUser.id ? updatedUser.role === 'customer' : u.role === 'customer').length,
-      }));
+      // Re-fetch from server so stats reflect the full user population,
+      // not just the currently-filtered subset (Greptile: client-side stat
+      // recalculation is incorrect when a role filter is active).
+      fetchUsers();
       setEditingUser(null);
     } catch (err) {
       console.error('Failed to update user:', err);
