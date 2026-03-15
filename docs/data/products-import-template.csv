@@ -1,0 +1,7 @@
+name,description,price,category_name,active
+Beef Tapa,Marinated beef served with garlic rice and egg,12.99,Breakfast,true
+Chicken Adobo,Classic Filipino chicken adobo with steamed rice,11.50,Lunch,true
+Pancit Canton,Stir-fried noodles with vegetables and pork,9.99,Mains,true
+Halo-Halo,Shaved ice dessert with mixed ingredients,7.50,Desserts,true
+Bottled Water,Cold bottled water 500ml,1.50,Drinks,true
+Sample Inactive Item,This item is currently unavailable,0.00,Specials,false

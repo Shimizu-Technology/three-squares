@@ -1,3 +1,5 @@
+require "csv"
+
 module Api
   module V1
     module Admin
@@ -121,6 +123,93 @@ module Api
           else
             render_error("Failed to duplicate product", errors: new_product.errors.full_messages)
           end
+        end
+
+        # POST /api/v1/admin/products/import_csv
+        def import_csv
+          unless params[:file].present?
+            return render json: { error: "CSV file is required" }, status: :unprocessable_entity
+          end
+
+          file = params[:file]
+
+          begin
+            csv_text = file.read.force_encoding("UTF-8")
+            rows = CSV.parse(csv_text, headers: true, skip_blanks: true)
+          rescue CSV::MalformedCSVError => e
+            return render json: { error: "Invalid CSV format: #{e.message}" }, status: :unprocessable_entity
+          end
+
+          imported = 0
+          skipped = 0
+          errors = []
+
+          rows.each_with_index do |row, i|
+            row_num = i + 2  # 1-indexed, header is row 1
+
+            name = row["name"]&.strip
+            unless name.present?
+              errors << { row: row_num, error: "Name is required" }
+              skipped += 1
+              next
+            end
+
+            price_str = row["price"]&.strip
+            price = price_str.to_f
+            if price < 0
+              errors << { row: row_num, name: name, error: "Price cannot be negative" }
+              skipped += 1
+              next
+            end
+
+            active_str = row["active"]&.strip&.downcase
+            published = !%w[false 0 no].include?(active_str)
+
+            description = row["description"]&.strip
+            category_name = row["category_name"]&.strip
+
+            begin
+              ActiveRecord::Base.transaction do
+                product = Product.new(
+                  name: name,
+                  description: description.presence,
+                  base_price_cents: (price * 100).to_i,
+                  published: published,
+                  allow_pickup: true,
+                  allow_shipping: false,
+                  inventory_level: "none"
+                )
+
+                unless product.save
+                  errors << { row: row_num, name: name, error: product.errors.full_messages.join(", ") }
+                  skipped += 1
+                  raise ActiveRecord::Rollback
+                end
+
+                if category_name.present?
+                  collection = Collection.find_or_create_by(name: category_name) do |c|
+                    c.published = true
+                  end
+                  product.collections << collection unless product.collections.include?(collection)
+                end
+
+                imported += 1
+              end
+            rescue ActiveRecord::Rollback
+              # already counted in skipped
+            end
+          end
+
+          render_success({
+            imported: imported,
+            skipped: skipped,
+            total: rows.count,
+            errors: errors
+          })
+
+        rescue => e
+          Rails.logger.error "CSV import failed: #{e.message}"
+          render json: { error: "Import failed: #{e.message}" }, status: :unprocessable_entity
         end
 
         private
