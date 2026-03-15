@@ -125,14 +125,20 @@ function CheckoutForm() {
     }>('/me', getToken)
       .then((response) => {
         const profile = response.data;
-        // Only pre-fill if fields are currently empty (don't override user edits)
-        if (profile.email && !email) setEmail(profile.email);
-        if (profile.name && !name) setName(profile.name);
-        if (profile.phone && !phone) setPhone(profile.phone);
+        // Only pre-fill if fields are currently empty (don't override user edits).
+        // Intentionally reading current state values at call time — we want a
+        // one-shot pre-fill on sign-in, not a re-fetch on every keystroke.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        setEmail((prev) => (profile.email && !prev ? profile.email : prev));
+        setName((prev) => (profile.name && !prev ? profile.name : prev));
+        setPhone((prev) => (profile.phone && !prev ? profile.phone : prev));
       })
       .catch(() => {
         // Silently fail — user can fill in manually
       });
+    // Intentionally omitting email/name/phone/getToken — this effect should only
+    // run once when the user first authenticates, not on every field change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn, authLoaded]);
 
   // Load app config
