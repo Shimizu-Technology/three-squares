@@ -1,4 +1,4 @@
-import { CalendarClock, ChefHat, Mail, MapPin, Phone } from 'lucide-react';
+import { CalendarClock, ChefHat, MapPin, MessageCircle, Phone } from 'lucide-react';
 
 const previewItems = [
   { title: 'Restaurant ordering', detail: 'Dine-in and takeout flows designed for repeat local customers.' },
@@ -29,7 +29,7 @@ export default function PausedPreviewPage() {
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <a href="tel:+16716462652" className="btn-primary gap-2"><Phone size={18} /> Call Three Squares</a>
-              <a href="https://wa.me/16718646656" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 px-6 py-3 font-semibold text-white hover:bg-white/10"><Mail size={18} /> WhatsApp orders</a>
+              <a href="https://wa.me/16718646656" className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/30 px-6 py-3 font-semibold text-white hover:bg-white/10"><MessageCircle size={18} /> WhatsApp orders</a>
             </div>
           </div>
           <div className="overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-3 shadow-2xl">
