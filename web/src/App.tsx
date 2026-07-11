@@ -49,6 +49,9 @@ import MobileNavDropdown from './components/MobileNavDropdown'; // Import Mobile
 import { useCartStore } from './store/cartStore'; // Import cart store
 import { API_BASE_URL } from './config';
 import AnnouncementBanner from './components/AnnouncementBanner';
+import PausedPreviewPage from './pages/PausedPreviewPage';
+
+const serviceMode = import.meta.env.VITE_SERVICE_MODE || 'paused';
 
 // Custom UserButton with Admin Dashboard Link and My Orders
 function CustomUserButton({ isAdmin }: { isAdmin: boolean }) {
@@ -659,6 +662,10 @@ function AppContent() {
 
 // Main App component (wraps AppContent with BrowserRouter)
 function App() {
+  if (serviceMode !== 'live') {
+    return <PausedPreviewPage />;
+  }
+
   return (
     <BrowserRouter>
       <AppContent />
