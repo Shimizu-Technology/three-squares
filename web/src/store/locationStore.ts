@@ -14,11 +14,13 @@ interface LocationStore {
   // State
   selectedLocation: LocationInfo | null;
   locations: LocationInfo[];
+  showPicker: boolean;
 
   // Actions
   setSelectedLocation: (location: LocationInfo | null) => void;
   setLocations: (locations: LocationInfo[]) => void;
   clearLocation: () => void;
+  setShowPicker: (show: boolean) => void;
 }
 
 export const useLocationStore = create<LocationStore>()(
@@ -26,10 +28,12 @@ export const useLocationStore = create<LocationStore>()(
     (set) => ({
       selectedLocation: null,
       locations: [],
+      showPicker: false,
 
-      setSelectedLocation: (location) => set({ selectedLocation: location }),
+      setSelectedLocation: (location) => set({ selectedLocation: location, showPicker: false }),
       setLocations: (locations) => set({ locations }),
       clearLocation: () => set({ selectedLocation: null }),
+      setShowPicker: (show) => set({ showPicker: show }),
     }),
     {
       name: 'tsq-location',

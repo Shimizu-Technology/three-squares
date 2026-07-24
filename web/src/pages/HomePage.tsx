@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, useReducedMotion } from 'framer-motion';
 import { UtensilsCrossed, MapPin, Phone, Clock, ChevronRight } from 'lucide-react';
@@ -6,6 +6,7 @@ import FeaturedProducts from '../components/FeaturedProducts';
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 import { homepageApi, type HomepageSection } from '../services/api';
+import useAppConfig from '../hooks/useAppConfig';
 
 // Strip emoji characters from text (replace with empty string)
 const stripEmoji = (text: string): string =>
@@ -59,8 +60,9 @@ const defaultCategoryCards: Array<{
   }
 ];
 
-const storefrontCards = [
+const allStorefrontCards = [
   {
+    key: 'three_squares' as const,
     title: 'Three Squares',
     subtitle: 'Daily comfort food plates and local favorites for pickup.',
     cta: 'Shop Three Squares',
@@ -68,6 +70,7 @@ const storefrontCards = [
     image_url: '/images/Cheeseburger.jpg',
   },
   {
+    key: 'latte_stone' as const,
     title: 'Latte Stone Cookies',
     subtitle: 'Artisan shortbread cookies baked in small batches, cut in the iconic shape of the latte stone. Shipped nationwide.',
     cta: 'Shop Cookies',
@@ -75,6 +78,7 @@ const storefrontCards = [
     image_url: '/images/IMG-4158.jpg',
   },
   {
+    key: 'catering' as const,
     title: 'Catering',
     subtitle: 'Party trays and catering packages for events and gatherings.',
     cta: 'Shop Catering',
@@ -90,6 +94,17 @@ export default function HomePage() {
   const [categoryCards, setCategoryCards] = useState<HomepageSection[]>([]);
   const [loading, setLoading] = useState(true);
   const prefersReducedMotion = useReducedMotion();
+  const config = useAppConfig();
+
+  const storefrontCards = useMemo(() => {
+    if (!config) return [];
+    const enableMap: Record<string, boolean | undefined> = {
+      three_squares: config.enable_storefront_three_squares,
+      latte_stone: config.enable_storefront_latte_stone,
+      catering: config.enable_storefront_catering,
+    };
+    return allStorefrontCards.filter((card) => enableMap[card.key] !== false);
+  }, [config]);
 
   useEffect(() => {
     const fetchSections = async () => {
@@ -264,8 +279,9 @@ export default function HomePage() {
       </section>
 
       {/* ============================================================ */}
-      {/* SHOP BY BUSINESS                                             */}
+      {/* SHOP BY BUSINESS — hidden when only 1 storefront enabled     */}
       {/* ============================================================ */}
+      {storefrontCards.length > 1 && (
       <section className="py-16 sm:py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <FadeIn>
@@ -279,7 +295,7 @@ export default function HomePage() {
             </div>
           </FadeIn>
 
-          <StaggerContainer className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <StaggerContainer className={`grid grid-cols-1 gap-6 ${storefrontCards.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
             {storefrontCards.map((card) => (
               <StaggerItem key={card.title}>
                 <Link
@@ -309,6 +325,7 @@ export default function HomePage() {
           </StaggerContainer>
         </div>
       </section>
+      )}
 
       {/* ============================================================ */}
       {/* SHOP BY CATEGORY — bento grid                                */}
