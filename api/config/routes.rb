@@ -81,6 +81,9 @@ Rails.application.routes.draw do
             post :archive
             post :unarchive
           end
+          collection do
+            post :import_csv
+          end
 
           # Nested variants
           resources :variants, controller: "product_variants", except: [ :new, :edit ] do
