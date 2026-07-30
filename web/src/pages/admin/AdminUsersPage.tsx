@@ -2,56 +2,140 @@ import axios from 'axios';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
+import { Shield, Users, UserCheck, User } from 'lucide-react';
 import { authGet, authPatch } from '../../services/authApi';
 
-interface User {
+type UserRole = 'admin' | 'manager' | 'staff' | 'customer';
+
+interface UserModel {
   id: number;
   email: string;
   name: string | null;
   phone: string | null;
-  role: 'admin' | 'customer';
+  role: UserRole;
+  role_level: number;
   is_admin: boolean;
+  is_manager: boolean;
+  is_staff: boolean;
+  assigned_location_id: number | null;
+  assigned_location_name: string | null;
+  location_scoped: boolean;
   clerk_id: string;
   created_at: string;
   updated_at: string;
 }
 
+interface Location {
+  id: number;
+  name: string;
+}
+
 interface Stats {
   total: number;
   admins: number;
+  managers: number;
+  staff: number;
   customers: number;
 }
 
 interface UsersIndexResponse {
-  users: User[];
+  users: UserModel[];
   stats: Stats;
 }
 
 interface AdminUserResponse {
-  user: User;
+  user: UserModel;
   message: string;
 }
 
+const ROLE_AVATAR_COLORS: Record<UserRole, string> = {
+  admin: 'bg-purple-500',
+  manager: 'bg-blue-500',
+  staff: 'bg-green-500',
+  customer: 'bg-gray-400',
+};
+
+const ROLE_ICONS: Record<UserRole, React.ReactNode> = {
+  admin: <Shield className="w-3 h-3" />,
+  manager: <Users className="w-3 h-3" />,
+  staff: <UserCheck className="w-3 h-3" />,
+  customer: <User className="w-3 h-3" />,
+};
+
+function RoleBadge({ role }: { role: UserRole }) {
+  const config: Record<UserRole, { label: string; className: string }> = {
+    admin:    { label: 'Admin',    className: 'bg-purple-100 text-purple-800' },
+    manager:  { label: 'Manager', className: 'bg-blue-100 text-blue-800' },
+    staff:    { label: 'Staff',   className: 'bg-green-100 text-green-800' },
+    customer: { label: 'Customer', className: 'bg-gray-100 text-gray-600' },
+  };
+  const { label, className } = config[role];
+  return (
+    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium ${className}`}>
+      {ROLE_ICONS[role]}
+      {label}
+    </span>
+  );
+}
+
+const ROLE_HIERARCHY: Record<UserRole, number> = {
+  customer: 0,
+  staff: 1,
+  manager: 2,
+  admin: 3,
+};
+
+const ALL_ROLES: UserRole[] = ['admin', 'manager', 'staff', 'customer'];
+
 export default function AdminUsersPage() {
   const { getToken } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
-  const [stats, setStats] = useState<Stats>({ total: 0, admins: 0, customers: 0 });
+  const [users, setUsers] = useState<UserModel[]>([]);
+  const [stats, setStats] = useState<Stats>({ total: 0, admins: 0, managers: 0, staff: 0, customers: 0 });
+  const [currentUserLevel, setCurrentUserLevel] = useState<number>(3);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
   const [updatingUserId, setUpdatingUserId] = useState<number | null>(null);
+  const [locations, setLocations] = useState<Location[]>([]);
 
-  // Fetch users
+  // Edit modal state
+  const [editingUser, setEditingUser] = useState<UserModel | null>(null);
+  const [editRole, setEditRole] = useState<UserRole>('customer');
+  const [editLocationId, setEditLocationId] = useState<number | null>(null);
+
+  // Fetch locations for staff/manager assignment
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await authGet<{ data: Location[] }>('/admin/locations', getToken);
+        setLocations(response.data.data || []);
+      } catch {
+        // Locations not critical for page load
+      }
+    };
+    fetchLocations();
+  }, [getToken]);
+
+  // Fetch current viewer's role level from /api/v1/me
+  useEffect(() => {
+    const fetchMe = async () => {
+      try {
+        const response = await authGet<{ role_level: number }>('/me', getToken);
+        setCurrentUserLevel(response.data.role_level ?? 3);
+      } catch {
+        // Default to admin level if unavailable
+      }
+    };
+    fetchMe();
+  }, [getToken]);
+
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      
       const params: Record<string, string> = {};
       if (searchQuery) params.search = searchQuery;
       if (roleFilter !== 'all') params.role = roleFilter;
-      
       const response = await authGet<UsersIndexResponse>('/admin/users', getToken, { params });
-      
       setUsers(response.data.users);
       setStats(response.data.stats);
     } catch (err) {
@@ -62,41 +146,55 @@ export default function AdminUsersPage() {
     }
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, [roleFilter]);
+  useEffect(() => { fetchUsers(); }, [roleFilter]);
 
-  const handleSearch = () => {
-    fetchUsers();
+  const handleSearch = () => { fetchUsers(); };
+
+  const openEditModal = (user: UserModel) => {
+    setEditingUser(user);
+    setEditRole(user.role);
+    setEditLocationId(user.assigned_location_id);
   };
 
-  // Toggle user role
-  const toggleUserRole = async (user: User) => {
-    const newRole = user.is_admin ? 'customer' : 'admin';
-    const action = user.is_admin ? 'remove admin access from' : 'make admin';
-    
-    if (!confirm(`Are you sure you want to ${action} ${user.email}?`)) {
+  const handleSaveRole = async () => {
+    if (!editingUser) return;
+
+    // Validate staff requires location
+    if (editRole === 'staff' && !editLocationId) {
+      toast.error('Staff members must have an assigned location');
       return;
     }
 
+    const action = editRole !== editingUser.role
+      ? `change ${editingUser.email} to ${editRole}`
+      : `update location for ${editingUser.email}`;
+    if (!confirm(`Are you sure you want to ${action}?`)) return;
+
     try {
-      setUpdatingUserId(user.id);
-      const response = await authPatch<AdminUserResponse>(`/admin/users/${user.id}`, { user: { role: newRole } }, getToken);
-      
-      // Update user in list
-      setUsers(users.map(u => u.id === user.id ? response.data.user : u));
-      
-      // Update stats
-      if (newRole === 'admin') {
-        setStats({ ...stats, admins: stats.admins + 1, customers: stats.customers - 1 });
+      setUpdatingUserId(editingUser.id);
+      const payload: Record<string, unknown> = { role: editRole };
+      if (editRole === 'staff' || editRole === 'manager') {
+        payload.assigned_location_id = editLocationId;
       } else {
-        setStats({ ...stats, admins: stats.admins - 1, customers: stats.customers + 1 });
+        payload.assigned_location_id = null;
       }
-      
+      const response = await authPatch<AdminUserResponse>(
+        `/admin/users/${editingUser.id}`,
+        { user: payload },
+        getToken
+      );
+      setUsers(users.map(u => u.id === editingUser.id ? response.data.user : u));
       toast.success(response.data.message);
+      // Re-fetch from server so stats reflect the full user population,
+      // not just the currently-filtered subset (Greptile: client-side stat
+      // recalculation is incorrect when a role filter is active).
+      fetchUsers();
+      setEditingUser(null);
     } catch (err) {
       console.error('Failed to update user:', err);
-      toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update user' : 'Failed to update user');
+      toast.error(
+        axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update user' : 'Failed to update user'
+      );
     } finally {
       setUpdatingUserId(null);
     }
@@ -104,11 +202,12 @@ export default function AdminUsersPage() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric'
+      month: 'short', day: 'numeric', year: 'numeric'
     });
   };
+
+  // Only show roles at or below the current viewer's level
+  const assignableRoles = ALL_ROLES.filter(r => ROLE_HIERARCHY[r] <= currentUserLevel);
 
   return (
     <div>
@@ -116,19 +215,23 @@ export default function AdminUsersPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-          <p className="text-gray-600 mt-1">Manage user accounts and admin access</p>
+          <p className="text-gray-600 mt-1">Manage user accounts and role assignments</p>
         </div>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4 text-center">
-          <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
-          <p className="text-sm text-gray-500">Total Users</p>
+          <p className="text-3xl font-bold text-purple-600">{stats.admins}</p>
+          <p className="text-sm text-gray-500">Admins</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4 text-center">
-          <p className="text-3xl font-bold text-indigo-600">{stats.admins}</p>
-          <p className="text-sm text-gray-500">Admins</p>
+          <p className="text-3xl font-bold text-blue-600">{stats.managers}</p>
+          <p className="text-sm text-gray-500">Managers</p>
+        </div>
+        <div className="bg-white rounded-lg shadow p-4 text-center">
+          <p className="text-3xl font-bold text-green-600">{stats.staff}</p>
+          <p className="text-sm text-gray-500">Staff</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4 text-center">
           <p className="text-3xl font-bold text-gray-600">{stats.customers}</p>
@@ -139,7 +242,6 @@ export default function AdminUsersPage() {
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
         <div className="flex flex-col sm:flex-row gap-4">
-          {/* Search */}
           <div className="flex-1">
             <div className="flex gap-2">
               <input
@@ -158,16 +260,16 @@ export default function AdminUsersPage() {
               </button>
             </div>
           </div>
-
-          {/* Role Filter */}
           <select
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
           >
-            <option value="all">All Roles</option>
-            <option value="admin">Admins Only</option>
-            <option value="customer">Customers Only</option>
+            <option value="all">All Users</option>
+            <option value="admin">Admins</option>
+            <option value="manager">Managers</option>
+            <option value="staff">Staff</option>
+            <option value="customer">Customers</option>
           </select>
         </div>
       </div>
@@ -179,10 +281,9 @@ export default function AdminUsersPage() {
         </div>
       ) : users.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
-          <div className="mb-4"><svg className="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg></div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No users found</h3>
           <p className="text-gray-600">
-            {searchQuery || roleFilter !== 'all' 
+            {searchQuery || roleFilter !== 'all'
               ? 'Try adjusting your search or filters.'
               : 'Users will appear here once they sign in.'}
           </p>
@@ -194,69 +295,38 @@ export default function AdminUsersPage() {
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    User
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Role
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Joined
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[160px]">
-                    Actions
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Role</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Location</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[120px]">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {users.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
+                {users.map((u) => (
+                  <tr key={u.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4">
                       <div className="flex items-center">
-                        <div className="shrink-0 h-10 w-10">
-                          <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold ${
-                            user.is_admin ? 'bg-indigo-500' : 'bg-gray-400'
-                          }`}>
-                            {(user.name || user.email).charAt(0).toUpperCase()}
-                          </div>
+                        <div className={`h-10 w-10 rounded-full flex items-center justify-center text-white font-semibold ${ROLE_AVATAR_COLORS[u.role]}`}>
+                          {(u.name || u.email).charAt(0).toUpperCase()}
                         </div>
                         <div className="ml-4">
-                          <div className="text-sm font-medium text-gray-900">{user.name || 'No name'}</div>
-                          <div className="text-sm text-gray-500">{user.email}</div>
+                          <div className="text-sm font-medium text-gray-900">{u.name || 'No name'}</div>
+                          <div className="text-sm text-gray-500">{u.email}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      {user.is_admin ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                          Admin
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          Customer
-                        </span>
-                      )}
-                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap"><RoleBadge role={u.role} /></td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {formatDate(user.created_at)}
+                      {u.assigned_location_name || (u.role === 'staff' || u.role === 'manager' ? 'All Locations' : '—')}
                     </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{formatDate(u.created_at)}</td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
-                        onClick={() => toggleUserRole(user)}
-                        disabled={updatingUserId === user.id}
-                        className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
-                          user.is_admin
-                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                            : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-                        }`}
+                        onClick={() => openEditModal(u)}
+                        className="inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
                       >
-                        {updatingUserId === user.id ? (
-                          'Updating...'
-                        ) : user.is_admin ? (
-                          'Remove Admin'
-                        ) : (
-                          'Make Admin'
-                        )}
+                        Edit Role
                       </button>
                     </td>
                   </tr>
@@ -267,51 +337,29 @@ export default function AdminUsersPage() {
 
           {/* Mobile Cards */}
           <div className="md:hidden space-y-4">
-            {users.map((user) => (
-              <div key={user.id} className="bg-white rounded-lg shadow p-4">
+            {users.map((u) => (
+              <div key={u.id} className="bg-white rounded-lg shadow p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center">
-                    <div className={`h-12 w-12 rounded-full flex items-center justify-center text-white font-semibold text-lg ${
-                      user.is_admin ? 'bg-indigo-500' : 'bg-gray-400'
-                    }`}>
-                      {(user.name || user.email).charAt(0).toUpperCase()}
+                    <div className={`h-12 w-12 rounded-full flex items-center justify-center text-white font-semibold text-lg ${ROLE_AVATAR_COLORS[u.role]}`}>
+                      {(u.name || u.email).charAt(0).toUpperCase()}
                     </div>
                     <div className="ml-3">
-                      <p className="font-semibold text-gray-900">{user.name || 'No name'}</p>
-                      <p className="text-sm text-gray-500">{user.email}</p>
+                      <p className="font-semibold text-gray-900">{u.name || 'No name'}</p>
+                      <p className="text-sm text-gray-500">{u.email}</p>
                     </div>
                   </div>
-                  {user.is_admin ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                      Admin
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                      Customer
-                    </span>
-                  )}
+                  <RoleBadge role={u.role} />
                 </div>
-
-                <div className="text-sm text-gray-500 mb-4">
-                  Joined {formatDate(user.created_at)}
-                </div>
-
+                {u.assigned_location_name && (
+                  <p className="text-sm text-gray-500 mb-2">{u.assigned_location_name}</p>
+                )}
+                <p className="text-sm text-gray-500 mb-4">Joined {formatDate(u.created_at)}</p>
                 <button
-                  onClick={() => toggleUserRole(user)}
-                  disabled={updatingUserId === user.id}
-                  className={`w-full py-2.5 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
-                    user.is_admin
-                      ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
+                  onClick={() => openEditModal(u)}
+                  className="w-full py-2.5 text-sm font-semibold rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors"
                 >
-                  {updatingUserId === user.id ? (
-                    'Updating...'
-                  ) : user.is_admin ? (
-                    'Remove Admin Access'
-                  ) : (
-                    'Make Admin'
-                  )}
+                  Edit Role
                 </button>
               </div>
             ))}
@@ -319,13 +367,83 @@ export default function AdminUsersPage() {
         </>
       )}
 
-      {/* Help Text */}
+      {/* Edit Role Modal */}
+      {editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-xl shadow-xl p-6 w-full max-w-md mx-4">
+            <h3 className="text-lg font-bold text-gray-900 mb-1">Edit User Role</h3>
+            <p className="text-sm text-gray-500 mb-4">{editingUser.email}</p>
+
+            <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+            <select
+              value={editRole}
+              onChange={(e) => {
+                const r = e.target.value as UserRole;
+                setEditRole(r);
+                if (r !== 'staff' && r !== 'manager') setEditLocationId(null);
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
+            >
+              {assignableRoles.map(r => (
+                <option key={r} value={r}>
+                  {r.charAt(0).toUpperCase() + r.slice(1)}
+                </option>
+              ))}
+            </select>
+
+            {(editRole === 'staff' || editRole === 'manager') && (
+              <>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Assigned Location {editRole === 'staff' && <span className="text-red-500">*</span>}
+                </label>
+                <select
+                  value={editLocationId ?? ''}
+                  onChange={(e) => setEditLocationId(e.target.value ? Number(e.target.value) : null)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-4 focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
+                >
+                  {editRole === 'manager' && <option value="">All Locations</option>}
+                  {editRole === 'staff' && <option value="">Select a location...</option>}
+                  {locations.map((loc) => (
+                    <option key={loc.id} value={loc.id}>{loc.name}</option>
+                  ))}
+                </select>
+                {editRole === 'staff' && (
+                  <p className="text-xs text-gray-500 -mt-2 mb-4">Staff members can only see orders at their assigned location.</p>
+                )}
+                {editRole === 'manager' && (
+                  <p className="text-xs text-gray-500 -mt-2 mb-4">Leave blank for all-location access, or pick one to scope their view.</p>
+                )}
+              </>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEditingUser(null)}
+                className="flex-1 py-2 px-4 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveRole}
+                disabled={updatingUserId === editingUser.id}
+                className="flex-1 py-2 px-4 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark font-medium transition disabled:opacity-50"
+              >
+                {updatingUserId === editingUser.id ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Role Hierarchy Help */}
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h4 className="font-semibold text-blue-900 mb-2">How User Sync Works</h4>
-        <p className="text-sm text-blue-800">
-          Users are synced from Clerk when they first sign in and visit the site. 
-          If someone created a Clerk account but isn't showing up here, ask them to visit the site while logged in.
-        </p>
+        <h4 className="font-semibold text-blue-900 mb-2">Role Hierarchy</h4>
+        <ul className="text-sm text-blue-800 space-y-1">
+          <li className="flex items-center gap-2"><Shield className="w-4 h-4 text-purple-600" /> <strong>Admin</strong> — Full access to everything (settings, products, users, etc.)</li>
+          <li className="flex items-center gap-2"><Users className="w-4 h-4 text-blue-600" /> <strong>Manager</strong> — Orders, analytics, inventory, POS, refunds. No settings/products/users.</li>
+          <li className="flex items-center gap-2"><UserCheck className="w-4 h-4 text-green-600" /> <strong>Staff</strong> — Orders at their location, POS, pickup queue only.</li>
+          <li className="flex items-center gap-2"><User className="w-4 h-4 text-gray-500" /> <strong>Customer</strong> — Browse, order, view own orders.</li>
+        </ul>
       </div>
     </div>
   );

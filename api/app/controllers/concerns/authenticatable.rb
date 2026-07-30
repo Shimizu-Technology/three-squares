@@ -79,14 +79,20 @@ module Authenticatable
   end
 
   def find_or_create_user(clerk_id, email)
+    normalized_email = email.downcase
     user = User.find_or_create_by!(clerk_id: clerk_id) do |u|
       u.email = email
-      u.role = ADMIN_EMAILS.include?(email) ? "admin" : "customer"
+      u.role = ADMIN_EMAILS.include?(normalized_email) ? "admin" : "customer"
     end
 
-    # Always sync admin status on login (handles users created before admin list was updated)
-    expected_role = ADMIN_EMAILS.include?(email) ? "admin" : user.role
-    user.update!(role: expected_role, email: email) if user.role != expected_role || user.email != email
+    # Only auto-promote customers to admin, never override staff/manager roles.
+    # Use update! so the in-memory object stays consistent (update_columns skips model callbacks
+    # and leaves user.role stale in memory, which would cause require_admin! to reject valid admins).
+    if user.customer? && ADMIN_EMAILS.include?(normalized_email)
+      user.update!(role: "admin")
+    end
+
+    user.update_columns(email: email) if user.email != email
 
     user
   end
@@ -98,6 +104,14 @@ module Authenticatable
   # Helper to check if user is admin
   def require_admin!
     render json: { error: "Forbidden" }, status: :forbidden unless current_user&.admin?
+  end
+
+  def require_manager!
+    render json: { error: "Forbidden" }, status: :forbidden unless current_user&.manager_or_above?
+  end
+
+  def require_staff!
+    render json: { error: "Forbidden" }, status: :forbidden unless current_user&.staff_or_above?
   end
 
   # Helper to make authentication optional
