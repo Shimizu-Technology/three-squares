@@ -1,200 +1,198 @@
-# Three Squares — Production Launch Checklist
+# Three Squares Production Launch Checklist
 
 **Target:** Easter Sunday, April 5, 2026
-**Deadline to start DNS:** Tuesday, April 1 (72-hr propagation buffer)
-**Last updated:** March 29, 2026
+**Status:** Launch only if the blockers below are green
+**Last updated:** April 5, 2026
 
 ---
 
-## 🔴 CRITICAL PATH (Must complete in order)
+## Launch decision
 
-### Step 1: Merge open PRs (Leon — 1-2 hours)
+Launch only if all five of these are true:
 
-All 6 open PRs are mergeable (no conflicts). Suggested order:
+- [ ] **Stripe live readiness is confirmed**
+  - Live API keys are available
+  - Live webhook is configured for `https://three-squares-api.onrender.com/webhooks/stripe`
+  - If BOG / Worldpay is still unresolved, **Stripe remains the Easter path**
+- [ ] **Clerk production readiness is confirmed**
+  - Production app exists
+  - Production keys are in place
+  - Staff/admin auth works in production
+- [ ] **Domain / DNS path is intentional**
+  - `bngpacific.com` is ready and resolves correctly, or
+  - Leon explicitly chooses a temporary launch URL for Easter
+  - If DNS is not actually ready, do not leave this ambiguous
+- [ ] **Minimum customer-path validation passed**
+  - Browse menu
+  - Add items to cart
+  - Complete checkout
+  - See confirmation
+- [ ] **Minimum operator-path validation passed**
+  - Admin login works in production
+  - Order appears correctly
+  - Team can tell what to do when an order comes in
 
-| PR | Title | Notes |
-|----|-------|-------|
-| #31 | TSQ-57: Config cache fix | Fixes settings propagation bug |
-| #32 | TSQ-51: Checkout pre-populate | Quality of life for customers |
-| #33 | TSQ-40+41: 4-tier RBAC | Staff/Manager role support |
-| #34 | Docs: RBAC training guide | Update after #33 merges |
-| #30 | TSQ-56: UX polish | Location picker, responsive header |
-| #35 | TSQ-62: Product CSV import | Nice-to-have for menu setup |
-
-> **PR #34 must come after PR #33** (docs reference the new roles)
-
----
-
-### Step 2: Create Clerk Production App (TSQ-59) (Leon — 15 min)
-
-1. Go to [https://dashboard.clerk.com](https://dashboard.clerk.com)
-2. Click **"Create Application"**
-3. Name: `Three Squares Production`
-4. Enable **Email** sign-in method
-5. Once created, go to **API Keys**
-6. Copy:
-   - `Publishable Key` → starts with `pk_live_...`
-   - `Secret Key` → starts with `sk_live_...`
-
-> **Do NOT use test keys (`pk_test_...`) in production — Clerk won't allow real users**
+If any item above is not green, do not launch.
 
 ---
 
-### Step 3: Activate Stripe Live Mode (TSQ-60) (Leon + Marie — 20 min)
+## 1. Must be green before launch
 
-**Pre-req:** Marie needs to complete Stripe identity verification (if not done)
+### Stripe live readiness
 
-1. Go to [https://dashboard.stripe.com](https://dashboard.stripe.com)
-2. Toggle from **Test mode → Live mode** (top-right toggle)
-3. Go to **Developers → API Keys**
-4. Copy:
-   - `Publishable key` → starts with `pk_live_...`
-   - `Secret key` → starts with `sk_live_...`
-5. Set up **Stripe Webhook** for live mode:
-   - Developers → Webhooks → Add endpoint
-   - URL: `https://three-squares-api.onrender.com/webhooks/stripe`
-   - Events to listen for:
+1. Go to Stripe live mode and confirm live access is usable.
+2. Copy live keys:
+   - `pk_live_...`
+   - `sk_live_...`
+3. Configure the live webhook:
+   - Endpoint: `https://three-squares-api.onrender.com/webhooks/stripe`
+   - Events:
      - `payment_intent.succeeded`
      - `payment_intent.payment_failed`
      - `payment_intent.canceled`
-   - Copy the **Webhook Signing Secret** → starts with `whsec_...`
+4. Save the webhook signing secret:
+   - `whsec_...`
+
+**Contingency:**
+- If BOG / Worldpay is not resolved, keep Stripe as the Easter processor.
+- If Stripe live is not actually ready, do not launch.
+
+### Clerk production readiness
+
+1. In Clerk, create or confirm the production application.
+2. Confirm production keys:
+   - `pk_live_...`
+   - `sk_live_...`
+3. Verify production sign-in works for the staff/admin path.
+
+**Contingency:**
+- If Clerk production auth is not working in production, do not launch.
+
+### Domain / DNS decision
+
+Choose one path before launch:
+
+- **Path A: Launch on `bngpacific.com`**
+  - Netlify custom domain is configured
+  - DNS records are updated
+  - HTTPS is green
+  - `bngpacific.com` resolves correctly
+
+- **Path B: Launch on an intentional temporary URL**
+  - Use `https://three-squares.netlify.app` intentionally if the main domain is not ready
+  - Make sure B&G knows this is the Easter launch URL
+
+**Contingency:**
+- If DNS slips, do not quietly hope it resolves in time.
+- Use an intentional temporary URL or delay launch.
+- No ambiguous middle state.
+
+### Minimum customer-path validation
+
+Run one real customer-path test:
+
+- [ ] Open the launch URL
+- [ ] Browse menu / locations without confusion
+- [ ] Add items to cart
+- [ ] Complete checkout
+- [ ] See confirmation
+
+### Minimum operator-path validation
+
+Run one real operator-path test:
+
+- [ ] Sign in to admin in production
+- [ ] Confirm the order appears
+- [ ] Confirm core settings do not obviously break storefront behavior
+- [ ] Confirm the team can receive/process the order
 
 ---
 
-### Step 4: Update Render Environment Variables (Jerry can prep, Leon activates)
+## 2. Can run in parallel
 
-**Service:** `three-squares-api` on Render
+These matter, but they are not the launch gate if the five blockers above are green.
 
-Update these env vars (use Render dashboard, restart service — do NOT redeploy):
+- Update Render environment variables with production Stripe / Clerk values
+- Update Netlify environment variables with the production Clerk publishable key
+- Restart Render after env updates
+- Trigger a Netlify deploy after env updates
+- Invoice follow-up with B&G
+- Payment-options / BOG context and communication
+- Training / status communication to B&G
+- Non-blocking menu or settings cleanup
 
-```
-# Clerk (production keys)
+### Relevant environment variables
+
+**Render (`three-squares-api`)**
+
+```env
 CLERK_SECRET_KEY=sk_live_...
 CLERK_PUBLISHABLE_KEY=pk_live_...
-
-# Stripe (production keys)
 STRIPE_SECRET_KEY=sk_live_...
 STRIPE_PUBLISHABLE_KEY=pk_live_...
 STRIPE_WEBHOOK_SECRET=whsec_...
-
-# CORS — add production domain BEFORE DNS goes live
 FRONTEND_URL=https://bngpacific.com
 ALLOWED_ORIGINS=https://bngpacific.com,https://www.bngpacific.com,https://three-squares.netlify.app
 ```
 
-> After updating env vars: use **Restart** (not Deploy) in Render dashboard
+Notes:
+- Restart the service after env updates.
+- `ALLOWED_ORIGINS` must match exactly.
 
----
+**Netlify (`three-squares`)**
 
-### Step 5: Update Netlify Environment Variables
-
-**Site:** `three-squares` on Netlify
-
-Update these env vars:
-
-```
-# Clerk (production publishable key)
+```env
 VITE_CLERK_PUBLISHABLE_KEY=pk_live_...
-
-# API URL (already correct if pointing to Render)
 VITE_API_BASE_URL=https://three-squares-api.onrender.com
 ```
 
-Then trigger a **new deploy** (or push to main to auto-deploy).
+---
+
+## 3. Can wait until after Easter
+
+- BOG / Worldpay longer-term migration work
+- Non-blocking UX polish
+- Broader admin refinements
+- Broader settings cleanup
+- Nice-to-have docs or training improvements
+- Anything that does not change whether a real customer can order and staff can receive/process that order
 
 ---
 
-### Step 6: Configure Custom Domain in Netlify (Leon — 10 min)
+## 4. Launch-morning go / no-go
 
-1. Netlify Dashboard → three-squares site → **Domain management**
-2. Click **"Add custom domain"**
-3. Add: `bngpacific.com`
-4. Add: `www.bngpacific.com`
-5. Note the Netlify site URL (e.g., `three-squares-abc123.netlify.app`) — needed for DNS step
-6. HTTPS will auto-provision once DNS propagates
+### Go
 
----
+Launch only if all are true:
 
-### Step 7: DNS Redirect — bngpacific.com → Netlify (Marie — 15 min)
+- [ ] Stripe live path works
+- [ ] Clerk production auth works
+- [ ] Domain path is intentional and usable
+- [ ] Customer-path test passed
+- [ ] Operator-path test passed
 
-**⚠️ Must start by Tuesday April 1 for propagation before Easter**
+### No-go
 
-Option A (recommended — keep domain at Squarespace, just change DNS):
+Do not launch if any are true:
 
-1. Marie logs into Squarespace → **Domains** → `bngpacific.com` → **DNS Settings**
-2. Delete existing A record(s) pointing to Squarespace servers
-3. Delete existing CNAME for `www` (if any)
-4. Add new records:
-   ```
-   Type: A
-   Host: @
-   Value: 75.2.60.5
-   TTL: 3600
-
-   Type: CNAME
-   Host: www
-   Value: [netlify-site-name].netlify.app
-   TTL: 3600
-   ```
-5. Save changes
-6. DNS propagates in 15 min to 72 hours (usually ~1 hour)
-7. Netlify auto-provisions HTTPS certificate (takes ~5 min after DNS propagates)
+- [ ] Payments are still not actually live
+- [ ] Production auth is incomplete or broken
+- [ ] DNS / domain state is confused
+- [ ] Leon has not personally verified the end-to-end customer path
+- [ ] Leon has not personally verified the operator/admin path
 
 ---
 
-### Step 8: Final Smoke Test (Leon — 30 min before Easter)
+## 5. Security notes
 
-- [ ] Visit `https://bngpacific.com` — loads correctly
-- [ ] HTTPS certificate is green
-- [ ] Sign in with Clerk (real account, not test)
-- [ ] Place a test order with Stripe live mode (use real card, $1 item)
-- [ ] Confirm order appears in admin panel
-- [ ] Confirm order email arrives
-- [ ] POS terminal can connect and process a transaction
-- [ ] Refund the test order in Stripe dashboard
+- Never commit live Stripe or Clerk keys to git
+- Do not mix Clerk test keys with production
+- Rotate webhook secrets if they were exposed in plain text
 
 ---
 
-## 📅 Timeline
-
-| Day | Date | Action | Owner |
-|-----|------|--------|-------|
-| Monday | Mar 30 | Merge PRs #31, #32, #33, #34, #30 | Leon |
-| Monday | Mar 30 | Create Clerk prod app + get keys | Leon |
-| Monday | Mar 30 | Activate Stripe live + get keys + webhook | Leon/Marie |
-| Monday | Mar 30 | Update Render + Netlify env vars | Leon/Jerry |
-| Tuesday | Apr 1 | **DNS records updated (MUST START TODAY)** | Marie |
-| Tuesday | Apr 1 | Confirm DNS is propagating | Leon |
-| Wednesday | Apr 2 | Verify bngpacific.com loads, HTTPS green | Leon |
-| Thursday | Apr 3 | Run full smoke test with real card | Leon |
-| Friday | Apr 4 | Train Liv on live system (if needed) | Leon |
-| **Sunday** | **Apr 5** | **🎉 EASTER LAUNCH** | — |
-
----
-
-## 💰 Outstanding Invoice
-
-**$2,500 invoice** sent March 13 — 16 days outstanding as of March 29.
-Check-in email draft: `jerry/drafts/tsq-checkin-email.md`
-Leon: review + send Monday morning before the day gets away from you.
-
----
-
-## 🔒 Security Notes
-
-- Never commit live Stripe/Clerk keys to git
-- Rotate webhook secrets if they were ever in plain-text in Slack/email
-- ALLOWED_ORIGINS must match exactly (no trailing slashes)
-- Clerk production app is separate from dev — don't mix keys
-
----
-
-## 📞 Contacts
+## Contacts
 
 - **Marie Guerrero** (B&G Pacific): mguerrero@bgpacific.com
-- **Liv** (domain/Squarespace access): coordinate through Marie
+- **Liv** (domain / Squarespace coordination): coordinate through Marie
 - **Stripe support** (if identity verification issues): 1-888-926-2289
-
----
-
-*Generated by Jerry — March 29, 2026*
