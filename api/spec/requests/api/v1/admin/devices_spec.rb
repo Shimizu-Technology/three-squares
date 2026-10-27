@@ -84,6 +84,7 @@ RSpec.describe "Admin devices", type: :request do
     register
     post "/api/v1/admin/devices/current/push_subscription", params: { subscription: subscription_attributes }, headers: headers
     expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body.fetch("code")).to eq("push_endpoint_conflict")
     expect(existing.reload).to be_active
     expect(existing.admin_device_id).not_to eq(AdminDevice.find_by!(device_uuid: "device-under-test").id)
   end

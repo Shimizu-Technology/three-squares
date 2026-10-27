@@ -114,7 +114,10 @@ module Api
               message: "Push notifications enabled"
             }
           else
-            render json: { error: subscription.errors.full_messages.join(", ") }, status: :unprocessable_entity
+            render json: {
+              error: subscription.errors.full_messages.join(", "),
+              code: subscription.errors.of_kind?(:endpoint, :taken) ? "push_endpoint_conflict" : "invalid_subscription"
+            }, status: :unprocessable_entity
           end
         end
 
