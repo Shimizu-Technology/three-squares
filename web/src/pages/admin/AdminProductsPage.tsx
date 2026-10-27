@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -58,6 +58,8 @@ export default function AdminProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<DetailedProduct | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
 
+  const importDialog = useRef<HTMLDivElement>(null);
+
   // Import CSV state
   const [showImportModal, setShowImportModal] = useState(false);
   const [importFile, setImportFile] = useState<File | null>(null);
@@ -77,9 +79,16 @@ export default function AdminProductsPage() {
 
   // Lock body scroll when modal open
   useEffect(() => {
-    document.body.style.overflow = selectedProduct ? 'hidden' : 'unset';
+    document.body.style.overflow = selectedProduct || showImportModal ? 'hidden' : 'unset';
     return () => { document.body.style.overflow = 'unset'; };
-  }, [selectedProduct]);
+  }, [selectedProduct, showImportModal]);
+
+  useEffect(() => {
+    if (!showImportModal) return;
+    const previous = document.activeElement as HTMLElement | null;
+    importDialog.current?.focus();
+    return () => { if (previous?.isConnected) previous.focus(); };
+  }, [showImportModal]);
 
   useEffect(() => { fetchProducts(); }, []);
 
@@ -160,7 +169,7 @@ export default function AdminProductsPage() {
         '/admin/products/import_csv',
         formData,
         getToken,
-        { headers: { 'Content-Type': 'multipart/form-data' } }
+        {}
       );
       setImportResult(response.data.data);
       if (response.data.data.imported > 0) {
@@ -232,7 +241,7 @@ export default function AdminProductsPage() {
             Showing <span className="font-semibold text-gray-700">{filteredProducts.length}</span> of {products.length} products
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => {
               setShowImportModal(true);
@@ -271,7 +280,7 @@ export default function AdminProductsPage() {
         <SkeletonListPage />
       ) : filteredProducts.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-          <h3 className="text-lg font-bold text-gray-900 mb-2">No products found</h3>
+          <h3 id="csv-import-title" className="text-lg font-bold text-gray-900 mb-2">No products found</h3>
           <p className="text-gray-500">Try adjusting your filters or search query.</p>
         </div>
       ) : (
@@ -309,14 +318,31 @@ export default function AdminProductsPage() {
           onClick={() => !isImporting && setShowImportModal(false)}
         >
           <div
-            className="bg-white rounded-lg w-full max-w-lg shadow-xl"
+            ref={importDialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="csv-import-title"
+            tabIndex={-1}
+            className="bg-white rounded-lg w-full max-w-lg max-h-[90dvh] overflow-y-auto shadow-xl"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && !isImporting) setShowImportModal(false);
+              if (event.key !== 'Tab') return;
+              const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), a[href]'));
+              const first = controls[0];
+              const last = controls[controls.length - 1];
+              if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) {
+                event.preventDefault(); last?.focus();
+              } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault(); first?.focus();
+              }
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900">Import Products from CSV</h3>
+              <h3 id="csv-import-title" className="text-lg font-semibold text-gray-900">Import Products from CSV</h3>
               {!isImporting && (
-                <button onClick={() => setShowImportModal(false)} className="btn-icon text-gray-400 hover:text-gray-600">
+                <button aria-label="Close CSV import" onClick={() => setShowImportModal(false)} className="btn-icon text-gray-400 hover:text-gray-600">
                   <X className="w-5 h-5" />
                 </button>
               )}
@@ -330,7 +356,7 @@ export default function AdminProductsPage() {
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <p className="text-sm text-blue-800 font-medium">CSV Format</p>
                     <p className="text-xs text-blue-700 mt-1">
-                      Columns: <code>name, description, price, category_name, active</code>
+                      Required: <code>name, price</code>. Optional: <code>description, category_name, active</code>. Prices use dollars with at most two decimal places; active defaults to true. Maximum 2 MB / 2,000 rows. Imports create new pickup-only products; existing products are skipped. Review location availability after import.
                     </p>
                     <button
                       onClick={downloadTemplate}
@@ -343,11 +369,13 @@ export default function AdminProductsPage() {
 
                   {/* File picker */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label htmlFor="csv-import-file" className="block text-sm font-medium text-gray-700 mb-2">
                       Select CSV file
                     </label>
                     <input
+                      id="csv-import-file"
                       type="file"
+                      disabled={isImporting}
                       accept=".csv"
                       onChange={(e) => setImportFile(e.target.files?.[0] || null)}
                       className="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
@@ -358,7 +386,7 @@ export default function AdminProductsPage() {
                   </div>
 
                   {importError && (
-                    <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
+                    <div role="alert" className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
                       <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
                       <p className="text-sm text-red-700">{importError}</p>
                     </div>
@@ -366,7 +394,7 @@ export default function AdminProductsPage() {
                 </>
               ) : (
                 /* Results */
-                <div className="space-y-3">
+                <div role="status" className="space-y-3">
                   <div className="flex items-center gap-2">
                     <CheckCircle className="w-5 h-5 text-green-600" />
                     <span className="font-medium text-gray-900">Import Complete</span>

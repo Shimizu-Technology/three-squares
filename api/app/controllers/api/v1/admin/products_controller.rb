@@ -126,90 +126,78 @@ module Api
         end
 
         # POST /api/v1/admin/products/import_csv
+        # Valid rows commit independently; invalid rows never leave partial products/categories.
         def import_csv
-          unless params[:file].present?
+          file = params[:file]
+          unless file.is_a?(ActionDispatch::Http::UploadedFile)
             return render json: { error: "CSV file is required" }, status: :unprocessable_entity
           end
 
-          file = params[:file]
-
-          begin
-            csv_text = file.read.force_encoding("UTF-8")
-            rows = CSV.parse(csv_text, headers: true, skip_blanks: true)
-          rescue CSV::MalformedCSVError => e
-            return render json: { error: "Invalid CSV format: #{e.message}" }, status: :unprocessable_entity
+          csv_text = file.read(2.megabytes + 1).force_encoding("UTF-8")
+          if csv_text.bytesize > 2.megabytes
+            return render json: { error: "CSV file must be 2 MB or smaller" }, status: :unprocessable_entity
+          end
+          unless csv_text.valid_encoding?
+            return render json: { error: "CSV file must use UTF-8 encoding" }, status: :unprocessable_entity
+          end
+          csv_text = csv_text.delete_prefix("\uFEFF")
+          rows = CSV.parse(csv_text, headers: true, skip_blanks: true,
+                           header_converters: ->(header) { header&.strip&.downcase })
+          headers = rows.headers
+          unless %w[name price].all? { |header| headers.include?(header) } && headers.compact.uniq.size == headers.size
+            return render json: { error: "CSV requires unique name and price headers" }, status: :unprocessable_entity
+          end
+          if rows.empty? || rows.size > 2000
+            return render json: { error: "CSV must contain 1 to 2000 product rows" }, status: :unprocessable_entity
           end
 
           imported = 0
-          skipped = 0
           errors = []
-
-          rows.each_with_index do |row, i|
-            row_num = i + 2  # 1-indexed, header is row 1
-
+          rows.each_with_index do |row, index|
             name = row["name"]&.strip
-            unless name.present?
-              errors << { row: row_num, error: "Name is required" }
-              skipped += 1
+            price = row["price"]&.strip
+            active = row["active"]&.strip&.downcase
+            error = if name.blank?
+              "Name is required"
+            elsif !price&.match?(/\A\d+(?:\.\d{1,2})?\z/) || BigDecimal(price) * 100 > 2_147_483_647
+              "Price must be a nonnegative amount with at most two decimal places"
+            elsif active.present? && !%w[true 1 yes false 0 no].include?(active)
+              "Active must be true or false (yes/no and 1/0 are also accepted)"
+            end
+            if error
+              errors << { row: index + 2, name: name, error: error }
               next
             end
-
-            price_str = row["price"]&.strip
-            price = price_str.to_f
-            if price < 0
-              errors << { row: row_num, name: name, error: "Price cannot be negative" }
-              skipped += 1
-              next
-            end
-
-            active_str = row["active"]&.strip&.downcase
-            published = !%w[false 0 no].include?(active_str)
-
-            description = row["description"]&.strip
-            category_name = row["category_name"]&.strip
 
             begin
-              ActiveRecord::Base.transaction do
-                product = Product.new(
-                  name: name,
-                  description: description.presence,
-                  base_price_cents: (price * 100).to_i,
-                  published: published,
-                  allow_pickup: true,
-                  allow_shipping: false,
-                  inventory_level: "none"
+              Product.transaction(requires_new: true) do
+                product = Product.create!(
+                  name: name, description: row["description"]&.strip.presence,
+                  base_price_cents: (BigDecimal(price) * 100).to_i,
+                  published: !%w[false 0 no].include?(active),
+                  allow_pickup: true, allow_shipping: false, inventory_level: "none"
                 )
-
-                unless product.save
-                  errors << { row: row_num, name: name, error: product.errors.full_messages.join(", ") }
-                  skipped += 1
-                  raise ActiveRecord::Rollback
+                unless product.product_variants.exists?
+                  product.errors.add(:base, "Default variant could not be created")
+                  raise ActiveRecord::RecordInvalid, product
                 end
-
-                if category_name.present?
-                  collection = Collection.find_or_create_by(name: category_name) do |c|
-                    c.published = true
-                  end
-                  product.collections << collection unless product.collections.include?(collection)
+                category = row["category_name"]&.strip
+                if category.present?
+                  collection = Collection.find_or_create_by!(name: category) { |c| c.published = true }
+                  product.collections << collection
                 end
-
-                imported += 1
               end
-            rescue ActiveRecord::Rollback
-              # already counted in skipped
+              imported += 1
+            rescue ActiveRecord::RecordInvalid => e
+              errors << { row: index + 2, name: name, error: e.record.errors.full_messages.join(", ") }
+            rescue ActiveRecord::RecordNotUnique
+              errors << { row: index + 2, name: name, error: "Product or category already exists" }
             end
           end
 
-          render_success({
-            imported: imported,
-            skipped: skipped,
-            total: rows.count,
-            errors: errors
-          })
-
-        rescue => e
-          Rails.logger.error "CSV import failed: #{e.message}"
-          render json: { error: "Import failed: #{e.message}" }, status: :unprocessable_entity
+          render_success({ imported: imported, skipped: errors.size, total: rows.size, errors: errors })
+        rescue CSV::MalformedCSVError
+          render json: { error: "Invalid CSV format" }, status: :unprocessable_entity
         end
 
         private
