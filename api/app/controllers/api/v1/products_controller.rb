@@ -12,7 +12,6 @@ module Api
         @products = @products.order(featured: :desc, created_at: :desc) unless params[:sort].present?
 
         # Filters
-        @products = @products.where(product_type: params[:product_type]) if params[:product_type].present?
 
         if params[:business_line].present?
           @products = apply_business_line_filter(@products, params[:business_line].to_s)
@@ -49,6 +48,12 @@ module Api
           @products = @products.where("base_price_cents <= ?", max) if max
         end
 
+        # Type choices describe the complete eligible result set, independent of
+        # the selected type and current page.
+        product_types = @products.except(:includes, :order).distinct.pluck(:product_type)
+          .compact.reject { |type| type.blank? || type == "market_price" }.sort
+        @products = @products.where(product_type: params[:product_type]) if params[:product_type].present?
+
         # Sorting
         if params[:sort].present?
           case params[:sort]
@@ -82,7 +87,8 @@ module Api
           meta: {
             page: page,
             per_page: per_page,
-            total: total_count
+            total: total_count,
+            product_types: product_types
           }
         }
       end

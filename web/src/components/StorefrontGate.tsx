@@ -17,7 +17,7 @@ export default function StorefrontGate({
 }: StorefrontGateProps) {
   const config = useAppConfig();
 
-  if (config === undefined) {
+  if (config == null) {
     return (
       <div role="status" className="min-h-[40vh] bg-warm-50 flex items-center justify-center px-4">
         <div className="text-center">

@@ -90,7 +90,7 @@ export default function ProductsPage() {
   const enabledStorefronts = STOREFRONTS.filter((storefront) => isStorefrontEnabled(config, storefront.key));
   const enabledStorefrontValues = new Set(enabledStorefronts.map((storefront) => storefront.key));
   const activeBusinessLine =
-    config === undefined
+    config == null
       ? requestedBusinessLine
       : requestedBusinessLine && enabledStorefrontValues.has(requestedBusinessLine)
         ? requestedBusinessLine
@@ -142,19 +142,7 @@ export default function ProductsPage() {
 
     return collections.filter((item) => item.business_line === activeBusinessLine);
   }, [activeBusinessLine, collections]);
-  const availableProductTypes = useMemo(() => {
-    const optionSet = new Set(
-      products
-        .map((product) => product.product_type)
-        .filter((value): value is string => Boolean(value) && value !== 'market_price')
-    );
-
-    if (productType) {
-      optionSet.add(productType);
-    }
-
-    return Array.from(optionSet).sort((a, b) => a.localeCompare(b));
-  }, [productType, products]);
+  const [availableProductTypes, setAvailableProductTypes] = useState<string[]>([]);
   const businessLineOptions = [
     { label: 'All', value: '' },
     ...enabledStorefronts.map((storefront) => ({
@@ -164,7 +152,7 @@ export default function ProductsPage() {
   ];
 
   useEffect(() => {
-    if (config === undefined || !businessLine || activeBusinessLine) {
+    if (config == null || !businessLine || activeBusinessLine) {
       return;
     }
 
@@ -172,21 +160,6 @@ export default function ProductsPage() {
     nextSearchParams.delete('business_line');
     setSearchParams(nextSearchParams, { replace: true });
   }, [activeBusinessLine, businessLine, config, searchParams, setSearchParams]);
-
-  useEffect(() => {
-    if (!collection || collections.length === 0) {
-      return;
-    }
-
-    const collectionIsVisible = visibleCollections.some((item) => item.slug === collection);
-    if (collectionIsVisible) {
-      return;
-    }
-
-    const nextSearchParams = new URLSearchParams(searchParams);
-    nextSearchParams.delete('collection');
-    setSearchParams(nextSearchParams, { replace: true });
-  }, [collection, collections.length, searchParams, setSearchParams, visibleCollections]);
 
   useEffect(() => {
     if (!didScrollRef.current) {
@@ -231,6 +204,7 @@ export default function ProductsPage() {
       });
       setProducts(response.products);
       setMeta(response.meta);
+      setAvailableProductTypes(response.meta.product_types || []);
       setError(null);
     } catch (err) {
       setError('Failed to load products');
@@ -247,7 +221,7 @@ export default function ProductsPage() {
 
   useEffect(() => {
     void fetchProducts();
-  }, [fetchProducts]);
+  }, [config, fetchProducts]);
 
   const handleSearch = (value: string) => {
     const params: Record<string, string> = {};
@@ -327,7 +301,7 @@ export default function ProductsPage() {
     );
   }
 
-  // Show empty state instead of error when no products exist
+  // Show a retryable error when the menu request fails
   if (error && products.length === 0) {
     return (
       <div className="min-h-screen bg-warm-50">
@@ -346,10 +320,9 @@ export default function ProductsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
           <div className="max-w-md mx-auto">
             <div className="mb-6"><svg className="w-16 h-16 mx-auto text-tsPrimary" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg></div>
-            <h2 className="text-2xl font-bold text-warm-900 mb-4">Coming Soon!</h2>
+            <h2 className="text-2xl font-bold text-warm-900 mb-4">Menu unavailable</h2>
             <p className="text-warm-600 mb-8">
-              We're preparing our collection of premium Chamorro pride apparel. 
-              Check back soon for amazing island-inspired designs!
+              We could not load the menu. Please try again.
             </p>
             <button
               onClick={fetchProducts}
