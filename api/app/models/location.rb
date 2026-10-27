@@ -1,6 +1,7 @@
 class Location < ApplicationRecord
   has_many :product_locations, dependent: :destroy
   has_many :products, through: :product_locations
+  has_many :admin_devices, dependent: :nullify
   has_many :orders, dependent: :nullify
 
   validates :name, presence: true
