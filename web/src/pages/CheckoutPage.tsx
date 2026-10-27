@@ -16,7 +16,7 @@ import { useLocationStore } from '../store/locationStore';
 
 function CheckoutForm() {
   const navigate = useNavigate();
-  const { getToken, isSignedIn, isLoaded: authLoaded } = useAuth();
+  const { getToken, isSignedIn, isLoaded: authLoaded, userId } = useAuth();
   const { cart, clearCart, sessionId, fetchCart, validateCart, removeItem, isLoading: cartLoading } = useCartStore();
   const { selectedLocation: storedLocation } = useLocationStore();
   const stripe = useStripe();
@@ -114,32 +114,29 @@ function CheckoutForm() {
     [pickupLocations, compatiblePickupLocationIds]
   );
 
-  // Pre-populate form from user profile when signed in
+  // A profile response may arrive after sign-out or an identity change.
   useEffect(() => {
-    if (!isSignedIn || !authLoaded) return;
+    if (!isSignedIn || !authLoaded || !userId) return;
+    let cancelled = false;
 
     authGet<{
       email: string | null;
       name: string | null;
       phone: string | null;
     }>('/me', getToken)
-      .then((response) => {
-        const profile = response.data;
-        // Only pre-fill if fields are currently empty (don't override user edits).
-        // Intentionally reading current state values at call time — we want a
-        // one-shot pre-fill on sign-in, not a re-fetch on every keystroke.
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+      .then(({ data: profile }) => {
+        if (cancelled) return;
+        // Functional updates preserve anything entered while the profile loads.
         setEmail((prev) => (profile.email && !prev ? profile.email : prev));
         setName((prev) => (profile.name && !prev ? profile.name : prev));
         setPhone((prev) => (profile.phone && !prev ? profile.phone : prev));
       })
       .catch(() => {
-        // Silently fail — user can fill in manually
+        // Checkout remains usable when profile loading fails.
       });
-    // Intentionally omitting email/name/phone/getToken — this effect should only
-    // run once when the user first authenticates, not on every field change.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isSignedIn, authLoaded]);
+
+    return () => { cancelled = true; };
+  }, [isSignedIn, authLoaded, userId, getToken]);
 
   // Load app config
   useEffect(() => {
