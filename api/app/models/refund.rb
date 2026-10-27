@@ -1,12 +1,12 @@
 # frozen_string_literal: true
 
 class Refund < ApplicationRecord
+  belongs_to :refund_operation, optional: true
   belongs_to :order
   belongs_to :user, optional: true  # admin who processed it
 
-  validates :amount_cents, presence: true, numericality: { greater_than: 0 }
-  validates :status, inclusion: { in: %w[pending succeeded failed] }
-  validates :stripe_refund_id, uniqueness: true, allow_nil: true
+  validates :amount_cents, presence: true, numericality: { only_integer: true, greater_than: 0 }
+  validates :status, inclusion: { in: %w[pending unknown succeeded failed] }
 
   scope :succeeded, -> { where(status: "succeeded") }
   scope :pending, -> { where(status: "pending") }

@@ -26,6 +26,7 @@ module Payments
         payload = outbox.payload
         raise BindingError, 'Unknown notification consumer' unless NOTIFICATION_JOBS.include?(payload['job'])
         result = payload['job'].constantize.new.perform(*payload.fetch('args'))
+      when 'refund_inventory' then RestoreRefundInventory.call(operation: RefundOperation.find(outbox.payload.fetch('operation_id')))
       when 'cart_cleanup' then CartCleanup.call(session: CheckoutSession.find(outbox.payload.fetch('session_id')))
       when 'admin_push'
         order = Order.find(outbox.payload.fetch('order_id'))

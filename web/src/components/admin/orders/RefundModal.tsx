@@ -1,4 +1,5 @@
 import { useRef, useState } from 'react';
+import type { SavedRefundRequest } from '../../../lib/refundRequest';
 import useLockBodyScroll from '../../../hooks/useLockBodyScroll';
 import type { Order } from './orderUtils';
 import { formatCurrency } from './orderUtils';
@@ -6,32 +7,34 @@ import { formatCurrency } from './orderUtils';
 interface RefundModalProps {
   order: Order;
   processing: boolean;
-  onProcess: (amountCents: number, reason: string) => void;
+  onProcess: (amountCents: number, reason: string, restockItems: boolean) => void;
+  savedRequest: SavedRefundRequest | null;
   onClose: () => void;
 }
 
-export default function RefundModal({ order, processing, onProcess, onClose }: RefundModalProps) {
+export default function RefundModal({ order, processing, savedRequest, onProcess, onClose }: RefundModalProps) {
   useLockBodyScroll(true);
 
   const [refundType, setRefundType] = useState<'full' | 'partial'>('full');
   const [refundAmount, setRefundAmount] = useState('');
   const [refundReason, setRefundReason] = useState('');
+  const [restockItems, setRestockItems] = useState(false);
   const modalContentRef = useRef<HTMLDivElement | null>(null);
 
-  const maxRefundable = order.total_cents - (order.total_refunded_cents || 0);
+  const maxRefundable = order.refundable_amount_cents ?? order.total_cents - (order.total_refunded_cents || 0);
 
   const handleProcess = () => {
     const amountCents =
       refundType === 'full'
         ? maxRefundable
         : Math.round(parseFloat(refundAmount) * 100);
-    onProcess(amountCents, refundReason);
+    onProcess(savedRequest?.payload.amount_cents ?? amountCents, savedRequest?.payload.reason ?? refundReason, savedRequest?.payload.restock_items ?? restockItems);
   };
 
   return (
     <div
       className="fixed inset-0 z-60 flex items-center justify-center p-4 backdrop-blur-md bg-black/30"
-      onClick={onClose}
+      onClick={() => { if (!processing) onClose(); }}
     >
       <div
         className="bg-white rounded-lg max-w-md w-full max-h-[85vh] flex flex-col min-h-0 shadow-2xl"
@@ -55,6 +58,12 @@ export default function RefundModal({ order, processing, onProcess, onClose }: R
             event.preventDefault();
           }}
         >
+          {savedRequest && <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+            A refund of {formatCurrency(savedRequest.payload.amount_cents)} is saved. Check its status before starting another refund. Pending and unknown amounts remain reserved.
+            <p className="mt-2">Stock decision: {savedRequest.payload.restock_items ? 'Restock remaining purchased units after confirmation' : 'Do not restock'}.</p>
+            {savedRequest.payload.reason && <p className="mt-1">Reason: {savedRequest.payload.reason}</p>}
+          </div>}
+          {!savedRequest && <fieldset disabled={processing} className="space-y-4">
           {/* Refund Type Toggle */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Refund Type</label>
@@ -126,11 +135,16 @@ export default function RefundModal({ order, processing, onProcess, onClose }: R
             />
           </div>
 
+          <label className="flex items-start gap-2 text-sm">
+            <input type="checkbox" checked={restockItems} onChange={event => setRestockItems(event.target.checked)} className="mt-1" />
+            <span>Restock all remaining units from this order after the refund is confirmed.<span className="mt-1 block text-xs text-gray-600">Select only for returned or cancelled items. Previously restored units will not be added again.</span></span>
+          </label>
+          </fieldset>}
           {/* Warning */}
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <p className="text-sm text-yellow-800 font-medium">This action cannot be undone.</p>
             <p className="text-xs text-yellow-700 mt-1">
-              The refund will be processed through Stripe immediately.
+              The refund uses the original payment account. A pending result is checked before another request can use those funds.
             </p>
           </div>
         </div>
@@ -141,11 +155,11 @@ export default function RefundModal({ order, processing, onProcess, onClose }: R
             onClick={handleProcess}
             disabled={
               processing ||
-              (refundType === 'partial' && (!refundAmount || parseFloat(refundAmount) <= 0))
+              (!savedRequest && (maxRefundable <= 0 || (refundType === 'partial' && (!refundAmount || parseFloat(refundAmount) <= 0 || Math.round(parseFloat(refundAmount) * 100) > maxRefundable))))
             }
             className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-primary-dark transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {processing ? 'Processing...' : 'Process Refund'}
+            {processing ? 'Checking...' : savedRequest ? 'Check saved refund' : 'Process Refund'}
           </button>
           <button
             type="button"
@@ -153,7 +167,7 @@ export default function RefundModal({ order, processing, onProcess, onClose }: R
             disabled={processing}
             className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium disabled:opacity-50"
           >
-            Cancel
+            Close
           </button>
         </div>
       </div>

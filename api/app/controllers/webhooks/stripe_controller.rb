@@ -13,10 +13,22 @@ module Webhooks
       event = verify_and_construct_event
       return head :bad_request unless event
 
+      @event_id = event.id
       @event_account = event.respond_to?(:account) ? event.account : nil
       @event_account ||= ENV["STRIPE_WEBHOOK_ACCOUNT_ID"]
       environment = event.livemode ? "production" : "sandbox"
-      identity = PaymentIdentity.find_by(provider: "stripe", external_account_id: @event_account, environment: environment)
+      @event_identities = PaymentIdentity.where(provider: 'stripe', external_account_id: @event_account, environment: environment)
+      object = event.data.object.to_h.deep_stringify_keys
+      identity = if event.type.start_with?('payment_intent.')
+        candidate = PaymentAttempt.find_by(id: object.fetch('metadata', {})['payment_attempt_id'])&.payment_identity
+        candidate if candidate && @event_identities.exists?(id: candidate.id)
+      elsif %w[refund.created refund.updated refund.failed charge.refund.updated].include?(event.type)
+        refund_identity(object)
+      elsif event.type == 'charge.refunded'
+        charge_identity(object)
+      elsif @event_identities.one?
+        @event_identities.first
+      end
       Payments::Configuration.validate_identity!(identity) if identity
       receipt = PaymentEvent.create_or_find_by!(provider: "stripe", external_account_id: @event_account.to_s, environment: environment, external_event_id: event.id) do |row|
         row.payment_identity = identity
@@ -79,7 +91,7 @@ module Webhooks
         handle_payment_intent_failed(event.data.object)
       when "charge.refunded"
         handle_charge_refunded(event.data.object)
-      when "charge.refund.updated"
+      when "charge.refund.updated", "refund.created", "refund.updated", "refund.failed"
         handle_charge_refund_updated(event.data.object)
       when "charge.dispute.created"
         handle_charge_dispute_created(event.data.object)
@@ -112,116 +124,60 @@ module Webhooks
     end
 
     def handle_charge_refunded(charge)
-      # Find order by payment_intent_id from the charge
-      payment_intent_id = charge.respond_to?(:payment_intent) ? charge.payment_intent : nil
-      target = find_payment_target_from_intent_id(payment_intent_id)
-
-      unless target
-        Rails.logger.warn "⚠️  Received charge.refunded but could not find order (charge: #{charge.id}, payment_intent: #{payment_intent_id})"
-        return
+      fields = charge.to_h.deep_stringify_keys
+      references = [charge.id, fields['payment_intent']].compact
+      # Charge listing is an authenticated account read; each financial update
+      # below independently resolves and validates its original operation identity.
+      query_identity = @event_identity || charge_identity(fields)
+      raise Payments::BindingError, 'Unknown refund account identity' unless query_identity
+      refunds = charge.respond_to?(:refunds) ? charge.refunds : nil
+      rows = refunds&.respond_to?(:data) ? refunds.data : []
+      more = refunds.nil? || (refunds.respond_to?(:has_more) && refunds.has_more)
+      loop do
+        rows.each { |refund| apply_refund(refund, references) }
+        break unless more
+        params = { charge: charge.id, limit: 100 }
+        params[:starting_after] = rows.last.id if rows.any?
+        page = Payments::ProviderResolver.for_identity(query_identity).client.v1.refunds.list(params)
+        raise Payments::BindingError, 'Invalid refund pagination' if page.has_more && page.data.empty?
+        rows = page.data
+        more = page.has_more
       end
-      record = target[:record]
-
-      # Only mark as "refunded" when fully refunded. Partial refunds from
-      # the Stripe Dashboard should NOT flip payment_status — can_refund?
-      # gates on payment_status == "paid", so a premature flip permanently
-      # blocks follow-up refunds from the admin panel.
-      amount_refunded = charge.respond_to?(:amount_refunded) ? charge.amount_refunded.to_i : 0
-      amount_total = charge.respond_to?(:amount) ? charge.amount.to_i : 0
-
-      # Use == not >= to avoid marking over-refunds (Stripe edge case) as
-      # fully refunded. Over-refunds should be flagged for manual review.
-      if amount_total > 0 && amount_refunded == amount_total
-        record.update_column(:payment_status, "refunded")
-        Rails.logger.info "💸 #{target[:type]} ##{record.id} fully refunded — payment_status set to 'refunded'"
-      elsif amount_refunded > amount_total
-        Rails.logger.warn "⚠️ #{target[:type]} ##{record.id} OVER-REFUNDED ($#{amount_refunded / 100.0} > $#{amount_total / 100.0}) — manual review required"
-      else
-        Rails.logger.info "💸 #{target[:type]} ##{record.id} partially refunded ($#{amount_refunded / 100.0} / $#{amount_total / 100.0}) — payment_status stays '#{record.payment_status}'"
-      end
-
-      # Create a Refund record + notify the customer for Dashboard-initiated refunds.
-      # Admin-panel refunds already create Refund records in orders_controller#refund,
-      # so we check stripe_refund_id to avoid duplicates.
-      # Process ALL refunds in the charge, not just the first.
-      # Concurrent partial refunds or future Stripe API changes could include
-      # multiple refund objects in a single charge.refunded event.
-      if record.is_a?(Order)
-        stripe_refunds = charge.respond_to?(:refunds) ? Array(charge.refunds&.data) : []
-        stripe_refunds.each do |stripe_refund|
-          next if stripe_refund.id.blank?
-
-          # Map the actual Stripe refund status instead of hardcoding "succeeded".
-          # Stripe refunds can be "pending" when charge.refunded fires (card-network
-          # settlement takes days). Our model accepts: pending, succeeded, failed.
-          mapped_status = %w[pending succeeded failed].include?(stripe_refund.status) ?
-                          stripe_refund.status : "pending"
-
-          # Upsert pattern: create if new, find if already exists.
-          # Separating create from perform_later ensures that on Stripe retry
-          # (e.g., Redis was down on first attempt), the existing Refund record
-          # is found and the notification is still enqueued.
-          refund = begin
-            Refund.create!(
-              stripe_refund_id: stripe_refund.id,
-              order: record,
-              amount_cents: stripe_refund.amount,
-              reason: stripe_refund.reason || "Refunded via Stripe Dashboard",
-              status: mapped_status
-            )
-          rescue ActiveRecord::RecordNotUnique
-            # Another webhook delivery already created this refund — find it
-            Refund.find_by(stripe_refund_id: stripe_refund.id)
-          end
-
-          # Always attempt notification — the job's own email_sent/sms_sent
-          # idempotency columns prevent duplicate sends.
-          if refund
-            SendRefundNotificationJob.perform_later(refund.id)
-            Rails.logger.info "📧 Enqueued refund notification for Stripe Dashboard refund #{stripe_refund.id}"
-          end
-        end
-      end
-    rescue ActiveRecord::RecordNotFound => e
-      # Order not found — log and return 200 (Stripe retrying won't help)
-      Rails.logger.error "❌ Refund webhook: record not found — #{e.message}"
-    rescue StandardError => e
-      # DB failures, job queue errors — re-raise so Stripe gets a 500
-      # and retries the webhook. Swallowing these silently loses refund
-      # notifications permanently.
-      Rails.logger.error "❌ Refund webhook failed for ##{record&.id}: #{e.message}"
-      raise
     end
 
-    def handle_charge_refund_updated(stripe_refund)
-      refund = Refund.find_by(stripe_refund_id: stripe_refund.id)
-      unless refund
-        Rails.logger.info "ℹ️  charge.refund.updated for unknown refund #{stripe_refund.id} — skipping"
-        return
+    def handle_charge_refund_updated(refund)
+      fields = refund.to_h.deep_stringify_keys
+      apply_refund(refund, [fields['payment_intent'], fields['charge']].compact)
+    end
+
+    def apply_refund(refund, original_references)
+      identity = refund_identity(refund.to_h.deep_stringify_keys)
+      raise Payments::BindingError, 'Uncorrelated refund; reconciliation required' unless identity
+      operation = Payments::StripeRefundEvent.call(identity: identity, event_id: @event_id,
+        refund: refund, original_references: original_references)
+      Payments::DispatchRefundEffects.call(operation: operation, restore_now: true)
+    end
+
+    def charge_identity(fields)
+      references = [fields['id'], fields['payment_intent']].compact
+      ids = PaymentTransaction.where(payment_identity_id: @event_identities.select(:id), raw_provider_id: references)
+        .where.not(order_id: nil).distinct.pluck(:payment_identity_id)
+      ids |= RefundOperation.where(payment_identity_id: @event_identities.select(:id), original_reference: references).distinct.pluck(:payment_identity_id)
+      return PaymentIdentity.find(ids.first) if ids.one?
+      first_refund = fields.dig('refunds', 'data')&.first
+      refund_identity(first_refund) if first_refund
+    end
+
+    def refund_identity(fields)
+      scope = RefundOperation.where(payment_identity_id: @event_identities.select(:id))
+      operation_id = fields.fetch('metadata', {})['refund_operation_id']
+      operation = scope.find_by(id: operation_id) if operation_id.present?
+      unless operation
+        matches = scope.where(raw_provider_id: fields['id']).limit(2).to_a
+        raise Payments::BindingError, 'Ambiguous refund identity' if matches.size > 1
+        operation = matches.first
       end
-
-      new_status = %w[pending succeeded failed].include?(stripe_refund.status) ?
-                   stripe_refund.status : refund.status
-
-      return if refund.status == new_status
-
-      old_status = refund.status
-
-      # Update status BEFORE enqueuing the notification job. A fast Sidekiq
-      # worker could pick up the job and check refund.pending? before the DB
-      # write commits — that would silently skip the notification with no
-      # retry. The per-refund email_sent/sms_sent idempotency columns already
-      # protect against duplicates on Stripe webhook retries if enqueue fails.
-      refund.update_column(:status, new_status)
-      Rails.logger.info "💸 Refund #{stripe_refund.id} status: #{old_status} → #{new_status}"
-
-      if new_status == "succeeded" && old_status == "pending"
-        SendRefundNotificationJob.perform_later(refund.id)
-        Rails.logger.info "📧 Enqueued refund notification for settled refund #{stripe_refund.id}"
-      end
-    rescue StandardError => e
-      Rails.logger.error "❌ charge.refund.updated failed for #{stripe_refund.id}: #{e.message}"
-      raise
+      operation&.payment_identity
     end
 
     def handle_charge_dispute_created(dispute)
@@ -229,31 +185,5 @@ module Webhooks
       # Future: notify admin via SendAdminNotificationEmailJob or Slack
     end
 
-    # ── Helpers ──────────────────────────────────────────────────────
-
-    def find_payment_target(payment_intent)
-      # First try: find by metadata.order_id (set when creating the payment intent)
-      order_id = payment_intent.respond_to?(:metadata) && payment_intent.metadata.respond_to?(:order_id) ?
-                 payment_intent.metadata.order_id : nil
-
-      order = Order.find_by(id: order_id) if order_id.present?
-      return { type: "Order", record: order } if order
-
-      # Fallback: find by payment_intent_id stored on the order
-      order = Order.find_by(payment_intent_id: payment_intent.id) if payment_intent.id.present?
-      return { type: "Order", record: order } if order
-
-      Rails.logger.warn "⚠️  Could not find payment target for payment_intent #{payment_intent.id} (metadata.order_id: #{order_id})"
-      nil
-    end
-
-    def find_payment_target_from_intent_id(payment_intent_id)
-      return nil if payment_intent_id.blank?
-
-      order = Order.find_by(payment_intent_id: payment_intent_id)
-      return { type: "Order", record: order } if order
-
-      nil
-    end
   end
 end
