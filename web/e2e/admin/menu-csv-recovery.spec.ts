@@ -41,6 +41,7 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await page.setViewportSize({ width, height });
     const fixture = await menuFixture(page);
     await page.goto('/admin/products?q=Menu+batch');
+    await expect(page.getByRole('button', { name: 'Menu CSV', exact: true })).toBeVisible();
     const listIndex = await page.evaluate(() => window.history.state.idx);
     await page.getByRole('button', { name: 'Menu CSV', exact: true }).click();
     await page.getByRole('link', { name: 'Back to Products', exact: true }).click();

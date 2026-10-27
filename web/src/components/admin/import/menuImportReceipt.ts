@@ -11,8 +11,8 @@ export interface MenuImportResult {
   skipped: number;
   total: number;
   created: CreatedMenuProduct[];
-  errors: { row: number; name?: string; error: string }[];
-  notices: { row: number; product_id: number; name?: string; message: string }[];
+  errors: { row: number; name?: string | null; error: string }[];
+  notices: { row: number; product_id: number; name?: string | null; message: string }[];
 }
 
 export interface MenuImportReceipt {
@@ -33,7 +33,7 @@ const count = (value: unknown): value is number => typeof value === 'number' && 
 const positiveId = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
 const rowNumber = (value: unknown): value is number => positiveId(value) && value >= 2 && value <= 2001;
 const content = (value: unknown): value is string => typeof value === 'string' && value.length <= 100_000;
-const optionalName = (value: unknown) => value === undefined || content(value);
+const optionalName = (value: unknown) => value === undefined || value === null || content(value);
 const validUser = (userId: string) => typeof userId === 'string' && userId.length > 0 && userId.length <= 1000;
 const storageKey = (userId: string) => `three-squares:menu-import:v1:${encodeURIComponent(userId)}`;
 const copy = <T,>(value: T): T => JSON.parse(JSON.stringify(value)) as T;

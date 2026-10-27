@@ -144,3 +144,16 @@ test('quota failure with readable old storage returns the newly confirmed batch,
   assert.equal(saveMenuImportReceipt('quota-user', next), true);
   assert.deepEqual(readMenuImportReceipt('quota-user', first.id), first);
 });
+
+
+test('partial imports with a blank-name skipped row retain committed product links and reload receipt', () => {
+  storage();
+  const response = { imported: 1, skipped: 1, total: 2,
+    created: [{ row: 2, product_id: 43, name: 'Good Meal', published: false, needs_pickup_locations: true }],
+    errors: [{ row: 3, name: null, error: "Name can't be blank" }], notices: [] };
+  assert.equal(isMenuImportResult(response), true);
+  const receipt = createMenuImportReceipt('blank-name.csv', response);
+  assert.equal(saveMenuImportReceipt('blank-name-user', receipt), true);
+  assert.deepEqual(readMenuImportReceipt('blank-name-user', receipt.id).result, response);
+  assert.equal(isMenuImportReceiptPersisted('blank-name-user', receipt.id), true);
+});
