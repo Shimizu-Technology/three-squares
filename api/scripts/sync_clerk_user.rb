@@ -21,8 +21,10 @@ begin
     user = User.find_or_initialize_by(clerk_id: clerk_user.id)
     user.email = email
 
-    # Make shimizutechnology@gmail.com an admin
-    user.role = 'admin' if email == 'shimizutechnology@gmail.com'
+    # Bootstrap only new/unclassified accounts; retain every explicit role.
+    if user.new_record? || user.role.blank?
+      user.role = Authenticatable::ADMIN_EMAILS.include?(email.downcase) ? 'owner' : 'customer'
+    end
 
     if user.new_record?
       user.save!

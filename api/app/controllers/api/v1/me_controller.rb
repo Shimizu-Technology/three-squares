@@ -12,7 +12,10 @@ class Api::V1::MeController < ApplicationController
       admin: current_user.admin?,
       assigned_location_id: current_user.assigned_location_id,
       assigned_location_name: current_user.assigned_location&.name,
-      location_scoped: current_user.location_scoped?
+      location_scoped: current_user.location_scoped?,
+      capabilities: staff_access_policy.capabilities,
+      operational_scope: staff_access_policy.operational_scope,
+      authorized_locations: staff_access_policy.location_choices
     }
   end
 end

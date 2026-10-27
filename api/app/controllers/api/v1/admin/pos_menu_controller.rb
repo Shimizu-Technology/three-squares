@@ -11,6 +11,9 @@ module Api
         # GET /api/v1/admin/pos/menu
         # Returns products grouped by category with variants, optimized for POS display
         def show
+          if params[:location_id].present? && !staff_access_policy.location_allowed?(params[:location_id])
+            return staff_record_missing!
+          end
           products = MenuEligibility.scope(StorefrontEligibility.scope(Product.published))
             .includes(:product_variants, :product_images, :collections)
 
@@ -45,7 +48,7 @@ module Api
           end
 
           # Also return locations for the location picker
-          locations = Location.all.order(:name).map { |l| { id: l.id, name: l.name, address: l.address } }
+          locations = staff_access_policy.location_choices
 
           render json: {
             categories: categories.map { |name, items| { name: name, items: items } },

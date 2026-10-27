@@ -11,15 +11,18 @@ RSpec.describe StaffAccessPolicy do
   # Expected permissions are intentionally explicit: additions to the registry
   # must be classified here before they can silently reach a lower role.
   let(:staff_names) do
-    %w[orders.read orders.counts orders.status pos.sell pos.readers.read availability.manage devices.self]
+    %w[orders.read orders.counts orders.status pos.sell payments.collect availability.manage devices.self]
   end
   let(:manager_names) do
     staff_names + %w[orders.manage orders.notify orders.export payments.refund analytics.read devices.manage
-      locations.read locations.qr catalog.manage catalog.import stock.read stock.manage seasonal.manage catering.manage]
+      locations.read locations.update locations.qr catalog.manage catalog.import stock.read seasonal.manage catering.manage]
+  end
+  let(:global_manager_names) do
+    manager_names + %w[stock.manage homepage.manage payments.terminals.manage]
   end
   let(:owner_names) do
-    manager_names + %w[users.manage settings.manage payment_settings.manage locations.manage homepage.manage
-      payments.simulate pos.readers.discover]
+    global_manager_names + %w[users.manage settings.manage payment_settings.manage locations.manage
+      payments.simulate payments.terminals.discover]
   end
 
   it "classifies every registered capability in the complete role/assignment matrix" do
@@ -29,12 +32,12 @@ RSpec.describe StaffAccessPolicy do
     invalid_manager.user.assigned_location_id = Location.maximum(:id) + 100
     cases = [
       [ policy("owner", location: main), owner_names ],
-      [ policy("manager"), manager_names ],
+      [ policy("manager"), global_manager_names ],
       [ policy("manager", location: main), manager_names ],
       [ policy("staff", location: main), staff_names ],
       [ policy("staff"), [] ],
       [ invalid_staff, [] ],
-      [ invalid_manager, %w[catalog.manage catalog.import stock.read stock.manage seasonal.manage catering.manage] ],
+      [ invalid_manager, %w[catalog.manage catalog.import stock.read seasonal.manage catering.manage] ],
       [ policy("customer", location: main), [] ]
     ]
     expect(described_class::CAPABILITIES).to match_array(owner_names + [ "account.self" ])
@@ -51,7 +54,7 @@ RSpec.describe StaffAccessPolicy do
   end
 
   it "defaults unknown actions and unclassified controls to owner only" do
-    %w[unclassified.action locations.manage homepage.manage payment_settings.manage payments.simulate pos.readers.discover].each do |name|
+    %w[unclassified.action locations.manage payment_settings.manage payments.simulate payments.terminals.discover].each do |name|
       expect(policy("owner").allowed?(name)).to be(true)
       [ policy("manager"), policy("staff", location: main), policy("customer"), described_class.new(nil) ].each do |access|
         expect(access.allowed?(name)).to be(false)
@@ -83,8 +86,16 @@ RSpec.describe StaffAccessPolicy do
     expect(assigned.authorized_location_ids).to eq([ main.id ])
     expect(assigned.allowed?("orders.read", location_id: other.id)).to be(false)
     expect(assigned.allowed?("orders.read", location_id: main.id)).to be(true)
-    %w[catalog.manage catalog.import stock.read stock.manage seasonal.manage catering.manage].each do |name|
+    %w[catalog.manage catalog.import stock.read seasonal.manage catering.manage].each do |name|
       expect(assigned.allowed?(name)).to be(true)
+    end
+  end
+
+  it "reserves shared-stock writes, merchandising and terminal provisioning for all-location managers" do
+    %w[stock.manage homepage.manage payments.terminals.manage].each do |name|
+      expect(policy("manager").allowed?(name)).to be(true)
+      expect(policy("manager", location: main).allowed?(name)).to be(false)
+      expect(policy("staff", location: main).allowed?(name)).to be(false)
     end
   end
 

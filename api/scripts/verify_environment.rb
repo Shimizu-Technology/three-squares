@@ -90,7 +90,7 @@ begin
   collection_count = Collection.count
   variant_count = ProductVariant.count
 
-  puts "   ✅ Users: #{user_count} (Admins: #{User.where(role: 'admin').count})"
+  puts "   ✅ Users: #{user_count} (Admins: #{User.where(role: 'owner').count})"
   puts "   ✅ Products: #{product_count} (Published: #{Product.where(published: true).where(deleted_at: nil).count rescue product_count})"
   puts "   ✅ Collections: #{collection_count}"
   puts "   ✅ Product Variants: #{variant_count}"

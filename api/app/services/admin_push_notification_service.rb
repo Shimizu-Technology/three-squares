@@ -31,8 +31,7 @@ class AdminPushNotificationService
     def subscriptions_for_order(order)
       scope = AdminPushSubscription.active
         .joins(admin_device: :user)
-        .where(users: { role: "admin" })
-        .where("users.assigned_location_id IS NULL OR users.assigned_location_id = admin_devices.location_id")
+        .where("users.role = 'owner' OR (users.role = 'manager' AND (users.assigned_location_id IS NULL OR users.assigned_location_id = admin_devices.location_id)) OR (users.role = 'staff' AND users.assigned_location_id IS NOT NULL AND users.assigned_location_id = admin_devices.location_id)")
         .merge(AdminDevice.active)
 
       if order.location_id.present?

@@ -5,7 +5,7 @@ module Api
         # GET /api/v1/admin/inventory_audits
         # List all inventory audits with filters
         def index
-          audits = InventoryAudit.includes(:product_variant, :product, :order, :user)
+          audits = audit_scope.includes(:product_variant, :product, :order, :user)
                                  .recent
 
           # Apply filters
@@ -41,7 +41,7 @@ module Api
 
         # GET /api/v1/admin/inventory_audits/:id
         def show
-          audit = InventoryAudit.includes(:product_variant, :product, :order, :user).find(params[:id])
+          audit = audit_scope.includes(:product_variant, :product, :order, :user).find(params[:id])
           render json: { audit: serialize_audit(audit, full: true) }
         rescue ActiveRecord::RecordNotFound
           render json: { error: "Audit record not found" }, status: :not_found
@@ -53,7 +53,7 @@ module Api
 
           # Get audits for the product itself or any of its variants
           variant_ids = product.product_variants.pluck(:id)
-          audits = InventoryAudit.includes(:product_variant, :order, :user)
+          audits = audit_scope.includes(:product_variant, :order, :user)
                                  .where("product_id = ? OR product_variant_id IN (?)", product.id, variant_ids)
                                  .recent
                                  .limit(100)
@@ -73,7 +73,7 @@ module Api
         # GET /api/v1/admin/product_variants/:variant_id/inventory_audits
         def for_variant
           variant = ProductVariant.includes(:product).find(params[:variant_id])
-          audits = InventoryAudit.includes(:order, :user)
+          audits = audit_scope.includes(:order, :user)
                                  .for_variant(variant.id)
                                  .recent
                                  .limit(100)
@@ -94,8 +94,8 @@ module Api
 
         # GET /api/v1/admin/orders/:order_id/inventory_audits
         def for_order
-          order = Order.find(params[:order_id])
-          audits = InventoryAudit.includes(:product_variant, :product, :user)
+          order = staff_scope(Order.all).find(params[:order_id])
+          audits = audit_scope.includes(:product_variant, :product, :user)
                                  .for_order(order.id)
                                  .recent
 
@@ -117,7 +117,7 @@ module Api
           start_date = params[:start_date].present? ? Date.parse(params[:start_date]) : 30.days.ago
           end_date = params[:end_date].present? ? Date.parse(params[:end_date]) : Time.current
 
-          audits = InventoryAudit.in_date_range(start_date, end_date)
+          audits = audit_scope.in_date_range(start_date, end_date)
 
           render json: {
             period: {
@@ -135,6 +135,15 @@ module Api
         end
 
         private
+
+        # Shared stock is readable by managers; an audit linked to an order
+        # retains that order's operational scope, including its metadata.
+        def audit_scope
+          return InventoryAudit.all if staff_access_policy.operational_scope == :all
+
+          joined = InventoryAudit.left_joins(:order)
+          joined.where(order_id: nil).or(joined.where(orders: { id: staff_scope(Order.all).select(:id) }))
+        end
 
         def serialize_audit(audit, full: false)
           data = {

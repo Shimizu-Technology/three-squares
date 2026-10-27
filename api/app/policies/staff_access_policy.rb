@@ -3,22 +3,25 @@
 # scope_relation and enforce resource ownership (including device ownership).
 class StaffAccessPolicy
   STAFF_CAPABILITIES = %w[
-    orders.read orders.counts orders.status pos.sell pos.readers.read
+    orders.read orders.counts orders.status pos.sell payments.collect
     availability.manage devices.self
   ].freeze
   MANAGER_OPERATIONAL_CAPABILITIES = (STAFF_CAPABILITIES + %w[
     orders.manage orders.notify orders.export payments.refund analytics.read
-    devices.manage locations.read locations.qr
+    devices.manage locations.read locations.update locations.qr
   ]).freeze
   MANAGER_GLOBAL_CAPABILITIES = %w[
-    catalog.manage catalog.import stock.read stock.manage seasonal.manage catering.manage
+    catalog.manage catalog.import stock.read seasonal.manage catering.manage
+  ].freeze
+  MANAGER_ALL_LOCATIONS_CAPABILITIES = %w[
+    stock.manage homepage.manage payments.terminals.manage
   ].freeze
   OWNER_CAPABILITIES = %w[
     users.manage settings.manage payment_settings.manage locations.manage
-    homepage.manage payments.simulate pos.readers.discover
+    payments.simulate payments.terminals.discover
   ].freeze
   CAPABILITIES = ([ "account.self" ] + MANAGER_OPERATIONAL_CAPABILITIES +
-    MANAGER_GLOBAL_CAPABILITIES + OWNER_CAPABILITIES).freeze
+    MANAGER_GLOBAL_CAPABILITIES + MANAGER_ALL_LOCATIONS_CAPABILITIES + OWNER_CAPABILITIES).freeze
 
   attr_reader :user
 
@@ -38,6 +41,8 @@ class StaffAccessPolicy
       user.present? && User::ROLES.include?(user.role)
     elsif user&.manager? && MANAGER_GLOBAL_CAPABILITIES.include?(capability)
       true
+    elsif user&.manager? && MANAGER_ALL_LOCATIONS_CAPABILITIES.include?(capability)
+      operational_scope == :all
     elsif operational_capabilities.include?(capability)
       operational_scope != :none
     else

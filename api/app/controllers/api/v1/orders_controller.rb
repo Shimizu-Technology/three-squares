@@ -54,7 +54,7 @@ module Api
         per_page = (params[:per_page] || 25).to_i
 
         # Base query
-        orders_query = Order.includes(order_items: { product_variant: { product: :collections } }, user: []).order(created_at: :desc)
+        orders_query = staff_scope(Order.all).includes(order_items: { product_variant: { product: :collections } }, user: []).order(created_at: :desc)
 
         # Filters
         if params[:status].present?
@@ -155,7 +155,7 @@ module Api
       # PATCH /api/v1/orders/:id
       # Update order (admin only - for status changes, notes, etc.)
       def update
-        order = Order.find(params[:id])
+        order = staff_scope(Order.all).find(params[:id])
 
         if order.update(order_update_params)
           render json: {
@@ -342,7 +342,9 @@ module Api
 
       def authorize_order_access(order)
         # Admins can view any order
-        return true if current_user&.admin?
+        if staff_access_policy.allowed?("orders.read") && staff_scope(Order.all).exists?(id: order.id)
+          return true
+        end
 
         return true if current_user && order.user_id == current_user.id
         if order.user_id.nil? && order.guest_access_digest.present? && order.guest_access_expires_at&.future?

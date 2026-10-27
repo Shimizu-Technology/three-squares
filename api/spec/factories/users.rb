@@ -6,8 +6,22 @@ FactoryBot.define do
     phone { "671-555-0100" }
     role { "customer" }
 
+    # Legacy trait name for existing request fixtures; the persisted role is owner.
     trait :admin do
-      role { "admin" }
+      role { "owner" }
+    end
+
+    trait :owner do
+      role { "owner" }
+    end
+
+    trait :manager do
+      role { "manager" }
+    end
+
+    trait :staff do
+      role { "staff" }
+      association :assigned_location, factory: :location
     end
   end
 end
