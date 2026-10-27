@@ -59,3 +59,15 @@ test('ratchet removes debt but refuses to bless added controls', () => {
     assert.deepEqual(JSON.parse(readFileSync(baseline, 'utf8')).entries, []);
   } finally { rmSync(root, {recursive:true, force:true}); }
 });
+
+test('JSX-valued local variables belong to the enclosing approved component', () => {
+  const allowed = [{file:'src/Example.tsx',component:'Stepper',reason:'44px quantity targets'}];
+  const declaration = 'function Stepper(){const decrement = <button>Minus</button>;return decrement;}';
+  const arrow = 'const Stepper = () => {const decrement = <button>Minus</button>;return decrement;}';
+  for (const source of [declaration, arrow]) {
+    assert.equal(inspectSource('src/Example.tsx',source,allowed).length,0);
+    assert.equal(inspectSource('src/Example.tsx',source,[])[0].component,'Stepper');
+  }
+  const functions = scan('const Arrow = () => <button/>; const Expression = function(){return <button/>};');
+  assert.deepEqual(functions.map(e=>e.component),['Arrow','Expression']);
+});

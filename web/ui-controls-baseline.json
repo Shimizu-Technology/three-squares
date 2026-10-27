@@ -1292,9 +1292,9 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/components/payment/TerminalControls.tsx|body|raw-button|0444bdf1e1210175d7ba|1",
+      "key": "src/components/payment/TerminalControls.tsx|TerminalControls|raw-button|0444bdf1e1210175d7ba|1",
       "file": "src/components/payment/TerminalControls.tsx",
-      "component": "body",
+      "component": "TerminalControls",
       "line": 45,
       "column": 7,
       "hash": "0444bdf1e1210175d7ba",
@@ -1302,9 +1302,9 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/components/payment/TerminalControls.tsx|body|raw-button|007cb08a879dc7d69b0e|1",
+      "key": "src/components/payment/TerminalControls.tsx|TerminalControls|raw-button|007cb08a879dc7d69b0e|1",
       "file": "src/components/payment/TerminalControls.tsx",
-      "component": "body",
+      "component": "TerminalControls",
       "line": 64,
       "column": 19,
       "hash": "007cb08a879dc7d69b0e",
@@ -1312,9 +1312,9 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/components/payment/TerminalControls.tsx|body|raw-button|60f398b52e05d8ae57e8|1",
+      "key": "src/components/payment/TerminalControls.tsx|TerminalControls|raw-button|60f398b52e05d8ae57e8|1",
       "file": "src/components/payment/TerminalControls.tsx",
-      "component": "body",
+      "component": "TerminalControls",
       "line": 65,
       "column": 20,
       "hash": "60f398b52e05d8ae57e8",

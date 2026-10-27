@@ -25,8 +25,8 @@ export default function AdminRequestState({ resource, loading, error, hasData, o
         {hasData && <p className="text-sm mt-1">Showing last loaded data. It may be out of date.</p>}
       </div>
       {error && (
-        <Button variant="secondary" onClick={onRetry} disabled={loading} className="shrink-0 self-start sm:self-auto">
-          {loading ? 'Retrying…' : 'Retry'}
+        <Button variant="secondary" onClick={onRetry} loading={loading} className="shrink-0 self-start sm:self-auto">
+          Retry
         </Button>
       )}
     </div>

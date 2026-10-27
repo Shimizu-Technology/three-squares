@@ -17,7 +17,8 @@ const classText = (attribute, source) => attribute?.initializer ? printer.printN
 const componentName = node => {
   for (let parent = node.parent; parent; parent = parent.parent) {
     if (ts.isFunctionDeclaration(parent) && parent.name) return parent.name.text;
-    if (ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name)) return parent.name.text;
+    if (ts.isVariableDeclaration(parent) && ts.isIdentifier(parent.name) && parent.initializer &&
+      (ts.isArrowFunction(parent.initializer) || ts.isFunctionExpression(parent.initializer))) return parent.name.text;
     if (ts.isClassDeclaration(parent) && parent.name) return parent.name.text;
   }
   return '<module>';

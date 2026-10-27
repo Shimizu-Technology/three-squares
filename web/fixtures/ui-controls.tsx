@@ -54,7 +54,7 @@ export function Fixture() {
     <form onSubmit={event => {event.preventDefault(); (event.currentTarget.querySelector('output')!).textContent='Form submitted';}} className="flex flex-wrap items-center gap-3">
       <Button type="submit">Submit fixture</Button><output aria-live="polite"/>
     </form>
-    <div id="anchor-target">Anchor target</div><div id="router-target">Router target</div>
+    <div id="anchor-target">Anchor target</div><div id="router-target">Router target</div><div id="icon-target">Icon target</div>
   </main>;
 }
 createRoot(document.getElementById('root')!).render(<BrowserRouter><Fixture/></BrowserRouter>);

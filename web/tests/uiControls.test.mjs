@@ -58,3 +58,31 @@ test('icon actions require a name and use shared square geometry and hidden deco
   const html = render(IconButton,{'aria-label':'Refresh menu',size:'lg',children:createElement('svg')});
   assert.match(html,/aria-label="Refresh menu"/); assert.match(html,/ui-icon-button/); assert.match(html,/aria-hidden="true"/);
 });
+
+test('blocked links remove activation handlers, including capture, but preserve focus and hover', () => {
+  const actionNames=['Click','AuxClick','DoubleClick','KeyDown','KeyUp','KeyPress','MouseDown','MouseUp','PointerDown','PointerUp','PointerCancel','TouchStart','TouchEnd','TouchCancel','ContextMenu'].flatMap(name=>[`on${name}`,`on${name}Capture`]);
+  const passiveNames=['onFocus','onBlur','onMouseEnter','onMouseLeave','onPointerEnter','onPointerLeave'];
+  const handler=()=>assert.fail('blocked link activated');
+  const handlers=Object.fromEntries([...actionNames,...passiveNames].map(name=>[name,handler]));
+  for (const target of [{to:'/menu'},{href:'/help'}]) {
+    for (const state of [{disabled:true},{loading:true}]) {
+      const tree=Button({...target,...handlers,...state,children:'Destination'});
+      assert.equal(tree.type,'a');
+      for (const name of actionNames.filter(name=>name!=='onClick')) assert.equal(tree.props[name],undefined,name);
+      for (const name of passiveNames) assert.equal(tree.props[name],handler,name);
+      let prevented=false;tree.props.onClick({preventDefault(){prevented=true;}});assert.equal(prevented,true);
+    }
+    const enabled=Button({...target,...handlers,children:'Destination'});
+    for (const name of [...actionNames,...passiveNames]) assert.equal(enabled.props[name],handler,name);
+  }
+});
+
+test('retry recovery retains its label and delegates pending state to Button', async () => {
+  const {module:{default:AdminRequestState}}=await compile('../src/components/admin/AdminRequestState.tsx',{'../ui/Button':button.url});
+  for (const loading of [false,true]) {
+    const html=render(AdminRequestState,{resource:'Example records',loading,error:true,hasData:true,onRetry(){}});
+    assert.match(html,/Retry/); assert.doesNotMatch(html,/Retrying/);
+    assert.equal(html.includes('aria-busy="true"'),loading);
+    assert.equal(html.includes('disabled=""'),loading);
+  }
+});

@@ -67,8 +67,18 @@ try {
         const disabledLink=page.getByRole('link',{name:'Disabled link',exact:true});
         assert.equal(await disabledLink.getAttribute('href'),null); assert.equal(await disabledLink.getAttribute('tabindex'),'-1');
         await disabledLink.click({force:true}); assert.equal(new URL(page.url()).hash,'#router-target');
+        await activate(page.getByRole('link',{name:'Open linked target',exact:true})); assert.equal(new URL(page.url()).hash,'#icon-target');
+        await page.getByText('Icon target',{exact:true}).waitFor();
         await activate(page.getByRole('button',{name:'Submit fixture',exact:true})); await page.getByText('Form submitted',{exact:true}).waitFor();
-        await activate(page.getByRole('region',{name:'Adopted recovery controls'}).getByRole('button',{name:'Retry',exact:true})); await page.getByText('Example records recovered',{exact:true}).waitFor();
+        const retry=page.getByRole('region',{name:'Adopted recovery controls'}).getByRole('button',{name:'Retry',exact:true});
+        const retryBefore=await retry.boundingBox();
+        await activate(retry);
+        assert.equal(await retry.getAttribute('aria-busy'),'true'); assert.equal(await retry.isDisabled(),true);
+        const retryPending=await retry.boundingBox();
+        assert.ok(Math.abs(retryBefore.width-retryPending.width)<=1);
+        assert.ok(Math.abs(retryBefore.height-retryPending.height)<=1);
+        assert.ok(Math.abs(retryBefore.x-retryPending.x)<=1);
+        await page.getByText('Example records recovered',{exact:true}).waitFor();
         await activate(page.getByRole('button',{name:'Trigger recoverable error',exact:true}));
         await page.getByRole('heading',{name:'This page could not be loaded',exact:true}).waitFor();
         await page.getByRole('region',{name:'Adopted recovery controls'}).scrollIntoViewIfNeeded();
@@ -76,7 +86,7 @@ try {
         await activate(page.getByRole('region',{name:'Adopted recovery controls'}).getByRole('button',{name:'Reload page',exact:true}));
         await page.getByText('Recovery fixture loaded',{exact:true}).waitFor();
         assert.equal(await page.getByRole('heading',{name:'This page could not be loaded',exact:true}).count(),0);
-        results.push({width,height,touch,coarse,geometry,focus,loading:{before,after,shortBefore,shortAfter},scenarios:['A01','A02','A03'],status:'passed'});
+        results.push({width,height,touch,coarse,geometry,focus,loading:{before,after,shortBefore,shortAfter,retryBefore,retryPending},scenarios:['A01','A02','A03'],status:'passed'});
         writeFileSync(path.join(output,'geometry.json'),JSON.stringify(results,null,2)+'\n');
         console.log(`${width}x${height} ${touch?'touch':'fine'}: geometry, loading, links, focus, form, retry/reload passed`);
       } finally { await context.close(); }

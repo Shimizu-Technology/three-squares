@@ -21,6 +21,16 @@ export type ButtonProps = CommonProps & (
   | ({ href?: never; to?: never } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, OwnProps> & { ref?: Ref<HTMLButtonElement> })
 );
 
+// Inert anchors must not forward action handlers, including capture variants.
+// Keep focus/blur and hover handlers available for explanatory tooltips.
+function withoutActivationHandlers<Props extends object>(props: Props): Props {
+  const filtered = { ...props };
+  for (const key of Object.keys(filtered)) {
+    if (/^on(?:Click|AuxClick|DoubleClick|Key(?:Down|Up|Press)|Mouse(?:Down|Up)|Pointer(?:Down|Up|Cancel)|Touch(?:Start|End|Cancel)|ContextMenu)(?:Capture)?$/.test(key)) delete filtered[key as keyof Props];
+  }
+  return filtered;
+}
+
 /** Shared geometry and semantics for actions; specialized widgets have their own primitives. */
 export function Button({ variant = 'primary', size = 'md', loading = false, disabled = false,
   icon, children, className = '', ...props }: ButtonProps) {
@@ -44,7 +54,7 @@ export function Button({ variant = 'primary', size = 'md', loading = false, disa
     const { to, ...linkProps } = props as LinkProps;
     if (blocked) {
       // Router options are not DOM attributes on the inert anchor.
-      const anchorProps = { ...linkProps };
+      const anchorProps = withoutActivationHandlers(linkProps);
       for (const key of ['replace', 'state', 'relative', 'reloadDocument', 'preventScrollReset', 'viewTransition', 'discover', 'prefetch'] as const) delete anchorProps[key];
       return <a {...anchorProps} {...shared} role="link" tabIndex={-1}
         onClickCapture={undefined} onClick={event => event.preventDefault()}>{content}</a>;
@@ -52,7 +62,8 @@ export function Button({ variant = 'primary', size = 'md', loading = false, disa
     return <Link {...linkProps} {...shared} to={to}>{content}</Link>;
   }
   if (props.href !== undefined) {
-    const { href, ...anchorProps } = props as AnchorHTMLAttributes<HTMLAnchorElement>;
+    const { href, ...linkProps } = props as AnchorHTMLAttributes<HTMLAnchorElement>;
+    const anchorProps = blocked ? withoutActivationHandlers(linkProps) : linkProps;
     return <a {...anchorProps} {...shared} href={blocked ? undefined : href}
       role={blocked ? 'link' : anchorProps.role} tabIndex={blocked ? -1 : anchorProps.tabIndex}
       onClickCapture={blocked ? undefined : anchorProps.onClickCapture}
