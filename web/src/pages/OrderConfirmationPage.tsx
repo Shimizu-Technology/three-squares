@@ -33,6 +33,8 @@ interface Order {
   tax_cents: number;
   total_cents: number;
   shipping_method: string;
+  fulfillment_type?: string;
+  location?: { id: number; name: string } | null;
   // Retail/Shipping fields
   shipping_address_line1?: string;
   shipping_address_line2?: string;
@@ -131,7 +133,7 @@ export default function OrderConfirmationPage() {
     );
   }
 
-  const isPickupOrder = order.shipping_method === 'pickup';
+  const isPickupOrder = order.fulfillment_type === 'pickup' || order.shipping_method === 'pickup';
 
   const storePhone = !appConfig?.store_info?.phone?.trim() || /^(1)?671(?:7771234|6462652)$/.test(appConfig.store_info.phone.replace(/\D/g, '')) ? '+1 (671) 646-2652' : appConfig.store_info.phone;
   const storePhoneTel = `tel:${storePhone.replace(/[^\d+]/g, '')}`;
@@ -412,6 +414,13 @@ export default function OrderConfirmationPage() {
           </div>
         )}
 
+        {isPickupOrder && (
+          <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Pickup Location</h2>
+            <p>{order.location?.name || 'Your selected pickup location'}</p>
+            <p className="mt-2 text-sm text-gray-600">Please check your order status before visiting.</p>
+          </div>
+        )}
         {/* Shipping Address - Only for non-pickup orders */}
         {!isPickupOrder && order.shipping_address_line1 && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-6 print:shadow-none print:border print:p-4 print:mb-4 print:break-inside-avoid">

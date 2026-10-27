@@ -133,6 +133,7 @@ module Payments
         effects['confirmation_email'] = { 'order_id' => order.id } if settings.enable_order_emails && order.customer_email.present?
         effects['confirmation_sms'] = { 'order_id' => order.id } if settings.enable_order_sms && order.customer_phone.present?
         effects['admin_email'] = { 'order_id' => order.id }
+        effects['admin_push'] = { 'order_id' => order.id } if defined?(SendAdminPushNotificationJob)
         effects['admin_sms'] = { 'order_id' => order.id } if settings.enable_admin_sms
       end
       effects.each { |kind, payload| PaymentOutbox.record!(effect_key: "order:#{order.id}:#{kind}", kind: kind, payload: payload) }

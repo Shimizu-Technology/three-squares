@@ -25,6 +25,11 @@ module Payments
       return unless claimed
       case outbox.kind
       when 'cart_cleanup' then CartCleanup.call(session: CheckoutSession.find(outbox.payload.fetch('session_id')))
+      when 'admin_push'
+        order = Order.find(outbox.payload.fetch('order_id'))
+        raise BindingError, 'Simulated orders cannot send notifications' if order.simulated? || order.payment_environment == 'simulated'
+        raise DeliverNotification::Retryable, 'Push consumer unavailable' unless defined?(SendAdminPushNotificationJob)
+        SendAdminPushNotificationJob.perform_later(order.id)
       when 'compensate'
         attempt = PaymentAttempt.find(outbox.payload.fetch('attempt_id'))
         CompensateAttempt.call(attempt: attempt)

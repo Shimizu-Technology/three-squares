@@ -5,7 +5,7 @@ RSpec.describe 'Checkout integration', type: :request do
   include PaymentFoundationHelpers
   let(:session_id) { "checkout-session-#{SecureRandom.hex(6)}" }
   let(:headers) { payment_headers(session_id) }
-  let(:pickup_location) { Location.create!(name: 'Main Store', slug: "main-#{SecureRandom.hex(4)}", active: true) }
+  let(:pickup_location) { Location.create!(name: 'Main Store', slug: "main-#{SecureRandom.hex(4)}", active: true, hours_json: { "Daily" => "00:00-23:59" }) }
 
   before do
     configure_payment_fixture!
