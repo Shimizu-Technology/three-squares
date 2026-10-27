@@ -5,6 +5,7 @@ import { StaggerContainer, StaggerItem } from '../components/animations/StaggerC
 import Breadcrumbs from '../components/Breadcrumbs';
 import { API_BASE_URL } from '../config';
 import { configApi } from '../services/api';
+import { getStorePhone, getStorePhoneTel, STORE_ADDRESS, STORE_WHATSAPP, STORE_WHATSAPP_URL } from '../utils/storeContact';
 import type { AppConfig } from '../types/order';
 
 export default function ContactPage() {
@@ -24,8 +25,8 @@ export default function ContactPage() {
   }, []);
 
   const storeEmail = appConfig?.store_info?.email || 'sales@bgpacific.com';
-  const storePhone = appConfig?.store_info?.phone || '671-777-1234';
-  const storePhoneTel = `tel:${storePhone.replace(/[^\d+]/g, '')}`;
+  const storePhone = getStorePhone(appConfig?.store_info?.phone);
+  const storePhoneTel = getStorePhoneTel(storePhone);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -146,7 +147,7 @@ export default function ContactPage() {
                       <option value="general">General Inquiry</option>
                       <option value="order">Order Question</option>
                       <option value="shipping">Shipping & Delivery</option>
-                      <option value="returns">Returns & Exchanges</option>
+                      <option value="returns">Order Issues & Refunds</option>
                       <option value="wholesale">Wholesale / Bulk Orders</option>
                       <option value="other">Other</option>
                     </select>
@@ -224,6 +225,15 @@ export default function ContactPage() {
                 </div>
               </StaggerItem>
 
+              <StaggerItem>
+                <div className="rounded-lg p-6 bg-warm">
+                  <h3 className="font-medium text-warm-900 mb-1">WhatsApp</h3>
+                  <a href={STORE_WHATSAPP_URL} className="text-warm-600 hover:text-tsPrimary transition text-sm">
+                    {STORE_WHATSAPP}
+                  </a>
+                </div>
+              </StaggerItem>
+
               {/* Address */}
               <StaggerItem>
                 <div className="rounded-lg p-6 bg-warm">
@@ -237,11 +247,25 @@ export default function ContactPage() {
                     <div>
                       <h3 className="font-medium text-warm-900 mb-1">Visit Us</h3>
                       <address className="text-warm-600 text-sm not-italic leading-relaxed">
-                        121 E. Marine Corps Dr<br />
-                        Suite 1-103 & Suite 1-104<br />
-                        Hagåtña, Guam 96910
+                        {STORE_ADDRESS}
                       </address>
                     </div>
+                  </div>
+                </div>
+              </StaggerItem>
+
+              <StaggerItem>
+                <div className="rounded-lg p-6 bg-warm text-sm text-warm-600 space-y-4">
+                  <div>
+                    <h3 className="font-medium text-warm-900 mb-1">Three Squares Main</h3>
+                    <p>Tuesday–Saturday: 8am–8pm</p>
+                    <p>Sunday: 8am–5pm</p>
+                    <p>Monday: Closed</p>
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-warm-900 mb-1">Three Squares @ Donki</h3>
+                    <p>Inside Don Quijote, Tamuning</p>
+                    <p>Daily: 10am–10pm</p>
                   </div>
                 </div>
               </StaggerItem>

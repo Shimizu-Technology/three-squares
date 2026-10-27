@@ -51,6 +51,7 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
 const ContactPage = lazy(() => import('./pages/ContactPage'));
 const ShippingInfoPage = lazy(() => import('./pages/ShippingInfoPage'));
 const ReturnsPage = lazy(() => import('./pages/ReturnsPage'));
+const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const CateringPage = lazy(() => import('./pages/CateringPage'));
 const LocationsPage = lazy(() => import('./pages/LocationsPage'));
@@ -512,6 +513,7 @@ function AppContent() {
           <Route path="/shipping" element={<ShippingInfoPage />} />
           <Route path="/returns" element={<ReturnsPage />} />
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
           
           {/* POS Mode — Full screen, outside admin layout */}
           <Route path="/admin/pos" element={<AdminPOSPage />} />

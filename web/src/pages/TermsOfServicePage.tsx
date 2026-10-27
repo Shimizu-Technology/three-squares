@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import FadeIn from '../components/animations/FadeIn';
 import Breadcrumbs from '../components/Breadcrumbs';
 import { configApi } from '../services/api';
+import { getStorePhone, getStorePhoneTel, STORE_ADDRESS, STORE_WHATSAPP, STORE_WHATSAPP_URL } from '../utils/storeContact';
 import type { AppConfig } from '../types/order';
 
 export default function TermsOfServicePage() {
@@ -12,8 +13,8 @@ export default function TermsOfServicePage() {
   }, []);
 
   const storeEmail = appConfig?.store_info?.email || 'sales@bgpacific.com';
-  const storePhone = appConfig?.store_info?.phone || '671-777-1234';
-  const storePhoneTel = `tel:${storePhone.replace(/[^\d+]/g, '')}`;
+  const storePhone = getStorePhone(appConfig?.store_info?.phone);
+  const storePhoneTel = getStorePhoneTel(storePhone);
 
   return (
     <div className="min-h-screen bg-white">
@@ -93,9 +94,8 @@ export default function TermsOfServicePage() {
               discontinue any product at any time without notice.
             </p>
             <p className="text-warm-600 leading-relaxed mb-4">
-              We make every effort to display product colors, images, and descriptions as accurately as
-              possible. However, we cannot guarantee that your monitor or device will display colors
-              exactly as they appear in person.
+              We make every effort to display menu images and descriptions as accurately as
+              possible. Food presentation may vary from the images shown.
             </p>
             <p className="text-warm-600 leading-relaxed">
               By placing an order, you confirm that all information you provide is accurate and complete.
@@ -126,7 +126,7 @@ export default function TermsOfServicePage() {
           <section className="mb-12">
             <h2 className="text-2xl font-bold mb-6 text-warm-900 tracking-tight">Shipping & Delivery</h2>
             <p className="text-warm-600 leading-relaxed mb-4">
-              We ship from Hagåtña, Guam via USPS. Delivery times vary depending on your location and
+              Our main restaurant is at 416 Chalan San Antonio, Tamuning, GU 96913. Delivery times vary depending on your location and
               selected shipping method. Estimated delivery times are not guaranteed and may be affected
               by factors beyond our control.
             </p>
@@ -141,22 +141,22 @@ export default function TermsOfServicePage() {
           </section>
         </FadeIn>
 
-        {/* Returns & Exchanges */}
+        {/* Order Issues & Refunds */}
         <FadeIn immediate>
           <section className="mb-12">
-            <h2 className="text-2xl font-bold mb-6 text-warm-900 tracking-tight">Returns & Exchanges</h2>
+            <h2 className="text-2xl font-bold mb-6 text-warm-900 tracking-tight">Order Issues & Refunds</h2>
             <div className="rounded-lg p-6 bg-warm">
               <p className="text-warm-600 leading-relaxed mb-4">
-                We want you to love your Three Squares gear. If you&apos;re not completely satisfied, please
+                We want you to enjoy your Three Squares meal. If you&apos;re not completely satisfied, please
                 review our{' '}
                 <a href="/returns" className="text-tsPrimary hover:text-red-700 transition">
-                  Returns Policy
+                  Order Issues & Refunds Policy
                 </a>{' '}
-                for details on eligibility, timeframes, and how to initiate a return or exchange.
+                for details on reporting missing or incorrect items and food quality concerns.
               </p>
               <p className="text-warm-600 leading-relaxed">
-                In general, items must be returned in their original, unworn condition within 30 days of
-                delivery. Custom or personalized items may not be eligible for return.
+                For help with a food order, contact us with your order number and a description of the
+                issue. Our team will review the details and discuss the available resolution with you.
               </p>
             </div>
           </section>
@@ -238,6 +238,11 @@ export default function TermsOfServicePage() {
             </p>
             <div className="space-y-2 text-warm-500">
               <p>
+                <a href={STORE_WHATSAPP_URL} className="text-tsPrimary hover:text-red-700 transition">
+                  WhatsApp: {STORE_WHATSAPP}
+                </a>
+              </p>
+              <p>
                 <span className="font-medium text-warm-800">Email:</span>{' '}
                 <a href={`mailto:${storeEmail}`} className="text-tsPrimary hover:text-red-700 transition">
                   {storeEmail}
@@ -251,7 +256,7 @@ export default function TermsOfServicePage() {
               </p>
               <p>
                 <span className="font-medium text-warm-800">Address:</span>{' '}
-                121 E. Marine Corps Dr, Suite 1-103 &amp; Suite 1-104, Hagåtña, Guam 96910
+                {STORE_ADDRESS}
               </p>
             </div>
           </section>
