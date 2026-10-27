@@ -460,7 +460,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
     t.index ["order_id", "pool_type", "pool_id"], name: "unique_order_inventory_pool", unique: true
     t.index ["order_id"], name: "index_inventory_reservations_on_order_id"
     t.index ["pool_type", "pool_id", "state", "expires_at"], name: "active_inventory_reservations"
-    t.check_constraint "quantity > 0 AND (pool_type::text = ANY (ARRAY['Product'::character varying, 'ProductVariant'::character varying]::text[])) AND (state::text = ANY (ARRAY['held'::character varying, 'committed'::character varying, 'released'::character varying]::text[]))", name: "valid_inventory_reservation"
+    t.check_constraint "quantity > 0 AND (pool_type::text = ANY (ARRAY['Product'::character varying::text, 'ProductVariant'::character varying::text])) AND (state::text = ANY (ARRAY['held'::character varying::text, 'committed'::character varying::text, 'released'::character varying::text]))", name: "valid_inventory_reservation"
   end
 
   create_table "locations", force: :cascade do |t|
@@ -639,7 +639,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
     t.string "state", default: "created", null: false
     t.datetime "updated_at", null: false
     t.index ["checkout_session_id"], name: "index_payment_attempts_on_checkout_session_id"
-    t.index ["checkout_session_id"], name: "one_active_collection_per_session", unique: true, where: "(((operation)::text = 'sale'::text) AND ((state)::text <> ALL ((ARRAY['failed'::character varying, 'cancelled'::character varying, 'compensated'::character varying])::text[])))"
+    t.index ["checkout_session_id"], name: "one_active_collection_per_session", unique: true, where: "(((operation)::text = 'sale'::text) AND ((state)::text <> ALL (ARRAY[('failed'::character varying)::text, ('cancelled'::character varying)::text, ('compensated'::character varying)::text])))"
     t.index ["id", "order_id"], name: "index_payment_attempts_on_id_and_order_id", unique: true
     t.index ["next_recovery_at"], name: "index_payment_attempts_on_next_recovery_at"
     t.index ["order_id"], name: "index_payment_attempts_on_order_id"
@@ -674,7 +674,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
     t.string "provider", null: false
     t.datetime "updated_at", null: false
     t.index ["profile_key"], name: "index_payment_identities_on_profile_key", unique: true
-    t.check_constraint "(provider::text = ANY (ARRAY['stripe'::character varying, 'worldpay'::character varying]::text[])) AND (environment::text = ANY (ARRAY['simulated'::character varying, 'sandbox'::character varying, 'production'::character varying]::text[])) AND currency::text = 'USD'::text", name: "valid_payment_identity"
+    t.check_constraint "(provider::text = ANY (ARRAY['stripe'::character varying::text, 'worldpay'::character varying::text])) AND (environment::text = ANY (ARRAY['simulated'::character varying::text, 'sandbox'::character varying::text, 'production'::character varying::text])) AND currency::text = 'USD'::text", name: "valid_payment_identity"
   end
 
   create_table "payment_operation_numbers", force: :cascade do |t|

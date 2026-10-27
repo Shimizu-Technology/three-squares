@@ -635,49 +635,7 @@ module Api
 
       # Restore inventory when an order is cancelled
       def restore_inventory(order, user = nil)
-        order.order_items.includes(product_variant: :product).each do |item|
-          variant = item.product_variant
-          next unless variant # Skip if variant was deleted
-
-          product = variant.product
-
-          case product.inventory_level
-          when "variant"
-            variant.with_lock do
-              previous_stock = variant.stock_quantity
-              new_stock = previous_stock + item.quantity
-              variant.update!(stock_quantity: new_stock)
-
-              # Create audit record for cancellation
-              InventoryAudit.record_order_cancelled(
-                variant: variant,
-                quantity: item.quantity,
-                order: order,
-                user: user
-              )
-            end
-
-          when "product"
-            product.with_lock do
-              previous_stock = product.product_stock_quantity || 0
-              new_stock = previous_stock + item.quantity
-              product.update!(product_stock_quantity: new_stock)
-
-              # Create audit record for product-level tracking
-              InventoryAudit.record_product_stock_change(
-                product: product,
-                previous_qty: previous_stock,
-                new_qty: new_stock,
-                reason: "Order ##{order.order_number} cancelled - stock restored",
-                audit_type: "order_cancelled",
-                order: order,
-                user: user
-              )
-            end
-          end
-        end
-
-        Rails.logger.info "📦 Inventory restored for cancelled order ##{order.order_number}"
+        Payments::RestoreInventory.call(order: order, user: user)
       end
 
       def order_json(order)
@@ -793,94 +751,11 @@ module Api
 
       # Restore inventory when a full refund is processed
       def restore_inventory_for_refund(order, user = nil)
-        order.order_items.includes(product_variant: :product).each do |item|
-          variant = item.product_variant
-          next unless variant
-
-          product = variant.product
-
-          case product.inventory_level
-          when "variant"
-            variant.with_lock do
-              previous_stock = variant.stock_quantity
-              new_stock = previous_stock + item.quantity
-              variant.update!(stock_quantity: new_stock)
-
-              InventoryAudit.record_order_refunded(
-                variant: variant,
-                quantity: item.quantity,
-                order: order,
-                user: user
-              )
-            end
-
-          when "product"
-            product.with_lock do
-              previous_stock = product.product_stock_quantity || 0
-              new_stock = previous_stock + item.quantity
-              product.update!(product_stock_quantity: new_stock)
-
-              InventoryAudit.record_product_stock_change(
-                product: product,
-                previous_qty: previous_stock,
-                new_qty: new_stock,
-                reason: "Order ##{order.order_number} refunded - stock restored",
-                audit_type: "order_refunded",
-                order: order,
-                user: user
-              )
-            end
-          end
-        end
-
-        Rails.logger.info "Inventory restored for refunded order ##{order.order_number}"
+        Payments::RestoreInventory.call(order: order, user: user)
       end
 
-      # Restore inventory for specific order items (for partial refunds)
       def restore_inventory_for_items(order, item_ids, user = nil)
-        items = order.order_items.where(id: item_ids).includes(product_variant: :product)
-
-        items.each do |item|
-          variant = item.product_variant
-          next unless variant
-
-          product = variant.product
-
-          case product.inventory_level
-          when "variant"
-            variant.with_lock do
-              previous_stock = variant.stock_quantity
-              new_stock = previous_stock + item.quantity
-              variant.update!(stock_quantity: new_stock)
-
-              InventoryAudit.record_order_refunded(
-                variant: variant,
-                quantity: item.quantity,
-                order: order,
-                user: user
-              )
-            end
-
-          when "product"
-            product.with_lock do
-              previous_stock = product.product_stock_quantity || 0
-              new_stock = previous_stock + item.quantity
-              product.update!(product_stock_quantity: new_stock)
-
-              InventoryAudit.record_product_stock_change(
-                product: product,
-                previous_qty: previous_stock,
-                new_qty: new_stock,
-                reason: "Partial refund for Order ##{order.order_number} - stock restored",
-                audit_type: "order_refunded",
-                order: order,
-                user: user
-              )
-            end
-          end
-        end
-
-        Rails.logger.info "Inventory restored for #{items.count} items from partial refund on order ##{order.order_number}"
+        Payments::RestoreInventory.call(order: order, item_ids: item_ids, user: user)
       end
 
       def order_params

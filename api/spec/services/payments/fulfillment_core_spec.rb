@@ -75,8 +75,8 @@ RSpec.describe 'Durable payment fulfillment core' do
     expect(product.reload.product_stock_quantity).to eq(4)
     expect(InventoryCommitment.where(order_id: order.id).count).to eq(1)
     expect(PaymentTransaction.where(order_id: order.id).count).to eq(1)
-    expect(PaymentOutbox.count).to eq(5)
-    expect(PaymentOutbox.pluck(:effect_key).uniq.size).to eq(5)
+    expect(PaymentOutbox.count).to eq(6)
+    expect(PaymentOutbox.pluck(:effect_key).uniq.size).to eq(6)
   end
 
   it 'commits inventory when a webhook set payment_status paid first' do
@@ -359,7 +359,7 @@ RSpec.describe 'Durable payment fulfillment core' do
     expect(PaymentIdentity.count).to eq(0)
     expect(PaymentTransaction.count).to eq(0)
     expect(InventoryReservation.find_by!(order_id: order.id).state).to eq('committed')
-    expect(PaymentOutbox.count).to eq(4)
+    expect(PaymentOutbox.count).to eq(5)
   end
 
   it 'delivers refund email and SMS independently through a durable outbox effect' do
