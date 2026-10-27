@@ -83,7 +83,7 @@ test('POS cart controls remain reachable after an item reveals Quick Qty', async
   await page.route('**/api/v1/admin/pos/menu**', route => route.fulfill({ json: { locations: [{ id: 1, name: 'Main' }], categories: [{ name: 'Lunch', items: [product] }], total_products: 1 } }));
   await page.goto('/admin/pos');
   await page.getByRole('button').filter({ hasText: product.name }).first().click();
-  await expect(page.getByText('Quick Qty', { exact: true })).toBeVisible();
+  await expect(page.getByText('Quick Qty Mode', { exact: true })).toBeVisible();
   const cash = page.getByRole('button', { name: 'Cash', exact: true });
   await cash.scrollIntoViewIfNeeded();
   const box = (await cash.boundingBox())!;
