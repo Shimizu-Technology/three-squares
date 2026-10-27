@@ -1,19 +1,16 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Bell, BellOff, MonitorSmartphone, RefreshCcw, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authGet, authPatch, authPut } from '../../services/authApi';
-import type { Location } from '../../services/api';
+import { StaffAccessDenied, useStaffAccess } from '../../components/admin/StaffAccess.tsx';
+import { canAssignDeviceLocation, deviceLocations, deviceReadPaths } from '../../components/admin/staffAccess.ts';
 import { enableAdminPushNotifications, disableAdminPushNotifications, type AdminDeviceRecord, type AdminPushConfig, type CurrentAdminDeviceResponse } from '../../services/adminDevice';
 import { detectBrowserMetadata } from '../../services/adminDeviceIdentity';
 
 interface DevicesResponse {
   devices: AdminDeviceRecord[];
   push: AdminPushConfig;
-}
-
-interface LocationsResponse {
-  data: Location[];
 }
 
 const formatLastSeen = (value?: string | null) =>
@@ -34,13 +31,22 @@ type EditableDevice = AdminDeviceRecord & {
 
 export default function AdminDevicesPage() {
   const { getToken } = useAuth();
+  const access = useStaffAccess();
+  const canManage = access.can('devices.manage');
+  const canUseCurrent = access.can('devices.self') || canManage;
+  const locations = useMemo(() => deviceLocations(access.user), [access.user]);
+  const currentDraftDirty = useRef(false);
+  const dirtyDeviceIds = useRef(new Set<number | null>());
+  const fetchRequest = useRef(0);
+  const [currentError, setCurrentError] = useState('');
+  const [pushError, setPushError] = useState('');
+  const [managedError, setManagedError] = useState('');
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [savingDeviceId, setSavingDeviceId] = useState<number | null>(null);
   const [savingCurrent, setSavingCurrent] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const [devices, setDevices] = useState<EditableDevice[]>([]);
-  const [locations, setLocations] = useState<Location[]>([]);
   const [currentDevice, setCurrentDevice] = useState<EditableDevice | null>(null);
   const [pushConfig, setPushConfig] = useState<AdminPushConfig>({ configured: false });
   const [deviceForm, setDeviceForm] = useState({
@@ -49,37 +55,38 @@ export default function AdminDevicesPage() {
   });
 
   const fetchData = useCallback(async () => {
+    const attempt = ++fetchRequest.current;
+    // No device index or privileged location reads for a self-only account.
+    const paths = deviceReadPaths(access.user);
+    if (!paths.length) { setLoading(false); return; }
     try {
       setLoading(true);
       setLoadFailed(false);
-      const [devicesRes, currentRes, locationsRes] = await Promise.all([
-        authGet<DevicesResponse>('/admin/devices', getToken),
-        authGet<CurrentAdminDeviceResponse>('/admin/devices/current', getToken),
-        authGet<LocationsResponse>('/admin/locations', getToken),
+      const [devicesRes, currentRes] = await Promise.all([
+        paths.includes('/admin/devices') ? authGet<DevicesResponse>('/admin/devices', getToken, { timeout: 20000 }) : Promise.resolve(null),
+        authGet<CurrentAdminDeviceResponse>('/admin/devices/current', getToken, { timeout: 20000 }),
       ]);
-
-      const allDevices = devicesRes.data.devices || [];
+      if (attempt !== fetchRequest.current) return;
+      const allDevices = (devicesRes?.data.devices || []).filter(device => canAssignDeviceLocation(access.user, device.location_id ?? null));
       const current = currentRes.data.device;
-
-      setDevices(allDevices);
+      setDevices(previous => allDevices.map(device => dirtyDeviceIds.current.has(device.id) ? previous.find(entry => entry.id === device.id) || device : device));
       setCurrentDevice(current);
       setPushConfig(currentRes.data.push);
-      setLocations(locationsRes.data.data || []);
-      setDeviceForm({
+      if (!currentDraftDirty.current) setDeviceForm({
         name: current.name || '',
-        location_id: current.location_id ? String(current.location_id) : '',
+        location_id: String(access.user?.operational_scope === 'specific' ? access.user.assigned_location_id ?? '' : current.location_id ?? ''),
       });
-    } catch (error) {
-      console.error('Failed to load admin devices:', error);
+    } catch {
+      if (attempt !== fetchRequest.current) return;
       setLoadFailed(true);
-      toast.error('Failed to load device settings');
     } finally {
-      setLoading(false);
+      if (attempt === fetchRequest.current) setLoading(false);
     }
-  }, [getToken]);
+  }, [getToken, access.user]);
 
   useEffect(() => {
     void fetchData();
+    return () => { fetchRequest.current += 1; };
   }, [fetchData]);
 
   const currentPermission =
@@ -87,8 +94,14 @@ export default function AdminDevicesPage() {
 
   const sortedLocations = useMemo(() => [...locations].sort((a, b) => a.name.localeCompare(b.name)), [locations]);
 
+  const selectedLocation = deviceForm.location_id ? Number(deviceForm.location_id) : null;
+  const validCurrentLocation = canAssignDeviceLocation(access.user, selectedLocation);
+  const locationLocked = access.user?.role === 'staff' || currentDevice?.location_locked === true;
+
   const saveCurrentDevice = async () => {
+    if (!canUseCurrent || !validCurrentLocation || !deviceForm.name.trim() || loading || savingCurrent || savingDeviceId !== null || pushBusy) return;
     try {
+      setCurrentError('');
       setSavingCurrent(true);
       const metadata = detectBrowserMetadata();
       const response = await authPut<CurrentAdminDeviceResponse>(
@@ -96,7 +109,7 @@ export default function AdminDevicesPage() {
         {
           device: {
             name: deviceForm.name.trim(),
-            location_id: deviceForm.location_id ? Number(deviceForm.location_id) : null,
+            location_id: selectedLocation,
             platform: metadata.platform,
             browser: metadata.browser,
             user_agent: metadata.userAgent,
@@ -105,16 +118,18 @@ export default function AdminDevicesPage() {
         getToken
       );
 
+      currentDraftDirty.current = false;
       setCurrentDevice(response.data.device);
       setDeviceForm({ name: response.data.device.name, location_id: String(response.data.device.location_id ?? '') });
       setPushConfig(response.data.push);
-      setDevices((previous) => {
+      if (canManage) setDevices((previous) => {
+        if (dirtyDeviceIds.current.has(response.data.device.id)) return previous;
         const next = previous.filter((device) => device.device_uuid !== response.data.device.device_uuid);
         return [response.data.device, ...next];
       });
       toast.success('Current device saved');
-    } catch (error) {
-      console.error('Failed to save current device:', error);
+    } catch {
+      setCurrentError('Couldn’t save this device. Your changes are still here. Try saving again.');
       toast.error('Failed to save this device');
     } finally {
       setSavingCurrent(false);
@@ -122,7 +137,10 @@ export default function AdminDevicesPage() {
   };
 
   const togglePush = async () => {
+    if (!canUseCurrent || loading || savingCurrent || savingDeviceId !== null || pushBusy) return;
+    if (!currentDevice?.push_enabled && (!currentDevice?.id || !canAssignDeviceLocation(access.user, currentDevice.location_id ?? null))) return;
     try {
+      setPushError('');
       setPushBusy(true);
 
       if (currentDevice?.push_enabled) {
@@ -135,8 +153,8 @@ export default function AdminDevicesPage() {
 
       await fetchData();
     } catch (error) {
-      console.error('Failed to update push notifications:', error);
       const message = error instanceof Error ? error.message : 'Failed to update push notifications';
+      setPushError(message);
       toast.error(message);
     } finally {
       setPushBusy(false);
@@ -144,7 +162,9 @@ export default function AdminDevicesPage() {
   };
 
   const updateManagedDevice = async (device: EditableDevice) => {
+    if (!canManage || !device.id || !canAssignDeviceLocation(access.user, device.location_id ?? null) || !device.name.trim() || loading || savingCurrent || pushBusy || savingDeviceId !== null) return;
     try {
+      setManagedError('');
       setSavingDeviceId(device.id);
       const response = await authPatch<{ device: AdminDeviceRecord }>(
         `/admin/devices/${device.id}`,
@@ -158,25 +178,28 @@ export default function AdminDevicesPage() {
         getToken
       );
 
+      dirtyDeviceIds.current.delete(device.id);
       setDevices((previous) =>
         previous.map((entry) => (entry.id === response.data.device.id ? response.data.device : entry))
       );
 
       if (currentDevice?.id === response.data.device.id) {
         setCurrentDevice(response.data.device);
-        setDeviceForm({ name: response.data.device.name, location_id: String(response.data.device.location_id ?? '') });
+        if (!currentDraftDirty.current) setDeviceForm({ name: response.data.device.name, location_id: String(response.data.device.location_id ?? '') });
       }
 
       toast.success('Device updated');
-    } catch (error) {
-      console.error('Failed to update device:', error);
+    } catch {
+      setManagedError('Couldn’t update the device. Your changes are still here. Try saving again.');
       toast.error('Failed to update device');
     } finally {
       setSavingDeviceId(null);
     }
   };
 
-  if (loading) {
+  if (!canUseCurrent) return <StaffAccessDenied />;
+
+  if (loading && !currentDevice) {
     return (
       <div className="space-y-4">
         <div className="h-28 rounded-2xl bg-gray-100 motion-safe:animate-pulse" />
@@ -185,7 +208,7 @@ export default function AdminDevicesPage() {
     );
   }
 
-  if (loadFailed) {
+  if (loadFailed && !currentDevice) {
     return <div role="alert" className="space-y-4 rounded-xl border border-gray-200 bg-white p-6">
       <h1 className="text-xl font-semibold">Device settings unavailable</h1>
       <p>We couldn’t load your devices. Please try again.</p>
@@ -195,6 +218,8 @@ export default function AdminDevicesPage() {
 
   return (
     <div className="space-y-6">
+      {loadFailed && <div role="alert" className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">Couldn’t refresh device settings. Your changes are still here. <button type="button" onClick={() => void fetchData()} className="min-h-11 underline">Try again</button></div>}
+      {loading && <p role="status" className="text-sm text-gray-600">Refreshing device settings…</p>}
       <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
@@ -207,6 +232,7 @@ export default function AdminDevicesPage() {
           <button
             type="button"
             onClick={() => void fetchData()}
+            disabled={loading || savingCurrent || savingDeviceId !== null || pushBusy}
             className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
           >
             <RefreshCcw className="h-4 w-4" />
@@ -225,6 +251,7 @@ export default function AdminDevicesPage() {
             </div>
           </div>
 
+          {currentError && <p role="alert" className="mt-4 text-sm text-red-700">{currentError}</p>}
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-gray-700">Device Name</span>
@@ -232,7 +259,8 @@ export default function AdminDevicesPage() {
                 type="text"
                 value={deviceForm.name}
                 maxLength={120}
-                onChange={(event) => setDeviceForm((prev) => ({ ...prev, name: event.target.value }))}
+                disabled={loading || savingCurrent}
+                onChange={(event) => { currentDraftDirty.current = true; setDeviceForm((prev) => ({ ...prev, name: event.target.value })); }}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-tsPrimary focus:outline-none focus:ring-2 focus:ring-tsPrimary/20"
                 placeholder="Kitchen iPad"
               />
@@ -241,12 +269,12 @@ export default function AdminDevicesPage() {
             <label className="block">
               <span className="mb-2 block text-sm font-medium text-gray-700">Order alert location</span>
               <select
-                disabled={currentDevice?.location_locked}
+                disabled={locationLocked || loading || savingCurrent}
                 value={deviceForm.location_id}
-                onChange={(event) => setDeviceForm((prev) => ({ ...prev, location_id: event.target.value }))}
+                onChange={(event) => { currentDraftDirty.current = true; setDeviceForm((prev) => ({ ...prev, location_id: event.target.value })); }}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-tsPrimary focus:outline-none focus:ring-2 focus:ring-tsPrimary/20"
               >
-                <option value="">Unassigned — no order alerts</option>
+                {access.user?.operational_scope === 'all' && <option value="">Unassigned — no order alerts</option>}
                 {sortedLocations.map((location) => (
                   <option key={location.id} value={location.id}>
                     {location.name}
@@ -256,6 +284,7 @@ export default function AdminDevicesPage() {
             </label>
           </div>
 
+          {locationLocked && <p className="mt-3 text-sm text-gray-600">Location is assigned by your account. Ask a manager to change it.</p>}
           <div className="mt-6 flex flex-wrap items-center gap-3 break-all text-sm text-gray-500">
             <span>UUID: {currentDevice?.device_uuid || 'Unregistered'}</span>
             <span>Last seen: {formatLastSeen(currentDevice?.last_seen_at)}</span>
@@ -266,7 +295,7 @@ export default function AdminDevicesPage() {
             <button
               type="button"
               onClick={() => void saveCurrentDevice()}
-              disabled={savingCurrent || deviceForm.name.trim() === ''}
+              disabled={loading || savingCurrent || savingDeviceId !== null || pushBusy || !validCurrentLocation || deviceForm.name.trim() === ''}
               className="inline-flex items-center gap-2 rounded-lg bg-tsPrimary px-4 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <Save className="h-4 w-4" />
@@ -302,6 +331,7 @@ export default function AdminDevicesPage() {
             )}
           </div>
 
+          {pushError && <p role="alert" className="mt-4 text-sm text-red-700">{pushError}</p>}
           {currentPermission === 'denied' && <p className="mt-4 text-sm text-gray-600">Notifications are blocked. Allow notifications for this site in your browser settings, then try again.</p>}
           <p className="mt-4 text-sm text-gray-600">On iPhone or iPad, add this site to the Home Screen and open it there to enable push.</p>
           {!currentDevice?.id ? <p className="mt-4 text-sm text-gray-600">Save this device with a location before enabling push.</p>
@@ -311,7 +341,7 @@ export default function AdminDevicesPage() {
             <button
               type="button"
               onClick={() => void togglePush()}
-              disabled={pushBusy || (!currentDevice?.push_enabled && (!pushConfig.configured || !currentDevice?.id || !currentDevice.location_id || !currentDevice.active || currentPermission === 'unsupported'))}
+              disabled={loading || pushBusy || savingCurrent || savingDeviceId !== null || (!currentDevice?.push_enabled && (!pushConfig.configured || !currentDevice?.id || !currentDevice.location_id || !canAssignDeviceLocation(access.user, currentDevice.location_id) || !currentDevice.active || currentPermission === 'unsupported'))}
               className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60 ${
                 currentDevice?.push_enabled ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-600 hover:bg-emerald-700'
               }`}
@@ -323,12 +353,13 @@ export default function AdminDevicesPage() {
         </section>
       </div>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+      {canManage && <section className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Registered Devices</h2>
           <p className="text-sm text-gray-500">Update device names, locations, and availability. Location assignments limit which order alerts a device receives.</p>
         </div>
 
+        {managedError && <p role="alert" className="mb-4 text-sm text-red-700">{managedError}</p>}
         {devices.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-10 text-center text-sm text-gray-500">
             No admin devices have been registered yet.
@@ -343,30 +374,33 @@ export default function AdminDevicesPage() {
                     maxLength={120}
                     type="text"
                     value={device.name}
-                    onChange={(event) =>
+                    disabled={loading || savingCurrent || savingDeviceId === device.id}
+                    onChange={(event) => {
+                      dirtyDeviceIds.current.add(device.id);
                       setDevices((previous) =>
                         previous.map((entry) => (entry.device_uuid === device.device_uuid ? { ...entry, name: event.target.value } : entry))
-                      )
-                    }
+                      );
+                    }}
                     className="min-w-0 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-tsPrimary focus:outline-none focus:ring-2 focus:ring-tsPrimary/20"
                   />
 
                   <select
                     aria-label={`Order alert location for ${device.name}`}
-                    disabled={device.location_locked}
+                    disabled={device.location_locked || loading || savingCurrent || savingDeviceId === device.id}
                     value={device.location_id ?? ''}
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      dirtyDeviceIds.current.add(device.id);
                       setDevices((previous) =>
                         previous.map((entry) =>
                           entry.device_uuid === device.device_uuid
                             ? { ...entry, location_id: event.target.value ? Number(event.target.value) : null }
                             : entry
                         )
-                      )
-                    }
+                      );
+                    }}
                     className="min-w-0 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-tsPrimary focus:outline-none focus:ring-2 focus:ring-tsPrimary/20"
                   >
-                    <option value="">Unassigned — no order alerts</option>
+                    {access.user?.operational_scope === 'all' && <option value="">Unassigned — no order alerts</option>}
                     {sortedLocations.map((location) => (
                       <option key={location.id} value={location.id}>
                         {location.name}
@@ -378,20 +412,22 @@ export default function AdminDevicesPage() {
                     <input
                       type="checkbox"
                       checked={device.active}
-                      onChange={(event) =>
+                      disabled={loading || savingCurrent || savingDeviceId === device.id}
+                      onChange={(event) => {
+                        dirtyDeviceIds.current.add(device.id);
                         setDevices((previous) =>
                           previous.map((entry) =>
                             entry.device_uuid === device.device_uuid ? { ...entry, active: event.target.checked } : entry
                           )
-                        )
-                      }
+                        );
+                      }}
                     />
                     Active
                   </label>
 
                   <button
                     type="button"
-                    disabled={savingDeviceId !== null || !device.name.trim()}
+                    disabled={loading || pushBusy || savingDeviceId !== null || savingCurrent || !device.name.trim() || !canAssignDeviceLocation(access.user, device.location_id ?? null)}
                     onClick={() => void updateManagedDevice(device)}
                     className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
                   >
@@ -409,7 +445,7 @@ export default function AdminDevicesPage() {
             ))}
           </div>
         )}
-      </section>
+      </section>}
     </div>
   );
 }

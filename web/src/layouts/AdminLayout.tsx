@@ -1,10 +1,11 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useUser, useAuth } from '@clerk/clerk-react';
+import { useRef, useState, useEffect } from 'react';
+import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { useUser } from '@clerk/clerk-react';
 import { ChevronLeft, ChevronRight, ExternalLink, Menu, X } from 'lucide-react';
 import AdminIcon from '../components/admin/AdminIconMap';
 import Dialog from '../components/ui/Dialog';
-import { authGet } from '../services/authApi';
+import { StaffAccessDenied, StaffAccessProvider, useStaffAccess } from '../components/admin/StaffAccess.tsx';
+import { canAccessStaffRoute, staffRootRedirect } from '../components/admin/staffAccess.ts';
 
 interface NavItem {
   name: string;
@@ -101,17 +102,16 @@ const NAVIGATION: { title: string; items: NavItem[] }[] = [
 ];
 
 export default function AdminLayout() {
+  return <StaffAccessProvider><AdminShell /></StaffAccessProvider>;
+}
+
+function AdminShell() {
   const { user, isLoaded } = useUser();
-  const { getToken } = useAuth();
+  const access = useStaffAccess();
   const location = useLocation();
-  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(true);
-  const [isAdmin, setIsAdmin] = useState<boolean | null>(null);
-  const [checkingAdmin, setCheckingAdmin] = useState(true);
-  const [accessError, setAccessError] = useState(false);
   const [tooltip, setTooltip] = useState<{ name: string; top: number; left: number } | null>(null);
-  const accessRequest = useRef(0);
   const menuButton = useRef<HTMLButtonElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
 
@@ -122,6 +122,8 @@ export default function AdminLayout() {
       const saved = localStorage.getItem(`ts-admin-sidebar-collapsed:${user.id}`);
       if (saved === '0' || saved === '1') next = saved === '1';
     } catch { /* Native navigation still works with storage blocked. */ }
+    // Apply the existing per-account browser preference once identity loads.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCollapsed(next);
   }, [isLoaded, user?.id]);
 
@@ -133,34 +135,9 @@ export default function AdminLayout() {
     catch { /* Preference is optional; the current layout is still updated. */ }
   };
 
-  const checkAccess = useCallback(async () => {
-    if (!isLoaded) return;
-    const id = ++accessRequest.current;
-    setCheckingAdmin(true);
-    if (!user) { setAccessError(false); setIsAdmin(false); setCheckingAdmin(false); return; }
-    try {
-      const response = await authGet<{ admin: boolean }>('/me', getToken, { timeout: 20000 });
-      if (id !== accessRequest.current) return;
-      setIsAdmin(response.data.admin === true);
-      setAccessError(false);
-    } catch {
-      if (id !== accessRequest.current) return;
-      setAccessError(true);
-    } finally {
-      if (id === accessRequest.current) setCheckingAdmin(false);
-    }
-  }, [isLoaded, user, getToken]);
-
   useEffect(() => {
-    void checkAccess();
-    return () => { accessRequest.current += 1; };
-  }, [checkAccess]);
-
-  useEffect(() => {
-    if (!checkingAdmin && !accessError && isAdmin === false) navigate('/');
-  }, [checkingAdmin, accessError, isAdmin, navigate]);
-
-  useEffect(() => {
+    // Navigation closes the native dialog and clears its transient tooltip.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSidebarOpen(false);
     setTooltip(null);
   }, [location.pathname]);
@@ -172,17 +149,20 @@ export default function AdminLayout() {
     return () => media.removeEventListener('change', closeOnDesktop);
   }, []);
 
-  if (accessError) return <main className="min-h-dvh bg-gray-50 p-6">
+  if (access.error) return <main className="min-h-dvh bg-gray-50 p-6">
     <div role="alert" className="mx-auto max-w-lg space-y-4 rounded-xl border border-gray-300 bg-white p-6">
       <h1 className="text-xl font-bold">Admin access unavailable</h1>
       <p>We couldn’t check your access. Try again to continue where you left off.</p>
-      <button type="button" disabled={checkingAdmin} onClick={checkAccess} className="btn-primary min-h-11">{checkingAdmin ? 'Checking…' : 'Retry access check'}</button>
+      <button type="button" disabled={access.loading} onClick={access.reload} className="btn-primary min-h-11">{access.loading ? 'Checking…' : 'Retry access check'}</button>
     </div>
   </main>;
-  if (!isLoaded || checkingAdmin) return <div role="status" className="min-h-dvh bg-gray-50 p-6">Checking admin access…</div>;
-  if (!isAdmin) return null;
+  if (access.loading) return <div role="status" className="min-h-dvh bg-gray-50 p-6">Checking staff access…</div>;
+  const redirect = staffRootRedirect(access.user, location.pathname);
+  if (redirect) return <Navigate to={{ pathname: redirect, search: location.search, hash: location.hash }} replace />;
+  const routeAllowed = canAccessStaffRoute(access.user, location.pathname);
+  const navigation = NAVIGATION.map(group => ({ ...group, items: group.items.filter(item => canAccessStaffRoute(access.user, item.path)) })).filter(group => group.items.length > 0);
 
-  const activePath = NAVIGATION.flatMap(group => group.items)
+  const activePath = navigation.flatMap(group => group.items)
     .filter(item => location.pathname === item.path || (item.path !== '/admin' && location.pathname.startsWith(item.path + '/')))
     .sort((a, b) => b.path.length - a.path.length)[0]?.path;
   const breadcrumbs = buildBreadcrumbs(location.pathname);
@@ -193,7 +173,7 @@ export default function AdminLayout() {
   };
   // Render native link elements directly so tooltip state never remounts the
   // navigation subtree or removes keyboard focus.
-  const renderNavigation = (compact: boolean) => NAVIGATION.map(group => <div key={group.title} className="mb-5">
+  const renderNavigation = (compact: boolean) => navigation.map(group => <div key={group.title} className="mb-5">
     <p className={`mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-500 ${compact ? 'sr-only' : ''}`}>{group.title}</p>
     <div className="space-y-1">{group.items.map(item => <Link
       key={item.path} to={item.path} aria-label={item.name} aria-current={activePath === item.path ? 'page' : undefined}
@@ -206,8 +186,8 @@ export default function AdminLayout() {
     ><AdminIcon name={item.icon} className="h-5 w-5 shrink-0" /><span className={`text-sm font-medium ${compact ? 'sr-only' : ''}`}>{item.name}</span></Link>)}</div>
   </div>);
   const account = (compact: boolean) => <div className={`flex items-center gap-3 border-t border-gray-200 bg-gray-50 p-3 ${compact ? 'justify-center' : ''}`}>
-    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-tsPrimary font-bold text-white" aria-hidden="true">{user?.firstName?.charAt(0) || 'A'}</span>
-    <div className={`min-w-0 ${compact ? 'sr-only' : ''}`}><p className="truncate text-sm font-semibold text-gray-900">{user?.firstName || 'Admin'}</p><p className="text-xs text-gray-600">Administrator</p></div>
+    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-tsPrimary font-bold text-white" aria-hidden="true">{access.roleLabel.charAt(0)}</span>
+    <div className={`min-w-0 ${compact ? 'sr-only' : ''}`}><p className="text-sm font-semibold text-gray-900">{access.roleLabel}</p><p className="break-words text-xs text-gray-600">{access.scopeLabel}</p></div>
   </div>;
 
   return <div className="admin-scope min-h-dvh bg-gray-100">
@@ -232,14 +212,15 @@ export default function AdminLayout() {
       </div>
     </Dialog>
     <div className={collapsed ? 'md:pl-20' : 'md:pl-64'}>
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between gap-3 border-b border-gray-200 bg-white px-4">
+      <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-gray-200 bg-white px-4">
         <button ref={menuButton} type="button" aria-label="Open admin navigation" aria-expanded={sidebarOpen} aria-controls="admin-mobile-navigation" onClick={() => setSidebarOpen(true)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tsPrimary md:hidden"><Menu className="h-6 w-6" /></button>
         <button type="button" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} aria-controls="admin-sidebar" onClick={toggleCollapse} className="hidden min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tsPrimary md:inline-flex">{collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}</button>
-        <nav aria-label="Breadcrumb" className="hidden min-w-0 flex-1 items-center justify-center gap-1.5 md:flex">{breadcrumbs.map((crumb, index) => <span key={crumb.path || pageTitle} className="flex min-w-0 items-center gap-1.5">{index > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-500" />}{crumb.path ? <Link to={crumb.path} className="truncate text-sm text-gray-600 hover:text-tsPrimary">{crumb.label}</Link> : <span aria-current="page" className="truncate text-sm font-semibold text-gray-900">{crumb.label}</span>}</span>)}</nav>
-        <Link to="/" className="flex min-h-11 items-center gap-2 rounded-lg bg-gray-50 px-3 text-sm font-medium text-gray-700 hover:bg-gray-100"><ExternalLink className="h-4 w-4" />View Store</Link>
+        <nav aria-label="Breadcrumb" className="hidden min-w-0 flex-1 items-center justify-center gap-1.5 md:flex">{breadcrumbs.map((crumb, index) => <span key={crumb.path || pageTitle} className="flex min-w-0 items-center gap-1.5">{index > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-500" />}{crumb.path && canAccessStaffRoute(access.user, crumb.path) ? <Link to={crumb.path} className="truncate text-sm text-gray-600 hover:text-tsPrimary">{crumb.label}</Link> : <span aria-current={index === breadcrumbs.length - 1 ? 'page' : undefined} className="truncate text-sm font-semibold text-gray-900">{crumb.label}</span>}</span>)}</nav>
+        <p className="min-w-0 flex-1 py-2 text-xs text-gray-700 md:max-w-56 md:flex-none"><span className="block font-semibold">{access.roleLabel}</span><span className="block break-words">{access.scopeLabel}</span></p>
+        <Link to="/" className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-gray-50 px-3 text-sm font-medium text-gray-700 hover:bg-gray-100"><ExternalLink className="h-4 w-4" />View Store</Link>
       </header>
       {/* Routine operational navigation uses native scroll and immediate content. */}
-      <main id="admin-main" tabIndex={-1} className="p-4 xl:p-8"><Outlet /></main>
+      <main id="admin-main" tabIndex={-1} className="p-4 xl:p-8">{routeAllowed ? <Outlet /> : <StaffAccessDenied />}</main>
     </div>
   </div>;
 }
