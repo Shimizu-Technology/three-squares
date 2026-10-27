@@ -11,11 +11,14 @@ export default function SmoothScroll({ children }: { children: React.ReactNode }
 
     function raf(time: number) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      frameId = requestAnimationFrame(raf);
     }
 
-    requestAnimationFrame(raf);
-    return () => lenis.destroy();
+    let frameId = requestAnimationFrame(raf);
+    return () => {
+      cancelAnimationFrame(frameId);
+      lenis.destroy();
+    };
   }, []);
 
   return <>{children}</>;

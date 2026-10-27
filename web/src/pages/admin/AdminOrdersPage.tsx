@@ -12,6 +12,7 @@ import {
   RefundModal,
   formatStatus,
 } from '../../components/admin/orders';
+import PickupPackingList from '../../components/admin/orders/PickupPackingList';
 import { SkeletonListPage } from '../../components/admin';
 
 import { configApi, locationsApi } from '../../services/api';
@@ -97,6 +98,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
 
   // Selected order
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const detailReturnRef = useRef<{ x: number; y: number; trigger: HTMLElement | null } | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Ship modal
@@ -224,7 +226,8 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   }, [mode]);
 
   // ── Fetch single order details ────────────────────────────────
-  const fetchOrderDetails = async (orderId: number) => {
+  const fetchOrderDetails = async (orderId: number, trigger: HTMLButtonElement) => {
+    detailReturnRef.current = { x: window.scrollX, y: window.scrollY, trigger };
     try {
       const response = await authGet<AdminOrderResponse>(`/admin/orders/${orderId}`, getToken);
       setSelectedOrder(response.data.order);
@@ -232,6 +235,19 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       console.error('Failed to fetch order details:', err);
       toast.error('Failed to load order details');
     }
+  };
+
+  const closeOrderDetails = () => {
+    const position = detailReturnRef.current;
+    detailReturnRef.current = null;
+    setSelectedOrder(null);
+    // Restore after the modal releases its body lock. Keep keyboard focus on
+    // the original control without letting focus itself scroll the queue.
+    requestAnimationFrame(() => {
+      if (!position) return;
+      if (position.trigger?.isConnected) position.trigger.focus({ preventScroll: true });
+      window.scrollTo({ left: position.x, top: position.y, behavior: 'instant' });
+    });
   };
 
   // ── Update order (from detail modal edit form) ────────────────
@@ -462,7 +478,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   const storeEmail = appConfig?.store_info?.email || 'sales@bgpacific.com';
   const pageTitle = mode === 'pickup_queue' ? 'Pickup Queue' : mode === 'shipping_queue' ? 'Shipping Queue' : 'Orders';
   const pageSubtitle = mode === 'pickup_queue'
-    ? 'Operational queue for pickup-ready and pickup-confirmation workflows.'
+    ? 'Acknowledge paid meals, pack, then mark Ready.'
     : mode === 'shipping_queue'
       ? 'Operational queue for shipping fulfillment and handoff workflows.'
       : `${totalCount} total orders`;
@@ -475,7 +491,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   const stageLabel = (status: string) => ({ new_paid: 'New paid', waiting_payment: 'Waiting for payment', all_active: 'All active', confirmed: mode === 'pickup_queue' ? 'Acknowledged' : 'Confirmed' }[status] || formatStatus(status));
 
   return (
-    <div className="space-y-6">
+    <div className={mode === 'pickup_queue' ? 'space-y-4' : 'space-y-6'}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -575,6 +591,8 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
               : 'Try adjusting status, location, or business line filters.'}
           </p>
         </div>
+      ) : mode === 'pickup_queue' ? (
+        <PickupPackingList orders={orders} saving={saving} page={page} totalPages={totalPages} onPageChange={setPage} onQuickUpdateStatus={quickUpdateStatus} onViewDetails={fetchOrderDetails} />
       ) : (
         <OrdersTable
           orders={orders}
@@ -592,7 +610,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
         <OrderDetailModal
           order={selectedOrder}
           saving={saving}
-          onClose={() => setSelectedOrder(null)}
+          onClose={closeOrderDetails}
           onUpdateOrder={updateOrder}
           onQuickUpdateStatus={quickUpdateStatus}
           onResendNotification={resendNotification}
