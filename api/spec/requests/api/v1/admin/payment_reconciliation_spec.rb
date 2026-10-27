@@ -1,6 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Payment reconciliation observations', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
   let(:owner) { create(:user, :owner) }
   let(:location) { create(:location, hours_json: { 'Daily' => '00:00-23:59' }) }
   let(:identity) { PaymentIdentity.create!(provider: 'worldpay', environment: 'simulated', external_account_id: 'funding-fixture', credential_reference: 'simulation', profile_key: SecureRandom.uuid) }
@@ -21,13 +22,13 @@ RSpec.describe 'Payment reconciliation observations', type: :request do
     allow_any_instance_of(Api::V1::Admin::PaymentReconciliationController).to receive(:authenticate_request).and_return(true)
     allow_any_instance_of(Api::V1::Admin::PaymentReconciliationController).to receive(:current_user).and_return(user)
   end
-  def capture
+  def capture(scenario: 'approve')
     cart = CartItem.create!(session_id: SecureRandom.hex(20), product_variant: variant, quantity: 1)
     session = Payments::CreateCheckout.call(user: nil, capability: SecureRandom.hex(32), idempotency_key: SecureRandom.uuid,
       cart_items: [ cart ], attributes: { fulfillment_type: 'pickup', location_id: location.id, customer_name: 'Fixture', email: 'fixture@example.test' })
     attempt = session.payment_attempts.first
     Payments::SetupAttempt.call(attempt: attempt)
-    result = Payments::ProviderResolver.for_attempt(attempt).collect(attempt: attempt, scenario: 'approve', handle: attempt.reload.collection_config.fetch('client_secret'))
+    result = Payments::ProviderResolver.for_attempt(attempt).collect(attempt: attempt, scenario: scenario, handle: attempt.reload.collection_config.fetch('client_secret'))
     Payments::FinalizeOrder.call(attempt: attempt, result: result)
     attempt.reload
   end
@@ -120,8 +121,9 @@ RSpec.describe 'Payment reconciliation observations', type: :request do
     attempt = capture
     close(scenario: 'external_refund')
     exception = ReconciliationException.find_by!(category: 'external_refund')
+    review_key = SecureRandom.uuid
     2.times do
-      post "#{base}/exceptions/#{exception.id}/review", params: scope.merge(reason: 'Compared with synthetic source'), as: :json
+      post "#{base}/exceptions/#{exception.id}/review", params: scope.merge(reason: 'Compared with synthetic source'), headers: { 'Idempotency-Key' => review_key }, as: :json
       expect(response).to have_http_status(:ok), response.body
     end
     expect(ReconciliationAudit.where(event: 'exception_reviewed').count).to eq(1)
@@ -139,7 +141,8 @@ RSpec.describe 'Payment reconciliation observations', type: :request do
     batch, deposit = SettlementBatch.first, FundingDeposit.first
     post "#{base}/allocate", params: scope.merge(batch_id: batch.id, deposit_id: deposit.id, amount_cents: 17, reason: 'Cannot invent additional batch money'),
       headers: { 'Idempotency-Key' => SecureRandom.uuid }, as: :json
-    expect(response).to have_http_status(:conflict)
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body.fetch('rejected_before_operation')).to be(true)
     expect(FundingAllocation.count).to eq(1)
     # An unallocated source deposit can be matched manually by exact identifiers.
     other = capture
@@ -205,5 +208,76 @@ RSpec.describe 'Payment reconciliation observations', type: :request do
     expect(response).to have_http_status(:not_found)
     post "#{base}/advance_simulation", params: scope.merge(seconds: 60), headers: { 'Idempotency-Key' => SecureRandom.uuid }, as: :json
     expect(response).to have_http_status(:forbidden)
+  end
+  it 'retains durable invalid-file and balance refusals through status/replay and blocks changed payloads under their keys' do
+    key = SecureRandom.uuid
+    2.times do
+      post "#{base}/import", params: scope.merge(csv: 'not-a-valid-file'), headers: { 'Idempotency-Key' => key }, as: :json
+      expect(response).to have_http_status(:unprocessable_entity), response.body
+      expect(response.parsed_body).to include('rejected_before_operation' => true, 'operation_key' => key)
+    end
+    expect(ReconciliationImport.count).to eq(0)
+    get "#{base}/import_status", params: scope.merge(operation_key: key)
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body).to include('state' => 'rejected', 'rejected_before_operation' => true, 'operation_key' => key)
+    post "#{base}/import", params: scope.merge(csv: 'different-invalid-file'), headers: { 'Idempotency-Key' => key }, as: :json
+    expect(response).to have_http_status(:conflict)
+    expect(response.parsed_body).not_to have_key('rejected_before_operation')
+    expect(RejectedPaymentRequest.count).to eq(1)
+    whitespace = SecureRandom.uuid
+    post "#{base}/import", params: scope.merge(csv: '   '), headers: { 'Idempotency-Key' => whitespace }, as: :json
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body.fetch('rejected_before_operation')).to be(true)
+  end
+
+  it 'preserves exact successful compensation evidence and excludes its partial approval once' do
+    attempt = capture(scenario: 'partial')
+    Payments::CompensateAttempt.call(attempt: attempt)
+    close
+    expect(ReconciliationException.count).to eq(0)
+    expect(SettlementBatch.sum(:amount_cents)).to eq(0)
+    expect(SettlementItem.where(entry_type: 'reversal').first).to have_attributes(
+      transaction_id: attempt.reload.compensation_provider_id, amount_cents: 625, payment_transaction_id: attempt.payment_transaction.id)
+    expect(InventoryCommitment.count).to eq(0)
+  end
+
+  it 'does not let a foreign one-cent mutation hide a fully compensated original transaction' do
+    attempt = capture(scenario: 'partial')
+    Payments::CompensateAttempt.call(attempt: attempt)
+    time = Time.current
+    day = time.in_time_zone('Pacific/Guam').to_date.iso8601
+    records = [
+      { 'record_type' => 'batch', 'external_id' => 'tainted-close', 'business_date' => day, 'provider_batch_date' => time.utc.to_date.iso8601,
+        'amount_cents' => 0, 'sales_cents' => 0, 'returns_cents' => 0, 'fees_cents' => 0, 'adjustments_cents' => 0 },
+      { 'record_type' => 'item', 'external_id' => 'observed-sale', 'batch_id' => 'tainted-close', 'transaction_id' => attempt.raw_provider_id,
+        'entry_type' => 'sale', 'amount_cents' => 625, 'occurred_at' => time.iso8601, 'business_date' => day },
+      { 'record_type' => 'item', 'external_id' => 'foreign-reversal', 'batch_id' => 'tainted-close', 'transaction_id' => 'unknown-mutation',
+        'original_reference' => attempt.raw_provider_id, 'entry_type' => 'reversal', 'amount_cents' => 1, 'occurred_at' => time.iso8601, 'business_date' => day }
+    ]
+    csv_import(Payments::Reconciliation::CanonicalCSV.dump(records: records, context: Payments::Reconciliation::Access.context(identity)))
+    expect(ReconciliationImport.last.state).to eq('conflicted')
+    expect(ReconciliationException.pluck(:category)).to contain_exactly('unverified_reversal', 'batch_items_mismatch')
+    expect(SettlementItem.find_by!(external_id: 'foreign-reversal').payment_transaction_id).to be_nil
+  end
+
+  it 'uses the explicit UTC synthetic provider date separately from the Guam transaction date' do
+    travel_to(Time.utc(2026, 10, 27, 15)) do
+      capture
+      close
+      expect(SettlementBatch.first.provider_batch_date.iso8601).to eq('2026-10-27')
+      expect(SettlementBatch.first.business_date.iso8601).to eq('2026-10-28')
+    end
+  end
+  it 'returns original-key no-operation proof when a saved void selection is stale after a full return' do
+    attempt = capture
+    expect(Payments::RefundPayment.call(order: attempt.order, amount_cents: 1250, request_key: SecureRandom.uuid, admin_user: owner)[:success]).to be(true)
+    key = SecureRandom.uuid
+    2.times do
+      post "#{base}/simulate_void", params: scope.merge(attempt_id: attempt.id), headers: { 'Idempotency-Key' => key }, as: :json
+      expect(response).to have_http_status(:unprocessable_entity), response.body
+      expect(response.parsed_body).to include('status' => 'rejected', 'no_operation' => true, 'operation_key' => key, 'attempt_id' => attempt.id)
+    end
+    expect(RefundOperation.count).to eq(1)
+    expect(RefundOperation.where(kind: 'void')).to be_empty
   end
 end

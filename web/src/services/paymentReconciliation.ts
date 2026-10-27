@@ -38,7 +38,8 @@ export async function accountingGet<T>(path: string, params: object, getToken: G
 }
 export const getAccountingReport = (filters: AccountingFilters, getToken: GetTokenFn, signal?: AbortSignal) => accountingGet<AccountingIndex>('', filters, getToken, signal);
 export const getAccountingBatch = (id: string, context: AccountingContext, getToken: GetTokenFn, signal?: AbortSignal) => accountingGet<BatchDetail>(`/batches/${id}`, context, getToken, signal);
-export const checkAccountingImport = (context: AccountingContext, key: string, getToken: GetTokenFn) => accountingGet<AccountingImport>('/import_status', { ...context, operation_key: key }, getToken);
+export type AccountingImportStatus = AccountingImport | { state: 'rejected'; rejected_before_operation: true; operation_key: string; error: string };
+export const checkAccountingImport = (context: AccountingContext, key: string, getToken: GetTokenFn) => accountingGet<AccountingImportStatus>('/import_status', { ...context, operation_key: key }, getToken);
 
 export async function downloadAccountingCSV(path: '/export' | '/simulated_funding', params: object, getToken: GetTokenFn, filename: string): Promise<void> {
   const { authGet } = await import('./authApi');
@@ -187,4 +188,12 @@ export function accountingErrorMessage(error: unknown): string {
   const data = (error as { response?: { data?: { error?: unknown } } })?.response?.data;
   if (typeof data?.error === 'string') return data.error;
   return error instanceof Error ? error.message : 'The accounting request could not be confirmed.';
+}
+
+/** Only an original-key server fence proves that a rejected request can be abandoned. */
+export function rejectedAccountingResult(operation: PendingAccountingAction, response: { status: number; data: Record<string, unknown> }): boolean {
+  if (response.data.operation_key !== operation.key) return false;
+  if ([200, 422].includes(response.status) && response.data.rejected_before_operation === true) return true;
+  return operation.kind === 'simulate_void' && [409, 422].includes(response.status) && response.data.no_operation === true &&
+    response.data.status === 'rejected' && response.data.attempt_id === operation.attempt_id;
 }

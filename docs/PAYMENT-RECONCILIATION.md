@@ -28,6 +28,8 @@ Record types are `batch`, `item`, `deposit` and `allocation`; item types are sal
 
 An import key binds original actor, account, exact file SHA-256 and source. Identical replay returns the durable result. A changed file under the same key returns a conflict. After a lost response, query the saved key; if it is not found, reselect the same file and replay the original request. Do not create a fresh key merely because a response was lost. The browser retains request identity/digest, not uploaded CSV or payment data. Exports are bounded and fail explicitly rather than silently truncate.
 
+Validation refusals use the foundation's `RejectedPaymentRequest` ledger under the same accounting lock. A savepoint rolls back partial observations before the actor/account/kind/key and payload digest are durably fenced. Import status and exact replay return that refusal after reload. The UI permits acknowledgement only for a matching original-key refusal, or the existing refund service's bound `no_operation` proof for a stale simulated void. A generic 422, unknown response or key conflict is not abandonment proof. Corrected details require a new key after acknowledgement; the refused key can never later create an operation.
+
 ## Simulated accounting
 
 Simulated payments move no money. Batch close reads the persisted local processor ledger and feeds the canonical importer. Synthetic flat fees and funding plans are labeled examples; they make no pricing or bank-deposit promise. Available cases include ordinary funding, combined batches, split deposits, weekend lag, missing deposits, duplicate records, amount mismatch and an out-of-band refund.

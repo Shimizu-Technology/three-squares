@@ -92,7 +92,7 @@ RSpec.describe Payments::Reconciliation::Import do
     import(rows)
     expect { import([ deposit('different') ]) }.to raise_error(Payments::Conflict)
     foreign = Payments::Reconciliation::CanonicalCSV.dump(records: [ deposit('different') ], context: context.merge('account_id' => 'other'))
-    expect { described_class.call(identity: identity, user: user, operation_key: SecureRandom.uuid, input: foreign) }.to raise_error(Payments::Reconciliation::CanonicalCSV::Invalid)
+    expect { described_class.call(identity: identity, user: user, operation_key: SecureRandom.uuid, input: foreign) }.to raise_error(Payments::Reconciliation::RequestDecision::Rejected)
     expect(ReconciliationImport.count).to eq(1)
   end
   it 'does not settle the same financial transaction twice under different source item identifiers' do

@@ -3,7 +3,7 @@ import test from 'node:test';
 import {
   accountingFileDigest, accountingStorageKey, assertSavedAccountingAction, clearAccountingAction,
   confirmedAccountingResult, defaultAccountingDates, formatAccountingCents, MAX_ACCOUNTING_FILE_BYTES, parseSignedCents,
-  prepareAccountingAction, readAccountingAction, sameAccountingContext, validAccountingDates,
+  prepareAccountingAction, readAccountingAction, rejectedAccountingResult, sameAccountingContext, validAccountingDates,
 } from '../src/services/paymentReconciliation.ts';
 const dbId = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const context = { identity_id: dbId(11), environment: 'production' };
@@ -136,4 +136,25 @@ test('API UUIDs survive recovery and numeric accounting identifiers are rejected
   storage.setItem(accountingStorageKey, JSON.stringify({ ...pending, identity_id: 11 }));
   assert.deepEqual(readAccountingAction(storage), { pending: null, blocked: true });
   assert.equal(confirmedAccountingResult(pending, { status: 200, data: { id: 31, amount_cents: -109 } }), false);
+});
+
+test('only durable original-key refusals permit acknowledgement after reload or replay', () => {
+  const pending = prepareAccountingAction({ kind: 'import', file_sha256: 'a'.repeat(64) }, 4, context, storageFixture());
+  for (const status of [200, 422]) {
+    assert.equal(rejectedAccountingResult(pending, { status, data: { rejected_before_operation: true, operation_key: pending.key, state: 'rejected' } }), true);
+  }
+  for (const response of [
+    { status: 422, data: { error: 'Invalid CSV' } },
+    { status: 404, data: { rejected_before_operation: true, operation_key: pending.key } },
+    { status: 422, data: { rejected_before_operation: true, operation_key: crypto.randomUUID() } },
+    { status: 409, data: { error: 'Key conflict', operation_key: pending.key } },
+  ]) assert.equal(rejectedAccountingResult(pending, response), false);
+  const voided = prepareAccountingAction({ kind: 'simulate_void', attempt_id: dbId(17), order_number: 'ORDER-EXACT', amount_cents: 1250 }, 4,
+    { ...context, environment: 'simulated' }, storageFixture());
+  const refusal = { operation_key: voided.key, attempt_id: voided.attempt_id, no_operation: true, status: 'rejected' };
+  assert.equal(rejectedAccountingResult(voided, { status: 422, data: refusal }), true);
+  assert.equal(rejectedAccountingResult(voided, { status: 409, data: refusal }), true);
+  assert.equal(rejectedAccountingResult(voided, { status: 422, data: { ...refusal, attempt_id: dbId(99) } }), false);
+  assert.equal(rejectedAccountingResult(voided, { status: 422, data: { ...refusal, no_operation: false } }), false);
+  assert.equal(rejectedAccountingResult(voided, { status: 202, data: { ...refusal, status: 'unknown' } }), false);
 });

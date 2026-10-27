@@ -5,7 +5,13 @@ module Payments
     # CSV/API adapters supply observations to this single durable import boundary.
     # No payment, refund, order or stock mutation is available here.
     class Import
-      def self.call(**arguments) = new.call(**arguments)
+      def self.call(**arguments)
+        identity, user, key = arguments.values_at(:identity, :user, :operation_key)
+        input = arguments[:input]
+        payload = { file_sha256: input.is_a?(String) ? Digest::SHA256.hexdigest(input) : nil, source: arguments.fetch(:source, "canonical_csv"), request_digest: arguments[:request_digest], source_parameters: arguments.fetch(:source_parameters, {}) }
+        RequestDecision.call(identity: identity, user: user, kind: "import", operation_key: key, payload: payload,
+          accepted: -> { ReconciliationImport.exists?(payment_identity: identity, operation_key: key) }) { new.call(**arguments) }
+      end
 
       def call(identity:, user:, input:, operation_key:, source: "canonical_csv", request_digest: nil, source_parameters: {})
         Access.check!(user: user, identity: identity)
@@ -126,8 +132,15 @@ module Payments
           end
         elsif %w[void reversal].include?(row["entry_type"])
           void = RefundOperation.find_by(payment_identity: @identity, raw_provider_id: row["transaction_id"],
-            original_reference: row["original_reference"], state: "succeeded", kind: "void", amount_cents: row["amount_cents"]) if row["entry_type"] == "void"
-          if transaction && (transaction.state == "compensated" || void)
+            original_reference: row["original_reference"], original_charge: transaction, currency: @identity.currency,
+            state: "succeeded", kind: "void", amount_cents: row["amount_cents"], captured_cents: row["amount_cents"]) if transaction && row["entry_type"] == "void"
+          attempt = transaction&.payment_attempt
+          reversal = row["entry_type"] == "reversal" && transaction&.state == "compensated" && attempt &&
+            attempt.payment_identity_id == @identity.id && attempt.currency == @identity.currency && transaction.amount_cents == row["amount_cents"] &&
+            attempt.compensation_status == "succeeded" && attempt.compensation_operation_key.present? && attempt.compensation_dispatched_at &&
+            attempt.compensation_provider_id == row["transaction_id"] && attempt.raw_provider_id == row["original_reference"] &&
+            (attempt.captured_cents.positive? ? attempt.captured_cents : attempt.approved_cents) == row["amount_cents"]
+          if transaction && (reversal || void)
             attributes["payment_transaction"] = transaction
             attributes["refund_operation"] = void if void
           else
@@ -140,7 +153,7 @@ module Payments
       def check_membership
         SettlementBatch.where(reconciliation_import: @import).find_each do |batch|
           items = batch.settlement_items.to_a
-          voided = items.select { |item| %w[void reversal].include?(item.entry_type) }.map(&:original_reference).compact
+          voided = items.select { |item| %w[void reversal].include?(item.entry_type) && item.payment_transaction_id.present? }.map(&:original_reference).compact
           sales = items.select { |item| item.entry_type == "sale" && !voided.include?(item.transaction_id) }.sum(&:amount_cents)
           returns = items.select { |item| item.entry_type == "return" && !voided.include?(item.original_reference) }.sum(&:amount_cents)
           fees = items.select { |item| item.entry_type == "fee" }.sum(&:amount_cents)

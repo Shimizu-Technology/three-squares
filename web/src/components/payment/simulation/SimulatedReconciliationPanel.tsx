@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { cloneElement, isValidElement, useId, useState, type ReactNode } from 'react';
 import type { GetTokenFn } from '../../../services/authApi';
 import {
   accountingErrorMessage, accountingErrorStatus, downloadAccountingCSV, formatAccountingCents,
@@ -83,4 +83,7 @@ export default function SimulatedReconciliationPanel({ report, context, getToken
     </div>
   </section>;
 }
-function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="block min-w-0 space-y-1 text-sm font-medium"><span>{label}</span>{children}</label>; }
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  const id = useId();
+  return <div className="block min-w-0 space-y-1 text-sm font-medium"><label htmlFor={id} className="block">{label}</label>{isValidElement<{ id?: string }>(children) ? cloneElement(children, { id }) : children}</div>;
+}

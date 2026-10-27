@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
+import { cloneElement, isValidElement, lazy, Suspense, useCallback, useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useSearchParams } from 'react-router-dom';
 import { StaffAccessDenied, useStaffAccess, type StaffAccessUser } from '../../components/admin/StaffAccess.tsx';
@@ -10,7 +10,7 @@ import {
   assertSavedAccountingAction, checkAccountingImport, clearAccountingAction, confirmedAccountingResult, defaultAccountingDates,
   dispatchAccountingAction, downloadAccountingCSV, formatAccountingCents, getAccountingBatch,
   getAccountingReport, MAX_ACCOUNTING_FILE_BYTES, parseSignedCents, prepareAccountingAction,
-  readAccountingAction, sameAccountingContext, validAccountingDates,
+  readAccountingAction, rejectedAccountingResult, sameAccountingContext, validAccountingDates,
   type AccountingAction, type AccountingBatch, type AccountingContext, type AccountingIndex,
   type AccountingReport, type BatchDetail, type PendingAccountingAction,
 } from '../../services/paymentReconciliation';
@@ -133,7 +133,7 @@ function ReconciliationWorkspace({ user, canSimulate, getToken }: { user: StaffA
     finally { if (alive.current && sequence === fileSequence.current) setFileBusy(false); }
   };
 
-  const dispatch = async (operation: PendingAccountingAction, firstDispatch = false) => {
+  const dispatch = async (operation: PendingAccountingAction) => {
     if (active.current || !ready || !context || !sameAccountingContext(operation, user.id, context)) return;
     if (['simulate_close', 'advance_simulation', 'simulate_void'].includes(operation.kind) && (!import.meta.env.DEV || !canSimulate || environment !== 'simulated')) return;
     if (operation.kind === 'import' && (!file || file.digest !== operation.file_sha256)) { setError('Reselect the original CSV. Its SHA-256 must match the saved file.'); return; }
@@ -163,9 +163,10 @@ function ReconciliationWorkspace({ user, canSimulate, getToken }: { user: StaffA
       if (alive.current && activeView.current === queryKey) {
         setSaved(readAccountingAction());
         const status = accountingErrorStatus(cause);
-        // A replay rejection does not resolve a possibly committed original request.
-        if (status === 422 && firstDispatch && operation.kind !== 'simulate_void') setRejectedKey(operation.key);
-        setError(`${message(cause)} ${status === 409 ? 'The saved key conflicts with a different request. Do not replace it.' : 'The original request remains saved. Check or retry it before starting another.'}`);
+        const response = (cause as { response?: { status: number; data: Record<string, unknown> } }).response;
+        const rejected = response && rejectedAccountingResult(operation, response);
+        if (rejected) setRejectedKey(operation.key);
+        setError(`${message(cause)} ${rejected ? 'This original request was durably rejected. Acknowledge it below to prepare corrected details.' : status === 409 ? 'The saved key conflicts with a different request. Do not replace it.' : 'The original request remains saved. Check or retry it before starting another.'}`);
       }
     } finally { active.current = false; if (alive.current) setBusy(false); }
   };
@@ -174,7 +175,7 @@ function ReconciliationWorkspace({ user, canSimulate, getToken }: { user: StaffA
     try {
       const operation = prepareAccountingAction(action, user.id, context);
       setSaved({ pending: operation, blocked: false }); setConfirmation(null);
-      await dispatch(operation, true);
+      await dispatch(operation);
     } catch (cause) { setSaved(readAccountingAction()); setError(message(cause)); }
   };
   const checkImport = async () => {
@@ -189,6 +190,7 @@ function ReconciliationWorkspace({ user, canSimulate, getToken }: { user: StaffA
         assertSavedAccountingAction(operation, user.id, context); return token;
       });
       if (!alive.current || activeView.current !== queryKey) return;
+      if (rejectedAccountingResult(operation, { status: 200, data: { ...found } })) { setRejectedKey(operation.key); setImportMissing(null); setError('The server saved a rejection for this original request. You can acknowledge it before preparing corrected details.'); return; }
       if (!confirmedAccountingResult(operation, { status: 200, data: { ...found } })) throw new Error('The saved import does not confirm this original file and key. Preserve the request and resolve the conflict before continuing.');
       clearAccountingAction(operation); setSaved(readAccountingAction()); setResult({ ...found }); setNotice('Saved import found. Review its state and summary below.'); setImportMissing(null); await reload();
     } catch (cause) {
@@ -250,7 +252,7 @@ function ReconciliationWorkspace({ user, canSimulate, getToken }: { user: StaffA
           <p className="text-sm">Checking replays this exact saved request with its original key. It does not create a replacement request.</p>
           <button type="button" className={button} disabled={busy || !ready} onClick={() => void dispatch(pending)}>Check / retry saved request</button>
         </> : null}
-        {rejectedKey === pending.key && <div className="space-y-2"><p>The server rejected this exact request with validation status 422. You may acknowledge that rejection to prepare corrected details.</p><button type="button" className={button} disabled={busy} onClick={() => { clearAccountingAction(pending); setSaved(readAccountingAction()); setRejectedKey(null); }}>Acknowledge validation rejection</button></div>}
+        {rejectedKey === pending.key && <div className="space-y-2"><p>The server durably rejected this exact request before an operation was created. Acknowledge the saved rejection to prepare corrected details.</p><button type="button" className={button} disabled={busy} onClick={() => { clearAccountingAction(pending); setSaved(readAccountingAction()); setRejectedKey(null); }}>Acknowledge validation rejection</button></div>}
       </>}
     </section>}
     {error && <p role="alert" className="rounded-lg border border-red-300 bg-red-50 p-4 text-red-900">{error}</p>}
@@ -309,7 +311,10 @@ function ReconciliationWorkspace({ user, canSimulate, getToken }: { user: StaffA
   </div>;
 }
 
-function Field({ label, children }: { label: string; children: ReactNode }) { return <label className="block min-w-0 space-y-1 text-sm font-medium"><span>{label}</span>{children}</label>; }
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  const id = useId();
+  return <div className="block min-w-0 space-y-1 text-sm font-medium"><label htmlFor={id} className="block">{label}</label>{isValidElement<{ id?: string }>(children) ? cloneElement(children, { id }) : children}</div>;
+}
 function Truncation({ truncated, label }: { truncated: boolean; label: string }) { return truncated ? <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm">Only the first 100 {label} are listed. This listing is incomplete; totals may cover more records. Narrow filters where applicable. Account export has a separate server limit.</p> : null; }
 function BatchFacts({ batch, report }: { batch: AccountingBatch; report: AccountingReport }) {
   return <div className="space-y-1 text-sm"><h3 className="font-semibold">{batch.external_id} (#{batch.id})</h3><p>Location: {report.locations.find(row => row.id === batch.location_id)?.name ?? batch.location_id ?? 'Not supplied'} · Terminal: {batch.terminal_id ?? 'Not supplied'}</p><p>Guam business date: {batch.business_date}</p><p>Original provider batch date: {batch.provider_batch_date ?? 'Not supplied'}</p><p>Closed at: {batch.closed_at ?? 'Not supplied'}</p><p>Sales: {formatAccountingCents(batch.sales_cents)} · Returns: {formatAccountingCents(batch.returns_cents)}</p><p>Fees: {formatAccountingCents(batch.fees_cents)} · Adjustments: {formatAccountingCents(batch.adjustments_cents)}</p><p className="font-semibold">Net: {formatAccountingCents(batch.amount_cents)}</p><p>Allocated: {formatAccountingCents(batch.allocated_cents)} · Remaining: {formatAccountingCents(batch.remaining_cents)}</p></div>;

@@ -4,7 +4,12 @@ module Payments
   module Reconciliation
     class SimulateClose
       SCENARIOS = %w[ordinary combined split weekend missing duplicate mismatch external_refund].freeze
-      def self.call(**arguments) = new.call(**arguments)
+      def self.call(**arguments)
+        identity, user, key = arguments.values_at(:identity, :user, :operation_key)
+        payload = { scenario: arguments[:scenario], lag_days: arguments.fetch(:lag_days, 2), fee_cents: arguments.fetch(:fee_cents, 0) }
+        RequestDecision.call(identity: identity, user: user, kind: "simulate_close", operation_key: key, payload: payload,
+          accepted: -> { ReconciliationImport.exists?(payment_identity: identity, operation_key: key) }) { new.call(**arguments) }
+      end
 
       def call(identity:, user:, operation_key:, scenario:, lag_days: 2, fee_cents: 0)
         Access.check!(user: user, identity: identity)
@@ -63,7 +68,7 @@ module Payments
               items << base("item", "#{id}-fee").merge("batch_id" => id, "entry_type" => "fee", "amount_cents" => fee_cents, "description" => "Synthetic flat fee; no bank pricing claim")
             end
             row = base("batch", id).merge("location_id" => group[0], "terminal_id" => group[1]&.to_s, "business_date" => group[3],
-              "provider_batch_date" => @now.to_date.iso8601, "sales_cents" => sales, "returns_cents" => returns, "fees_cents" => fee_cents,
+              "provider_batch_date" => @now.utc.to_date.iso8601, "sales_cents" => sales, "returns_cents" => returns, "fees_cents" => fee_cents,
               "adjustments_cents" => adjustments, "amount_cents" => sales - returns - fee_cents + adjustments, "description" => "Simulated batch close; no money moves")
             records.concat([ row, *items ])
             batches << row
@@ -78,6 +83,13 @@ module Payments
       end
 
       def self.advance(identity:, user:, seconds:, operation_key:)
+        RequestDecision.call(identity: identity, user: user, kind: "advance_simulation", operation_key: operation_key, payload: { seconds: seconds },
+          accepted: -> { ReconciliationAudit.where(payment_identity: identity, event: "accounting_clock_advanced").where("facts ->> 'operation_key' = ?", operation_key).exists? }) do
+          advance_clock(identity: identity, user: user, seconds: seconds, operation_key: operation_key)
+        end
+      end
+
+      def self.advance_clock(identity:, user:, seconds:, operation_key:)
         Access.check!(user: user, identity: identity)
         Simulation::Guard.validate!(identity)
         unless seconds.is_a?(Integer) && seconds.between?(1, 31.days.to_i) && operation_key.is_a?(String) && operation_key.match?(/\A[A-Za-z0-9][A-Za-z0-9_.:\/-]{0,127}\z/)

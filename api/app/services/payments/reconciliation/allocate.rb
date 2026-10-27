@@ -4,9 +4,12 @@ module Payments
   module Reconciliation
     class Allocate
       def self.call(**arguments)
-        identity, user = arguments.values_at(:identity, :user)
-        rows = bulk(identity: identity, user: user, entries: [ arguments.except(:identity, :user) ])
-        rows.first
+        identity, user, key = arguments.values_at(:identity, :user, :operation_key)
+        payload = { batch_id: arguments[:batch]&.id, deposit_id: arguments[:deposit]&.id, amount_cents: arguments[:amount_cents], reason: arguments[:reason] }
+        RequestDecision.call(identity: identity, user: user, kind: "allocate", operation_key: key, payload: payload,
+          accepted: -> { FundingAllocation.exists?(payment_identity: identity, external_id: key) }) do
+          bulk(identity: identity, user: user, entries: [ arguments.except(:identity, :user) ]).first
+        end
       end
 
       # A combined credit/debit deposit may require several signed allocations

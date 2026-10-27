@@ -68,4 +68,12 @@ RSpec.describe 'Concurrent accounting observations' do
     expect(SettlementBatch.count).to eq(1)
     expect(ReconciliationAudit.where(event: 'imported').count).to eq(2)
   end
+  it 'serializes and durably fences repeated invalid imports before a corrected request can reuse their key' do
+    results = race(*2.times.map { -> { Payments::Reconciliation::Import.call(identity: @identity, user: @user, input: 'invalid CSV', operation_key: 'refused-import') } })
+    expect(results).to all(be_a(Payments::Reconciliation::RequestDecision::Rejected))
+    expect(RejectedPaymentRequest.count).to eq(1)
+    expect(ReconciliationImport.count).to eq(1)
+    expect { Payments::Reconciliation::Import.call(identity: @identity, user: @user, input: @input, operation_key: 'refused-import') }.to raise_error(Payments::Conflict)
+    expect(ReconciliationImport.count).to eq(1)
+  end
 end
