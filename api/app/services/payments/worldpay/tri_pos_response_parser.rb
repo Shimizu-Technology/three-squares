@@ -121,8 +121,12 @@ module Payments
           max_nesting: MAX_DEPTH, allow_nan: false, allow_duplicate_key: false)
         bounds!(data)
         raise Money::Invalid, "invalid_root" unless data.is_a?(Hash)
-        if %i[sale query pre_read_cancel].include?(@operation)
+        if %i[sale query pre_read_cancel].include?(@operation) || data.key?("_hasErrors") || data.key?("_errors")
           errors!(data)
+        else
+          # LaneDto has no transaction error envelope. If one is supplied above,
+          # validate it; otherwise a valid bounded lane body supplies lane facts.
+          @result[:observations].merge!(has_errors: false, error_count: 0)
         end
         case @operation
         when :sale then sale!(data)
@@ -292,7 +296,7 @@ module Payments
         end
         if data['emv'].is_a?(Hash) && data['emv']['tags'].is_a?(Array)
           tags = data['emv']['tags'].each_with_object({}) do |tag, safe|
-            next unless tag.is_a?(Hash) && %w[95 9B 9F06 9F26 9F27 9F36].include?(tag['key'])
+            next unless tag.is_a?(Hash) && %w[95 9B 9F06 9F27 9F36].include?(tag['key'])
             value = tag['value']
             safe[tag['key']] = value if value.is_a?(String) && value.match?(/\A[0-9A-Fa-f]{2,32}\z/)
           end

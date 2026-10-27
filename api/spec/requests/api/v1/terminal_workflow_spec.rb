@@ -49,6 +49,23 @@ RSpec.describe 'Bound terminal collection and administration', type: :request do
     expect(attempt.state).to eq('unknown') # Empty query is not proof that no charge can arrive.
     expect(attempt.order.reload.payment_status).to eq('pending')
   end
+  it 'does not expose simulator card readiness before the worker commits dispatch' do
+    attempt = saved_order
+    start(attempt)
+    get "/api/v1/admin/payment_terminals/#{terminal.id}/status"
+    expect(response.parsed_body.fetch('collection_ready')).to be(false)
+    post "/api/v1/admin/payment_terminals/#{terminal.id}/simulate", params: {attempt_id: attempt.id, command: 'approve'}, as: :json
+    expect(response).to have_http_status(:conflict)
+    expect(SimulatedPaymentRecord.find_by!(payment_attempt: attempt, kind: 'collection').state).to eq('collecting')
+    ProcessTerminalSaleJob.perform_now(attempt.id)
+    get "/api/v1/admin/payment_terminals/#{terminal.id}/status"
+    expect(response.parsed_body.fetch('collection_ready')).to be(true)
+    post "/api/v1/admin/payment_terminals/#{terminal.id}/simulate", params: {attempt_id: attempt.id, command: 'approve'}, as: :json
+    expect(response).to have_http_status(:ok), response.body
+    expect(attempt.order.reload.payment_status).to eq('paid')
+    expect(Payments::ReceiptFacts.for_order(attempt.order)).to include('last4' => '4242')
+  end
+
   it 'queries after a crash at the dispatch boundary instead of sending another sale' do
     attempt = saved_order
     start(attempt)

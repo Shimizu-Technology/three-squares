@@ -3,7 +3,7 @@
 module Payments
   module ReceiptFacts
     TEXT_FIELDS = %w[card_logo entry_mode approval_number payment_type account_type network_label processor_time].freeze
-    EMV_TAGS = %w[95 9B 9F06 9F26 9F27 9F36].freeze
+    EMV_TAGS = %w[95 9B 9F06 9F27 9F36].freeze
 
     def self.project(value)
       return {} unless value.is_a?(Hash)

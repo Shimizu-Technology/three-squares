@@ -168,7 +168,7 @@ module Api
             environment: terminal.payment_identity.environment, provider: terminal.payment_identity.provider,
             connection_state: terminal.connection_state, connection_verified_at: terminal.connection_verified_at,
             device_serial: terminal.device_serial, device_model: terminal.device_model, device_firmware: terminal.device_firmware,
-            status: terminal.status, attempt_id: terminal.leased_attempt_id, order_number: terminal.leased_attempt&.order&.order_number}
+            status: terminal.status, collection_ready: terminal.leased_attempt&.dispatched_at.present?, attempt_id: terminal.leased_attempt_id, order_number: terminal.leased_attempt&.order&.order_number}
         end
         def collectable?(terminal)
           @collection_profiles ||= {}

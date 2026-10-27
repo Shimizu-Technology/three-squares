@@ -366,7 +366,7 @@ function TerminalAdministration({ user, getToken }: { user: StaffAccessUser; get
           <label className="block space-y-1 text-sm font-medium">Reader label<input autoComplete="off" required maxLength={120} className={control} disabled={busy} value={editLabel} onChange={event => setEditLabel(event.target.value)} /></label>
           <label className="flex min-h-11 cursor-pointer items-center gap-3 text-base"><input type="checkbox" className="h-5 w-5" disabled={busy} checked={editEnabled} onChange={event => setEditEnabled(event.target.checked)} />Enabled for new payments</label>
         </>}
-        {needsCode && <label className="block space-y-1 text-sm font-medium">Activation code<input type="password" autoComplete="off" spellCheck={false} autoCapitalize="none" required maxLength={200} className={control} disabled={busy} value={activationCode} onChange={event => setActivationCode(event.target.value)} /></label>}
+        {needsCode && <label className="block space-y-1 text-sm font-medium">Activation code<input type="password" autoComplete="off" spellCheck={false} autoCapitalize="none" required maxLength={80} className={control} disabled={busy} value={activationCode} onChange={event => setActivationCode(event.target.value)} /></label>}
         {needsCode && dialogDevice?.environment === 'simulated' && <p className="text-sm text-amber-950">Simulated profile only — no money moves. Fixtures: SIM-APPROVE, SIM-DECLINE, SIM-TIMEOUT.</p>}
         {needsCode && <p className="text-xs text-gray-600">The activation code is cleared after dispatch and is never saved in browser storage.</p>}
         <div className="flex flex-wrap justify-end gap-2">

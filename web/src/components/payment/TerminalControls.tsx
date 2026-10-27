@@ -9,6 +9,7 @@ export interface TerminalPendingState {
   state?: string | null;
 }
 export interface TerminalControlsProps extends PaymentTerminalHookState {
+  compact?: boolean;
   busy?: boolean;
   locked?: boolean;
   pending?: TerminalPendingState | boolean | null;
@@ -22,12 +23,12 @@ const statuses = {
 };
 
 /** Reader feedback only. The parent owns the saved order and all financial actions. */
-export default function TerminalControls({ terminals, selected, selectedId, select, reload, loading, error, busy = false, locked = false, pending, onCheck, onCancel }: TerminalControlsProps) {
+export default function TerminalControls({ terminals, selected, selectedId, select, reload, loading, error, compact = false, busy = false, locked = false, pending, onCheck, onCancel }: TerminalControlsProps) {
   const id = useId();
   const saved = typeof pending === 'object' ? pending : null;
   const unavailable = selectedId !== null && !terminals.some(row => row.id === selectedId);
   const occupied = !!selected?.attempt_id || (!!selected && ['waiting_for_card', 'card_inserted', 'processing'].includes(selected.status));
-  return <section aria-label="Payment reader" aria-busy={loading || busy} className="min-w-0 space-y-3 rounded-lg border border-gray-200 bg-white p-3 text-sm [overflow-wrap:anywhere]">
+  const body = <>
     <div className="flex flex-wrap items-end gap-2">
       <label htmlFor={id} className="min-w-0 flex-1 space-y-1 font-medium">
         <span>Payment reader</span>
@@ -64,5 +65,11 @@ export default function TerminalControls({ terminals, selected, selectedId, sele
       {onCancel && <button type="button" className={button} disabled={busy} onClick={onCancel}>Request cancellation</button>}
     </div>}
     {onCancel && <p className="text-xs text-gray-600">A cancellation request does not confirm that a charge was stopped or reversed.</p>}
+  </>;
+  return <section aria-label="Payment reader" aria-busy={loading || busy} className="min-w-0 rounded-lg border border-gray-200 bg-white p-3 text-sm [overflow-wrap:anywhere]">
+    {compact ? <details>
+      <summary className="min-h-11 cursor-pointer font-medium">Reader: {selected?.label || 'Choose a reader'} · {busy ? 'Processing' : selected ? statuses[selected.status] : 'Unavailable'}{selected?.environment !== 'production' && selected ? ` · ${selected.environment}` : ''}</summary>
+      <div className="max-h-[35dvh] space-y-3 overflow-y-auto pt-2">{body}</div>
+    </details> : <div className="space-y-3">{body}</div>}
   </section>;
 }

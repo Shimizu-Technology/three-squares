@@ -62,4 +62,3 @@ Read-only documentation GETs on 2026-10-27; **no processing endpoint calls**:
 
 The public YAMLs were inspected outside the repository; they are not vendored.
 Only their paths, schema facts and synthetic values inform this slice.
-

@@ -53,6 +53,7 @@ RSpec.describe Payments::Worldpay::TriPosProvider do
     expect(result).to have_attributes(status: 'captured', requested_cents: 1250, approved_cents: 1250, captured_cents: 1250)
     expect(result.metadata[:receipt]).to include(last4: '1111')
     expect(result.metadata.to_json).not_to include('4111111111111111')
+    expect(Payments::ReceiptFacts.project({'emv' => {'9F26' => 'ABCDEF0123456789', '95' => '0000000000'}})).to eq('emv' => {'95' => '0000000000'})
     order = Payments::FinalizeOrder.call(attempt: attempt, result: result)
     expect(order.payment_status).to eq('paid')
     expect(Payments::ReceiptFacts.for_order(order)).to include('last4' => '1111', 'environment' => 'sandbox', 'transaction_id' => 'bound-charge')

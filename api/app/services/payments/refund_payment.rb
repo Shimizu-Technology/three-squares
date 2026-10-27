@@ -56,7 +56,7 @@ module Payments
       if operation.provider == "cash"
         apply(operation, { raw_id: nil, status: "succeeded", amount_cents: operation.amount_cents }, "cash:#{operation.id}")
       else
-        provider = ProviderResolver.for_identity(operation.payment_identity)
+        provider = provider_for(operation)
         observation = provider.query_refund(reference: operation.raw_provider_id,
           operation_key: operation.operation_key, original_reference: operation.original_reference)
         apply(operation, observation, "query:#{Digest::SHA256.hexdigest(observation.to_json)}")
@@ -70,6 +70,12 @@ module Payments
 
     private
 
+    def provider_for(operation)
+      # Bound terminal and POS-hosted refunds retain their original collection
+      # adapter. Legacy captures without an attempt still use verified identity.
+      operation.payment_attempt ? ProviderResolver.for_attempt(operation.payment_attempt) : ProviderResolver.for_identity(operation.payment_identity)
+    end
+
     def forward_success_effects(operation)
       DispatchRefundEffects.call(operation: operation, restore_now: true) if operation.state == 'succeeded'
     rescue StandardError => error
@@ -81,7 +87,7 @@ module Payments
       observation = if operation.provider == "cash"
         { raw_id: nil, status: "succeeded", amount_cents: operation.amount_cents }
       else
-        ProviderResolver.for_identity(operation.payment_identity).refund(attempt: operation.payment_attempt,
+        provider_for(operation).refund(attempt: operation.payment_attempt,
           reference: operation.original_reference, amount_cents: operation.amount_cents,
           operation_key: operation.operation_key,
           metadata: { refund_operation_id: operation.id, operation_key: operation.operation_key, order_id: operation.order_id,

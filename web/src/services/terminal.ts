@@ -21,6 +21,7 @@ export interface PaymentTerminal {
   device_model: string | null;
   device_firmware: string | null;
   status: 'ready' | 'waiting_for_card' | 'card_inserted' | 'processing' | 'offline' | 'retired';
+  collection_ready?: boolean;
   attempt_id: string | null;
   order_number?: string | null;
   receipt?: PaymentReceiptFacts | null;

@@ -358,7 +358,7 @@ function AdminPOSWorkspace() {
   const [savedPayment, setSavedPayment] = useState(savedPOSPayment);
   const [manualSession, setManualSession] = useState<string | null>(null);
   const paymentTerminal = usePaymentTerminal({ locationId: selectedLocation, getToken });
-  const { selected: selectedTerminal, selectedId: selectedTerminalId, select: selectTerminal, terminals: paymentTerminals, loading: readersLoading } = paymentTerminal;
+  const { selected: selectedTerminal, selectedId: selectedTerminalId, select: selectTerminal, terminals: paymentTerminals, loading: readersLoading, reload: reloadPaymentTerminals } = paymentTerminal;
   const simulationActive = import.meta.env.DEV && selectedTerminal?.environment === 'simulated';
   const simulatedAttempt = savedPayment?.simulated_attempt_id ?? null;
   useEffect(() => {
@@ -369,7 +369,7 @@ function AdminPOSWorkspace() {
       const ready = paymentTerminals.find(row => row.collectable === true && row.enabled && row.status !== 'retired');
       if (ready) selectTerminal(ready.id);
     }
-  }, [userId, selectedLocation, selectedTerminalId, selectTerminal, paymentTerminals, readersLoading]);
+  }, [userId, selectedLocation, selectedTerminalId, selectTerminal, paymentTerminals, readersLoading, savedPayment]);
   const [terminalStatus, setTerminalStatus] = useState<TerminalStatus>('not_initialized');
   const [terminalReader, setTerminalReader] = useState<Reader | null>(null);
   const [terminalError, setTerminalError] = useState<string | null>(null);
@@ -609,7 +609,7 @@ function AdminPOSWorkspace() {
     } catch (err) {
       setTerminalError(err instanceof Error ? err.message : 'Discovery failed');
     }
-  }, [access, selectedTerminal?.provider, handleConnectReader, terminalStatus, terminalLocationReady]);
+  }, [access, selectedTerminal?.provider, selectedTerminal?.terminal_id, handleConnectReader, terminalStatus, terminalLocationReady]);
 
   const handleReaderButtonClick = useCallback(async () => {
     if (selectedTerminal?.provider !== 'stripe' || selectedTerminal.environment === 'simulated' || !access.can('payments.terminals.discover') || !terminalLocationReady || terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
@@ -679,14 +679,15 @@ function AdminPOSWorkspace() {
         setTerminalError('Saved payment is closed. Review the cart before taking payment.');
         return;
       }
+      setTerminalError(null);
       setLastOrder(confirmed);
       clearCart();
       clearPendingTerminalSession();
     } catch (error) {
       setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
       setTerminalError(error instanceof Error ? error.message : 'Payment remains unresolved.');
-    }
-  }, [getToken, userId, clearCart, clearPendingTerminalSession, selectTerminal]);
+    } finally { setSavedPayment(savedPOSPayment()); await reloadPaymentTerminals(); }
+  }, [getToken, userId, clearCart, clearPendingTerminalSession, selectTerminal, reloadPaymentTerminals]);
 
   const handleCancelSavedPayment = useCallback(async () => {
     try {
@@ -714,8 +715,8 @@ function AdminPOSWorkspace() {
     } catch (error) {
       setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
       setTerminalError(error instanceof Error ? error.message : 'Cancellation is unresolved.');
-    }
-  }, [getToken, userId, clearCart, clearPendingTerminalSession]);
+    } finally { setSavedPayment(savedPOSPayment()); await reloadPaymentTerminals(); }
+  }, [getToken, userId, clearCart, clearPendingTerminalSession, reloadPaymentTerminals]);
 
   const handleResetReaderSession = useCallback(async () => {
     if (resettingReader) return;
@@ -763,6 +764,7 @@ function AdminPOSWorkspace() {
       if (!order.client_secret) throw new Error('Card collection is unavailable. Check the saved payment.');
       await collectPayment(order.client_secret);
       const confirmed = await confirmTerminalPayment(token, order.id);
+      setTerminalError(null);
       setLastOrder(confirmed);
       clearCart();
       clearPendingTerminalSession();
@@ -1351,8 +1353,8 @@ function AdminPOSWorkspace() {
             </div>
           )}
 
-          {lastOrder?.payment_receipt && <PaymentReceipt receipt={lastOrder.payment_receipt} orderReference={lastOrder.order_number} onPrint={() => window.print()} />}
-          <TerminalControls {...paymentTerminal} busy={terminalCollecting} locked={submitting}
+          {lastOrder?.payment_receipt && <details className="rounded-lg border p-2"><summary className="min-h-11 cursor-pointer">Receipt for {lastOrder.order_number}</summary><div className="max-h-[35dvh] overflow-y-auto"><PaymentReceipt receipt={lastOrder.payment_receipt} orderReference={lastOrder.order_number} onPrint={() => window.print()} /></div></details>}
+          <TerminalControls compact {...paymentTerminal} busy={terminalCollecting} locked={submitting}
             pending={hasPendingTerminalSession ? { orderNumber: savedPayment?.order_number, attemptId: savedPayment?.attempt_id, terminalId: savedPayment?.terminal_id, state: savedPayment?.payment_state } : null} />
           {hasPendingTerminalSession && savedPayment?.collection_mode === 'terminal' && <button type="button" disabled={terminalCollecting} onClick={() => void handleResumeReaderPayment()} className="min-h-11 w-full rounded-lg border p-2 text-sm">Resume original reader payment</button>}
           {selectedTerminal?.provider === 'stripe' && !simulationActive && (terminalReader || hasPendingTerminalSession || terminalCollecting || terminalError) && (

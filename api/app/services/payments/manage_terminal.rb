@@ -88,9 +88,16 @@ module Payments
           terminal.lock! if terminal.persisted?
           terminal.release_resolved! if terminal.persisted?
           raise Conflict, 'Reader acquired an unresolved payment during administration' if terminal.leased_attempt_id
+          if terminal.persisted?
+            expected = {payment_identity_id: operation.payment_identity_id, location_id: operation.location_id,
+              lane_id: operation.lane_id, terminal_id: operation.terminal_reference}
+            raise BindingError, 'Original reader assignment changed' unless expected.all? { |field, value| terminal.public_send(field) == value }
+          else
+            terminal.assign_attributes(location_id: operation.location_id, terminal_id: operation.terminal_reference)
+          end
           if operation.kind == 'pair'
-            terminal.assign_attributes(location_id: operation.location_id, payment_profile_id: operation.payment_profile_id,
-              terminal_id: operation.terminal_reference, label: operation.label, enabled: true, retired_at: nil, status: 'ready',
+            terminal.assign_attributes(payment_profile_id: operation.payment_profile_id,
+              label: operation.label, enabled: true, retired_at: nil, status: 'ready',
               connection_state: observation[:connection_state] == 'connected' ? 'connected' : 'unknown', connection_verified_at: Time.current,
               device_serial: observation[:device_serial], device_model: observation[:device_model], device_firmware: observation[:device_firmware])
           else

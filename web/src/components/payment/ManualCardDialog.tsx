@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import Dialog from '../ui/Dialog';
+import { useStaffAccess } from '../admin/StaffAccess.tsx';
 import PaymentCollectionForm from './PaymentCollectionForm';
 import PaymentEnvironmentBadge from './PaymentEnvironmentBadge';
 import type { CardPaymentHandle } from './PaymentForm';
@@ -13,6 +14,7 @@ interface Props {
 }
 /** A POS-owned saved checkout. Card data stays inside the selected provider. */
 export default function ManualCardDialog({ sessionId, getToken, onClose, onCheck }: Props) {
+  const access = useStaffAccess();
   const heading = useId();
   const form = useRef<CardPaymentHandle>(null);
   const [state, setState] = useState<CheckoutState | null>(null);
@@ -31,6 +33,7 @@ export default function ManualCardDialog({ sessionId, getToken, onClose, onCheck
   useEffect(() => { setReviewed(false); }, [state?.amount_cents]);
   const config = state ? { ...checkoutClientConfiguration(state), checkout_session_id: state.id } : null;
   const available = !!config && (state?.environment === 'simulated' || state?.flow === 'worldpay_hosted_page' || !!(config.stripe_publishable_key && config.stripe_account_id));
+  const simulatorAllowed = state?.environment !== 'simulated' || access.can('payments.simulate');
   const hostedUrl = state?.flow === 'worldpay_hosted_page' ? state.collection_config.hosted_url : null;
   async function check() {
     await onCheck();
@@ -55,10 +58,10 @@ export default function ManualCardDialog({ sessionId, getToken, onClose, onCheck
     {state && <>
       <PaymentEnvironmentBadge environment={state.environment} />
       <p className="my-3 font-medium">Order {state.order.order_number} · ${(state.amount_cents / 100).toFixed(2)}</p>
-      <PaymentCollectionForm ref={form} available={available} configuration={config} onPaymentReady={paymentReady} />
+      {simulatorAllowed ? <PaymentCollectionForm ref={form} available={available} configuration={config} onPaymentReady={paymentReady} /> : <p role="status">Simulated card controls require an owner. This saved payment can still be checked or cancelled.</p>}
       <label className="my-4 flex min-h-11 items-center gap-3"><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} />I reviewed this order and its ${(state.amount_cents / 100).toFixed(2)} total.</label>
       {hostedUrl ? <a href={reviewed ? hostedUrl : undefined} aria-disabled={!reviewed} target="_blank" rel="noopener noreferrer" className="btn-primary block text-center">Continue to Worldpay</a> :
-        <button type="button" disabled={!reviewed || !ready || busy || !state.collection_config.client_secret} onClick={() => void pay()} className="btn-primary min-h-11 w-full disabled:opacity-50">{busy ? 'Checking payment…' : 'Pay saved order'}</button>}
+        <button type="button" disabled={!simulatorAllowed || !reviewed || !ready || busy || !state.collection_config.client_secret} onClick={() => void pay()} className="btn-primary min-h-11 w-full disabled:opacity-50">{busy ? 'Checking payment…' : 'Pay saved order'}</button>}
       <p role="status" className="my-3 text-sm">Saved payment state: {state.payment_state.replaceAll('_', ' ')}</p>
     </>}
     {!state && !error && <p role="status">Loading saved payment…</p>}

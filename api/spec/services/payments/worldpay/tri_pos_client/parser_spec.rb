@@ -66,9 +66,9 @@ RSpec.describe Payments::Worldpay::TriPosResponseParser, tripos_client: true do
     result = parse(sale_data(emv: {'tags' => [
       {'key' => '95', 'value' => '0000000000'}, {'key' => '9B', 'value' => 'E800'},
       {'key' => '5A', 'value' => '4111111111111111'}, {'key' => '57', 'value' => '4111111111111111'},
-      {'key' => '9F26', 'value' => 'not-hex'}]}))
+      {'key' => '9F26', 'value' => 'ABCDEF0123456789'}]}))
     expect(result.dig(:observations, :receipt, :emv)).to eq('95' => '0000000000', '9B' => 'E800')
-    expect(result.to_s).not_to include('4111111111111111', 'not-hex')
+    expect(result.to_s).not_to include('4111111111111111', 'ABCDEF0123456789')
   end
 
   it "drops noise, PAN, tracks, signature, raw processor response and EMV" do
