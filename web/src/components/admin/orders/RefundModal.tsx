@@ -1,5 +1,5 @@
 import PaymentEnvironmentBadge from '../../payment/PaymentEnvironmentBadge';
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import type { SavedRefundRequest } from '../../../lib/refundRequest';
 import useLockBodyScroll from '../../../hooks/useLockBodyScroll';
 import type { Order } from './orderUtils';
@@ -20,7 +20,6 @@ export default function RefundModal({ order, processing, savedRequest, onProcess
   const [refundAmount, setRefundAmount] = useState('');
   const [refundReason, setRefundReason] = useState('');
   const [restockItems, setRestockItems] = useState(false);
-  const modalContentRef = useRef<HTMLDivElement | null>(null);
 
   const maxRefundable = order.refundable_amount_cents ?? order.total_cents - (order.total_refunded_cents || 0);
 
@@ -34,11 +33,17 @@ export default function RefundModal({ order, processing, savedRequest, onProcess
 
   return (
     <div
-      className="fixed inset-0 z-60 flex items-center justify-center p-4 backdrop-blur-md bg-black/30"
+      className="fixed inset-x-0 top-0 z-60 flex h-dvh items-center justify-center p-4 backdrop-blur-md bg-black/30"
+      style={{
+        paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))',
+        paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
+        paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
+        paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
+      }}
       onClick={() => { if (!processing) onClose(); }}
     >
       <div
-        className="bg-white rounded-lg max-w-md w-full max-h-[85vh] flex flex-col min-h-0 shadow-2xl"
+        className="bg-white rounded-lg max-w-md w-full max-h-[min(85dvh,100%)] flex flex-col min-h-0 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="p-6 border-b border-gray-200 shrink-0">
@@ -50,15 +55,9 @@ export default function RefundModal({ order, processing, savedRequest, onProcess
         </div>
 
         <div
-          ref={modalContentRef}
+          role="region"
+          aria-label="Refund details"
           className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 overscroll-contain"
-          onWheel={(event) => {
-            if (modalContentRef.current) {
-              modalContentRef.current.scrollTop += event.deltaY;
-            }
-            event.stopPropagation();
-            event.preventDefault();
-          }}
         >
           {savedRequest && <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             A refund of {formatCurrency(savedRequest.payload.amount_cents)} is saved. Check its status before starting another refund. Pending and unknown amounts remain reserved.
