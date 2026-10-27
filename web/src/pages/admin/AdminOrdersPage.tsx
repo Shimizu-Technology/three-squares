@@ -483,6 +483,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       ) : (
         <OrdersTable
           orders={orders}
+          saving={saving}
           page={page}
           totalPages={totalPages}
           onPageChange={setPage}

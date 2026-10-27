@@ -96,5 +96,20 @@ RSpec.describe 'Admin orders reporting', type: :request do
     expect(response.body).to include('latte_stone')
     expect(response.body).not_to include('three_squares')
   end
+  it 'keeps admin listing query counts constant as independently associated products grow' do
+    measure = lambda do
+      queries = []
+      callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] if payload[:sql].match?(/\ASELECT/i) && payload[:name] != 'SCHEMA' && !payload[:cached] }
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { get '/api/v1/admin/orders' }
+      expect(response).to have_http_status(:ok)
+      queries.size
+    end
+    admin_user # Exclude lazy test authentication setup from the measurement.
+    3.times { create_retail_order_with_collection(collection: cookies_collection, fulfillment_type: 'shipping') }
+    initial = measure.call
+    4.times { create_retail_order_with_collection(collection: cookies_collection, fulfillment_type: 'shipping') }
+    expect(measure.call).to eq(initial)
+  end
+
 end
 

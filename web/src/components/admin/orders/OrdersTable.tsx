@@ -3,6 +3,7 @@ import { formatCurrency, formatDate, getStatusBadge, formatStatus, getNextStatus
 
 interface OrdersTableProps {
   orders: Order[];
+  saving: boolean;
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
@@ -19,6 +20,7 @@ function OrderTypeBadge({ type }: { type: string }) {
 
 export default function OrdersTable({
   orders,
+  saving,
   page,
   totalPages,
   onPageChange,
@@ -79,6 +81,7 @@ export default function OrdersTable({
                     <div className="flex items-center gap-3">
                       {nextAction && (
                         <button
+                          disabled={saving}
                           onClick={(e) => {
                             e.stopPropagation();
                             onQuickUpdateStatus(order.id, nextAction.status);
@@ -89,6 +92,7 @@ export default function OrdersTable({
                         </button>
                       )}
                       <button
+                        disabled={saving}
                         onClick={() => onViewDetails(order.id)}
                         className="inline-flex items-center px-3.5 py-2.5 text-gray-700 text-sm font-semibold bg-gray-100 hover:bg-gray-200 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
                       >
@@ -144,6 +148,7 @@ export default function OrdersTable({
               <div className="mt-4 flex gap-3">
                 {nextAction && (
                   <button
+                    disabled={saving}
                     onClick={() => onQuickUpdateStatus(order.id, nextAction.status)}
                     className={`flex-1 px-4 py-2.5 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${nextAction.color}`}
                   >
@@ -151,6 +156,7 @@ export default function OrdersTable({
                   </button>
                 )}
                 <button
+                  disabled={saving}
                   onClick={() => onViewDetails(order.id)}
                   className={`${nextAction ? 'flex-1' : 'w-full'} px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
                     nextAction

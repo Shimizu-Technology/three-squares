@@ -343,7 +343,7 @@ module Api
 
       def filtered_orders_query
         orders_query = Order
-          .includes(order_items: { product_variant: { product: :collections } }, user: [], location: [])
+          .includes(order_items: [{ product: :collections }, { product_variant: { product: :collections } }], user: [], location: [])
           .order(created_at: :desc)
 
         orders_query = orders_query.where(status: params[:status]) if params[:status].present?
