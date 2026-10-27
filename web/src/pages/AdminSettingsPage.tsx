@@ -851,22 +851,6 @@ function GeneralSettingsTab({
             </div>
           </div>
         </div>
-
-        {/* Payment Processor */}
-        <div>
-          <h3 className="font-medium text-gray-900 mb-2">Payment Processor</h3>
-          <div className="flex items-center">
-            <img
-              src="https://stripe.com/img/v3/home/social.png"
-              alt="Stripe"
-              className="h-8 w-auto mr-3"
-            />
-            <span className="text-gray-700 font-medium">Stripe</span>
-            <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">
-              Active
-            </span>
-          </div>
-        </div>
         </div>
       </div>
 

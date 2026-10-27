@@ -256,7 +256,8 @@ test('payment section is read-only and status refresh cannot replace an unrelate
   h.generalProps().onUpdateSettings({ store_name: 'Unsaved owner draft' }); await h.flush();
   assert.equal(h.generalProps().settings.store_name, 'Unsaved owner draft');
   assert.equal(h.generalProps().onToggleTestMode, undefined);
-  assert.doesNotMatch(text(h.general()), /Payment Test Mode|Real payments will|all payments are simulated/);
+  assert.doesNotMatch(text(h.general()), /Payment Test Mode|Real payments will|all payments are simulated|Payment Processor|Active/);
+  assert.equal(nodes(h.general()).some(node => node.type === 'img' && /stripe\.com/.test(node.props?.src ?? '')), false);
   assert.ok(nodes(h.general()).some(node => node.type?.name === 'PaymentStatusPanel'));
   assert.equal(h.calls.length, 0);
 });
