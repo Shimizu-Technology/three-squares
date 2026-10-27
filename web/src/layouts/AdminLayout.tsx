@@ -137,7 +137,7 @@ export default function AdminLayout() {
     if (!isLoaded) return;
     const id = ++accessRequest.current;
     setCheckingAdmin(true);
-    if (!user) { setIsAdmin(false); setCheckingAdmin(false); return; }
+    if (!user) { setAccessError(false); setIsAdmin(false); setCheckingAdmin(false); return; }
     try {
       const response = await authGet<{ admin: boolean }>('/me', getToken, { timeout: 20000 });
       if (id !== accessRequest.current) return;

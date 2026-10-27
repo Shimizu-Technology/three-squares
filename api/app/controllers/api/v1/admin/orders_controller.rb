@@ -679,6 +679,8 @@ module Api
           line_count: order.order_items.size,
           updated_at: order.updated_at.iso8601,
           notes: order.notes,
+          admin_notes: order.admin_notes,
+          tracking_number: order.tracking_number,
           order_items: order.order_items.map do |item|
             item_json = {
               id: item.id,
