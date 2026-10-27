@@ -73,5 +73,4 @@ RSpec.describe "Restaurant product shipping weight", type: :request do
       expect(product.reload.product_stock_quantity).to eq(6)
     end
   end
-
 end
