@@ -26,6 +26,10 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await opener.click();
     const dialog = page.getByRole('dialog', { name: `Edit ${menu.name}`, exact: true });
     await expect(dialog).toBeVisible();
+    await dialog.getByRole('button', { name: 'Menu & schedule', exact: true }).click();
+    await expect(dialog.getByLabel('Menu type', { exact: true })).toHaveValue('seasonal');
+    await expect(dialog.getByLabel('Starts at (Guam)', { exact: true })).toHaveValue('2027-11-01T08:00');
+    await dialog.getByRole('button', { name: 'Menu items', exact: true }).click();
     await expect(dialog.getByText('Archived item — unavailable to customers. Remove it or restore it in Products.', { exact: true })).toBeVisible();
     await dialog.getByRole('button', { name: 'Remove Archived lunch from menu', exact: true }).click();
     await dialog.getByRole('searchbox', { name: 'Find menu items', exact: true }).fill('coconut');
