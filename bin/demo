@@ -29,14 +29,16 @@ class Demo
   def initialize(args)
     @action = args.shift
     @db = 'three_squares_demo'
+    @catalog = 'three-squares'
     @api_port = ENV.fetch('DEMO_API_PORT', '3000')
     @web_port = ENV.fetch('DEMO_WEB_PORT', '5173')
     OptionParser.new do |options|
+      options.on('--catalog CATALOG', %w[three-squares fictional]) { |catalog| @catalog = catalog }
       options.on('--db NAME') { |name| @db = name }
       options.on('--api-port PORT') { |port| @api_port = port }
       options.on('--web-port PORT') { |port| @web_port = port }
     end.parse!(args)
-    raise 'Usage: bin/demo start|stop|reset [--db tsq_demo] [--api-port 3000] [--web-port 5173]' unless
+    raise 'Usage: bin/demo start|stop|reset [--db tsq_demo] [--catalog three-squares|fictional] [--api-port 3000] [--web-port 5173]' unless
       %w[start stop reset].include?(@action) && args.empty?
     FileUtils.mkdir_p(TMP, mode: 0o700)
     @children = []
@@ -58,7 +60,7 @@ class Demo
     write_state
     if @action == 'reset'
       command('reset', RUBY, 'bin/demo-process', 'rails', 'db:drop', 'db:create', 'db:migrate', 'demo:prepare')
-      puts "Demo database #{@db} reset. Start with bin/demo start --db #{@db}."
+      puts "Demo database #{@db} reset. Start with bin/demo start --db #{@db} --catalog #{@catalog}."
       return
     end
     check_port(@api_port)
@@ -74,6 +76,7 @@ class Demo
     launch('web', File.join(ROOT, 'web'), 'npm', 'run', 'dev', '--', '--host', '127.0.0.1', '--port', @web_port, '--strictPort', '--config', vite_config)
     wait_for("#{@env.fetch('VITE_API_BASE_URL')}/health")
     wait_for(@env.fetch('FRONTEND_URL'))
+    puts "Catalog: #{@catalog}. Menu prices will be confirmed before launch." if @catalog == 'three-squares'
     puts "\nSimulated payments — no money moves.\nCustomer: #{@env.fetch('FRONTEND_URL')}\nWorkspace: #{@env.fetch('FRONTEND_URL')}/admin\nAPI: #{@env.fetch('VITE_API_BASE_URL')}/health"
     puts "Sign in with the dev Clerk account matching DEMO_OWNER_EMAIL for owner/all-location access.\nKeep this terminal open. Ctrl-C or bin/demo stop stops this demo.\nLogs: tmp/demo/*.log"
     $stdout.flush
@@ -129,7 +132,7 @@ class Demo
     # unsetenv_others also keeps developer .env provider credentials out of Vite.
     @env = ENV.to_h.select { |key, _| %w[PATH HOME USER LOGNAME SHELL TMPDIR LANG LC_ALL RBENV_ROOT RBENV_VERSION NODENV_ROOT NODENV_VERSION GEM_HOME GEM_PATH BUNDLE_PATH PGUSER PGPASSWORD].include?(key) }
     @env.merge!('BUNDLE_GEMFILE' => File.join(API, 'Gemfile'), 'RAILS_ENV' => 'development',
-      'APP_DEPLOYMENT_ENV' => 'development', 'APP_MODE' => 'test', 'DEMO_QUEUE' => '1',
+      'APP_DEPLOYMENT_ENV' => 'development', 'APP_MODE' => 'test', 'DEMO_QUEUE' => '1', 'DEMO_CATALOG' => @catalog,
       'DATABASE_URL' => db_url, 'SCHEMA' => File.join(TMP, 'schema.rb'), 'PAYMENTS_SIMULATION_ENABLED' => 'true', 'WORLDPAY_MODE' => 'simulated',
       'PAYMENTS_DEFAULT_PROVIDER' => 'worldpay', 'WORLDPAY_TRANSPORT_ENABLED' => 'false',
       'WORLDPAY_TRIPOS_TRANSPORT_ENABLED' => 'false', 'CLERK_SECRET_KEY' => secret,

@@ -28,6 +28,17 @@ RSpec.describe Demo do
     ENV['DEMO_OWNER_EMAIL'] = 'presenter@example.test'
   end
 
+  it 'defaults to the restaurant seed and supports an explicit fictional catalog' do
+    keys
+    launcher = described_class.new(['start'])
+    launcher.configure
+    expect(launcher.instance_variable_get(:@env)['DEMO_CATALOG']).to eq('three-squares')
+    launcher = described_class.new(['start', '--catalog', 'fictional'])
+    launcher.configure
+    expect(launcher.instance_variable_get(:@env)['DEMO_CATALOG']).to eq('fictional')
+    expect { described_class.new(['start', '--catalog', 'unknown']) }.to raise_error(OptionParser::InvalidArgument)
+  end
+
   it 'rejects unsafe names before reading environment or touching a database' do
     %w[three_squares_development three_squares_test postgres tsq_demo_prod tsq_live_sim ../tsq_demo tsq_demo_test].each do |name|
       launcher = described_class.new(['reset', '--db', name])

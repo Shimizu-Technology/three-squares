@@ -59,13 +59,15 @@ export default function OrderConfirmationPage() {
   const { id: orderId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const location = useLocation();
-  const { getToken, isSignedIn } = useAuth();
+  const { getToken, isSignedIn, isLoaded } = useAuth();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
 
   useEffect(() => {
+    if (!isLoaded) return;
+    let active = true;
     const fetchOrder = async () => {
       if (!orderId) {
         setError('Order ID is missing');
@@ -74,23 +76,26 @@ export default function OrderConfirmationPage() {
       }
 
       try {
+        setLoading(true);
+        setError(null);
         const capability = localStorage.getItem(`tsq-order-capability:${orderId}`);
         const token = isSignedIn ? await getToken() : null;
         const response = await api.get(`/orders/${orderId}`, {
           headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(capability ? { 'X-Order-Capability': capability } : {}) },
         });
-        setOrder(response.data.order);
+        if (active) setOrder(response.data.order);
       } catch (err: unknown) {
         console.error('Failed to fetch order:', err);
-        setError((err as { response?: { data?: { error?: string } } }).response?.data?.error || 'Failed to load order details');
+        if (active) setError((err as { response?: { data?: { error?: string } } }).response?.data?.error || 'Failed to load order details');
       } finally {
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
 
     fetchOrder();
-    configApi.getConfig().then(setAppConfig).catch(console.error);
-  }, [orderId, location.search, getToken, isSignedIn]);
+    configApi.getConfig().then((config) => { if (active) setAppConfig(config); }).catch(console.error);
+    return () => { active = false; };
+  }, [orderId, location.search, getToken, isSignedIn, isLoaded]);
 
   const formatPrice = (cents: number) => {
     return `$${(cents / 100).toFixed(2)}`;
