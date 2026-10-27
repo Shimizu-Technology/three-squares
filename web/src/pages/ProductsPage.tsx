@@ -1,11 +1,10 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import type { Collection, Product, Location } from '../services/api';
 import { productsApi, collectionsApi, locationsApi } from '../services/api';
 import { useLocationStore } from '../store/locationStore';
 import ProductCard from '../components/ProductCard';
-import FadeIn from '../components/animations/FadeIn';
-import { PageHeaderSkeleton, ProductGridSkeleton } from '../components/Skeleton';
+import { ProductGridSkeleton } from '../components/Skeleton';
 import useAppConfig from '../hooks/useAppConfig';
 import { STOREFRONTS, isStorefrontEnabled, type StorefrontKey } from '../utils/storefronts';
 
@@ -15,50 +14,17 @@ interface PickupLocation {
   slug: string;
 }
 
-const storefrontThemes: Partial<Record<StorefrontKey, {
-  image: string;
-  surfaceClass: string;
-  badgeClass: string;
-  accentClass: string;
-  eyebrow: string;
-  title: string;
-  subtitle: string;
-  primaryAction?: { label: string; to: string };
-  secondaryAction?: { label: string; to: string };
-}>> = {
-  three_squares: {
-    image: '/images/plated1.jpg',
-    surfaceClass: 'bg-white',
-    badgeClass: 'bg-warm-100 text-warm-700 border border-warm-200',
-    accentClass: 'text-tsPrimary',
-    eyebrow: 'Three Squares',
-    title: 'Three Squares Menu',
-    subtitle: 'Island comfort food, local favorites, and daily essentials for pickup.',
-    primaryAction: { label: 'Find a Location', to: '/locations' },
-    secondaryAction: { label: 'About Three Squares', to: '/about' },
-  },
-  latte_stone: {
-    image: '/images/IMG-4158.jpg',
-    surfaceClass: 'bg-white',
-    badgeClass: 'bg-tsPrimary/8 text-tsPrimary border border-tsPrimary/15',
-    accentClass: 'text-tsPrimary',
-    eyebrow: 'Latte Stone Cookies',
-    title: 'Latte Stone Cookie Shop',
-    subtitle: 'Cookie boxes, gifting assortments, and small-batch favorites for pickup or shipping.',
-    primaryAction: { label: 'Browse Gift Boxes', to: '/products?business_line=latte_stone&collection=cookie-boxes' },
-    secondaryAction: { label: 'Shipping Info', to: '/shipping' },
-  },
-  catering: {
-    image: '/images/Cocktail_Stations_-_Assorted_Poppers.jpg',
-    surfaceClass: 'bg-white',
-    badgeClass: 'bg-tsGold/15 text-warm-800 border border-tsGold/30',
-    accentClass: 'text-tsPrimary',
-    eyebrow: 'Catering',
-    title: 'Catering Menu',
-    subtitle: 'Party trays, bentos, and event-ready packages for office lunches, fiestas, and large events.',
-    primaryAction: { label: 'Request a Quote', to: '/catering?inquiry=true' },
-    secondaryAction: { label: 'Back to Catering Overview', to: '/catering' },
-  },
+const menuContent: Record<StorefrontKey, { title: string; subtitle: string }> = {
+  three_squares: { title: 'Three Squares menu', subtitle: 'Choose a meal for pickup.' },
+  latte_stone: { title: 'Latte Stone Cookies', subtitle: 'Browse cookies and gift boxes.' },
+  catering: { title: 'Catering menu', subtitle: 'Browse dishes for your event, then request a quote.' },
+};
+
+const productTypeLabel = (value: string) => {
+  if (value === 'local') return 'Meals';
+  if (value === 'complimentary_with_meal') return 'Included with a meal';
+  if (value === 'market_price') return 'Price by request';
+  return value.replace(/_/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
 
 export default function ProductsPage({ pickupLocation }: { pickupLocation?: Location } = {}) {
@@ -87,7 +53,6 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
   const { selectedLocation } = useLocationStore();
   const locationId = pickupLocation ? String(pickupLocation.id) : (selectedLocation?.id ? String(selectedLocation.id) : '');
   const requestedLocationId = searchParams.get('location_id');
-  const userLocationId = pickupLocation ? '' : locationId;
   const businessLine = searchParams.get('business_line') || '';
   const requestedBusinessLine = STOREFRONTS.some((storefront) => storefront.key === businessLine)
     ? businessLine as StorefrontKey
@@ -100,46 +65,8 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
       : requestedBusinessLine && enabledStorefrontValues.has(requestedBusinessLine)
         ? requestedBusinessLine
         : '';
-  const storefrontTheme = activeBusinessLine
-    ? storefrontThemes[activeBusinessLine as StorefrontKey] ?? null
-    : null;
-  const businessLineContent = (() => {
-    if (storefrontTheme) {
-      return {
-        eyebrow: storefrontTheme.eyebrow,
-        title: storefrontTheme.title,
-        subtitle: storefrontTheme.subtitle,
-      };
-    }
-
-    if (activeBusinessLine === 'three_squares') {
-      return {
-        eyebrow: 'Three Squares',
-        title: 'Three Squares Menu',
-        subtitle: 'Island comfort food, local favorites, and daily essentials for pickup.',
-      };
-    }
-    if (activeBusinessLine === 'latte_stone') {
-      return {
-        eyebrow: 'Latte Stone Cookies',
-        title: 'Latte Stone Cookie Shop',
-        subtitle: 'Cookie boxes and gifting picks with shipping and pickup availability.',
-      };
-    }
-    if (activeBusinessLine === 'catering') {
-      return {
-        eyebrow: 'Catering',
-        title: 'Catering Menu',
-        subtitle: 'Party trays, bentos, and event-ready packages for your next gathering.',
-      };
-    }
-
-    return {
-      eyebrow: 'All Businesses',
-      title: pickupLocation ? `${pickupLocation.name} Menu` : 'Browse Menu',
-      subtitle: pickupLocation?.address || 'Guam comfort food favorites and island-made specialties.',
-    };
-  })();
+  const businessLineContent = activeBusinessLine ? menuContent[activeBusinessLine]
+    : { title: 'Menu', subtitle: 'Choose your next meal for pickup.' };
   const visibleCollections = useMemo(() => {
     if (!activeBusinessLine) {
       return collections;
@@ -148,13 +75,6 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
     return collections.filter((item) => item.business_line === activeBusinessLine);
   }, [activeBusinessLine, collections]);
   const [availableProductTypes, setAvailableProductTypes] = useState<string[]>([]);
-  const businessLineOptions = [
-    { label: 'All', value: '' },
-    ...enabledStorefronts.map((storefront) => ({
-      label: storefront.label,
-      value: storefront.key,
-    })),
-  ];
 
   useEffect(() => {
     if (config == null || !businessLine || activeBusinessLine) {
@@ -177,8 +97,8 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
   const fetchCollections = useCallback(async () => {
     try {
       const response = await collectionsApi.getCollections();
-      // Only show collections with 5+ products
-      const mainCollections = response.collections.filter((c: { product_count: number }) => c.product_count >= 5);
+      // Show every populated category
+      const mainCollections = response.collections.filter((c: { product_count: number }) => c.product_count > 0);
       setCollections(mainCollections);
     } catch (err) {
       console.error('Failed to load collections:', err);
@@ -302,20 +222,8 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
     setSearchParams(params);
   };
 
-  if (!error && (loading || resultContext !== requestContext)) {
-    return (
-      <div className="min-h-screen bg-warm-50">
-        <div className="bg-warm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <PageHeaderSkeleton />
-          </div>
-        </div>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <ProductGridSkeleton count={12} />
-        </div>
-      </div>
-    );
-  }
+  const resultsLoading = !error && (loading || resultContext !== requestContext);
+  const activeFilterCount = [search, collection, productType, sort, activeBusinessLine].filter(Boolean).length;
 
   // Show a retryable error when the menu request fails
   if (error) {
@@ -325,7 +233,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
         <div className="bg-white shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
             <h1 className="text-3xl sm:text-4xl font-bold text-warm-900 mb-2">
-              Shop <span className="text-tsPrimary">{businessLineContent.eyebrow}</span>
+              {businessLineContent.title}
             </h1>
             <p className="text-warm-600 text-sm sm:text-base">
               {businessLineContent.subtitle}
@@ -356,175 +264,53 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
 
   return (
     <div className="min-h-screen bg-warm-50">
-      {/* Header */}
-      {storefrontTheme ? (
-        <section className={`border-b border-warm-200 ${storefrontTheme.surfaceClass}`}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12">
-            <FadeIn>
-              <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
-                <div>
-                  <p className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] ${storefrontTheme.badgeClass}`}>
-                    {businessLineContent.eyebrow}
-                  </p>
-                  <h1 className="mt-4 text-3xl sm:text-4xl lg:text-[2.7rem] font-bold tracking-tight text-warm-900">
-                    {businessLineContent.title}
-                  </h1>
-                  <p className="mt-3 text-base sm:text-lg max-w-2xl text-warm-600 leading-relaxed">
-                    {businessLineContent.subtitle}
-                  </p>
-
-                  <div className="mt-6 flex flex-col sm:flex-row gap-3">
-                    {storefrontTheme.primaryAction && (
-                      <Link
-                        to={storefrontTheme.primaryAction.to}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-tsPrimary px-6 py-3 font-semibold text-white hover:bg-primary-dark transition"
-                      >
-                        {storefrontTheme.primaryAction.label}
-                      </Link>
-                    )}
-                    {storefrontTheme.secondaryAction && (
-                      <Link
-                        to={storefrontTheme.secondaryAction.to}
-                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-warm-200 bg-white px-6 py-3 font-semibold text-warm-700 hover:bg-warm-50 transition"
-                      >
-                        {storefrontTheme.secondaryAction.label}
-                      </Link>
-                    )}
-                  </div>
-
-                  <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-warm-500">
-                    <span className="inline-flex items-center gap-2 rounded-full bg-warm-100 px-3 py-1.5">
-                      <span className={`font-semibold ${storefrontTheme.accentClass}`}>{meta.total}</span>
-                      items available
-                    </span>
-                    {visibleCollections.length > 0 && (
-                      <span className="inline-flex items-center gap-2 rounded-full bg-warm-100 px-3 py-1.5">
-                        <span className={`font-semibold ${storefrontTheme.accentClass}`}>{visibleCollections.length}</span>
-                        collections
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="hidden lg:block">
-                  <div className="overflow-hidden rounded-2xl border border-warm-200 shadow-sm bg-warm-100">
-                    <img
-                      src={storefrontTheme.image}
-                      alt=""
-                      className="h-52 w-full object-cover"
-                      aria-hidden="true"
-                    />
-                  </div>
-                </div>
-              </div>
-            </FadeIn>
-          </div>
-        </section>
-      ) : (
-        <div className="bg-warm">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-            <FadeIn>
-              <div className="text-center">
-                <p className="text-xs font-semibold uppercase tracking-widest text-warm-500 mb-2">
-                  {businessLineContent.eyebrow}
-                </p>
-                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-warm-900 mb-3 tracking-tight">
-                  {businessLineContent.title}
-                </h1>
-                <p className="text-warm-500 text-base sm:text-lg max-w-2xl mx-auto">
-                  {businessLineContent.subtitle}
-                </p>
-              </div>
-            </FadeIn>
-          </div>
-        </div>
-      )}
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
+      <header className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-5 sm:pt-7">
+        <h1 className="text-2xl sm:text-3xl font-bold text-warm-900">{businessLineContent.title}</h1>
+        <p className="mt-1 text-sm text-warm-600">{businessLineContent.subtitle}</p>
+      </header>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-6">
         {/* Search and Filter Bar */}
-        <div className="bg-white rounded-xl shadow-sm border border-warm-100 p-4 sm:p-6 mb-6">
-          <div className="mb-4">
-            <p className="text-xs font-semibold text-warm-500 uppercase tracking-wider mb-2">Shop by Business</p>
-            <div className="overflow-x-auto pb-1 -mx-1 px-1 sm:overflow-visible sm:pb-0 sm:mx-0 sm:px-0">
-              <div className="flex w-max gap-2 sm:w-auto sm:flex-wrap">
-              {businessLineOptions.map((option) => (
-                <button
-                  key={option.label}
-                  type="button"
-                  onClick={() => handleFilterChange('business_line', option.value)}
-                  aria-pressed={activeBusinessLine === option.value}
-                  className={`shrink-0 px-3 py-1.5 rounded-full text-sm border transition ${
-                    activeBusinessLine === option.value
-                      ? 'bg-tsPrimary text-white border-tsPrimary'
-                      : 'bg-warm-50 text-warm-700 border-warm-200 hover:border-warm-300'
-                  }`}
-                >
-                  {option.label}
-                </button>
-              ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Search Bar */}
-          <div className="mb-4">
-            <div className="relative max-w-2xl mx-auto">
-              <input
-                type="text"
-                id="menu-search"
-                aria-label="Search products"
-                placeholder="Search products..."
-                value={search}
-                onChange={(e) => handleSearch(e.target.value)}
-                className="w-full px-4 py-3 pl-11 text-sm sm:text-base bg-warm-50 border border-warm-200 rounded-full focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
-              />
-              <svg
-                className="absolute left-4 top-3.5 h-5 w-5 text-warm-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-            </div>
-          </div>
-
-          {/* Filters */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
-            {/* Business Line Filter */}
+        <div className="mb-4">
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(180px,260px)] sm:items-end">
+            {/* Search Bar */}
             <div>
-              <label htmlFor="menu-filter-business" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Business</label>
-              <select
-                id="menu-filter-business"
-                value={activeBusinessLine}
-                onChange={(e) => handleFilterChange('business_line', e.target.value)}
-                className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
-              >
-                <option value="">All Businesses</option>
-                {enabledStorefronts.map((storefront) => (
-                  <option key={storefront.key} value={storefront.key}>
-                    {storefront.label}
-                  </option>
-                ))}
-              </select>
+              <label htmlFor="menu-search" className="sr-only">Search menu</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  id="menu-search"
+                  placeholder="Search menu..."
+                  value={search}
+                  onChange={(e) => handleSearch(e.target.value)}
+                  className="w-full px-4 py-3 pl-11 text-sm sm:text-base bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
+                />
+                <svg
+                  className="absolute left-4 top-3.5 h-5 w-5 text-warm-400"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+              </div>
             </div>
 
             {/* Collection Filter */}
             {visibleCollections.length > 0 && (
               <div>
-                <label htmlFor="menu-filter-collection" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Collection</label>
+                <label htmlFor="menu-filter-collection" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Category</label>
                 <select
                   id="menu-filter-collection"
                   value={collection}
                   onChange={(e) => handleFilterChange('collection', e.target.value)}
                   className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
                 >
-                  <option value="">All Collections</option>
+                  <option value="">All categories</option>
                   {visibleCollections.map((c) => (
                     <option key={c.id} value={c.slug}>
                       {c.name}
@@ -534,79 +320,107 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
               </div>
             )}
 
-            {/* Product Type Filter */}
-            {availableProductTypes.length > 0 && (
+          </div>
+
+          <details className="mt-3 rounded-lg border border-warm-200 bg-white">
+            <summary className="min-h-11 px-4 py-3 cursor-pointer text-sm font-semibold text-warm-800">
+              Filters and sort{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
+            </summary>
+            {/* Filters */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 p-4 pt-0">
+              {/* Business Line Filter */}
               <div>
-                <label htmlFor="menu-filter-type" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Product Type</label>
+                <label htmlFor="menu-filter-business" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Menu</label>
                 <select
-                  id="menu-filter-type"
-                  value={productType}
-                  onChange={(e) => handleFilterChange('type', e.target.value)}
+                  id="menu-filter-business"
+                  value={activeBusinessLine}
+                  onChange={(e) => handleFilterChange('business_line', e.target.value)}
                   className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
                 >
-                  <option value="">All Types</option>
-                  {availableProductTypes.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
+                  <option value="">All menus</option>
+                  {enabledStorefronts.map((storefront) => (
+                    <option key={storefront.key} value={storefront.key}>
+                      {storefront.label}
                     </option>
                   ))}
                 </select>
               </div>
-            )}
 
-            {/* Sort Options */}
-            <div>
-              <label htmlFor="menu-filter-sort" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Sort By</label>
-              <select
-                id="menu-filter-sort"
-                value={sort}
-                onChange={(e) => handleFilterChange('sort', e.target.value)}
-                className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
-              >
-                <option value="">Featured</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-                <option value="newest">Newest First</option>
-                <option value="name_asc">Name: A-Z</option>
-                <option value="name_desc">Name: Z-A</option>
-              </select>
+              {/* Product Type Filter */}
+              {availableProductTypes.length > 0 && (
+                <div>
+                  <label htmlFor="menu-filter-type" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Item type</label>
+                  <select
+                    id="menu-filter-type"
+                    value={productType}
+                    onChange={(e) => handleFilterChange('type', e.target.value)}
+                    className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
+                  >
+                    <option value="">All Types</option>
+                    {availableProductTypes.map((type) => (
+                      <option key={type} value={type}>
+                        {productTypeLabel(type)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              {/* Sort Options */}
+              <div>
+                <label htmlFor="menu-filter-sort" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Sort By</label>
+                <select
+                  id="menu-filter-sort"
+                  value={sort}
+                  onChange={(e) => handleFilterChange('sort', e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
+                >
+                  <option value="">Featured</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="price_desc">Price: High to Low</option>
+                  <option value="newest">Newest First</option>
+                  <option value="name_asc">Name: A-Z</option>
+                  <option value="name_desc">Name: Z-A</option>
+                </select>
+              </div>
+
+              {/* Pickup Location Filter */}
+              {!pickupLocation && <div>
+                <label htmlFor="menu-filter-pickup" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Pickup Location</label>
+                <select
+                  id="menu-filter-pickup"
+                  value={locationId}
+                  onChange={(e) => handleFilterChange('location_id', e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
+                >
+                  <option value="" disabled>Choose pickup location</option>
+                  {locations.map((location) => (
+                    <option key={location.id} value={location.id.toString()}>
+                      {location.name}
+                    </option>
+                  ))}
+                </select>
+              </div>}
+
+              {/* Clear Filters Button */}
+              <div className="flex items-end">
+                <button
+                  onClick={clearFilters}
+                  disabled={activeFilterCount === 0}
+                  className="w-full px-4 py-2.5 text-sm font-semibold text-warm-600 bg-warm-100 border border-warm-200 rounded-lg hover:bg-warm-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Reset filters
+                </button>
+              </div>
             </div>
 
-            {/* Pickup Location Filter */}
-            {!pickupLocation && <div>
-              <label htmlFor="menu-filter-pickup" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Pickup Location</label>
-              <select
-                id="menu-filter-pickup"
-                value={locationId}
-                onChange={(e) => handleFilterChange('location_id', e.target.value)}
-                className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
-              >
-                <option value="" disabled>Choose pickup location</option>
-                {locations.map((location) => (
-                  <option key={location.id} value={location.id.toString()}>
-                    {location.name}
-                  </option>
-                ))}
-              </select>
-            </div>}
-
-            {/* Clear Filters Button */}
-            <div className="flex items-end">
-              <button
-                onClick={clearFilters}
-                disabled={!search && !collection && !productType && !sort && !userLocationId && !businessLine}
-                className="w-full px-4 py-2.5 text-sm font-semibold text-warm-600 bg-warm-100 border border-warm-200 rounded-lg hover:bg-warm-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-                Clear
-              </button>
-            </div>
-          </div>
+          </details>
 
           {/* Active Filters Display */}
-          {(search || collection || productType || sort || userLocationId || businessLine) && (
+          {(search || collection || productType || sort || activeBusinessLine) && (
             <div className="mt-4 flex flex-wrap items-center gap-2">
               <span className="text-sm text-warm-600 font-medium">Active filters:</span>
               {search && (
@@ -640,11 +454,11 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
               {businessLine && (
                 <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
                   <span className="truncate max-w-[220px] sm:max-w-[280px]">
-                    Business: {activeBusinessLine === 'three_squares' ? 'Three Squares' : activeBusinessLine === 'latte_stone' ? 'Latte Stone Cookies' : 'Catering'}
+                    Menu: {activeBusinessLine === 'three_squares' ? 'Three Squares' : activeBusinessLine === 'latte_stone' ? 'Latte Stone Cookies' : 'Catering'}
                   </span>
                   <button
                     onClick={() => handleFilterChange('business_line', '')}
-                    aria-label="Remove business filter"
+                    aria-label="Remove menu filter"
                     className="hover:bg-warm-700 rounded-full p-0.5"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -655,7 +469,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
               )}
               {productType && (
                 <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
-                  <span className="truncate max-w-[220px] sm:max-w-[280px]">{productType}</span>
+                  <span className="truncate max-w-[220px] sm:max-w-[280px]">{productTypeLabel(productType)}</span>
                   <button
                     onClick={() => handleFilterChange('type', '')}
                     aria-label="Remove product type filter"
@@ -681,20 +495,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                   </button>
                 </span>
               )}
-              {userLocationId && (
-                <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
-                  <span className="truncate max-w-[220px] sm:max-w-[280px]">Pickup: {locations.find((location) => location.id.toString() === userLocationId)?.name || 'Location'}</span>
-                  <button
-                    onClick={() => handleFilterChange('location_id', '')}
-                    aria-label="Remove pickup location filter"
-                    className="hover:bg-warm-700 rounded-full p-0.5"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                </span>
-              )}
+
             </div>
           )}
         </div>
@@ -702,8 +503,8 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
         {/* Results Count */}
         <div className="flex items-center justify-between mb-6">
           <p className="text-warm-600 text-sm sm:text-base">
-            <span className="font-semibold text-warm-900">{meta.total}</span> products
-            {(search || collection || productType || userLocationId || businessLine) && (
+            {resultsLoading ? 'Loading menu…' : <><span className="font-semibold text-warm-900">{meta.total}</span> {meta.total === 1 ? 'item' : 'items'}</>}
+            {(search || collection || productType || activeBusinessLine) && (
               <span className="ml-1 text-warm-400">
                 (filtered)
               </span>
@@ -717,7 +518,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
         </div>
 
         {/* Products Grid */}
-        {products.length === 0 ? (
+        {resultsLoading ? <div role="status" aria-label="Loading menu"><ProductGridSkeleton count={12} /></div> : products.length === 0 ? (
           <div className="text-center py-16 bg-white rounded-xl border border-warm-100">
             <div className="mb-4"><svg className="w-12 h-12 mx-auto text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" /></svg></div>
             <p className="text-warm-700 text-lg font-medium mb-2">No products found</p>
@@ -733,7 +534,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 lg:gap-8 mb-12">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6 lg:gap-8 mb-8">
               {products.map((product) => (
                 <ProductCard key={product.id} product={product} locationNameById={locationNameById} />
               ))}
@@ -741,8 +542,9 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2 sm:gap-3">
+              <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-3">
                 <button
+                  aria-label="Previous page"
                   onClick={() => handlePageChange(page - 1)}
                   disabled={page === 1}
                   className="flex items-center gap-1 px-4 py-2.5 text-sm font-medium bg-white border border-warm-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-warm-50 hover:border-warm-300 transition"
@@ -753,7 +555,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                   <span className="hidden sm:inline">Previous</span>
                 </button>
                 
-                <div className="flex gap-1 sm:gap-2">
+                <div className="contents">
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                     let pageNum;
                     if (totalPages <= 5) {
@@ -769,6 +571,8 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                     return (
                       <button
                         key={pageNum}
+                        aria-label={`Page ${pageNum}`}
+                        aria-current={page === pageNum ? 'page' : undefined}
                         onClick={() => handlePageChange(pageNum)}
                         className={`min-w-[44px] min-h-[44px] px-3 py-2 text-sm font-medium rounded-lg transition ${
                           page === pageNum
@@ -783,6 +587,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                 </div>
 
                 <button
+                  aria-label="Next page"
                   onClick={() => handlePageChange(page + 1)}
                   disabled={page === totalPages}
                   className="flex items-center gap-1 px-4 py-2.5 text-sm font-medium bg-white border border-warm-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-warm-50 hover:border-warm-300 transition"

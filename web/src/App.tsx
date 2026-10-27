@@ -256,9 +256,9 @@ function AppContent() {
         {!isAdminPage && (
         <nav className="bg-warm-50 border-b border-warm-200 sticky top-0 z-40 print:hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center gap-2 h-18 py-3.5">
+            <div className="flex flex-wrap justify-between items-center gap-2 min-h-18 py-3.5">
               {/* Logo */}
-              <Link to="/" className="flex items-center gap-3 group" onClick={handleNavClick}>
+              <Link to="/" className="flex min-w-0 items-center gap-3 group" onClick={handleNavClick}>
                 <img 
                   src="/images/three-squares-logo.svg" 
                   alt="Three Squares" 
@@ -273,7 +273,7 @@ function AppContent() {
 
 
               {/* Desktop Navigation Links */}
-              <div className="hidden lg:flex items-center space-x-8">
+              <div className="hidden lg:flex flex-wrap max-w-full items-center gap-4 xl:gap-8">
                 {/* Shop Dropdown */}
                 <NavDropdown onItemClick={handleNavClick} darkMode={false} />
                 <Link
@@ -300,7 +300,7 @@ function AppContent() {
               </div>
 
               {/* Right Side: Search, Cart, Auth, Mobile Menu */}
-              <div className="flex shrink-0 items-center space-x-1 sm:space-x-3 lg:space-x-4">
+              <div className="flex flex-wrap max-w-full ml-auto items-center gap-1 sm:gap-3 lg:gap-4">
                 {/* Search Bar - Desktop (xl+) */}
                 <form onSubmit={handleSearch} className="hidden xl:block">
                   <div className="relative">
