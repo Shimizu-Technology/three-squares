@@ -15,6 +15,7 @@ interface DashboardStats {
   total_revenue_cents: number;
   pending_orders: number;
   total_products: number;
+  excluded_simulated_order_count?: number;
   business_line_breakdown?: Record<string, { orders: number; revenue_cents: number }>;
   fulfillment_breakdown?: Record<string, number>;
   location_breakdown?: Array<{ name: string; orders: number; revenue_cents: number }>;
@@ -108,11 +109,16 @@ export default function AdminDashboardPage() {
       <div className="rounded-2xl p-6 sm:p-8 shadow-lg bg-tsPrimary">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#ffffff' }}>Welcome back!</h1>
         <p style={{ color: '#ffffff', opacity: 0.9 }}>All-time order totals · {scopeLabel} · All business lines</p>
-        <p className="mt-2 text-sm text-white">Production, non-simulated orders only. Revenue includes paid orders only. Published products are counted across all locations.</p>
+        <p className="mt-2 text-sm text-white">Production, non-simulated orders only. Revenue is captured sales minus succeeded refunds. Published products are counted across all locations.</p>
         <button type="button" onClick={fetchDashboardData} disabled={loading} className="mt-4 min-h-[44px] rounded-lg border border-white px-4 text-white focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60">Refresh dashboard</button>
       </div>
 
       {requestState}
+
+      {(stats.excluded_simulated_order_count ?? 0) > 0 && <aside role="note" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+        <p className="font-semibold">Simulated orders aren&apos;t counted in revenue</p>
+        <p className="mt-1 text-sm">{stats.excluded_simulated_order_count} simulated {stats.excluded_simulated_order_count === 1 ? 'order' : 'orders'} in your location scope (all time). The totals below remain production-only; no simulated money is included.</p>
+      </aside>}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
@@ -123,7 +129,7 @@ export default function AdminDashboardPage() {
           iconColor="bg-blue-50 text-blue-600"
         />
         <StatCard
-          label="All-time paid revenue"
+          label="All-time net revenue"
           value={formatCurrency(stats.total_revenue_cents)}
           icon={DollarSign}
           iconColor="bg-green-50 text-green-600"
@@ -230,7 +236,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      <p className="text-sm text-gray-700">Breakdowns: all time · {scopeLabel} · All business lines · Production, non-simulated orders. Revenue includes paid orders only.</p>
+      <p className="text-sm text-gray-700">Breakdowns: all time · {scopeLabel} · All business lines · Production, non-simulated orders. Revenue is captured sales minus succeeded refunds.</p>
       {/* Phase 2 Segmentation Snapshot */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">

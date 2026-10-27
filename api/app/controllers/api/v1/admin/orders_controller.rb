@@ -63,7 +63,7 @@ module Api
           queue_stage_counts: pickup_stage_counts(orders)
         }
         if staff_access_policy.allowed?("analytics.read")
-          summary[:total_revenue_cents] = orders.where(simulated: false, payment_environment: "production").where(payment_status: "paid").sum(:total_cents)
+          summary[:total_revenue_cents] = Payments::Revenue.total(orders)
         end
         render json: summary
       end
@@ -432,6 +432,7 @@ module Api
 
       def build_orders_csv(orders)
         orders = orders.where(simulated: false, payment_environment: "production")
+        money = Payments::Revenue.by_order(orders)
         CSV.generate(headers: true) do |csv|
           csv << [
             "order_number",
@@ -449,7 +450,10 @@ module Api
             "shipping_cost_cents",
             "tax_cents",
             "total_cents",
-            "total_usd"
+            "total_usd",
+            "captured_cents",
+            "succeeded_refunds_cents",
+            "net_revenue_cents"
           ]
 
           orders.each do |order|
@@ -469,7 +473,8 @@ module Api
               order.shipping_cost_cents,
               order.tax_cents,
               order.total_cents,
-              format("%.2f", (order.total_cents || 0) / 100.0)
+              format("%.2f", (order.total_cents || 0) / 100.0),
+              *money.fetch(order.id).values_at(:captured_cents, :succeeded_refunds_cents, :net_revenue_cents)
             ]
           end
         end

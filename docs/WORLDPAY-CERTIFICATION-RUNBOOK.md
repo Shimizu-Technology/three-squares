@@ -26,7 +26,7 @@ Evidence archive/CI run: ____  Operator: ____  Review/signoff: ____
 | C14 | Offline injected Stripe SDK resume states, webhook/finalizer regressions and scoped Stripe token/listing specs | Stripe sandbox/device regression; no Worldpay certification claim | ____ |
 | C15 | Settings changes retain original refund identity/environment; refund authority and payment-security specs | Original-account sandbox/production isolation signoff | ____ |
 | C16 | Token service seams and account binding; saved-card UI disabled | Selected PASS/OmniToken, consent and stored-credential scope | ____ |
-| C17 | Settlement/funding slice and its simulated deposit/import evidence: pending | Agreed report/funding format, cutoff, combined/split/lag/missing deposits and accounting signoff | ____ |
+| C17 | Canonical import, signed allocation concurrency, closed-batch membership and isolated simulated funding cases; `reconciliation/import_spec.rb`, `reconciliation/allocation_concurrency_spec.rb`, `payment_reconciliation_spec.rb`; attach exact-head browser evidence before acceptance | Agreed report/funding format, cutoff, combined/split/lag/missing deposits and accounting signoff | ____ |
 | C18 | Durable outbox, duplicate jobs, pre/post-dispatch recovery and retained unknown claims; `foundation_spec.rb`, `terminal_workflow_spec.rb`, worker restart evidence | Repeat assigned sandbox recovery cases; physical platform validation | ____ |
 
 Specs named above live under `api/spec/requests/api/v1/` or `api/spec/services/payments/`. Attach exact test names, tested SHA, fixtures and browser artifacts for each run; a table reference alone is not a passed case.

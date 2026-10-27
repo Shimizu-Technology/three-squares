@@ -33,6 +33,7 @@ const ROUTE_META: Record<string, RouteMeta> = {
   '/admin/catering':                 { title: 'Catering',         parent: '/admin' },
   '/admin/devices':                  { title: 'Devices',          parent: '/admin' },
   '/admin/payment-terminals':        { title: 'Payment Terminals', parent: '/admin' },
+  '/admin/payment-reconciliation':   { title: 'Payment Reconciliation', parent: '/admin' },
   '/admin/users':                    { title: 'Users',            parent: '/admin' },
   '/admin/import':                   { title: 'Menu CSV',       parent: '/admin' },
   '/admin/homepage':                 { title: 'Homepage',         parent: '/admin' },
@@ -97,6 +98,7 @@ const NAVIGATION: { title: string; items: NavItem[] }[] = [
   { title: 'System', items: [
     { name: 'Devices', path: '/admin/devices', icon: 'devices' },
     { name: 'Payment Terminals', path: '/admin/payment-terminals', icon: 'pos' },
+    { name: 'Payment Reconciliation', path: '/admin/payment-reconciliation', icon: 'analytics' },
     { name: 'Users', path: '/admin/users', icon: 'users' },
     { name: 'Menu CSV', path: '/admin/import', icon: 'import' },
     { name: 'Homepage', path: '/admin/homepage', icon: 'settings' },

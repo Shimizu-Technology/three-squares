@@ -42,6 +42,7 @@ const AdminCateringPage = lazy(() => import('./pages/admin/AdminCateringPage'));
 const AdminLocationsPage = lazy(() => import('./pages/admin/AdminLocationsPage'));
 const AdminPOSPage = lazy(() => import('./pages/admin/AdminPOSPage'));
 const AdminPaymentTerminalsPage = lazy(() => import('./pages/admin/AdminPaymentTerminalsPage'));
+const AdminPaymentReconciliationPage = lazy(() => import('./pages/admin/AdminPaymentReconciliationPage'));
 const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
 const OrderConfirmationPage = lazy(() => import('./pages/OrderConfirmationPage'));
 const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPage'));
@@ -538,6 +539,7 @@ function AppContent() {
             <Route path="users" element={<AdminUsersPage />} />
             <Route path="devices" element={<AdminDevicesPage />} />
             <Route path="payment-terminals" element={<AdminPaymentTerminalsPage />} />
+            <Route path="payment-reconciliation" element={<AdminPaymentReconciliationPage />} />
             <Route path="catering" element={<AdminCateringPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
             <Route path="homepage" element={<AdminSettingsPage homepageOnly />} />

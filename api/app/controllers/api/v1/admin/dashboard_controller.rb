@@ -15,9 +15,9 @@ module Api
           # Scope queries to assigned location for location-locked staff
           base_scope = staff_scope(Order.all)
 
-          base_scope = base_scope.where(simulated: false, payment_environment: 'production')
+          base_scope = base_scope.where(simulated: false, payment_environment: "production")
           total_orders = base_scope.count
-          total_revenue_cents = base_scope.where(payment_status: "paid").sum(:total_cents)
+          total_revenue_cents = Payments::Revenue.total(base_scope)
           pending_orders = base_scope.where(status: "pending").count
           total_products = Product.where(published: true).count
           business_line_breakdown = business_line_breakdown_data(base_scope)
@@ -32,7 +32,7 @@ module Api
             business_line_breakdown: business_line_breakdown,
             fulfillment_breakdown: fulfillment_breakdown,
             location_breakdown: location_breakdown
-          }
+          }.merge(simulated_order_notice)
         end
 
         # GET /api/v1/admin/dashboard/chart_data
@@ -40,7 +40,7 @@ module Api
         def chart_data
           base_scope = staff_scope(Order.all)
 
-          base_scope = base_scope.where(simulated: false, payment_environment: 'production')
+          base_scope = base_scope.where(simulated: false, payment_environment: "production")
           days = (params[:days] || 30).to_i.clamp(7, 90)
           start_date = Time.current.in_time_zone("Pacific/Guam").beginning_of_day - (days - 1).days
 
@@ -50,12 +50,7 @@ module Api
             .group("DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Pacific/Guam')")
             .count
 
-          # Revenue per day (paid orders only)
-          revenue_by_day = base_scope
-            .where("created_at >= ?", start_date)
-            .where(payment_status: "paid")
-            .group("DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Pacific/Guam')")
-            .sum(:total_cents)
+          revenue_by_day = Payments::Revenue.by_day(base_scope.where("created_at >= ?", start_date))
 
           # Build complete series (fill in zero days)
           series = (0...days).map do |i|
@@ -70,14 +65,12 @@ module Api
           end
 
           # Period comparison: this week vs last week
-          this_week_start = Time.current.beginning_of_week
-          last_week_start = 1.week.ago.beginning_of_week
+          this_week_start = Time.current.in_time_zone("Pacific/Guam").beginning_of_week
+          last_week_start = this_week_start - 1.week
           last_week_end = this_week_start
 
-          this_week_revenue = base_scope.where(payment_status: "paid")
-            .where("created_at >= ?", this_week_start).sum(:total_cents)
-          last_week_revenue = base_scope.where(payment_status: "paid")
-            .where("created_at >= ? AND created_at < ?", last_week_start, last_week_end).sum(:total_cents)
+          this_week_revenue = Payments::Revenue.total(base_scope.where("created_at >= ?", this_week_start))
+          last_week_revenue = Payments::Revenue.total(base_scope.where("created_at >= ? AND created_at < ?", last_week_start, last_week_end))
 
           this_week_orders = base_scope.where("created_at >= ?", this_week_start).count
           last_week_orders = base_scope.where("created_at >= ? AND created_at < ?", last_week_start, last_week_end).count
@@ -88,10 +81,17 @@ module Api
               this_week: { orders: this_week_orders, revenue_cents: this_week_revenue },
               last_week: { orders: last_week_orders, revenue_cents: last_week_revenue }
             }
-          }
+          }.merge(simulated_order_notice)
         end
 
         private
+
+        def simulated_order_notice
+          return {} if Payments::Configuration.production? || ENV["PAYMENTS_SIMULATION_ENABLED"] != "true"
+
+          count = staff_scope(Order.all).where("simulated = TRUE OR payment_environment = ?", "simulated").count
+          count.positive? ? { excluded_simulated_order_count: count } : {}
+        end
 
         def business_line_breakdown_data(scope)
           retail_orders = scope.where(order_type: "retail")
@@ -104,22 +104,22 @@ module Api
           {
             "three_squares" => {
               orders: three_squares_orders.count,
-              revenue_cents: three_squares_orders.where(payment_status: "paid").sum(:total_cents)
+              revenue_cents: Payments::Revenue.total(three_squares_orders)
             },
             "latte_stone" => {
               orders: latte_stone_orders.count,
-              revenue_cents: latte_stone_orders.where(payment_status: "paid").sum(:total_cents)
+              revenue_cents: Payments::Revenue.total(latte_stone_orders)
             },
             "catering" => {
               orders: scope.where(order_type: "wholesale").count,
-              revenue_cents: scope.where(order_type: "wholesale", payment_status: "paid").sum(:total_cents)
+              revenue_cents: Payments::Revenue.total(scope.where(order_type: "wholesale"))
             }
           }
         end
 
         def location_breakdown_data(scope)
           grouped_orders = scope.left_joins(:location).group("locations.name").count
-          grouped_revenue = scope.left_joins(:location).where(payment_status: "paid").group("locations.name").sum(:total_cents)
+          grouped_revenue = Payments::Revenue.by_location(scope)
 
           grouped_orders.map do |location_name, count|
             label = location_name.presence || "Shipping / No Pickup Location"

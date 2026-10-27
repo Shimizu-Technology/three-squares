@@ -148,3 +148,11 @@ test('payment contract uses canonical names and recognizes limited location upda
   assert.equal(hasStaffCapability(user, 'locations.manage'), false);
   assert.equal(hasStaffCapability(staff(), 'payments.collect'), true);
 });
+
+test('account-wide reconciliation uses its dedicated server capability', () => {
+  const path = '/admin/payment-reconciliation';
+  assert.equal(canAccessStaffRoute(manager({ capabilities: ['payments.reconcile'] }), path), true);
+  assert.equal(canAccessStaffRoute(manager({ capabilities: ['analytics.read', 'payments.refund'] }), path), false);
+  assert.equal(canAccessStaffRoute(staff(), path), false);
+  assert.equal(canAccessStaffRoute(me({ capabilities: [] }), path), false);
+});

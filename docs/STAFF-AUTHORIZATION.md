@@ -24,6 +24,7 @@ A capability check admits the action category; pair it with scoped record lookup
 | `pos.sell`, `payments.collect` | Scoped POS sales, reader listing/collection/status/confirmation |
 | `payments.refund` | Scoped refunds/reconciliation through payment services |
 | `payments.terminals.manage` | Owner/all-locations manager reader provisioning/pairing/deletion |
+| `payments.reconcile` | Owner/all-locations manager account-wide settlement, funding, canonical import/export and audited allocation/review |
 | `payments.terminals.discover` | Owner-only Stripe reader discovery/connection tokens |
 | `payments.simulate` | Owner-only administrative simulator commands |
 | `analytics.read` | Scoped aggregate revenue/reporting |
@@ -48,5 +49,7 @@ A capability check admits the action category; pair it with scoped record lookup
 `available` must be a JSON boolean. The endpoint changes no price, publishing, shared stock or other location's effective availability. It materializes the pre-existing all-location meaning before creating the first location row. Full product updates and CSV imports enforce location scope separately; scoped managers cannot use embedded stock fields or legacy inventory imports to gain shared-stock write access.
 
 Payment controllers retain provider, attempt, checkout-user, idempotency, lease, offline/busy, refund-ledger and restoration behavior. The central map scopes terminal and POS record access before those handlers. Future payment admin actions must declare a capability and retain their existing ownership checks. Customer checkout simulation remains session/capability/opaque-handle authorized with existing nonproduction/simulation guards; it is not an administrative control.
+
+Accounting access deliberately denies location-assigned managers: one deposit can combine several locations, so a partial disclosure could leak totals or invent variance. `payment_reconciliation` read/import/export/allocation/review actions map to `payments.reconcile`. Simulated close, funding export, accounting-time advance and full current-batch void map to owner-only `payments.simulate` and recheck the simulated identity/environment guard. The accounting clock is isolated from all checkout/terminal attempts. Imports never grant capture/refund authority or write order/stock outcomes; see `PAYMENT-RECONCILIATION.md`.
 
 Role writes/deletions must use model callbacks. A transaction advisory lock protects last-owner changes across different rows; callback-skipping SQL can bypass it and belongs only in reviewed migrations/isolated fixture setup. The irreversible role migration converts only legacy `admin` records to `owner`, preserving explicit roles and profile data. Fresh replay must regenerate `schema.rb`.

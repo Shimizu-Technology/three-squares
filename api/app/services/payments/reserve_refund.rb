@@ -50,13 +50,13 @@ module Payments
       raise Error, "Refund metadata and restoration request must be objects" unless metadata.is_a?(Hash) && restoration_request.is_a?(Hash)
       raise Error, "Refund reason must be text" unless reason.nil? || reason.is_a?(String)
       raise Error, "Unknown refund operation kind" unless %w[return void reversal].include?(kind)
-      requested_items = restoration_request.stringify_keys['restock_items']
+      requested_items = restoration_request.stringify_keys["restock_items"]
       unless requested_items.nil? || requested_items == false || requested_items == true || %w[all true].include?(requested_items) ||
           (requested_items.is_a?(Array) && requested_items.all? { |id| id.to_s.match?(/\A[1-9]\d*\z/) })
-        raise Error, 'Invalid inventory restoration decision'
+        raise Error, "Invalid inventory restoration decision"
       end
       if requested_items.is_a?(Array) && (requested_items.map(&:to_i) - order.order_items.pluck(:id)).any?
-        raise BindingError, 'Restoration items must belong to this order'
+        raise BindingError, "Restoration items must belong to this order"
       end
       payload = { amount_cents: amount_cents, kind: kind, reason: reason, metadata: metadata, restoration_request: restoration_request }.deep_stringify_keys
       digest = Digest::SHA256.hexdigest(canonical_json(payload))
@@ -80,6 +80,13 @@ module Payments
             used = RefundOperation.where(order_id: locked.id).holding.sum(:amount_cents)
             # Historical refunds retain their financial effect when the new ledger starts.
             used += Refund.where(order_id: locked.id, refund_operation_id: nil, status: %w[pending unknown succeeded]).sum(:amount_cents)
+            if kind != "return"
+              unless kind == "void" && locked.simulated? && locked.payment_environment == "simulated" &&
+                  attempt && facts[:environment] == "simulated" && amount_cents == facts[:captured_cents] && used.zero?
+                raise UnsupportedCapability, "Only full, unrefunded simulated captures support simulated voids"
+              end
+              Simulation::Guard.validate!(attempt.payment_identity)
+            end
             raise Conflict, "Refund exceeds captured amount less succeeded and reserved refunds" if amount_cents > facts[:captured_cents] - used
             operation = RefundOperation.create!(**facts, order: locked, amount_cents: amount_cents,
               caller_idempotency_key: request_key, payload_digest: digest, kind: kind, reason: reason,
@@ -126,8 +133,8 @@ module Payments
           result[:currency] == identity.currency && result[:amount_cents].is_a?(Integer) && result[:amount_cents] == order.total_cents
         raise BindingError, "Original charge query did not verify order capture; reconciliation required"
       end
-      if result[:order_id].present? && result[:order_id].to_s != '0' && result[:order_id].to_s != order.id.to_s
-        raise BindingError, 'Original capture belongs to another order'
+      if result[:order_id].present? && result[:order_id].to_s != "0" && result[:order_id].to_s != order.id.to_s
+        raise BindingError, "Original capture belongs to another order"
       end
       { payment_identity_id: identity.id, original_reference: reference, consumption_reference: result[:consumption_reference].presence || reference, captured_cents: result[:amount_cents],
         provider: identity.provider, environment: identity.environment, currency: identity.currency }
@@ -169,7 +176,7 @@ module Payments
         reference = legacy.fetch(:consumption_reference)
         account = { provider: identity.provider, environment: identity.environment, external_account_id: identity.external_account_id }
         known = PaymentTransaction.joins(:payment_identity).where(payment_identities: account).where(raw_provider_id: reference).where.not(order_id: nil)
-        raise BindingError, 'Original capture already funds another order' if known.where.not(order_id: order.id).exists?
+        raise BindingError, "Original capture already funds another order" if known.where.not(order_id: order.id).exists?
         binding = LegacyCaptureBinding.create_or_find_by!(**account, consumption_reference: reference) do |row|
           row.order = order
           row.payment_identity = identity
@@ -179,7 +186,7 @@ module Payments
           row.verified_at = Time.current
         end
         unless binding.order_id == order.id && binding.payment_identity_id == identity.id && binding.amount_cents == legacy[:captured_cents] && binding.currency == legacy[:currency]
-          raise BindingError, 'Original legacy capture is bound to another order or identity'
+          raise BindingError, "Original legacy capture is bound to another order or identity"
         end
         legacy.except(:consumption_reference)
       end

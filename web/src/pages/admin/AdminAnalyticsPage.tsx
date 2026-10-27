@@ -17,6 +17,7 @@ interface ChartPoint {
 }
 
 interface ChartData {
+  excluded_simulated_order_count?: number;
   series: ChartPoint[];
   comparison: {
     this_week: { orders: number; revenue_cents: number };
@@ -103,6 +104,10 @@ export default function AdminAnalyticsPage() {
       </div>
 
       <AdminRequestState resource={`Analytics for the last ${days} days`} loading={loading} error={loadError} hasData={chartData !== null} onRetry={refreshChartData} />
+      {(chartData?.excluded_simulated_order_count ?? 0) > 0 && <aside role="note" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+        <p className="font-semibold">Simulated orders aren&apos;t counted in revenue</p>
+        <p className="mt-1 text-sm">{chartData?.excluded_simulated_order_count} simulated {chartData?.excluded_simulated_order_count === 1 ? 'order' : 'orders'} in your location scope (all time). The cards and chart remain production-only; no simulated money is included.</p>
+      </aside>}
       {loading && !chartData && <div className="space-y-4" aria-hidden="true">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard /><SkeletonStatCard />
@@ -112,7 +117,7 @@ export default function AdminAnalyticsPage() {
 
       <section aria-labelledby="weekly-summary-title" className="space-y-3">
         <h2 id="weekly-summary-title" className="text-lg font-bold text-gray-900">This week so far vs last week</h2>
-        <p className="text-sm text-gray-700">Calendar weeks: this week so far compared with all of last week. Revenue includes paid orders only. The daily chart range does not change these cards.</p>
+        <p className="text-sm text-gray-700">Calendar weeks: this week so far compared with all of last week. Revenue is captured sales minus succeeded refunds. The daily chart range does not change these cards.</p>
         {/* Week-over-Week Summary Cards */}
         {comp && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -168,7 +173,7 @@ export default function AdminAnalyticsPage() {
         {chartData && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-              <h3 className="text-lg font-bold text-gray-900">{chartMode === 'revenue' ? 'Paid revenue per day' : 'Orders per day'}</h3>
+              <h3 className="text-lg font-bold text-gray-900">{chartMode === 'revenue' ? 'Net revenue per day' : 'Orders per day'}</h3>
               <div role="group" aria-label="Daily chart measure" className="flex bg-gray-100 rounded-lg p-1">
                 <button
                   type="button"

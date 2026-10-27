@@ -7,6 +7,7 @@ An owner assigns each account a role in **Users**, chooses its location when req
 | Pickup/shipping queues, order details and status, POS sales | All locations | All locations or one assigned location | Assigned location | Own orders only |
 | Local sold-out/restore | Any location | Authorized locations | Assigned location | — |
 | Refunds, revenue reports and CSV exports | All locations | Authorized locations | — | — |
+| Account-wide settlement/funding reconciliation | Yes | All-locations managers only | — | — |
 | Catalog, collections, menu CSV and seasonal menus | Yes | Yes | — | — |
 | Shared stock history | Yes | Read; order-linked entries respect location scope | — | — |
 | Change shared stock | Yes | All-locations managers only | — | — |
@@ -27,6 +28,8 @@ Staff can change an order's status. Managers can also edit internal notes/tracki
 Only the device currently owned by the signed-in account can use the current-device registration and push controls. Managers and owners use the device management list for other devices. Changing a device's user/location disables its old push subscriptions. Alerts require an active device and subscription at the exact order location; unassigned devices and locationless orders receive no global fan-out.
 
 Reader collection/status retains checkout-user and terminal-lease checks. Reader provisioning/pairing belongs to owners and all-locations managers. Stripe reader discovery remains owner-only until it can enforce reader location. Administrative simulator commands are owner-only and unavailable in production. The customer's local fake checkout form retains its separate session capability and opaque handle checks; it grants no staff access.
+
+**Payment Reconciliation** shows Guam business dates, provider batch dates and actual deposit dates separately. A deposit retains its full account amount when batches are filtered by location. The CSV interface is labeled **Format to be confirmed with the bank**. Manual allocations and exception reviews require a reason and retain an audit trail. Reviewing an exception acknowledges it; it does not repair a mismatch or change an order/refund/stock result. Simulated batches, funding and accounting-time controls are owner-only, move no money and do not advance payment recovery clocks.
 
 Menu CSV import is available to managers. The legacy Shopify importer also writes shared inventory and requires an owner or all-locations manager. Raw upload-blob purging remains owner-only; managers use the product's image controls. The fast local86 interface and consolidated CSV workflow are delivered in their subsequent Phase 3 slices; the narrow local availability API already enforces this matrix.
 
