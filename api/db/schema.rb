@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_070100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_080000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -688,6 +688,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_070100) do
     t.string "credential_reference", null: false
     t.string "currency", default: "USD", null: false
     t.string "environment", null: false
+    t.string "external_acceptor_id"
     t.string "external_account_id", null: false
     t.string "profile_key", null: false
     t.string "provider", null: false

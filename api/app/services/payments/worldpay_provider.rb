@@ -39,10 +39,19 @@ module Payments
         { complete: false, rows: [], metadata: { reason: "setup_response_lost_manual_reconciliation_required" } }
       end
       result = Worldpay::QueryResult.call(attempt: attempt, report: report, configuration: current.configuration, profile: current.profile)
-      if result.status == "unknown"
-        attempt.with_lock do
-          attempt.update!(provider_metadata: attempt.provider_metadata.merge("worldpay_collection_blocked" => !result.metadata[:collection_available]))
+      AttemptLock.call(attempt) do |session, stored, _, order|
+        AttemptLock.validate!(session, stored, order)
+        metadata = stored.provider_metadata.deep_dup
+        if result.metadata[:financial_ambiguity] && !metadata["worldpay_financial_quarantine"]
+          metadata["worldpay_financial_quarantine"] = { "observed_at" => Time.current.iso8601(6),
+            "reason" => result.metadata[:reason], "report_digest" => Snapshot.digest(report.fetch(:rows)),
+            "raw_ids" => report.fetch(:rows).filter_map { |row| row[:raw_id] }.take(20) }
         end
+        quarantined = metadata["worldpay_financial_quarantine"].present?
+        metadata["worldpay_collection_blocked"] = quarantined || (result.status == "unknown" && !result.metadata[:collection_available])
+        stored.update!(provider_metadata: metadata)
+        result = Result.new(status: "unknown", identity_id: identity.id, raw_id: nil, requested_cents: stored.requested_cents,
+          approved_cents: 0, captured_cents: 0, currency: stored.currency, metadata: { reason: "financial_quarantine_requires_explicit_resolution" }) if quarantined
       end
       result
     end

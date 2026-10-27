@@ -14,7 +14,7 @@ and operation-specific refund recovery still need assigned contracts.
 ## Configuration
 
 Use `api/.env.example`. Express credentials map to AccountID, AccountToken and
-AcceptorID; application fields are separate. Do not migrate old secret values by
+AcceptorID; application fields are separate. Real Worldpay identities also require immutable `external_acceptor_id`; credentials must match both original AccountID and AcceptorID. A changed acceptor requires a new identity, not credential-slot rotation. Legacy unassigned identities are not backfilled by guessing and fail dispatch configuration. Do not migrate old secret values by
 name guessing. Never put credentials in PaymentProfile capabilities, frontend
 configuration or logs. Only the fixed `worldpay_default` credential slot is
 currently supported. Additional accounts require explicit secret-slot resolution.
@@ -80,7 +80,7 @@ cannot release an unknown financial claim.
 Empty, capped, malformed or ambiguous queries remain unknown. An authenticated empty waiting-card query or definitive decline preserves the same hosted page until its ten-minute expiry; partial or ambiguous financial evidence blocks collection. Full paid proof
 requires the original setup query plus exactly one eligible captured sale and matching reference, account, acceptor,
 terminal, sale type, exact amount, approval and eligible transaction status.
-Other rows must be definitively non-financial declines; partial/duplicate/communications outcomes remain quarantined. No-PAN reversal,
+Other rows must be definitively non-financial declines. Observed financial ambiguity is recorded durably and cannot be cleared by later empty, declined or single-approval queries; the finalizer rechecks that quarantine under its consumption lock. Explicit investigated resolution is required. Communications failures without financial evidence still permit query recovery; they never prove cancellation. No-PAN reversal,
 refund/void sequencing, token usage, reporting lag and funding import formats
 need assigned-contract fixtures before enabling their real financial operations.
 Generic XML ports are not authority to send those operations.

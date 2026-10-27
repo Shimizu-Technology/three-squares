@@ -5,7 +5,7 @@ RSpec.describe 'Worldpay hosted checkout contracts', type: :request do
   let(:capability) { SecureRandom.hex(32) }
   let(:key) { SecureRandom.uuid }
   let(:cart_id) { SecureRandom.uuid }
-  let(:identity) { PaymentIdentity.create!(provider: 'worldpay', environment: 'sandbox', external_account_id: 'fixture-account', profile_key: SecureRandom.uuid, credential_reference: 'worldpay_default') }
+  let(:identity) { PaymentIdentity.create!(provider: 'worldpay', environment: 'sandbox', external_account_id: 'fixture-account', external_acceptor_id: 'fixture-acceptor', profile_key: SecureRandom.uuid, credential_reference: 'worldpay_default') }
   let(:location) { create(:location, active: true, hours_json: { 'Daily' => '00:00-23:59' }) }
   let(:product) { create(:product, published: true, inventory_level: 'variant', allow_pickup: true) }
   let(:variant) { create(:product_variant, product: product, stock_quantity: 10, price_cents: 1250, available: true) }
@@ -167,6 +167,85 @@ RSpec.describe 'Worldpay hosted checkout contracts', type: :request do
     expect(Order.count).to eq(0)
     expect(CheckoutSession.count).to eq(0)
     expect(calls).to be_empty
+  end
+
+  it 'keeps financial ambiguity quarantined across empty, declined and single-approval queries' do
+    state = start_checkout
+    attempt = PaymentAttempt.last
+    extra_rows << { 'TransactionID' => '000124' }
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    original = attempt.reload.provider_metadata.fetch('worldpay_financial_quarantine')
+    extra_rows.clear
+    allow(self).to receive(:query_empty).and_return(true)
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    allow(self).to receive(:query_empty).and_return(false)
+    query_changes.merge!('ExpressResponseCode' => '20', 'TransactionStatusCode' => '2', 'ApprovalNumber' => '')
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    query_changes.clear
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    expect(attempt.reload.provider_metadata['worldpay_financial_quarantine']).to eq(original)
+    expect(attempt.state).to eq('reconciliation_required')
+    get "/api/v1/checkout_sessions/#{state['id']}", headers: headers
+    expect(response.parsed_body['collection_config']).to eq({})
+    expect(Order.last.payment_status).to eq('pending')
+    expect(variant.reload.stock_quantity).to eq(10)
+    expect(PaymentTransaction.count).to eq(0)
+  end
+
+  it 'does not let an overlapping earlier empty query relax a later partial quarantine' do
+    start_checkout
+    allow(self).to receive(:query_empty).and_return(true)
+    first = true
+    allow(transport).to receive(:call).and_wrap_original do |original, **request|
+      if request[:interface] == :reporting && first
+        first = false
+        earlier_empty = query_response
+        allow(self).to receive(:query_empty).and_return(false)
+        query_changes['ExpressResponseCode'] = '5'
+        Payments::ReconcileAttempt.call(attempt: PaymentAttempt.last, force: true)
+        earlier_empty
+      else
+        original.call(**request)
+      end
+    end
+    Payments::ReconcileAttempt.call(attempt: PaymentAttempt.last, force: true)
+    expect(PaymentAttempt.last.provider_metadata['worldpay_collection_blocked']).to be(true)
+    expect(PaymentAttempt.last.provider_metadata['worldpay_financial_quarantine']).to be_present
+    expect(Order.last.payment_status).to eq('pending')
+    expect(variant.reload.stock_quantity).to eq(10)
+  end
+
+  it 'rechecks durable quarantine at finalization after an earlier capture query already returned' do
+    start_checkout
+    attempt = PaymentAttempt.last
+    earlier_capture = Payments::ProviderResolver.for_identity(identity).query(attempt: attempt)
+    expect(earlier_capture.status).to eq('captured')
+    query_changes['ExpressResponseCode'] = '5'
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    Payments::FinalizeOrder.call(attempt: attempt, result: earlier_capture)
+    expect(Order.last.payment_status).to eq('pending')
+    expect(PaymentTransaction.count).to eq(0)
+    expect(variant.reload.stock_quantity).to eq(10)
+  end
+
+  it 'preserves an already consumed paid order when ambiguity arrives later' do
+    start_checkout
+    attempt = PaymentAttempt.last
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    query_changes['ExpressResponseCode'] = '5'
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    expect(Order.last.payment_status).to eq('paid')
+    expect(variant.reload.stock_quantity).to eq(8)
+    expect(PaymentOutbox.where(kind: 'compensate')).to be_empty
+  end
+
+  it 'binds setup and query credentials to the original immutable acceptor' do
+    start_checkout
+    expect { identity.update!(external_acceptor_id: 'replacement') }.to raise_error(ActiveRecord::ReadonlyAttributeError)
+    env['WORLDPAY_EXPRESS_ACCEPTOR_ID'] = 'replacement'
+    expect { Payments::ReconcileAttempt.call(attempt: PaymentAttempt.last, force: true) }.to raise_error(Payments::Configuration::UnsafeConfiguration)
+    expect(calls.size).to eq(1)
+    expect(Order.last.payment_status).to eq('pending')
   end
 
   it 'marks only an authoritative pre-intent validation failure as safe to edit' do

@@ -36,7 +36,8 @@ RSpec.describe Payments::Worldpay::Configuration do
   end
 
   [ { provider: "stripe" }, { environment: "simulated" }, { environment: "production" }, { environment: "invalid" },
-    { currency: "EUR" }, { credential_reference: "WORLDPAY_EXPRESS_ACCOUNT_TOKEN" }, { external_account_id: "foreign-account" } ].each do |changes|
+    { currency: "EUR" }, { credential_reference: "WORLDPAY_EXPRESS_ACCOUNT_TOKEN" }, { external_account_id: "foreign-account" },
+    { external_acceptor_id: 'foreign-acceptor' }, { external_acceptor_id: nil } ].each do |changes|
     it "rejects identity change #{changes.keys.join(',')} before I/O" do
       expect { configuration(identity: identity(**changes)) }.to raise_error(described_class::Invalid)
     end

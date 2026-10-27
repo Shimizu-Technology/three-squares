@@ -6,10 +6,10 @@ module Payments
     # an order. Currency/fraud guarantees come from the frozen assigned profile.
     class QueryResult
       def self.call(attempt:, report:, configuration:, profile:)
-        unknown = lambda do |reason, collection_available: false|
+        unknown = lambda do |reason, collection_available: false, financial_ambiguity: false|
           Result.new(status: "unknown", identity_id: attempt.payment_identity_id, raw_id: nil,
             requested_cents: attempt.requested_cents, approved_cents: 0, captured_cents: 0,
-            currency: attempt.currency, metadata: { reason: reason, collection_available: collection_available })
+            currency: attempt.currency, metadata: { reason: reason, collection_available: collection_available, financial_ambiguity: financial_ambiguity })
         end
         caps = profile.fetch("capabilities")
         return unknown.call("original_setup_query_required") unless attempt.setup_id.present? && report.dig(:metadata, :queried_setup_id) == attempt.setup_id
@@ -18,7 +18,7 @@ module Payments
         if rows.empty? && !report.dig(:metadata, :parse_error) && /\A0+\z/.match?(report.dig(:metadata, :express_response_code).to_s)
           return unknown.call("awaiting_card", collection_available: true)
         end
-        return unknown.call("incomplete_query") unless report[:complete] && !report.dig(:metadata, :parse_error)
+        return unknown.call("incomplete_query", financial_ambiguity: rows.any?) unless report[:complete] && !report.dig(:metadata, :parse_error)
         captures = []
         rows.each do |row|
           facts = row.fetch(:metadata, {})
@@ -35,12 +35,12 @@ module Payments
           amount = Money.parse(facts[:reported_amount], currency: "USD", allow_zero: true)
           unless /\A0+\z/.match?(facts[:express_response_code].to_s) && %w[1 15].include?(facts[:status_code]) &&
               amount == attempt.requested_cents && facts[:approval_number].present?
-            return unknown.call("query_financial_proof_incomplete")
+            return unknown.call("query_financial_proof_incomplete", financial_ambiguity: true)
           end
           captures << row
         end
         return unknown.call("declined_card_retry_available", collection_available: true) if captures.empty?
-        return unknown.call("multiple_financial_transactions") unless captures.one?
+        return unknown.call("multiple_financial_transactions", financial_ambiguity: true) unless captures.one?
         row = captures.first
         if attempt.raw_provider_id.present? && attempt.raw_provider_id != row[:raw_id]
           raise Payments::BindingError, "Worldpay original charge changed"
@@ -49,7 +49,7 @@ module Payments
           requested_cents: attempt.requested_cents, approved_cents: attempt.requested_cents, captured_cents: attempt.requested_cents,
           currency: attempt.currency, metadata: { currency_source: "assigned_usd_merchant_contract", query_authenticated: true })
       rescue Money::Invalid
-        unknown.call("query_amount_invalid")
+        unknown.call("query_amount_invalid", financial_ambiguity: true)
       end
     end
   end

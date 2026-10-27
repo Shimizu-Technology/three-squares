@@ -6,10 +6,10 @@ require_relative "../../../../app/services/payments/worldpay/published_contract"
 # Entirely synthetic wire layouts. These are not Worldpay XSD fixtures.
 module WorldpayClientContractSupport
   ID = "12345678-1234-1234-1234-123456789abc"
-  Identity = Struct.new(:provider, :environment, :currency, :credential_reference, :external_account_id, keyword_init: true)
+  Identity = Struct.new(:provider, :environment, :currency, :credential_reference, :external_account_id, :external_acceptor_id, keyword_init: true)
 
   def identity(**overrides)
-    Identity.new(**{ provider: "worldpay", environment: "sandbox", currency: "USD", credential_reference: "worldpay_default", external_account_id: "fixture-account-id" }.merge(overrides))
+    Identity.new(**{ provider: "worldpay", environment: "sandbox", currency: "USD", credential_reference: "worldpay_default", external_account_id: "fixture-account-id", external_acceptor_id: 'fixture-acceptor-id' }.merge(overrides))
   end
 
   def credentials

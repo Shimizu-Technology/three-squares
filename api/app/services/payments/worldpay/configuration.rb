@@ -40,7 +40,8 @@ module Payments
           raise Invalid, "invalid_credentials"
         end
         raise Invalid, "account_identity_mismatch" unless @credentials.fetch("AccountID") == identity.external_account_id
-        @identity_key = [ "worldpay", environment, scalar!(identity.external_account_id) ].freeze
+        raise Invalid, "acceptor_identity_mismatch" unless @credentials.fetch("AcceptorID") == scalar!(identity.external_acceptor_id)
+        @identity_key = [ "worldpay", environment, scalar!(identity.external_account_id), scalar!(identity.external_acceptor_id) ].freeze
         @endpoints = HOSTS.fetch(environment).to_h do |interface, _|
           [ interface, validate_endpoint!(interface, env["WORLDPAY_EXPRESS_#{interface.to_s.upcase}_URL"]).to_s.freeze ]
         end.freeze
