@@ -81,6 +81,7 @@ for (const [current, previous, expected] of [[0, 0, 'No activity in either week'
     for (const comparison of nodes(week).filter(node => node.type?.name === 'WeekComparison')) assert.equal(text(comparison.type(comparison.props)), expected);
     assert.equal(nodes(week).some(node => node.type === 'button'), false);
     assert.match(text(h.tree), /Assigned location · All business lines · Production, non-simulated orders/);
+    assert.match(text(h.tree), /Revenue is captured sales minus succeeded refunds/);
     const daily = h.find(node => node.props?.['aria-labelledby'] === 'daily-chart-title');
     for (const label of ['Last 7 days', 'Last 14 days', 'Last 30 days', 'Revenue', 'Orders']) assert.match(h.button(label, daily).props.className, /min-h-\[44px\]/);
     assert.equal(h.button('Revenue').props['aria-pressed'], true); h.click('Orders'); await h.flush(); assert.equal(h.button('Orders').props['aria-pressed'], true);
@@ -108,6 +109,8 @@ test('dashboard describes scoped all-time production orders and global published
   h.get = async path => ({ data: path.endsWith('/stats') ? { total_orders: 5, total_revenue_cents: 1000, pending_orders: 1, total_products: 12 } : { orders: [] } });
   await h.flush(); assert.match(text(h.tree), /All-time order totals · All locations · All business lines/);
   assert.match(text(h.tree), /Production, non-simulated orders only/);
+  assert.match(text(h.tree), /Revenue is captured sales minus succeeded refunds/);
+  assert.ok(nodes(h.tree).some(node => node.props?.label === 'All-time net revenue'));
   assert.ok(nodes(h.tree).some(node => node.props?.label === 'Published products (global)' && node.props.value === 12));
   assert.match(text(h.tree), /Includes test and simulated orders/);
 });

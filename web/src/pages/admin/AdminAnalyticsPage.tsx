@@ -112,7 +112,7 @@ export default function AdminAnalyticsPage() {
 
       <section aria-labelledby="weekly-summary-title" className="space-y-3">
         <h2 id="weekly-summary-title" className="text-lg font-bold text-gray-900">This week so far vs last week</h2>
-        <p className="text-sm text-gray-700">Calendar weeks: this week so far compared with all of last week. Revenue includes paid orders only. The daily chart range does not change these cards.</p>
+        <p className="text-sm text-gray-700">Calendar weeks: this week so far compared with all of last week. Revenue is captured sales minus succeeded refunds. The daily chart range does not change these cards.</p>
         {/* Week-over-Week Summary Cards */}
         {comp && (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -168,7 +168,7 @@ export default function AdminAnalyticsPage() {
         {chartData && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-              <h3 className="text-lg font-bold text-gray-900">{chartMode === 'revenue' ? 'Paid revenue per day' : 'Orders per day'}</h3>
+              <h3 className="text-lg font-bold text-gray-900">{chartMode === 'revenue' ? 'Net revenue per day' : 'Orders per day'}</h3>
               <div role="group" aria-label="Daily chart measure" className="flex bg-gray-100 rounded-lg p-1">
                 <button
                   type="button"

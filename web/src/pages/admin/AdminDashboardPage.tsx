@@ -108,7 +108,7 @@ export default function AdminDashboardPage() {
       <div className="rounded-2xl p-6 sm:p-8 shadow-lg bg-tsPrimary">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#ffffff' }}>Welcome back!</h1>
         <p style={{ color: '#ffffff', opacity: 0.9 }}>All-time order totals · {scopeLabel} · All business lines</p>
-        <p className="mt-2 text-sm text-white">Production, non-simulated orders only. Revenue includes paid orders only. Published products are counted across all locations.</p>
+        <p className="mt-2 text-sm text-white">Production, non-simulated orders only. Revenue is captured sales minus succeeded refunds. Published products are counted across all locations.</p>
         <button type="button" onClick={fetchDashboardData} disabled={loading} className="mt-4 min-h-[44px] rounded-lg border border-white px-4 text-white focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60">Refresh dashboard</button>
       </div>
 
@@ -123,7 +123,7 @@ export default function AdminDashboardPage() {
           iconColor="bg-blue-50 text-blue-600"
         />
         <StatCard
-          label="All-time paid revenue"
+          label="All-time net revenue"
           value={formatCurrency(stats.total_revenue_cents)}
           icon={DollarSign}
           iconColor="bg-green-50 text-green-600"
@@ -230,7 +230,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      <p className="text-sm text-gray-700">Breakdowns: all time · {scopeLabel} · All business lines · Production, non-simulated orders. Revenue includes paid orders only.</p>
+      <p className="text-sm text-gray-700">Breakdowns: all time · {scopeLabel} · All business lines · Production, non-simulated orders. Revenue is captured sales minus succeeded refunds.</p>
       {/* Phase 2 Segmentation Snapshot */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
