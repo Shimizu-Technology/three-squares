@@ -240,7 +240,7 @@ module Api
           product = variant.product
 
           unless cart_price(item).purchasable
-            issues << { cart_item_id: item.id, type: "quote_required", message: "#{product.name}: contact us for a price before ordering", item_name: product.name, action: "remove" }
+            issues << { cart_item_id: item.id, type: "quote_required", message: "#{product.name}: #{cart_price(item).reason}", item_name: product.name, action: "remove" }
             next
           end
 
@@ -405,7 +405,7 @@ module Api
 
       def cart_price(item)
         CatalogPrice.resolve(product: item.product_variant.product, variant: item.product_variant,
-          location_id: cart_pickup_location(item.product_variant))
+          location_id: cart_pickup_location(item.product_variant), online: true, settings: (@storefront_settings ||= SiteSetting.instance))
       end
 
       def cart_item_json(item)

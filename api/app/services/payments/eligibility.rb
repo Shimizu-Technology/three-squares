@@ -4,6 +4,9 @@ module Payments
   class Eligibility
     def self.validate_product!(variant:, location_id: nil, online: true, at: Time.current)
       product = variant.product
+      if online && !StorefrontEligibility.online_ordering_enabled?(product)
+        raise FulfillmentError, "#{product.name}: #{StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE}"
+      end
       price = CatalogPrice.resolve(product: product, variant: variant, location_id: location_id)
       raise FulfillmentError, "#{product.name}: #{price.reason}" unless price.purchasable
       raise FulfillmentError, "#{product.name} is not available" unless product.published? && !product.archived? && variant.available?

@@ -182,7 +182,7 @@ export default function CartDrawer() {
                     {/* Price */}
                     <div className="text-right">
                       <p className="text-base font-bold text-warm-900">
-                        {item.pricing?.purchasable === false ? 'Price by request' : `$${(item.subtotal_cents / 100).toFixed(2)}`}
+                        {item.pricing?.purchasable === false ? item.pricing.reason || 'Price by request' : `$${(item.subtotal_cents / 100).toFixed(2)}`}
                       </p>
                       {item.quantity > 1 && item.pricing?.purchasable !== false && (
                         <p className="text-xs text-warm-400">
@@ -274,7 +274,7 @@ export default function CartDrawer() {
               {config?.enable_storefront_latte_stone === true && cart.items.every((item) => item.product.allow_shipping) ? 'Choose pickup or shipping at checkout' : `Pickup at ${location?.name || 'your selected location'}`}
             </p>
 
-            {cart.items.some((item) => item.pricing?.purchasable === false) && <p role="alert" className="text-sm text-warm-700">Remove items priced by request before checking out. Contact us to confirm their price.</p>}
+            {cart.items.some((item) => item.pricing?.purchasable === false) && <p role="alert" className="text-sm text-warm-700">Remove inquiry-only items before checking out. <a href="/catering" className="underline">Start a catering inquiry</a>.</p>}
             {/* Checkout Button */}
             <button
               onClick={() => {

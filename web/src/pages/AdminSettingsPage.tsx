@@ -43,6 +43,7 @@ interface SiteSettings {
   enable_storefront_three_squares: boolean;
   enable_storefront_latte_stone: boolean;
   enable_storefront_catering: boolean;
+  enable_catering_online_ordering: boolean;
 }
 
 const REQUIRED_ORIGIN_FIELDS: Array<keyof SiteSettings['shipping_origin_address']> = [
@@ -291,7 +292,7 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
     }
   };
 
-  const handleToggleStorefront = async (field: 'enable_storefront_three_squares' | 'enable_storefront_latte_stone' | 'enable_storefront_catering') => {
+  const handleToggleStorefront = async (field: 'enable_storefront_three_squares' | 'enable_storefront_latte_stone' | 'enable_storefront_catering' | 'enable_catering_online_ordering') => {
     if (!settings) return;
 
     try {
@@ -301,7 +302,7 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
       await axios.put(
         `${API_BASE_URL}/api/v1/admin/site_settings`,
         { site_setting: { [field]: newValue } },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 20000 }
       );
 
       // Saving one toggle must not replace unrelated unsaved form fields.
@@ -312,9 +313,10 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
         enable_storefront_three_squares: 'Three Squares',
         enable_storefront_latte_stone: 'Latte Stone Cookies',
         enable_storefront_catering: 'Catering',
+        enable_catering_online_ordering: 'Catering online ordering',
       };
       invalidateAppConfig();
-      toast.success(`${labels[field]} storefront ${newValue ? 'enabled' : 'disabled'}`, { duration: 3000 });
+      toast.success(`${labels[field]} ${newValue ? 'enabled' : 'disabled'}`, { duration: 3000 });
     } catch (err: unknown) {
       console.error('Failed to toggle storefront:', err);
       toast.error('Failed to update storefront setting');
@@ -628,7 +630,7 @@ interface GeneralSettingsTabProps {
   onTogglePlaceholderUrlInput: () => void;
   onSaveSiteSettings: () => void;
   onDiscardSiteSettings: () => void;
-  onToggleStorefront: (field: 'enable_storefront_three_squares' | 'enable_storefront_latte_stone' | 'enable_storefront_catering') => void;
+  onToggleStorefront: (field: 'enable_storefront_three_squares' | 'enable_storefront_latte_stone' | 'enable_storefront_catering' | 'enable_catering_online_ordering') => void;
 }
 
 function GeneralSettingsTab({
@@ -914,6 +916,16 @@ function GeneralSettingsTab({
           ))}
         </div>
       </div>
+
+      <section aria-labelledby="catering-ordering-title" className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+        <h2 id="catering-ordering-title" className="text-lg font-semibold text-gray-900">Catering online ordering</h2>
+        <p className="mt-2 text-sm text-gray-700">Off by default. Customers can browse catering items and submit an inquiry. Enable only when the menu is ready for direct online orders. This does not add minimum quantities, lead times or capacity rules.</p>
+        <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 text-gray-900">
+          <input type="checkbox" role="switch" checked={settings.enable_catering_online_ordering === true} disabled={saving} onChange={() => onToggleStorefront('enable_catering_online_ordering')} className="h-6 w-6" />
+          <span>Allow catering online orders</span>
+        </label>
+        <p role="status" className="mt-2 text-sm text-gray-700">{saving ? 'Saving…' : settings.enable_catering_online_ordering ? 'Online orders enabled. Saves immediately.' : 'Inquiry only. Saves immediately.'}</p>
+      </section>
 
       {/* Store Info Card */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">

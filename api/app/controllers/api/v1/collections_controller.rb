@@ -88,6 +88,7 @@ module Api
       private
 
       def set_menu_time
+        @storefront_settings = SiteSetting.instance
         @menu_time = Time.current
       end
 
@@ -148,7 +149,7 @@ module Api
           name: product.name,
           slug: product.slug,
           description: product.description&.truncate(200),
-          pricing: CatalogPrice.resolve(product: product, location_id: params[:location_id]).as_json,
+          pricing: CatalogPrice.resolve(product: product, location_id: params[:location_id], online: true, settings: @storefront_settings).as_json,
           base_price_cents: product.base_price_cents,
           sale_price_cents: product.sale_price_cents,
           new_product: product.new_product,

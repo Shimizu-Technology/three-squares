@@ -373,7 +373,7 @@ function CheckoutForm() {
 
   // Check if all required fields are filled
   const isFormValid = () => {
-    if (pricePending || pricingError) return false;
+    if (pricePending || pricingError || cart?.items.some(item => item.pricing?.purchasable === false)) return false;
     const hasContactInfo = name.trim() !== '' && email.trim() !== '' && phone.trim() !== '';
 
     if (deliveryMethod === 'pickup') {
@@ -1055,6 +1055,7 @@ function CheckoutForm() {
                 </div>
               )}
 
+              {cart?.items.filter(item => item.pricing?.purchasable === false).map(item => <p key={item.id} role="alert" className="mb-3 text-sm text-red-700">{item.product.name}: {item.pricing?.reason || 'Contact us for a price before ordering'}. Remove this item to continue. <a href="/catering" className="underline">Start a catering inquiry</a>.</p>)}
               {pricePending && !pricingError && <p role="status" className="mb-3 text-sm text-warm-700">Updating your total for {deliveryMethod === 'pickup' ? storedLocation?.name || 'pickup' : 'shipping'}…</p>}
               {pricingError && <div role="alert" className="mb-3 text-sm text-red-700">{pricingError} <button type="button" className="underline min-h-11" onClick={() => void fetchCart({ fulfillment_type: deliveryMethod, location_id: deliveryMethod === 'pickup' ? pickupLocationId : null })}>Refresh price</button></div>}
               <label className="mb-4 flex items-start gap-3 text-sm text-warm-900"><input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={reviewed} onChange={event => setReviewed(event.target.checked)} /><span>I have reviewed my items, {deliveryMethod === 'pickup' ? `pickup at ${storedLocation?.name || 'the selected location'}` : 'shipping address'}, and total of {formatPrice(totalCents)}.</span></label>

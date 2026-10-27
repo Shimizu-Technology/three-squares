@@ -13,6 +13,13 @@ class StorefrontEligibility
     "three_squares"
   end
 
+  INQUIRY_REQUIRED_MESSAGE = "This item now requires a catering inquiry".freeze
+
+  # Browsing and manual inquiries remain available independently of online sales.
+  def self.online_ordering_enabled?(product, settings: nil)
+    key_for(product) != "catering" || (settings || SiteSetting.instance).enable_catering_online_ordering == true
+  end
+
   def self.enabled?(product, settings: SiteSetting.instance)
     settings.public_send(SETTINGS.fetch(key_for(product))) == true
   end
