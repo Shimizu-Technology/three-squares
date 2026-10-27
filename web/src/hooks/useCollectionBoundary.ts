@@ -6,11 +6,12 @@ export default function useCollectionBoundary(collections: CollectionSchedule[],
   useEffect(() => {
     const now = Date.now();
     const boundaries = collections.flatMap((collection) => [collection.starts_at, collection.ends_at])
-      .filter((value): value is string => Boolean(value)).map((value) => Date.parse(value))
+      // API timestamps have second precision; wait past the complete represented second.
+      .filter((value): value is string => Boolean(value)).map((value) => Date.parse(value) + 1_100)
       .filter((value) => value > now);
     const next = Math.min(...boundaries);
     const timer = Number.isFinite(next)
-      ? window.setTimeout(refresh, Math.min(next - now + 150, 2_147_483_647)) : undefined;
+      ? window.setTimeout(refresh, Math.min(next - now, 2_147_483_647)) : undefined;
     const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', onVisible);
