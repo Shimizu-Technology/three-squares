@@ -38,6 +38,7 @@ const AdminImportPage = lazy(() => import('./pages/admin/AdminImportPage'));
 const ProductFormPage = lazy(() => import('./pages/admin/ProductFormPage'));
 const AdminInventoryPage = lazy(() => import('./pages/admin/AdminInventoryPage'));
 const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'));
+const AdminDevicesPage = lazy(() => import('./pages/admin/AdminDevicesPage'));
 const AdminVariantPresetsPage = lazy(() => import('./pages/admin/AdminVariantPresetsPage'));
 const AdminCateringPage = lazy(() => import('./pages/admin/AdminCateringPage'));
 const AdminLocationsPage = lazy(() => import('./pages/admin/AdminLocationsPage'));
@@ -530,6 +531,7 @@ function AppContent() {
             <Route path="import" element={<AdminImportPage />} />
             <Route path="inventory" element={<AdminInventoryPage />} />
             <Route path="users" element={<AdminUsersPage />} />
+            <Route path="devices" element={<AdminDevicesPage />} />
             <Route path="catering" element={<AdminCateringPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
             <Route path="settings/variant-presets" element={<AdminVariantPresetsPage />} />
