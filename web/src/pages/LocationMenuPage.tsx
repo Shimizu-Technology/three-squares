@@ -28,7 +28,7 @@ export default function LocationMenuPage() {
     setNotFound(false);
     void Promise.all([
       locationsApi.getLocation(locationSlug),
-      api.get<Cart>('/cart', { headers: { 'X-Session-ID': useCartStore.getState().sessionId } }),
+      api.get<Cart>('/cart', { headers: { 'X-Session-ID': useCartStore.getState().sessionId, 'X-Location-ID': useLocationStore.getState().selectedLocation?.id?.toString() || '' } }),
     ]).then(([nextLocation, response]) => {
       if (cancelled) return;
       // Use a server snapshot before switching: carts are not persisted locally.
