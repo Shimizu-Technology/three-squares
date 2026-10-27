@@ -785,12 +785,12 @@ function AdminPOSWorkspace() {
   const submitOrder = useCallback(
     async (paymentMethod: 'cash' | 'stripe', cashReceivedCents?: number) => {
       if (cart.length === 0 || hasPendingTerminalSession || localStorage.getItem(POS_PENDING_TERMINAL_KEY)) return;
-      setSubmitting(true);
       if (!canSelectMenu || cartState.issues.length) {
         alert('Review the current location menu and resolve unavailable items before taking cash.');
         setShowCashModal(false);
         return;
       }
+      setSubmitting(true);
       try {
         const token = await getToken();
         if (!token) return;

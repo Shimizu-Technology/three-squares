@@ -57,14 +57,32 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await page.getByRole('button', { name: 'Refresh menu', exact: true }).click();
     await expect(cash).toBeEnabled();
     await expect(page.getByText('$30.00', { exact: true }).first()).toBeVisible();
+    // Existing cash overlay has no background focus containment until A-11.
+    // Reproduce a menu refresh after tender opened, then complete against stale data.
+    await cash.click();
+    await expect(page.getByRole('heading', { name: 'Cash Payment', exact: true })).toBeVisible();
+    failure = true;
+    await page.getByRole('button', { name: 'Refresh menu', exact: true }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByText('POS menu and locations unavailable', { exact: true })).toBeVisible();
+    await expect(cash).toBeDisabled();
+    let submitted = false;
+    page.on('request', request => { if (request.method() === 'POST' && request.url().endsWith('/admin/pos/orders')) submitted = true; });
+    page.once('dialog', dialog => dialog.accept());
+    await page.getByRole('button', { name: 'Complete Cash Payment', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Cash Payment', exact: true })).toHaveCount(0);
+    expect(submitted).toBe(false);
+    failure = false;
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await expect(cash).toBeEnabled();
+    await expect(page.getByRole('combobox', { name: 'Sale location', exact: true })).toBeEnabled();
     failure = true;
     await page.getByRole('button', { name: 'Refresh menu', exact: true }).click();
-    await expect(page.getByText(/Couldn.t refresh POS menu and locations/)).toBeVisible();
     await expect(cash).toBeDisabled();
     await page.getByRole('heading', { name: 'POS', exact: true }).click(); await page.keyboard.press('F8');
     await expect(page.getByRole('heading', { name: 'Cash Payment', exact: true })).toHaveCount(0);
     failure = false; available = false;
-    await page.getByRole('button', { name: 'Try again', exact: true }).click();
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
     await expect(page.getByText(`${sharedName} is unavailable at this location. Remove it or choose another location.`, { exact: true })).toBeVisible();
     await expect(cash).toBeDisabled();
     if (width === 390) {
