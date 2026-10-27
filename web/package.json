@@ -4,26 +4,26 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "lint:ci": "node scripts/lint-ci.mjs",
-    "test:ci-tools": "node --test scripts/lint-ci.test.mjs",
-    "preview": "vite preview",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed",
-    "test:e2e:debug": "playwright test --debug",
-    "test:e2e:public": "playwright test --project=public",
-    "test:e2e:admin": "playwright test --project=admin",
-    "test:e2e:mobile": "playwright test --project=mobile",
-    "test:e2e:visual": "playwright test --project=visual",
-    "test:e2e:report": "playwright show-report",
-    "test:comprehensive": "playwright test --project=comprehensive --project=comprehensive-mobile",
-    "test:comprehensive:desktop": "playwright test --project=comprehensive",
-    "test:comprehensive:mobile": "playwright test --project=comprehensive-mobile",
-    "test:comprehensive:headed": "playwright test --project=comprehensive --headed",
-    "test:unit": "node --experimental-strip-types --test tests/*.test.mjs"
+    "dev": "node ./scripts/run-with-project-node.mjs vite",
+    "build": "node ./scripts/run-with-project-node.mjs tsc -b && node ./scripts/run-with-project-node.mjs vite build",
+    "lint": "node ./scripts/run-with-project-node.mjs eslint .",
+    "lint:ci": "node ./scripts/run-with-project-node.mjs node scripts/lint-ci.mjs",
+    "test:ci-tools": "node ./scripts/run-with-project-node.mjs node --test scripts/lint-ci.test.mjs",
+    "preview": "node ./scripts/run-with-project-node.mjs vite preview",
+    "test:e2e": "node ./scripts/run-with-project-node.mjs playwright test",
+    "test:e2e:ui": "node ./scripts/run-with-project-node.mjs playwright test --ui",
+    "test:e2e:headed": "node ./scripts/run-with-project-node.mjs playwright test --headed",
+    "test:e2e:debug": "node ./scripts/run-with-project-node.mjs playwright test --debug",
+    "test:e2e:public": "node ./scripts/run-with-project-node.mjs playwright test --project=public",
+    "test:e2e:admin": "node ./scripts/run-with-project-node.mjs playwright test --project=admin",
+    "test:e2e:mobile": "node ./scripts/run-with-project-node.mjs playwright test --project=mobile",
+    "test:e2e:visual": "node ./scripts/run-with-project-node.mjs playwright test --project=visual",
+    "test:e2e:report": "node ./scripts/run-with-project-node.mjs playwright show-report",
+    "test:comprehensive": "node ./scripts/run-with-project-node.mjs playwright test --project=comprehensive --project=comprehensive-mobile",
+    "test:comprehensive:desktop": "node ./scripts/run-with-project-node.mjs playwright test --project=comprehensive",
+    "test:comprehensive:mobile": "node ./scripts/run-with-project-node.mjs playwright test --project=comprehensive-mobile",
+    "test:comprehensive:headed": "node ./scripts/run-with-project-node.mjs playwright test --project=comprehensive --headed",
+    "test:unit": "node ./scripts/run-with-project-node.mjs node --experimental-strip-types --test tests/*.test.mjs"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.58.1",
@@ -66,5 +66,8 @@
   },
   "optionalDependencies": {
     "@rollup/rollup-darwin-x64": "^4.57.1"
+  },
+  "engines": {
+    "node": ">=22.12.0"
   }
 }
