@@ -7,11 +7,10 @@ module Api
       skip_before_action :authenticate_request
       before_action :authenticate_optional
       before_action { Payments::Configuration.validate_database! }
-      rescue_from Payments::Conflict, with: :conflict
-      rescue_from Payments::BindingError, with: :not_found
-      rescue_from ActiveRecord::RecordNotFound, with: :not_found
       rescue_from Payments::Error, Payments::FulfillmentError, Payments::ReserveInventory::Unavailable, CheckoutPricingService::PricingError, ActiveRecord::RecordInvalid, with: :invalid
       rescue_from Payments::Configuration::UnsafeConfiguration, Stripe::StripeError, with: :unavailable
+      rescue_from ActiveRecord::RecordNotFound, Payments::BindingError, with: :not_found
+      rescue_from Payments::Conflict, with: :conflict
 
       def create
         session = Payments::CreateCheckout.call(user: current_user, capability: capability, idempotency_key: request.headers["Idempotency-Key"],
@@ -57,11 +56,13 @@ module Api
 
       def cart_items
         session_id = request.headers["X-Session-ID"] || request.cookies["session_id"]
-        scope = if current_user
-          # Account carts are authoritative; session reads must not borrow another account's rows.
+        scope = if session_id.present?
+          # The browser's anonymous cart can become an authenticated order, but
+          # never borrow rows already owned by a different account.
+          anonymous = CartItem.where(session_id: session_id, user_id: nil)
+          anonymous.exists? || !current_user ? anonymous : current_user.cart_items
+        elsif current_user
           current_user.cart_items
-        elsif session_id.present?
-          CartItem.where(session_id: session_id, user_id: nil)
         else
           CartItem.none
         end

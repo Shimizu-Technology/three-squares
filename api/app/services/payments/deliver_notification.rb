@@ -28,7 +28,11 @@ module Payments
       end
       return unless claimed
       result = yield
-      unless result.is_a?(Hash) && result[:success] && !result[:skipped]
+      if result.is_a?(Hash) && result[:skipped]
+        PaymentOutbox.where(id: row.id, lease_token: token).update_all(state: 'skipped', lease_token: nil, lease_until: nil, last_error: result[:reason])
+        return result
+      end
+      unless result.is_a?(Hash) && result[:success]
         raise Retryable, "Notification not delivered: #{result&.dig(:reason) || result&.dig(:error) || 'unknown'}"
       end
       record.with_lock do

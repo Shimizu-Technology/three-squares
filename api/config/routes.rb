@@ -21,13 +21,7 @@ Rails.application.routes.draw do
         get "dashboard/chart_data", to: "dashboard#chart_data"
 
         # Orders (admin management)
-        resources :checkout_sessions, only: [:create, :show] do
-        member do
-          post :confirm
-          post :cancel
-        end
-      end
-      resources :orders, only: [ :index, :show, :update ] do
+        resources :orders, only: [ :index, :show, :update ] do
           collection do
             get :export
             get :summary
@@ -187,6 +181,13 @@ Rails.application.routes.draw do
 
       # Contact form (public)
       post "contact", to: "contact_submissions#create"
+
+      resources :checkout_sessions, only: [:create, :show] do
+        member do
+          post :confirm
+          post :cancel
+        end
+      end
 
       # Orders
       resources :orders, only: [ :create, :show, :index, :update ] do

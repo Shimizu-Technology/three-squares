@@ -29,7 +29,8 @@ module Webhooks
       handle_event(event)
       receipt.update!(processed_at: Time.current)
       head :ok
-    rescue Payments::BindingError, Payments::Configuration::UnsafeConfiguration
+    rescue Payments::BindingError, Payments::Configuration::UnsafeConfiguration => error
+      Rails.logger.warn("Rejected Stripe event: #{error.class}: #{error.message}")
       head :unprocessable_entity
     end
 

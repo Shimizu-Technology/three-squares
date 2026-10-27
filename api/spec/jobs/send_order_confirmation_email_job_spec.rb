@@ -60,12 +60,14 @@ RSpec.describe 'Notification delivery acknowledgement', type: :job do
     expect(order.reload.confirmation_email_sent).to be true
   end
 
-  it 'keeps a skipped send pending and unsent for durable retries' do
+  it 'keeps disabled sends unsent and out of automatic retries' do
     order = create(:order)
     allow(EmailService).to receive(:send_order_confirmation).and_return(success: false, skipped: true)
-    expect { SendOrderConfirmationEmailJob.new.perform(order.id) }.to raise_error(Payments::DeliverNotification::Retryable)
+    SendOrderConfirmationEmailJob.new.perform(order.id)
     expect(order.reload.confirmation_email_sent).to be false
-    expect(PaymentOutbox.find_by!(effect_key: "notification:Order:#{order.id}:confirmation_email").state).to eq('pending')
+    row = PaymentOutbox.find_by!(effect_key: "notification:Order:#{order.id}:confirmation_email")
+    expect(row.state).to eq('skipped')
+    expect(PaymentOutbox.due).not_to include(row)
   end
 end
 

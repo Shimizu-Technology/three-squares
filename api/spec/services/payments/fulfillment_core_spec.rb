@@ -50,6 +50,7 @@ RSpec.describe 'Durable payment fulfillment core' do
     configured_name = URI.parse(ENV.fetch('DATABASE_URL')).path.delete_prefix('/')
     actual_name = ActiveRecord::Base.connection.select_value('SELECT current_database()')
     abort 'Dedicated test database required' unless Rails.env.test? && actual_name == configured_name && actual_name.end_with?('_test')
+    SiteSetting.instance.update!(enable_order_emails: true, enable_order_sms: true, enable_admin_sms: true)
     stub_const('Payments::Eligibility', Class.new do
       def self.validate_order!(_order); true; end
     end)

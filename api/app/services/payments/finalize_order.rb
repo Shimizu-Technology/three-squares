@@ -64,7 +64,7 @@ module Payments
             Eligibility.validate_order!(order)
             commitment = ReserveInventory.commit!(order: order, snapshot_digest: session.snapshot_digest)
             charge.update!(order_id: order.id, state: 'captured')
-            order.update!(payment_status: 'paid', payment_reference: charge.reference,
+            order.update!(payment_status: 'paid', status: order.source == 'pos' ? 'confirmed' : order.status, payment_reference: charge.reference,
               inventory_committed_at: commitment.created_at, inventory_commitment_id: commitment.id)
             stored.update!(state: 'captured', next_recovery_at: nil, last_error: nil)
             session.update!(state: 'fulfilled', consumed_at: Time.current)
@@ -104,7 +104,7 @@ module Payments
           current.update!(payment_snapshot: snapshot)
           commitment = ReserveInventory.commit!(order: current, snapshot_digest: Snapshot.digest(snapshot))
         end
-        current.update!(payment_status: 'paid', inventory_committed_at: commitment.created_at, inventory_commitment_id: commitment.id)
+        current.update!(payment_status: 'paid', status: 'confirmed', inventory_committed_at: commitment.created_at, inventory_commitment_id: commitment.id)
         record_effects!(current, nil)
         current
       end
@@ -129,7 +129,11 @@ module Payments
     def self.record_effects!(order, session)
       effects = session ? { 'cart_cleanup' => { 'session_id' => session.id } } : {}
       unless order.simulated? || order.payment_environment == 'simulated'
-        %w[confirmation_email confirmation_sms admin_email admin_sms].each { |kind| effects[kind] = { 'order_id' => order.id } }
+        settings = SiteSetting.instance
+        effects['confirmation_email'] = { 'order_id' => order.id } if settings.enable_order_emails && order.customer_email.present?
+        effects['confirmation_sms'] = { 'order_id' => order.id } if settings.enable_order_sms && order.customer_phone.present?
+        effects['admin_email'] = { 'order_id' => order.id }
+        effects['admin_sms'] = { 'order_id' => order.id } if settings.enable_admin_sms
       end
       effects.each { |kind, payload| PaymentOutbox.record!(effect_key: "order:#{order.id}:#{kind}", kind: kind, payload: payload) }
     end

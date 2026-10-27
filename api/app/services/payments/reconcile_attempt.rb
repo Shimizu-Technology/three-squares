@@ -14,7 +14,14 @@ module Payments
       return unless stored
       return CompensateAttempt.call(attempt: stored) if stored.compensation_claimed_at
       result = ProviderResolver.for_identity(stored.payment_identity).query(attempt: stored)
-      FinalizeOrder.call(attempt: stored, result: result)
+      order = FinalizeOrder.call(attempt: stored, result: result)
+      # Fast, local after-commit consumption keeps the browser cart current;
+      # the durable sweeper owns retries if the request disappears here.
+      if order.payment_status == 'paid'
+        effect = PaymentOutbox.find_by(effect_key: "order:#{order.id}:cart_cleanup")
+        DispatchOutbox.call(outbox: effect) if effect
+      end
+      order
     rescue StandardError => error
       if stored
         AttemptLock.call(stored) do |_, current, _, _|

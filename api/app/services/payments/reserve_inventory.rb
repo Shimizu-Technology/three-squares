@@ -72,7 +72,14 @@ module Payments
       reserve!(order, pools, 5.minutes.from_now)
       pools.each do |(type, _), (pool, quantity)|
         column = type == 'Product' ? :product_stock_quantity : :stock_quantity
-        pool.update!(column => pool.public_send(column) - quantity)
+        previous = pool.public_send(column)
+        pool.update!(column => previous - quantity)
+        if type == 'ProductVariant'
+          InventoryAudit.record_order_placed(variant: pool, quantity: quantity, order: order, previous_qty: previous)
+        else
+          InventoryAudit.record_product_stock_change(product: pool, previous_qty: previous, new_qty: previous - quantity,
+            reason: "Order ##{order.order_number} placed", audit_type: 'order_placed', order: order)
+        end
       end
       InventoryReservation.where(order_id: order.id).update_all(state: 'committed', updated_at: Time.current)
       InventoryCommitment.create!(order_id: order.id, snapshot_digest: snapshot_digest)

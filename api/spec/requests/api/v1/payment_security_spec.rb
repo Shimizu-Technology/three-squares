@@ -121,3 +121,77 @@ RSpec.describe 'Payment ownership and recovery', type: :request do
     expect(response).to have_http_status(:bad_request)
   end
 end
+
+RSpec.describe 'Payment ingress controls', type: :request do
+  include PaymentFoundationHelpers
+
+  it 'rate limits order lookups and checkout creation by IP' do
+    previous = Rack::Attack.cache.store
+    Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
+    30.times { get '/api/v1/orders/nonexistent' }
+    expect(response).to have_http_status(:not_found)
+    get '/api/v1/orders/nonexistent'
+    expect(response).to have_http_status(:too_many_requests)
+    10.times { post '/api/v1/checkout_sessions', params: { order: { customer_email: 'fixture@example.test' } } }
+    post '/api/v1/checkout_sessions', params: { order: { customer_email: 'fixture@example.test' } }
+    expect(response).to have_http_status(:too_many_requests)
+  ensure
+    Rack::Attack.cache.store = previous
+  end
+
+  it 'converges signed Stripe webhook before POS confirmation through the same inventory commit' do
+    configure_payment_fixture!
+    admin = create(:user, :admin)
+    controller = Api::V1::Admin::PosOrdersController
+    allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
+    allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
+    location = Location.create!(name: 'POS fixture', slug: SecureRandom.hex(6), active: true, hours_json: { 'Daily' => '00:00-23:59' })
+    product = create(:product, published: true, allow_pickup: true, inventory_level: 'variant')
+    variant = create(:product_variant, product: product, available: true, stock_quantity: 5, price_cents: 1000)
+    post '/api/v1/admin/pos/orders', params: { order: { payment_method: 'card_present', location_id: location.id, items: [{ product_variant_id: variant.id, quantity: 2 }] } }, headers: { 'Idempotency-Key' => SecureRandom.uuid }
+    expect(response).to have_http_status(:created), response.body
+    order = Order.find(response.parsed_body['id'])
+    attempt = PaymentAttempt.find(order.payment_attempt_id)
+    expect(order.payment_status).to eq('pending')
+    expect(variant.reload.stock_quantity).to eq(5)
+    secret = 'fixture_webhook_secret'
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with('STRIPE_WEBHOOK_SECRET').and_return(secret)
+    event = { id: "evt_#{SecureRandom.hex(8)}", object: 'event', type: 'payment_intent.succeeded', account: @payment_identity.external_account_id,
+      livemode: false, data: { object: { id: attempt.raw_provider_id, object: 'payment_intent', metadata: { payment_attempt_id: attempt.id } } } }.to_json
+    timestamp = Time.now.to_i
+    signature = OpenSSL::HMAC.hexdigest('SHA256', secret, "#{timestamp}.#{event}")
+    2.times do
+      post '/webhooks/stripe', params: event, headers: { 'CONTENT_TYPE' => 'application/json', 'Stripe-Signature' => "t=#{timestamp},v1=#{signature}" }
+      expect(response).to have_http_status(:ok), response.body
+    end
+    post "/api/v1/admin/pos/orders/#{order.id}/confirm_terminal_payment"
+    expect(response).to have_http_status(:ok), response.body
+    expect(variant.reload.stock_quantity).to eq(3)
+    expect(InventoryCommitment.where(order_id: order.id).count).to eq(1)
+    expect(PaymentEvent.count).to eq(1)
+  end
+
+  it 'commits idempotent POS cash with no processor and rejects unavailable locations' do
+    admin = create(:user, :admin)
+    controller = Api::V1::Admin::PosOrdersController
+    allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
+    allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
+    location = Location.create!(name: 'Cash fixture', slug: SecureRandom.hex(6), active: true, hours_json: { 'Daily' => '00:00-23:59' })
+    product = create(:product, published: true, allow_pickup: true, inventory_level: 'variant')
+    variant = create(:product_variant, product: product, available: true, stock_quantity: 5, price_cents: 1000)
+    key = SecureRandom.uuid
+    payload = { order: { payment_method: 'cash', cash_received_cents: 2500, location_id: location.id, items: [{ product_variant_id: variant.id, quantity: 2 }] } }
+    2.times do
+      post '/api/v1/admin/pos/orders', params: payload, headers: { 'Idempotency-Key' => key }
+      expect(response).to have_http_status(:created), response.body
+      expect(response.parsed_body).to include('payment_status' => 'paid', 'cash_change_cents' => 500)
+    end
+    expect(variant.reload.stock_quantity).to eq(3)
+    expect(Order.where(payment_method: 'cash').count).to eq(1)
+    location.update!(active: false)
+    post '/api/v1/admin/pos/orders', params: payload, headers: { 'Idempotency-Key' => SecureRandom.uuid }
+    expect(response).to have_http_status(:unprocessable_entity), response.body
+    expect(variant.reload.stock_quantity).to eq(3)
+  end
+end

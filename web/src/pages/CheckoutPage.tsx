@@ -851,6 +851,7 @@ function CheckoutForm() {
 
               {/* Payment Section */}
               <PaymentForm
+                available={appConfig?.features.payments === true}
                 onPaymentReady={handlePaymentReady}
               />
 

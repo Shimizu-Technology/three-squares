@@ -139,7 +139,7 @@ module Api
           cash_received = pos_params[:cash_received_cents]&.to_i || order.total_cents
 
           if cash_received < order.total_cents
-            raise StandardError, "Cash received ($#{cash_received / 100.0}) is less than total ($#{order.total_cents / 100.0})"
+            raise Payments::Error, "Cash received ($#{cash_received / 100.0}) is less than total ($#{order.total_cents / 100.0})"
           end
 
           order.cash_received_cents = cash_received

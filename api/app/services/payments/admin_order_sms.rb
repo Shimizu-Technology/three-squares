@@ -5,9 +5,9 @@ module Payments
     def self.call(order)
       raise DeliverNotification::Retryable, 'Admin SMS not configured' unless SmsService.send(:sms_configured?)
       settings = SiteSetting.instance
-      raise DeliverNotification::Retryable, 'Admin SMS disabled' unless settings.enable_admin_sms
+      return { success: false, skipped: true, reason: 'Admin SMS disabled' } unless settings.enable_admin_sms
       phones = (Array(settings.admin_sms_phones) + Array(order.location&.admin_sms_phones)).uniq
-      raise DeliverNotification::Retryable, 'No admin SMS recipients' if phones.empty?
+      return { success: false, skipped: true, reason: 'No admin SMS recipients' } if phones.empty?
       source = order.source == 'pos' ? 'POS' : 'Online'
       message = "NEW ORDER ##{order.order_number} (#{source}) - $#{format('%.2f', order.total_cents / 100.0)} - #{order.customer_name.presence || 'Guest'} - #{order.location&.name || 'Online'}"
       phones.each do |phone|

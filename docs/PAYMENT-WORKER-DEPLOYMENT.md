@@ -52,7 +52,7 @@ PaymentOutbox.record!(
 )
 ```
 
-The dispatcher executes fixed consumers, acknowledges only after successful delivery, and retries stale leases. Refund email/SMS and admin SMS recipients have separate delivery rows. Confirmation flags and status sequences advance only after transport success. Admin SMS uses `enable_admin_sms` independently of `enable_order_sms` and stores per-phone acknowledgements instead of preclaiming sent-phone metadata. An explicit controller reset of a delivered flag/sequence authorizes a resend; normal duplicate jobs remain idempotent. Channel-off/missing transport results remain pending, with bounded Active Job retries plus the recurring outbox sweep.
+The dispatcher executes fixed consumers, acknowledges only after successful delivery, and retries stale leases. Refund email/SMS and admin SMS recipients have separate delivery rows. Confirmation flags and status sequences advance only after transport success. Admin SMS uses `enable_admin_sms` independently of `enable_order_sms` and stores per-phone acknowledgements instead of preclaiming sent-phone metadata. An explicit controller reset of a delivered flag/sequence authorizes a resend; normal duplicate jobs remain idempotent. Disabled channels are recorded as skipped, with flags left unsent and no automatic historical resend when settings change. Missing transport or failed sends remain pending, with bounded Active Job retries plus the recurring outbox sweep.
 
 ## Delivery bounds
 

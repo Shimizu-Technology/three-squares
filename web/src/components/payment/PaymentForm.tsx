@@ -3,10 +3,11 @@ import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import type { StripeCardElementChangeEvent } from '@stripe/stripe-js';
 
 interface PaymentFormProps {
+  available: boolean;
   onPaymentReady: (ready: boolean) => void;
 }
 
-export default function PaymentForm({ onPaymentReady }: PaymentFormProps) {
+export default function PaymentForm({ available, onPaymentReady }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [cardError, setCardError] = useState<string | null>(null);
@@ -17,6 +18,8 @@ export default function PaymentForm({ onPaymentReady }: PaymentFormProps) {
     setCardComplete(event.complete);
     onPaymentReady(event.complete && !event.error);
   };
+
+  if (!available) return <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-amber-900">Card payments are unavailable. Your cart is saved; please try again later.</div>;
 
   if (!stripe || !elements) {
     return (

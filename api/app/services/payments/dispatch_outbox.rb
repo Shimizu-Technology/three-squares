@@ -33,9 +33,9 @@ module Payments
         job = JOBS.fetch(outbox.kind) { raise BindingError, 'Unknown outbox effect' }
         # Calling perform keeps delivery failures visible to the primary-DB outbox;
         # ActiveJob.perform_now may swallow them into a separate queue retry.
-        job.constantize.new.perform(outbox.payload.fetch(outbox.kind == 'refund_notification' ? 'refund_id' : 'order_id'))
+        result = job.constantize.new.perform(outbox.payload.fetch(outbox.kind == 'refund_notification' ? 'refund_id' : 'order_id'))
       end
-      PaymentOutbox.where(id: outbox.id, lease_token: token).update_all(state: 'delivered', delivered_at: Time.current, lease_until: nil, lease_token: nil, last_error: nil)
+      PaymentOutbox.where(id: outbox.id, lease_token: token).update_all(state: result.is_a?(Hash) && result[:skipped] ? 'skipped' : 'delivered', delivered_at: result.is_a?(Hash) && result[:skipped] ? nil : Time.current, lease_until: nil, lease_token: nil, last_error: nil)
     rescue StandardError => error
       if claimed
         PaymentOutbox.where(id: outbox.id, lease_token: token).update_all(state: 'pending', lease_until: nil, lease_token: nil,
