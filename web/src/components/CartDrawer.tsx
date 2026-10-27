@@ -1,10 +1,10 @@
 import { useLocationStore } from '../store/locationStore';
 import useAppConfig from '../hooks/useAppConfig';
-import { useEffect } from 'react';
+import { useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 import type { CartItem } from '../types/cart';
-import useLockBodyScroll from '../hooks/useLockBodyScroll';
+import Dialog from './ui/Dialog';
 import PlaceholderImage from './ui/PlaceholderImage';
 import OptimizedImage from './ui/OptimizedImage';
 
@@ -24,7 +24,7 @@ export default function CartDrawer() {
     subtotal,
   } = useCartStore();
 
-  useLockBodyScroll(isOpen);
+  const titleId = useId();
 
   // Fetch cart when component mounts or when cart opens
   useEffect(() => {
@@ -33,10 +33,10 @@ export default function CartDrawer() {
     }
   }, [isOpen, fetchCart]);
 
-  if (!isOpen) return null;
-
   const handleQuantityChange = async (cartItemId: number, newQuantity: number) => {
-    if (newQuantity < 1) return;
+    const item = cart?.items.find((entry) => entry.id === cartItemId);
+    if (isLoading || newQuantity < 1 || !item ||
+      (item.product.inventory_level !== 'none' && newQuantity > item.availability.available_quantity)) return;
     try {
       await updateQuantity(cartItemId, newQuantity);
     } catch (error) {
@@ -45,6 +45,7 @@ export default function CartDrawer() {
   };
 
   const handleRemoveItem = async (cartItemId: number) => {
+    if (isLoading) return;
     try {
       await removeItem(cartItemId);
     } catch (error) {
@@ -63,18 +64,10 @@ export default function CartDrawer() {
   };
 
   return (
-    <>
-      {/* Overlay - semi-transparent with blur */}
-      <div
-        className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity"
-        onClick={closeCart}
-        aria-hidden="true"
-      />
-
-      {/* Drawer */}
-      <div className="fixed inset-y-0 right-0 w-full sm:w-[420px] bg-white shadow-2xl z-50 flex flex-col animate-slide-in-right">
+    <Dialog open={isOpen} onOpenChange={(open) => { if (!open) closeCart(); }} labelledBy={titleId}
+      className="m-0 ml-auto h-dvh max-h-dvh w-full max-w-full sm:w-[420px] flex flex-col overflow-y-auto">
         {/* Header */}
-        <div className="bg-tsPrimary px-5 py-4">
+        <div className="shrink-0 bg-tsPrimary px-5 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -83,8 +76,8 @@ export default function CartDrawer() {
                 </svg>
               </div>
               <div>
-                <h2 className="text-lg font-bold text-white">Shopping Cart</h2>
-                <p className="text-white/80 text-sm">{cart?.item_count || 0} items</p>
+                <h2 id={titleId} className="text-lg font-bold text-white">Shopping Cart</h2>
+                <p className="text-white/80 text-sm" aria-live="polite">{cart?.item_count || 0} {(cart?.item_count || 0) === 1 ? 'item' : 'items'}</p>
               </div>
             </div>
             <button
@@ -100,8 +93,8 @@ export default function CartDrawer() {
         </div>
 
         {/* Cart Items */}
-        <div className="flex-1 overflow-y-auto p-5 bg-warm-50">
-          {isLoading ? (
+        <div className="flex-1 min-h-32 overflow-y-auto overscroll-contain p-5 bg-warm-50" aria-busy={isLoading}>
+          {isLoading && !cart ? (
             <div className="flex items-center justify-center h-32">
               <div className="text-center">
                 <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-tsPrimary mx-auto mb-3"></div>
@@ -204,21 +197,23 @@ export default function CartDrawer() {
                     {/* Quantity Controls */}
                     <div className="flex items-center bg-warm-100 rounded-full">
                       <button
+                        aria-label={`Decrease quantity of ${item.product.name}`}
                         onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                        className="w-11 h-11 flex items-center justify-center text-warm-600 hover:text-tsPrimary hover:bg-warm-200 rounded-full transition disabled:opacity-50"
-                        disabled={item.quantity <= 1 || isLoading}
+                        className="w-11 h-11 flex items-center justify-center text-warm-600 hover:text-tsPrimary hover:bg-warm-200 rounded-full transition aria-disabled:opacity-50"
+                        aria-disabled={item.quantity <= 1 || isLoading}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
                         </svg>
                       </button>
-                      <span className="w-10 text-center text-sm font-semibold text-warm-900">
+                      <output aria-label={`Quantity of ${item.product.name}`} className="w-10 text-center text-sm font-semibold text-warm-900">
                         {item.quantity}
-                      </span>
+                      </output>
                       <button
+                        aria-label={`Increase quantity of ${item.product.name}`}
                         onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                        className="w-11 h-11 flex items-center justify-center text-warm-600 hover:text-tsPrimary hover:bg-warm-200 rounded-full transition disabled:opacity-50"
-                        disabled={
+                        className="w-11 h-11 flex items-center justify-center text-warm-600 hover:text-tsPrimary hover:bg-warm-200 rounded-full transition aria-disabled:opacity-50"
+                        aria-disabled={
                           isLoading ||
                           (item.product.inventory_level !== 'none' && 
                            item.quantity >= item.availability.available_quantity)
@@ -232,9 +227,10 @@ export default function CartDrawer() {
 
                     {/* Remove Button */}
                     <button
+                      aria-label={`Remove ${item.product.name} from cart`}
                       onClick={() => handleRemoveItem(item.id)}
                       className="min-h-11 px-2 text-sm font-medium text-warm-500 hover:text-red-600 transition flex items-center gap-1"
-                      disabled={isLoading}
+                      aria-disabled={isLoading}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -264,7 +260,7 @@ export default function CartDrawer() {
 
         {/* Footer */}
         {cart && cart.items.length > 0 && (
-          <div className="border-t border-warm-200 bg-white p-5 space-y-4">
+          <div className="shrink-0 border-t border-warm-200 bg-white p-5 space-y-4">
             {/* Subtotal */}
             <div className="flex justify-between items-center">
               <span className="text-warm-600">Subtotal</span>
@@ -319,8 +315,7 @@ export default function CartDrawer() {
             </div>
           </div>
         )}
-      </div>
-    </>
+    </Dialog>
   );
 }
 

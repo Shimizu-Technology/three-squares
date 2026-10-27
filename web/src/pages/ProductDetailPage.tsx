@@ -9,7 +9,7 @@ import { evaluateCartCompatibility } from '../utils/cartCompatibility';
 import Breadcrumbs from '../components/Breadcrumbs';
 import PlaceholderImage from '../components/ui/PlaceholderImage';
 import OptimizedImage from '../components/ui/OptimizedImage';
-import useLockBodyScroll from '../hooks/useLockBodyScroll';
+import Dialog from '../components/ui/Dialog';
 
 // ── Color swatch mapping ────────────────────────────────────────────────────
 const CSS_COLOR_MAP: Record<string, string> = {
@@ -94,19 +94,6 @@ export default function ProductDetailPage() {
     loadLocations();
   }, []);
   
-  // Prevent body scroll when modal is open
-  useEffect(() => {
-    if (showSizeGuide) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = 'unset';
-    }
-    
-    return () => {
-      document.body.style.overflow = 'unset';
-    };
-  }, [showSizeGuide]);
-
   // ── Flexible variant option selectors ───────────────────────────────────
 
   /** Do any variants carry the `options` JSONB field? */
@@ -257,7 +244,6 @@ export default function ProductDetailPage() {
     }
   };
 
-  useLockBodyScroll(showSizeGuide);
 
   if (loading || (!error && product?.pricing && product.pricing.location_id !== (locationId ?? null))) {
     return (
@@ -679,18 +665,20 @@ export default function ProductDetailPage() {
               {/* Quantity Selector */}
               {isVariantAvailable && selectedVariant && (
                 <div className="mb-6">
-                  <label className="block text-sm font-semibold text-warm-900 mb-3">
+                  <label htmlFor="dish-quantity" className="block text-sm font-semibold text-warm-900 mb-3">
                     Quantity:
                   </label>
                   <div className="flex items-center gap-4">
                     <button
                       onClick={() => setQuantity(Math.max(1, quantity - 1))}
+                      aria-label={`Decrease quantity of ${product.name}`}
                       className="w-11 h-11 flex items-center justify-center border-2 border-warm-300 rounded-lg hover:border-tsPrimary transition"
                       disabled={quantity <= 1}
                     >
                       −
                     </button>
                     <input
+                      id="dish-quantity"
                       type="number"
                       value={quantity}
                       onChange={(e) => {
@@ -703,6 +691,7 @@ export default function ProductDetailPage() {
                     />
                     <button
                       onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
+                      aria-label={`Increase quantity of ${product.name}`}
                       className="w-11 h-11 flex items-center justify-center border-2 border-warm-300 rounded-lg hover:border-tsPrimary transition"
                       disabled={quantity >= maxQuantity}
                     >
@@ -826,22 +815,16 @@ export default function ProductDetailPage() {
         
         {/* Size Guide Modal */}
         {showSizeGuide && sizeChartUrl && (
-          <div 
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)' }}
-            onClick={() => setShowSizeGuide(false)}
-          >
-            <div 
-              className="relative bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col min-h-0"
-              onClick={(e) => e.stopPropagation()}
-            >
+          <Dialog open={showSizeGuide} onOpenChange={setShowSizeGuide} labelledBy="size-guide-title"
+            className="rounded-lg w-[calc(100vw-2rem)] max-w-4xl flex flex-col min-h-0">
               {/* Header */}
               <div className="bg-white border-b px-6 py-4 flex items-center justify-between z-10 shrink-0">
-                <h3 className="text-xl font-bold text-warm-900">Size Guide</h3>
+                <h3 id="size-guide-title" className="text-xl font-bold text-warm-900">Size Guide</h3>
                 <button
                   type="button"
                   onClick={() => setShowSizeGuide(false)}
-                  className="text-warm-400 hover:text-warm-600 transition-colors"
+                  aria-label="Close size guide"
+                  className="w-11 h-11 flex items-center justify-center text-warm-400 hover:text-warm-600 transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -853,13 +836,6 @@ export default function ProductDetailPage() {
               <div
                 ref={sizeGuideContentRef}
                 className="flex-1 min-h-0 overflow-y-auto p-6 overscroll-contain"
-                onWheel={(event) => {
-                  if (sizeGuideContentRef.current) {
-                    sizeGuideContentRef.current.scrollTop += event.deltaY;
-                  }
-                  event.stopPropagation();
-                  event.preventDefault();
-                }}
               >
                 <img
                   src={sizeChartUrl}
@@ -871,8 +847,7 @@ export default function ProductDetailPage() {
                   Click outside to close
                 </p>
               </div>
-            </div>
-          </div>
+          </Dialog>
         )}
       </div>
     </div>

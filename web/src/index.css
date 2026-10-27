@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+/* Keep utility layout classes from revealing a closed native dialog. */
+.ts-dialog:not([open]) { display: none; }
+.ts-dialog::backdrop { background: rgb(0 0 0 / 0.45); }
+
 @theme {
   --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-display: 'Satoshi', 'DM Sans', sans-serif;
