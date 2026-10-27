@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { MapPin, Clock, Phone, MessageCircle, ChevronRight } from 'lucide-react';
 import FadeIn from '../components/animations/FadeIn';
@@ -168,10 +167,8 @@ function LocationCard({ location }: LocationCardProps) {
   const mapEmbedUrl = `https://maps.google.com/maps?q=${location.mapAddress}&z=15&ie=UTF8&iwloc=&output=embed`;
   
   return (
-    <motion.div
+    <div
       className="bg-white rounded-2xl shadow-lg overflow-hidden border border-warm-100 h-full flex flex-col"
-      whileHover={{ y: -4, boxShadow: '0 20px 40px -12px rgba(0, 0, 0, 0.1)' }}
-      transition={{ duration: 0.2 }}
     >
       {/* Image */}
       <div className="relative h-56 sm:h-64 overflow-hidden">
@@ -279,6 +276,6 @@ function LocationCard({ location }: LocationCardProps) {
           <ChevronRight className="w-4 h-4" />
         </a>
       </div>
-    </motion.div>
+    </div>
   );
 }

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useReducedMotion } from 'framer-motion';
 import { UtensilsCrossed, MapPin, Phone, Clock, ChevronRight } from 'lucide-react';
 import FeaturedProducts from '../components/FeaturedProducts';
 import FadeIn from '../components/animations/FadeIn';
@@ -88,13 +87,10 @@ const allStorefrontCards = [
   },
 ];
 
-const heroEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
-
 export default function HomePage() {
   const [hero, setHero] = useState<HomepageSection | null>(null);
   const [categoryCards, setCategoryCards] = useState<HomepageSection[]>([]);
   const [loading, setLoading] = useState(true);
-  const prefersReducedMotion = useReducedMotion();
   const config = useAppConfig();
 
   const storefrontCards = useMemo(() => {
@@ -146,23 +142,13 @@ export default function HomePage() {
       ? heroSettings.secondary_button_link
       : defaultHero.settings.secondary_button_link;
 
-  // Animation helper — skip motion when user prefers reduced motion
-  const heroMotion = (delay: number) =>
-    prefersReducedMotion
-      ? {}
-      : {
-          initial: { opacity: 0, y: 30 } as const,
-          animate: { opacity: 1, y: 0 } as const,
-          transition: { duration: 0.8, delay, ease: heroEase },
-        };
-
   return (
     <div className="min-h-screen">
       {/* ============================================================ */}
       {/* HERO SECTION                                                 */}
       {/* Food photo + warm overlay for Three Squares branding         */}
       {/* ============================================================ */}
-      <section className="relative bg-warm-900 text-white min-h-[85vh] flex items-center overflow-hidden">
+      <section className="relative bg-warm-900 text-white min-h-[85svh] flex items-center overflow-hidden">
         {/* Background photo */}
         {heroImageUrl && (
           <img
@@ -195,7 +181,7 @@ export default function HomePage() {
             <>
               {/* Badge */}
               {heroBadgeText && (
-                <motion.div {...heroMotion(0)}>
+                <div>
                   <span
                     className="inline-flex items-center gap-2 px-5 py-2 bg-black/40 backdrop-blur-md border border-white/20 text-sm font-semibold rounded-full mb-8 text-white"
                     style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}
@@ -203,32 +189,29 @@ export default function HomePage() {
                     <UtensilsCrossed className="w-4 h-4" />
                     {stripEmoji(heroBadgeText)}
                   </span>
-                </motion.div>
+                </div>
               )}
 
               {/* Heading */}
-              <motion.h1
-                {...heroMotion(0.15)}
+              <h1
                 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-[1.1] tracking-tight"
                 style={{ color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.9), 0 4px 25px rgba(0,0,0,0.5), 0 0 40px rgba(0,0,0,0.3)' }}
               >
                 {stripEmoji(heroContent.title || defaultHero.title)}
-              </motion.h1>
+              </h1>
 
               {/* Subtitle */}
               {heroContent.subtitle && (
-                <motion.p
-                  {...heroMotion(0.3)}
+                <p
                   className="text-lg sm:text-xl mb-12 max-w-2xl mx-auto leading-relaxed font-medium"
                   style={{ color: '#ffffff', textShadow: '0 1px 6px rgba(0,0,0,0.9), 0 2px 15px rgba(0,0,0,0.5)' }}
                 >
                   {stripEmoji(heroContent.subtitle)}
-                </motion.p>
+                </p>
               )}
 
               {/* CTA Buttons */}
-              <motion.div
-                {...heroMotion(0.45)}
+              <div
                 className="flex flex-col sm:flex-row gap-4 justify-center"
               >
                 <Link
@@ -247,7 +230,7 @@ export default function HomePage() {
                     {secondaryButtonText}
                   </Link>
                 )}
-              </motion.div>
+              </div>
             </>
           )}
         </div>

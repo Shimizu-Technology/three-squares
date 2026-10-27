@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
 import FadeIn from '../components/animations/FadeIn';
 
 export default function NotFoundPage() {
@@ -24,13 +23,9 @@ export default function NotFoundPage() {
               404
             </h1>
             <div className="-mt-6 sm:-mt-8">
-              <motion.span
-                className="text-4xl inline-block"
-                animate={{ y: [0, -6, 0] }}
-                transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
-              >
+              <span className="text-4xl inline-block">
                 <svg className="w-16 h-16 mx-auto text-warm-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>
-              </motion.span>
+              </span>
             </div>
           </div>
         </FadeIn>

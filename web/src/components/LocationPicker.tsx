@@ -194,7 +194,7 @@ export default function LocationPicker() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="location-picker-title"
-            className="bg-white w-full max-h-[90dvh] overflow-y-auto sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl animate-slide-up sm:animate-fade-in"
+            className="location-picker-panel bg-white w-full max-h-[90dvh] overflow-y-auto sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl animate-slide-up sm:animate-fade-in"
           >
             {/* Header */}
             <div className="px-6 pt-6 pb-4 text-center relative">

@@ -286,7 +286,7 @@ export default function AccountPage() {
       {/* Clerk UserProfile Modal */}
       {showUserProfile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="relative bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="relative bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90dvh] overflow-y-auto">
             <button
               onClick={() => setShowUserProfile(false)}
               className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow-md hover:bg-warm-50 transition"

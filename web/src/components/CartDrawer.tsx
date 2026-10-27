@@ -65,9 +65,9 @@ export default function CartDrawer() {
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { if (!open) closeCart(); }} labelledBy={titleId}
-      className="m-0 ml-auto h-dvh max-h-dvh w-full max-w-full sm:w-[420px] flex flex-col overflow-y-auto">
+      className="cart-drawer m-0 ml-auto h-dvh max-h-dvh w-full max-w-full sm:w-[420px] flex flex-col overflow-y-auto">
         {/* Header */}
-        <div className="shrink-0 bg-tsPrimary px-5 py-4">
+        <div className="cart-drawer-header shrink-0 bg-tsPrimary px-5 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -120,13 +120,13 @@ export default function CartDrawer() {
               </div>
               <h3 className="text-lg font-bold text-warm-900">Your cart is empty</h3>
               <p className="mt-2 text-warm-500 max-w-xs mx-auto">
-                Discover our collection of authentic Chamorro pride merchandise!
+                Browse the menu and choose a meal for pickup.
               </p>
               <button
-                onClick={closeCart}
+                onClick={() => { closeCart(); navigate('/products'); }}
                 className="mt-6 btn-primary"
               >
-                Start Shopping
+                Browse Menu
               </button>
             </div>
           ) : (
@@ -260,7 +260,7 @@ export default function CartDrawer() {
 
         {/* Footer */}
         {cart && cart.items.length > 0 && (
-          <div className="shrink-0 border-t border-warm-200 bg-white p-5 space-y-4">
+          <div className="cart-drawer-footer shrink-0 border-t border-warm-200 bg-white p-5 space-y-4">
             {/* Subtotal */}
             <div className="flex justify-between items-center">
               <span className="text-warm-600">Subtotal</span>
