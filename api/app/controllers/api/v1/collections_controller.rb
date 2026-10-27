@@ -45,7 +45,10 @@ module Api
 
         products = orderable_products(@collection)
                              .preload(:product_variants, :product_images, :product_locations)
-                             .order(featured: :desc, created_at: :desc)
+                             # Include the join position so DISTINCT location filtering
+                             # remains valid in PostgreSQL and matches staff's saved menu.
+                             .select("products.*, product_collections.position AS menu_position")
+                             .reorder(Arel.sql("menu_position ASC NULLS LAST"), featured: :desc, created_at: :desc, id: :asc)
 
         # Filter by location if provided
         if params[:location_id].present?
@@ -67,7 +70,7 @@ module Api
         end
 
         # Pagination
-        total_count = products.count
+        total_count = products.except(:select, :order).distinct.count(:id)
         products = products.limit(per_page).offset((page - 1) * per_page)
 
         render json: {

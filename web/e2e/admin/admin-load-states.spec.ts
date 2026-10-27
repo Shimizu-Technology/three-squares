@@ -6,7 +6,7 @@ for (const resource of [
   { name: 'Dashboard', route: '/admin', endpoint: '/admin/dashboard/stats', refresh: 'Refresh dashboard' },
   { name: 'Analytics for the last 14 days', route: '/admin/analytics', endpoint: '/admin/dashboard/chart_data', refresh: 'Refresh analytics' },
   { name: 'Products', route: '/admin/products', endpoint: '/admin/products', refresh: 'Refresh products' },
-  { name: 'Collections', route: '/admin/collections', endpoint: '/admin/collections', refresh: 'Refresh collections' },
+  { name: 'Menus', route: '/admin/collections', endpoint: '/admin/collections', refresh: 'Refresh menus' },
   { name: 'Locations', route: '/admin/locations', endpoint: '/admin/locations', refresh: 'Refresh locations' },
   { name: 'Users', route: '/admin/users', endpoint: '/admin/users', refresh: 'Refresh users' },
   { name: 'Catering inquiries and stats', route: '/admin/catering', endpoint: '/admin/catering', refresh: 'Refresh inquiries' },
