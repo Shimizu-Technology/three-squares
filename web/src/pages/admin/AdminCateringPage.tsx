@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { authGet, authPatch, authPost } from '../../services/authApi';
 import { Calendar, Users, DollarSign, AlertCircle, CheckCircle, XCircle, Mail, Phone, Building, Eye } from 'lucide-react';
+import AdminRequestState from '../../components/admin/AdminRequestState';
 import AdminModal from '../../components/admin/AdminModal';
 
 interface CateringInquiry {
@@ -62,38 +63,97 @@ export default function AdminCateringPage() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedInquiry, setSelectedInquiry] = useState<CateringInquiry | null>(null);
-  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [detailId, setDetailId] = useState<number | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState(false);
+  const detailContext = useRef<number | null>(null);
+  const detailRequest = useRef(0);
+  const listRequest = useRef(0);
+  const active = useRef(false);
+  const [loadedFilter, setLoadedFilter] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [quoteAmount, setQuoteAmount] = useState('');
-  const [adminNotes, setAdminNotes] = useState('');
+  const [drafts, setDrafts] = useState<Record<number, { quote: string; notes: string; notesDirty: boolean }>>({});
+  const quoteAmount = detailId === null ? '' : drafts[detailId]?.quote || '';
+  const adminNotes = detailId === null ? '' : drafts[detailId]?.notes || '';
+  const updateDraft = (patch: Partial<{ quote: string; notes: string }>) => {
+    if (detailId === null) return;
+    setDrafts(previous => ({ ...previous, [detailId]: { ...(previous[detailId] || { quote: '', notes: '', notesDirty: false }), ...patch, ...(patch.notes !== undefined ? { notesDirty: true } : {}) } }));
+  };
+  const hasData = loadedFilter === statusFilter;
 
   useEffect(() => {
-    fetchData();
-  }, [statusFilter]);
+    active.current = true;
+    return () => {
+      active.current = false;
+      listRequest.current += 1;
+      detailRequest.current += 1;
+    };
+  }, []);
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
+    if (!active.current) return;
+    const generation = ++listRequest.current;
+    setLoading(true);
     try {
       const [inquiriesRes, statsRes] = await Promise.all([
-        authGet<{ inquiries: CateringInquiry[] }>(`/admin/catering${statusFilter ? `?status=${statusFilter}` : ''}`, getToken),
-        authGet<Stats>('/admin/catering/stats', getToken),
+        authGet<{ inquiries: CateringInquiry[] }>(`/admin/catering${statusFilter ? `?status=${statusFilter}` : ''}`, getToken, { timeout: 20000 }),
+        authGet<Stats>('/admin/catering/stats', getToken, { timeout: 20000 }),
       ]);
+      if (generation !== listRequest.current) return;
+      if (!Array.isArray(inquiriesRes.data.inquiries) || !statsRes.data) throw new Error('Invalid catering response');
       setInquiries(inquiriesRes.data.inquiries);
       setStats(statsRes.data);
+      setLoadedFilter(statusFilter);
+      setLoadError(false);
     } catch (error) {
+      if (generation !== listRequest.current) return;
       console.error('Error fetching catering data:', error);
+      setLoadError(true);
     } finally {
-      setLoading(false);
+      if (generation === listRequest.current) setLoading(false);
     }
+  }, [getToken, statusFilter]);
+
+  useEffect(() => {
+    void fetchData();
+    return () => { listRequest.current += 1; };
+  }, [fetchData, refreshVersion]);
+
+  const closeDetails = () => {
+    detailContext.current = null;
+    detailRequest.current += 1;
+    setDetailId(null);
   };
 
-  const fetchInquiryDetails = async (id: number) => {
+  const fetchInquiryDetails = async (id: number, refresh = false) => {
+    if (!active.current || (refresh && detailContext.current !== id)) return;
+    if (detailContext.current !== id) {
+      setSelectedInquiry(null);
+      setDetailError(false);
+    }
+    detailContext.current = id;
+    setDetailId(id);
+    const generation = ++detailRequest.current;
+    setDetailLoading(true);
     try {
-      const res = await authGet<{ inquiry: CateringInquiry }>(`/admin/catering/${id}`, getToken);
+      const res = await authGet<{ inquiry: CateringInquiry }>(`/admin/catering/${id}`, getToken, { timeout: 20000 });
+      if (generation !== detailRequest.current) return;
+      if (res.data.inquiry?.id !== id) throw new Error('Invalid inquiry response');
       setSelectedInquiry(res.data.inquiry);
-      setAdminNotes(res.data.inquiry.admin_notes || '');
-      setDetailModalOpen(true);
+      setDrafts(previous => ({
+        ...previous, [id]: previous[id]?.notesDirty ? previous[id] : {
+          quote: previous[id]?.quote || '', notes: res.data.inquiry.admin_notes || '', notesDirty: false,
+        },
+      }));
+      setDetailError(false);
     } catch (error) {
+      if (generation !== detailRequest.current) return;
       console.error('Error fetching inquiry details:', error);
+      setDetailError(true);
+    } finally {
+      if (generation === detailRequest.current) setDetailLoading(false);
     }
   };
 
@@ -104,9 +164,10 @@ export default function AdminCateringPage() {
         quoted_amount: parseFloat(quoteAmount),
         admin_notes: adminNotes,
       }, getToken);
-      fetchData();
-      fetchInquiryDetails(selectedInquiry.id);
-      setQuoteAmount('');
+      if (!active.current) return;
+      setRefreshVersion(version => version + 1);
+      fetchInquiryDetails(selectedInquiry.id, true);
+      setDrafts(previous => ({ ...previous, [selectedInquiry.id]: { ...previous[selectedInquiry.id], quote: previous[selectedInquiry.id]?.quote === quoteAmount ? '' : previous[selectedInquiry.id]?.quote || '', notesDirty: previous[selectedInquiry.id]?.notes === adminNotes ? false : previous[selectedInquiry.id]?.notesDirty || false } }));
     } catch (error) {
       console.error('Error sending quote:', error);
     }
@@ -116,8 +177,9 @@ export default function AdminCateringPage() {
     if (!selectedInquiry) return;
     try {
       await authPost(`/admin/catering/${selectedInquiry.id}/status`, { status }, getToken);
-      fetchData();
-      fetchInquiryDetails(selectedInquiry.id);
+      if (!active.current) return;
+      setRefreshVersion(version => version + 1);
+      fetchInquiryDetails(selectedInquiry.id, true);
     } catch (error) {
       console.error('Error updating status:', error);
     }
@@ -129,26 +191,26 @@ export default function AdminCateringPage() {
       await authPatch(`/admin/catering/${selectedInquiry.id}`, {
         inquiry: { admin_notes: adminNotes },
       }, getToken);
-      fetchInquiryDetails(selectedInquiry.id);
+      setDrafts(previous => ({ ...previous, [selectedInquiry.id]: {
+        ...previous[selectedInquiry.id], notesDirty: previous[selectedInquiry.id]?.notes === adminNotes ? false : previous[selectedInquiry.id]?.notesDirty || false,
+      } }));
+      fetchInquiryDetails(selectedInquiry.id, true);
     } catch (error) {
       console.error('Error updating notes:', error);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-warm-600"></div>
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">Catering Inquiries</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-4">Catering Inquiries</h1>
+      <button type="button" onClick={() => void fetchData()} disabled={loading} className="btn-secondary mb-4 min-h-11 disabled:opacity-60">Refresh inquiries</button>
+
+      <div className="mb-6">
+        <AdminRequestState resource="Catering inquiries and stats" loading={loading} error={loadError} hasData={hasData} onRetry={() => void fetchData()} />
+      </div>
 
       {/* Stats Cards */}
-      {stats && (
+      {hasData && stats && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
           <div className="bg-white rounded-lg shadow p-4">
             <div className="text-sm text-gray-500">Total</div>
@@ -181,7 +243,7 @@ export default function AdminCateringPage() {
       <div className="mb-6">
         <select
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          onChange={(e) => { setLoadError(false); setStatusFilter(e.target.value); }}
           className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500"
         >
           <option value="">All Statuses</option>
@@ -194,7 +256,7 @@ export default function AdminCateringPage() {
         </select>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {hasData && <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Inquiries List */}
         <div className="lg:col-span-3">
           <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -251,7 +313,7 @@ export default function AdminCateringPage() {
                     </td>
                   </tr>
                 ))}
-                {inquiries.length === 0 && (
+                {inquiries.length === 0 && !loading && !loadError && (
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                       No catering inquiries found
@@ -262,21 +324,21 @@ export default function AdminCateringPage() {
             </table>
           </div>
         </div>
-      </div>
+      </div>}
 
       {/* Detail Modal */}
-      {detailModalOpen && selectedInquiry && (
+      {detailId !== null && (
         <AdminModal
-          open={detailModalOpen}
-          onClose={() => setDetailModalOpen(false)}
-          title={selectedInquiry.contact_name}
-          subtitle={`Inquiry #${selectedInquiry.id} • ${EVENT_TYPE_LABELS[selectedInquiry.event_type] || selectedInquiry.event_type}`}
+          open={detailId !== null}
+          onClose={closeDetails}
+          title={selectedInquiry?.contact_name || `Inquiry #${detailId}`}
+          subtitle={selectedInquiry ? `Inquiry #${selectedInquiry.id} • ${EVENT_TYPE_LABELS[selectedInquiry.event_type] || selectedInquiry.event_type}` : undefined}
           maxWidth="max-w-5xl"
           footer={
             <div className="flex justify-end">
               <button
                 type="button"
-                onClick={() => setDetailModalOpen(false)}
+                onClick={closeDetails}
                 className="btn-secondary"
               >
                 Close
@@ -284,7 +346,8 @@ export default function AdminCateringPage() {
             </div>
           }
         >
-          <div className="space-y-5">
+          <AdminRequestState resource="Inquiry details" loading={detailLoading} error={detailError} hasData={selectedInquiry?.id === detailId} onRetry={() => void fetchInquiryDetails(detailId, true)} />
+          {selectedInquiry && <div className="space-y-5">
             <div className="flex flex-wrap items-center gap-2">
               <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${STATUS_COLORS[selectedInquiry.status]}`}>
                 {selectedInquiry.status}
@@ -385,7 +448,7 @@ export default function AdminCateringPage() {
                     <input
                       type="number"
                       value={quoteAmount}
-                      onChange={(e) => setQuoteAmount(e.target.value)}
+                      onChange={(e) => updateDraft({ quote: e.target.value })}
                       placeholder="0.00"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     />
@@ -416,7 +479,7 @@ export default function AdminCateringPage() {
                 <label className="block text-sm font-medium text-gray-700">Admin Notes</label>
                 <textarea
                   value={adminNotes}
-                  onChange={(e) => setAdminNotes(e.target.value)}
+                  onChange={(e) => updateDraft({ notes: e.target.value })}
                   rows={4}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent text-sm"
                 />
@@ -466,7 +529,7 @@ export default function AdminCateringPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </div>}
         </AdminModal>
       )}
     </div>
