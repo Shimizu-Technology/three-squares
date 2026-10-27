@@ -7,7 +7,7 @@ interface OrderDetailModalProps {
   order: Order;
   saving: boolean;
   onClose: () => void;
-  onUpdateOrder: (updates: { status: string; tracking_number: string | null; admin_notes: string | null }) => void;
+  onUpdateOrder: (updates: { status: string; tracking_number: string | null; admin_notes: string | null }) => Promise<boolean>;
   onQuickUpdateStatus: (orderId: number, newStatus: string) => void;
   onResendNotification: (orderId: number) => void;
   onOpenRefundModal: () => void;
@@ -34,13 +34,20 @@ export default function OrderDetailModal({
 
   const nextAction = getNextStatusAction(order);
 
-  const handleSave = () => {
-    onUpdateOrder({
+  const handleEdit = () => {
+    setEditStatus(order.status);
+    setEditTracking(order.tracking_number || '');
+    setEditAdminNotes(order.admin_notes || '');
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    const saved = await onUpdateOrder({
       status: editStatus,
       tracking_number: editTracking || null,
       admin_notes: editAdminNotes || null,
     });
-    setIsEditing(false);
+    if (saved) setIsEditing(false);
   };
 
   const handleCancel = () => {
@@ -128,7 +135,7 @@ export default function OrderDetailModal({
                 {!isEditing && (
                   <button
                     type="button"
-                    onClick={() => setIsEditing(true)}
+                    onClick={handleEdit}
                     className="flex-1 sm:flex-none px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition text-sm font-medium"
                   >
                     Edit Details
@@ -152,6 +159,7 @@ export default function OrderDetailModal({
                   </select>
                 </div>
 
+                {order.fulfillment_type === 'shipping' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tracking Number</label>
                   <input
@@ -162,6 +170,7 @@ export default function OrderDetailModal({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   />
                 </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Admin Notes (Internal)</label>

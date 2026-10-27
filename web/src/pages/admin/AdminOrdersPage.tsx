@@ -192,15 +192,17 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
     tracking_number: string | null;
     admin_notes: string | null;
   }) => {
-    if (!selectedOrder) return;
+    if (!selectedOrder) return false;
     try {
       setSaving(true);
       const response = await authPatch<AdminOrderResponse>(`/admin/orders/${selectedOrder.id}`, { order: updates }, getToken);
       setOrders(orders.map((o) => (o.id === selectedOrder.id ? response.data.order : o)));
       setSelectedOrder(response.data.order);
       toast.success(response.data.message || 'Order updated successfully!');
+      return true;
     } catch (err) {
       toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update order' : 'Failed to update order');
+      return false;
     } finally {
       setSaving(false);
     }
