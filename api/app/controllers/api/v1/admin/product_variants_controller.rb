@@ -20,6 +20,7 @@ module Api
         # POST /api/v1/admin/products/:product_id/variants
         def create
           @variant = @product.product_variants.new(variant_params)
+          @variant.stock_quantity = 0 unless staff_access_policy.allowed?("stock.manage")
 
           if @variant.save
             render_created(serialize_variant(@variant))

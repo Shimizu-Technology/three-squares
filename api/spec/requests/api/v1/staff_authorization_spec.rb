@@ -296,6 +296,19 @@ RSpec.describe "Staff authorization attack boundaries", type: :request do
       expect(variant.variant_name).to eq("Catalog variant")
     end
 
+    it "creates catalog variants with server-owned zero stock whether omitted or explicitly zero" do
+      @actor = manager
+      tracked = create(:product, inventory_level: "variant", track_inventory: true)
+      [ {}, { stock_quantity: 0 } ].each_with_index do |stock, index|
+        request_as(:post, "/api/v1/admin/products/#{tracked.id}/variants", params: { variant: {
+          variant_key: "new-size-#{index}", variant_name: "New size #{index}", price_cents: 2500, weight_oz: 8
+        }.merge(stock) })
+        expect(response).to have_http_status(:created)
+        created = tracked.product_variants.find(response.parsed_body.fetch("data").fetch("id"))
+        expect(created.stock_quantity).to eq(0)
+      end
+    end
+
     it "retains the authorized variant alias when stripping its unchanged stock empties it" do
       @actor = manager
       variant
