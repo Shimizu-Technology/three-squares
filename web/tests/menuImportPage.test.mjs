@@ -6,7 +6,7 @@ import ts from 'typescript';
 import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import * as receipts from '../src/components/admin/import/menuImportReceipt.ts';
-import { safeProductReturnTo } from '../src/components/admin/products/productQueryState.ts';
+import { readProductListReturn, safeProductReturnTo } from '../src/components/admin/products/productQueryState.ts';
 
 // Render the real page with deterministic auth/router boundaries. Browser focus,
 // uploads and viewport interactions remain parent-owned acceptance checks.
@@ -22,10 +22,12 @@ const mockRequire = name => {
   if (name === '@clerk/clerk-react') return { useAuth: () => ({ userId: fixture.userId, getToken: async () => 'test-token' }) };
   if (name === 'react-router-dom') return {
     useSearchParams: () => [new URLSearchParams(fixture.search)],
-    Link: ({ to, children, ...props }) => React.createElement('a', { href: to, ...props }, children),
+    useLocation: () => ({ state: fixture.state }),
+    useNavigate: () => (...args) => (fixture.navigations ||= []).push(args),
+    Link: ({ to, children, ...props }) => { if (children === 'Back to Products') fixture.backClick = props.onClick; return React.createElement('a', { href: to, ...props }, children); },
   };
   if (name.includes('/StaffAccess')) return { useStaffAccess: () => ({ loading: fixture.loading, can: capability => fixture.caps.includes(capability) }) };
-  if (name.includes('/productQueryState')) return { safeProductReturnTo };
+  if (name.includes('/productQueryState')) return { readProductListReturn, safeProductReturnTo };
   if (name.includes('/menuImportReceipt')) return receipts;
   if (name.includes('/authApi')) return { authPost: () => { throw Error('Unexpected request in render'); } };
   if (name === './AdminShopifyMigration') return { default: () => { legacyMounts++; return React.createElement('h1', null, 'Legacy migration fixture'); } };
@@ -119,4 +121,21 @@ test('incoming returnTo uses the existing allowlist', () => {
   const invalid = render({ search: new URLSearchParams({ returnTo: 'https://evil.test' }).toString() });
   assert.match(invalid, /href="\/admin\/products"/);
   assert.doesNotMatch(invalid, /evil.test/);
+});
+
+test('Back to Products pops the proven list entry or replaces a direct import entry', () => {
+  storage();
+  const path = '/admin/products?q=Adobo&page=3';
+  const metadata = { path, entryKey: 'saved-list', index: 4 };
+  globalThis.window = { history: { state: { idx: 5 } } };
+  render({ search: new URLSearchParams({ returnTo: path }).toString(), state: { productListReturn: metadata } });
+  let prevented = false;
+  fixture.backClick({ button: 0, preventDefault() { prevented = true; } });
+  assert.equal(prevented, true); assert.deepEqual(fixture.navigations, [[-1]]);
+  window.history.state.idx = 8;
+  render({ search: new URLSearchParams({ returnTo: path }).toString(), state: { productListReturn: metadata } });
+  fixture.backClick({ button: 0, preventDefault() {} });
+  assert.deepEqual(fixture.navigations, [[path, { replace: true, state: { productScrollEntry: 'saved-list' } }]]);
+  render({ search: '', state: null }); fixture.backClick({ button: 0, preventDefault() {} });
+  assert.deepEqual(fixture.navigations, [['/admin/products', { replace: true, state: null }]]);
 });

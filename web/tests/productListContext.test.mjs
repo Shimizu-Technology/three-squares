@@ -53,7 +53,7 @@ function harness(search = '?q=Adobo&published=true&type=local&sort=price&dir=des
     useLayoutEffect(callback, deps) { h.effect(layoutEffects, callback, deps); },
     async flush() { for (let i = 0; i < 7; i++) { globalThis.__productListContext = h; cursor = 0; tree = Page(); for (const effect of [...layoutEffects.splice(0), ...effects.splice(0)]) effect(); await Promise.resolve(); } },
     component(name) { return elements(tree).find(node => node.type?.name === name)?.props; },
-    button(name) { return elements(tree).find(node => node.type === 'button' && [node.props.children].flat(Infinity).includes(name)); },
+    button(name) { return elements(tree).find(node => node.type === 'button' && [node.props.children].flat(Infinity).some(value => typeof value === 'string' && value.trim() === name)); },
     unmount() { state.forEach(value => value?.cleanup?.()); },
     scroll(y) { window.scrollY = y; events.get('scroll')?.(); },
   };
@@ -146,4 +146,26 @@ test('a scroll event from the departing editor cannot overwrite the saved list p
   assert.equal(saved.length, 1);
   assert.equal(saved[0][1], '2755');
   h.unmount();
+});
+
+test('Menu CSV carries the same list scroll/history context as the editor', async () => {
+  const h = harness(); await h.flush(); h.scroll(714);
+  const source = { path: h.location.pathname + h.location.search, entryKey: h.location.key, index: 2 };
+  h.button('Menu CSV').props.onClick();
+  const [path, options] = h.calls.at(-1);
+  assert.equal(path.split('?')[0], '/admin/import');
+  assert.equal(new URLSearchParams(path.split('?')[1]).get('returnTo'), source.path);
+  assert.deepEqual(options.state.productListReturn, source);
+  h.unmount();
+});
+
+test('malformed or missing batch receipts remain empty until explicitly cleared', async () => {
+  for (const query of ['?batch=broken', '?batch=', '?batch=4ba7a24e-98f5-4373-bc02-b51d7acd9fb1']) {
+    const h = harness(query); await h.flush();
+    assert.equal(h.component('ProductsTable'), undefined);
+    assert.ok(h.button('Clear batch filter'));
+    h.button('Clear batch filter').props.onClick(); await h.flush();
+    assert.equal(h.component('ProductsTable').products.length, 25);
+    h.unmount();
+  }
 });

@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStaffAccess } from '../../components/admin/StaffAccess.tsx';
-import { safeProductReturnTo } from '../../components/admin/products/productQueryState';
+import { readProductListReturn, safeProductReturnTo } from '../../components/admin/products/productQueryState';
 import {
   CSV_TEMPLATE, createMenuImportReceipt, isMenuImportReceiptPersisted,
   isMenuImportResult, readMenuImportReceipt, saveMenuImportReceipt,
@@ -18,7 +18,16 @@ export default function AdminImportPage() {
   const { userId, getToken } = useAuth();
   const access = useStaffAccess();
   const [params] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const returnTo = safeProductReturnTo(params.get('returnTo'));
+  const listReturn = readProductListReturn(location.state?.productListReturn, returnTo);
+  const returnToProducts = (event: MouseEvent<HTMLAnchorElement>) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    event.preventDefault();
+    if (listReturn && window.history.state?.idx === listReturn.index + 1) navigate(-1);
+    else navigate(returnTo, { replace: true, state: listReturn ? { productScrollEntry: listReturn.entryKey } : null });
+  };
   const canImport = access.can('catalog.import');
   const canMigrate = canImport && access.can('stock.manage');
 
@@ -37,11 +46,11 @@ export default function AdminImportPage() {
   </section>;
 
   // Remount on identity change so files, errors and receipts never cross accounts.
-  return <MenuCsvImport key={userId} userId={userId} getToken={getToken} returnTo={returnTo} canMigrate={canMigrate} />;
+  return <MenuCsvImport key={userId} userId={userId} getToken={getToken} returnTo={returnTo} onReturn={returnToProducts} canMigrate={canMigrate} />;
 }
 
-function MenuCsvImport({ userId, getToken, returnTo, canMigrate }: {
-  userId: string; getToken: GetTokenFn; returnTo: string; canMigrate: boolean;
+function MenuCsvImport({ userId, getToken, returnTo, onReturn, canMigrate }: {
+  userId: string; getToken: GetTokenFn; returnTo: string; onReturn: (event: MouseEvent<HTMLAnchorElement>) => void; canMigrate: boolean;
 }) {
   const [file, setFile] = useState<File | null>(null);
   const [completed, setCompleted] = useState(() => {
@@ -117,7 +126,7 @@ function MenuCsvImport({ userId, getToken, returnTo, canMigrate }: {
 
   return <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8 [overflow-wrap:anywhere]">
     <header className="space-y-2">
-      <Link to={returnTo} className={linkStyle}>Back to Products</Link>
+      <Link to={returnTo} onClick={onReturn} className={linkStyle}>Back to Products</Link>
       <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Import menu items</h1>
       <p className="text-gray-700">Add menu items from a Menu CSV, then review the created items and finish any drafts.</p>
     </header>
@@ -129,7 +138,7 @@ function MenuCsvImport({ userId, getToken, returnTo, canMigrate }: {
         <dt className="font-semibold text-gray-900">Required columns</dt><dd><code>name</code>, <code>price</code> (for example, 11.50)</dd>
         <dt className="font-semibold text-gray-900">Optional columns</dt><dd><code>description</code>, <code>category_name</code>, <code>active</code>, <code>locations</code></dd>
         <dt className="font-semibold text-gray-900">Pickup locations</dt><dd>Use existing location names or slugs. Separate multiple locations with <code>;</code> or <code>|</code>.</dd>
-        <dt className="font-semibold text-gray-900">Availability</dt><dd>Use <code>true</code> or <code>false</code> for <code>active</code>. Items without pickup locations stay unpublished, including rows with <code>active=false</code>. Add locations in the editor before publishing.</dd>
+        <dt className="font-semibold text-gray-900">Availability</dt><dd>With pickup locations, <code>true</code> or blank <code>active</code> publishes the item; <code>false</code> keeps a draft. Items without pickup locations stay unpublished, including rows with <code>active=false</code>. Add locations in the editor before publishing.</dd>
       </dl>
       <a href={templateUrl} download="products-import-template.csv" className={linkStyle}>Download Menu CSV template</a>
       <p className="text-sm text-gray-700">The template leaves locations blank. Fill them in to make items available for pickup, or leave them blank to create drafts.</p>

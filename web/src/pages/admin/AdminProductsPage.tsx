@@ -86,6 +86,13 @@ export default function AdminProductsPage() {
     });
   };
 
+  const openImport = () => {
+    writeProductScroll(scrollKey, window.scrollY);
+    navigate(`/admin/import?${new URLSearchParams({ returnTo: listPath })}`, {
+      state: { productListReturn: { path: listPath, entryKey, index: window.history.state?.idx } },
+    });
+  };
+
   // Lock body scroll when modal open
   useEffect(() => {
     document.body.style.overflow = selectedProduct ? 'hidden' : 'unset';
@@ -280,7 +287,7 @@ export default function AdminProductsPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <button type="button" onClick={fetchProducts} disabled={loading} className="btn-secondary min-h-[44px] disabled:opacity-60">Refresh products</button>
-          <button type="button" onClick={() => navigate(`/admin/import?${new URLSearchParams({ returnTo: listPath })}`)} className="btn-secondary min-h-11 inline-flex items-center">
+          <button type="button" onClick={openImport} className="btn-secondary min-h-11 inline-flex items-center">
             <Upload className="w-4 h-4 mr-2" /> Menu CSV
           </button>
           <button onClick={() => openEditor()} className="btn-primary flex items-center gap-2">

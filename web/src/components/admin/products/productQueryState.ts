@@ -16,10 +16,10 @@ export function parseProductQuery(search: string): ProductQueryState {
   const params = new URLSearchParams(search);
   const page = params.get('page') || '';
   const batch = params.get('batch') || '';
-  const batchValid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(batch);
+  const batchValid = params.getAll('batch').length === 1 && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(batch);
   return {
     q: text(params.get('q'), 500),
-    ...(batchValid ? { batch } : {}),
+    ...(params.has('batch') ? { batch: batchValid ? batch : 'invalid' } : {}),
     published: ['true', 'false', 'archived', 'attention', 'pickup_locations'].includes(params.get('published') || '')
       ? params.get('published') as ProductQueryState['published'] : 'all',
     type: text(params.get('type'), 200) || 'all',
@@ -47,11 +47,12 @@ export function safeProductReturnTo(value: unknown): string {
   if (typeof value !== 'string' || !/^\/admin\/products(?:\?[^#]*)?$/.test(value) || (value.includes('\\') || hasControl(value))) return '/admin/products';
   const search = value.slice('/admin/products'.length);
   const params = new URLSearchParams(search);
-  if ([...params.keys()].some(key => !keys.includes(key) || params.getAll(key).length !== 1)) return '/admin/products';
+  if ([...params.keys()].some(key => !keys.includes(key) || (key !== 'batch' && params.getAll(key).length !== 1))) return '/admin/products';
   const canonical = productListPath(parseProductQuery(search));
   // Invalid values are not trusted, even when accompanied by valid filters.
   const normalized = new URLSearchParams(canonical.split('?')[1]);
   for (const [key, val] of params) {
+    if (key === 'batch' && normalized.get('batch') === 'invalid') continue;
     const defaults: Record<string, string> = { q: '', published: 'all', type: 'all', sort: 'name', dir: 'asc', page: '1', batch: '' };
     if ((normalized.get(key) ?? defaults[key]) !== val) return '/admin/products';
   }

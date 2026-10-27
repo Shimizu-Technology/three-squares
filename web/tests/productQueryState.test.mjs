@@ -82,8 +82,8 @@ test('import batch context and pickup-recovery filters survive canonical editor 
   assert.equal(parseProductQuery(path.split('?')[1]).batch, batch);
   assert.equal(safeProductReturnTo(`/admin/products?batch=${batch}&published=pickup_locations&page=2`), path);
   for (const value of ['other-account', '../products', '4ba7a24e-98f5-4373-bc02-b51d7acd9fb1<script>', '1,2,3', '']) {
-    assert.equal(parseProductQuery(`?batch=${encodeURIComponent(value)}`).batch, undefined);
-    assert.equal(safeProductReturnTo(`/admin/products?batch=${encodeURIComponent(value)}`), '/admin/products');
+    assert.equal(parseProductQuery(`?batch=${encodeURIComponent(value)}`).batch, 'invalid');
+    assert.equal(safeProductReturnTo(`/admin/products?batch=${encodeURIComponent(value)}`), '/admin/products?batch=invalid');
   }
-  assert.equal(safeProductReturnTo(`/admin/products?batch=${batch}&batch=${batch}`), '/admin/products');
+  assert.equal(safeProductReturnTo(`/admin/products?batch=${batch}&batch=${batch}`), '/admin/products?batch=invalid');
 });
