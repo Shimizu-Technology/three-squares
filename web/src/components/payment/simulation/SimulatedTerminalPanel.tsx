@@ -6,6 +6,7 @@ export default function SimulatedTerminalPanel({ locationId, attemptId, getToken
   const [selected, setSelected] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [expanded, setExpanded] = useState(() => window.matchMedia('(min-width: 768px)').matches);
   useEffect(() => {
     let active = true;
     void getToken().then(token => api.get<{terminals: Terminal[]}>('/admin/payment_terminals', {headers: {Authorization: `Bearer ${token}`}})).then(response => {
@@ -31,7 +32,7 @@ export default function SimulatedTerminalPanel({ locationId, attemptId, getToken
     } finally { setBusy(false); }
   }
   const terminal = terminals.find(row => String(row.id) === selected);
-  return <details open className="fixed bottom-4 left-4 z-50 max-h-[70vh] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-amber-400 bg-amber-50 p-4 text-amber-950 shadow-lg">
+  return <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)} className="m-4 shrink-0 md:fixed md:bottom-4 md:left-4 md:m-0 z-50 max-h-[70vh] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-amber-400 bg-amber-50 p-4 text-amber-950 shadow-lg">
     <summary className="min-h-11 font-bold cursor-pointer">Simulated payments — no money moves</summary>
     <label className="block">Simulated reader<select value={selected} onChange={event => setSelected(event.target.value)} className="block w-full bg-white border rounded p-2 min-h-11 text-base">{terminals.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
     <p className="my-2" role="status">{terminal?.status.replaceAll('_', ' ') || 'No reader configured'}{terminal?.order_number ? ` · ${terminal.order_number}` : ''}</p>
