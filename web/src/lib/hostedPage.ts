@@ -2,11 +2,12 @@ interface HostedState {
   flow: string | null;
   payment_state: string;
   environment: string;
-  collection_config: { hosted_url?: string };
+  collection_config: { available?: boolean; hosted_url?: string };
 }
 
 // The backend validates this URL. Check the legacy host again before navigation.
 export function hostedPageUrl(state: HostedState): string | null {
+  if (state.collection_config.available === false) return null;
   if (state.flow !== 'worldpay_hosted_page' || !['collecting', 'unknown'].includes(state.payment_state)) return null;
   try {
     const url = new URL(state.collection_config.hosted_url || '');

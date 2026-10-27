@@ -2,7 +2,7 @@ import { useRef, useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
-import useLockBodyScroll from '../hooks/useLockBodyScroll';
+import AdminModal from './admin/AdminModal';
 import variantPresetsService from '../services/variantPresets';
 import type { VariantPreset, PresetValue } from '../services/variantPresets';
 
@@ -67,7 +67,10 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
   const [editAvailable, setEditAvailable] = useState(true);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingVariant, setEditingVariant] = useState<Variant | null>(null);
-  const editModalContentRef = useRef<HTMLDivElement | null>(null);
+  const editReturnFocusRef = useRef<HTMLElement | null>(null);
+  const editSavingRef = useRef(false);
+  const [editSaving, setEditSaving] = useState(false);
+  const [editError, setEditError] = useState('');
 
   // Load variants and presets on mount
   useEffect(() => {
@@ -295,7 +298,10 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
   // Variant CRUD
   // ============================================
 
-  const startEdit = (variant: Variant) => {
+  const startEdit = (variant: Variant, opener?: HTMLElement) => {
+    editReturnFocusRef.current = opener ||
+      (typeof HTMLElement !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    setEditError('');
     setEditingVariant(variant);
     setEditPrice((variant.price_cents / 100).toFixed(2));
     setEditStock(variant.stock_quantity.toString());
@@ -305,15 +311,26 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
   };
 
   const cancelEdit = () => {
+    if (editSavingRef.current) return;
     setShowEditModal(false);
     setEditingVariant(null);
   };
 
   const saveEdit = async () => {
-    if (!editingVariant) return;
-    
+    if (!editingVariant || editSavingRef.current) return;
+    editSavingRef.current = true;
+    setEditSaving(true);
+    setEditError('');
+    const controller = new AbortController();
+    let deadline: ReturnType<typeof setTimeout> | undefined;
+    const expired = new Promise<never>((_, reject) => {
+      deadline = setTimeout(() => {
+        controller.abort();
+        reject(new Error('Save timed out. Your changes are still here. Check the variant before retrying.'));
+      }, 20_000);
+    });
+
     try {
-      const token = await getToken();
       const priceCents = Math.round(parseFloat(editPrice) * 100);
       const stockQty = parseInt(editStock);
       const lowStockThreshold = parseInt(editLowStockThreshold);
@@ -331,26 +348,41 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
         return;
       }
 
-      const response = await axios.patch<{ data: Variant }>(
-        `${API_BASE_URL}/api/v1/admin/products/${productId}/variants/${editingVariant.id}`,
-        {
-          product_variant: {
-            price_cents: priceCents,
-            ...(canManageStock ? { stock_quantity: stockQty, low_stock_threshold: lowStockThreshold } : {}),
-            available: editAvailable,
+      const request = async () => {
+        const token = await getToken();
+        // Authentication is part of the deadline; never send a late request after timeout.
+        controller.signal.throwIfAborted();
+        return axios.patch<{ data: Variant }>(
+          `${API_BASE_URL}/api/v1/admin/products/${productId}/variants/${editingVariant.id}`,
+          {
+            product_variant: {
+              price_cents: priceCents,
+              ...(canManageStock ? { stock_quantity: stockQty, low_stock_threshold: lowStockThreshold } : {}),
+              available: editAvailable,
+            },
           },
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+          { headers: { Authorization: `Bearer ${token}` }, signal: controller.signal, timeout: 20_000 }
+        );
+      };
+      const response = await Promise.race([request(), expired]);
 
       setVariants(current => current.map(variant => variant.id === editingVariant.id ? response.data.data : variant));
       
       toast.success('Variant updated!');
-      cancelEdit();
+      setShowEditModal(false);
+      setEditingVariant(null);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
       console.error('Failed to update variant:', err);
-      toast.error(error.response?.data?.error || 'Failed to update variant');
+      const message = controller.signal.aborted
+        ? 'Save timed out. Your changes are still here. Check the variant before retrying.'
+        : error.response?.data?.error || 'Failed to update variant';
+      setEditError(message);
+      toast.error(message);
+    } finally {
+      clearTimeout(deadline);
+      editSavingRef.current = false;
+      setEditSaving(false);
     }
   };
 
@@ -422,8 +454,6 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
   const getPresetsForType = (typeName: string) => {
     return presets.filter(p => p.option_type.toLowerCase() === typeName.toLowerCase());
   };
-
-  useLockBodyScroll(showEditModal);
 
   if (loading) {
     return <div className="text-gray-600">Loading variants...</div>;
@@ -524,7 +554,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
                       <div className="flex items-center justify-end gap-2">
                         <button
                           type="button"
-                          onClick={() => startEdit(variant)}
+                          onClick={(event) => startEdit(variant, event?.currentTarget)}
                           className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-xs font-medium"
                         >
                           Edit
@@ -779,101 +809,79 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
       </details>
 
       {/* Edit Modal */}
-      {showEditModal && editingVariant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={cancelEdit} />
-          
-          <div className="relative w-full max-w-md bg-white rounded-xl shadow-xl flex flex-col min-h-0 max-h-[85vh]">
-            <div className="px-6 py-4 border-b border-gray-200 shrink-0">
-              <h3 className="text-lg font-semibold text-gray-900">
-                Edit Variant: {editingVariant.display_name || editingVariant.variant_name}
-              </h3>
-            </div>
-            
-            <div
-              ref={editModalContentRef}
-              className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 overscroll-contain"
-              onWheel={(event) => {
-                if (editModalContentRef.current) {
-                  editModalContentRef.current.scrollTop += event.deltaY;
-                }
-                event.stopPropagation();
-                event.preventDefault();
-              }}
-            >
+      <AdminModal
+        open={showEditModal && !!editingVariant}
+        onClose={cancelEdit}
+        title={`Edit Variant: ${editingVariant?.display_name || editingVariant?.variant_name || ''}`}
+        maxWidth="max-w-md"
+        dismissible={!editSaving}
+        returnFocusRef={editReturnFocusRef}
+        footer={(
+          <div className="flex flex-wrap justify-end gap-3">
+            <button type="button" onClick={cancelEdit} disabled={editSaving} className="min-h-[44px] px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">Cancel</button>
+            <button type="button" onClick={saveEdit} disabled={editSaving} className="min-h-[44px] px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50">{editSaving ? 'Saving...' : 'Save Changes'}</button>
+          </div>
+        )}
+      >
+        {editError && <p role="alert" className="mb-4 text-sm text-red-700">{editError}</p>}
+        <fieldset disabled={editSaving} className="space-y-4 min-w-0">
+          <div>
+            <label htmlFor="variant-edit-price" className="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
+            <input
+              id="variant-edit-price"
+              type="number"
+              step="0.01"
+              min="0"
+              value={editPrice}
+              onChange={(e) => setEditPrice(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
+            />
+          </div>
+
+          {inventoryLevel === 'variant' && (
+            <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
+                <label htmlFor="variant-edit-stock" className="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
                 <input
+                  id="variant-edit-stock"
                   type="number"
-                  step="0.01"
                   min="0"
-                  value={editPrice}
-                  onChange={(e) => setEditPrice(e.target.value)}
+                  disabled={!canManageStock}
+                  value={editStock}
+                  onChange={(e) => setEditStock(e.target.value)}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                 />
               </div>
 
-              {inventoryLevel === 'variant' && (
-                <>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Stock Quantity</label>
-                    <input
-                      type="number"
-                      min="0"
-                      disabled={!canManageStock}
-                      value={editStock}
-                      onChange={(e) => setEditStock(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Low Stock Threshold</label>
-                    <input
-                      type="number"
-                      min="0"
-                      disabled={!canManageStock}
-                      value={editLowStockThreshold}
-                      onChange={(e) => setEditLowStockThreshold(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className="flex items-center">
+              <div>
+                <label htmlFor="variant-edit-threshold" className="block text-sm font-medium text-gray-700 mb-1">Low Stock Threshold</label>
                 <input
-                  type="checkbox"
-                  id="edit-available"
-                  checked={editAvailable}
-                  onChange={(e) => setEditAvailable(e.target.checked)}
-                  className="h-4 w-4 text-tsPrimary focus:ring-tsPrimary border-gray-300 rounded"
+                  id="variant-edit-threshold"
+                  type="number"
+                  min="0"
+                  disabled={!canManageStock}
+                  value={editLowStockThreshold}
+                  onChange={(e) => setEditLowStockThreshold(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
                 />
-                <label htmlFor="edit-available" className="ml-2 block text-sm text-gray-700">
-                  Available for purchase
-                </label>
               </div>
-            </div>
-            
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 shrink-0">
-              <button
-                type="button"
-                onClick={cancelEdit}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={saveEdit}
-                className="px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition-colors"
-              >
-                Save Changes
-              </button>
-            </div>
+            </>
+          )}
+
+          <div className="flex items-center min-h-[44px]">
+            <input
+              type="checkbox"
+              id="edit-available"
+              checked={editAvailable}
+              onChange={(e) => setEditAvailable(e.target.checked)}
+              className="h-4 w-4 text-tsPrimary focus:ring-tsPrimary border-gray-300 rounded"
+            />
+            <label htmlFor="edit-available" className="ml-2 block text-sm text-gray-700">
+              Available for purchase
+            </label>
           </div>
-        </div>
-      )}
+        </fieldset>
+      </AdminModal>
     </div>
   );
 }

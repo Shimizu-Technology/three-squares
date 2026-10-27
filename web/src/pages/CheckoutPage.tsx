@@ -23,7 +23,7 @@ function CheckoutForm() {
   const { selectedLocation: storedLocation, setSelectedLocation } = useLocationStore();
   const paymentForm = useRef<CardPaymentHandle>(null);
   const checkoutCompleted = useRef(false);
-  const [savedClientConfig, setSavedClientConfig] = useState<CollectionConfiguration | null>(null);
+  const [savedClientConfig, setSavedClientConfig] = useState<(CollectionConfiguration & { available?: boolean; reason?: string }) | null>(null);
   const [locationClientConfig, setLocationClientConfig] = useState<CollectionConfiguration | null>(null);
 
   // Get items from cart (with fallback to empty array)
@@ -373,7 +373,7 @@ function CheckoutForm() {
 
   // Check if all required fields are filled
   const isFormValid = () => {
-    if (pricePending || pricingError) return false;
+    if (pricePending || pricingError || cart?.items.some(item => item.pricing?.purchasable === false)) return false;
     const hasContactInfo = name.trim() !== '' && email.trim() !== '' && phone.trim() !== '';
 
     if (deliveryMethod === 'pickup') {
@@ -489,6 +489,7 @@ function CheckoutForm() {
         setPendingPayment(pendingCheckout());
         throw new Error('The saved order total changed. Review its amount before continuing payment.');
       }
+      if (state.collection_config.available === false) { setPendingPayment(pendingCheckout()); throw new Error(state.collection_config.reason || 'This saved order now requires a catering inquiry'); }
       const hostedUrl = hostedPageUrl(state);
       if (hostedUrl) {
         window.location.assign(hostedUrl);
@@ -605,14 +606,15 @@ function CheckoutForm() {
                   if (!(await finishCheckout(state))) { setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state)); setError(`Simulation payment status: ${state.payment_state}`); }
                 } catch { setError('Simulation time could not advance. Your payment remains saved.'); }
               }}>Advance simulated time by 61 seconds</button>}
-              {canRetryCollection && <label className="mt-3 flex min-h-11 items-center gap-3"><input type="checkbox" checked={savedAmountReviewed} onChange={event => setSavedAmountReviewed(event.target.checked)} />I have reviewed the saved order total{pendingPayment.amountCents !== undefined ? ` of $${(pendingPayment.amountCents / 100).toFixed(2)}` : ''}.</label>}
-              {canRetryCollection && <button type="button" className="ml-4 mt-3 underline" disabled={loading || !paymentReady || !savedAmountReviewed} onClick={async () => {
+              {canRetryCollection && savedClientConfig?.available !== false && <label className="mt-3 flex min-h-11 items-center gap-3"><input type="checkbox" checked={savedAmountReviewed} onChange={event => setSavedAmountReviewed(event.target.checked)} />I have reviewed the saved order total{pendingPayment.amountCents !== undefined ? ` of $${(pendingPayment.amountCents / 100).toFixed(2)}` : ''}.</label>}
+              {canRetryCollection && savedClientConfig?.available !== false && <button type="button" className="ml-4 mt-3 underline" disabled={loading || !paymentReady || !savedAmountReviewed} onClick={async () => {
                 if (submitting.current) return;
                 submitting.current = true;
                 setLoading(true);
                 try {
                   const token = isSignedIn ? await getToken() : null;
                   const state = await checkoutApi.show(pendingPayment.id, token, pendingPayment.capability);
+                  if (state.collection_config.available === false) { setSavedClientConfig(checkoutClientConfiguration(state)); setCanRetryCollection(false); throw new Error(state.collection_config.reason || 'This saved order now requires a catering inquiry'); }
                   const hostedUrl = hostedPageUrl(state);
                   if (hostedUrl) { window.location.assign(hostedUrl); return; }
                   if (!state.collection_config.client_secret || state.payment_state !== 'collecting') throw new Error('Payment status changed. Check the saved order.');
@@ -970,12 +972,12 @@ function CheckoutForm() {
               )}
 
               {/* Payment Section */}
-              <PaymentForm
+              {savedClientConfig?.available === false ? <p role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-4">{savedClientConfig.reason || 'This saved order now requires a catering inquiry'}. Your order remains saved. Check payment status or cancel the saved payment before starting again.</p> : <PaymentForm
                 ref={paymentForm}
                 configuration={savedClientConfig || locationClientConfig}
                 available={collectionAvailable(activeClientConfig)}
                 onPaymentReady={handlePaymentReady}
-              />
+              />}
 
               {/* Order Notes */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
@@ -1055,6 +1057,7 @@ function CheckoutForm() {
                 </div>
               )}
 
+              {cart?.items.filter(item => item.pricing?.purchasable === false).map(item => <p key={item.id} role="alert" className="mb-3 text-sm text-red-700">{item.product.name}: {item.pricing?.reason || 'Contact us for a price before ordering'}. Remove this item to continue. <a href="/catering" className="underline">Start a catering inquiry</a>.</p>)}
               {pricePending && !pricingError && <p role="status" className="mb-3 text-sm text-warm-700">Updating your total for {deliveryMethod === 'pickup' ? storedLocation?.name || 'pickup' : 'shipping'}…</p>}
               {pricingError && <div role="alert" className="mb-3 text-sm text-red-700">{pricingError} <button type="button" className="underline min-h-11" onClick={() => void fetchCart({ fulfillment_type: deliveryMethod, location_id: deliveryMethod === 'pickup' ? pickupLocationId : null })}>Refresh price</button></div>}
               <label className="mb-4 flex items-start gap-3 text-sm text-warm-900"><input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={reviewed} onChange={event => setReviewed(event.target.checked)} /><span>I have reviewed my items, {deliveryMethod === 'pickup' ? `pickup at ${storedLocation?.name || 'the selected location'}` : 'shipping address'}, and total of {formatPrice(totalCents)}.</span></label>

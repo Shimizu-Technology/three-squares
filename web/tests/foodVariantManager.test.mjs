@@ -10,7 +10,7 @@ const imports = {
   '@clerk/clerk-react': moduleUrl("export const useAuth = () => ({ getToken: async () => 'synthetic' });"),
   axios: moduleUrl(`export default { get: (...a) => ${context}.get(...a), patch: (...a) => ${context}.patch(...a) };`),
   'react-hot-toast': moduleUrl('export default { success() {}, error() {} };'),
-  '../hooks/useLockBodyScroll': moduleUrl('export default function useLockBodyScroll() {}'),
+  './admin/AdminModal': moduleUrl('export default function AdminModal() {}'),
   '../services/variantPresets': moduleUrl('export default { getAll: async () => ({ success: true, data: { presets: [] } }) };'),
   '../config': moduleUrl("export const API_BASE_URL = 'https://synthetic.invalid';"),
 };
@@ -19,7 +19,7 @@ const compiled = ts.transpileModule(source, {
   compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText.replace(/^(import .+? from )["']([^"']+)["']/gm, (_, prefix, name) => `${prefix}${JSON.stringify(imports[name] || import.meta.resolve(name))}`);
 const { default: Manager } = await import(moduleUrl(compiled));
-const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(nodes)];
+const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children, node.props?.footer].flat(Infinity).flatMap(nodes)];
 const text = node => typeof node === 'string' ? node : node && typeof node === 'object' ? [node.props?.children].flat(Infinity).map(text).join('') : '';
 const cookieBox = Object.freeze({
   id: 11, sku: 'COOKIE-6-COCONUT', variant_name: 'Box of 6 / Coconut', display_name: 'Box of 6 / Coconut',

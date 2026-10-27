@@ -1,7 +1,7 @@
 import PaymentEnvironmentBadge from '../../payment/PaymentEnvironmentBadge';
-import { useState } from 'react';
+import { useId, useRef, useState, type RefObject } from 'react';
 import type { SavedRefundRequest } from '../../../lib/refundRequest';
-import useLockBodyScroll from '../../../hooks/useLockBodyScroll';
+import Dialog from '../../ui/Dialog';
 import type { Order } from './orderUtils';
 import { formatCurrency } from './orderUtils';
 
@@ -11,10 +11,12 @@ interface RefundModalProps {
   onProcess: (amountCents: number, reason: string, restockItems: boolean) => void;
   savedRequest: SavedRefundRequest | null;
   onClose: () => void;
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
-export default function RefundModal({ order, processing, savedRequest, onProcess, onClose }: RefundModalProps) {
-  useLockBodyScroll(true);
+export default function RefundModal({ order, processing, savedRequest, onProcess, onClose, returnFocusRef }: RefundModalProps) {
+  const headingId = useId();
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   const [refundType, setRefundType] = useState<'full' | 'partial'>('full');
   const [refundAmount, setRefundAmount] = useState('');
@@ -32,22 +34,12 @@ export default function RefundModal({ order, processing, savedRequest, onProcess
   };
 
   return (
-    <div
-      className="fixed inset-x-0 top-0 z-60 flex h-dvh items-center justify-center p-4 backdrop-blur-md bg-black/30"
-      style={{
-        paddingTop: 'max(1rem, env(safe-area-inset-top, 0px))',
-        paddingBottom: 'max(1rem, env(safe-area-inset-bottom, 0px))',
-        paddingLeft: 'max(1rem, env(safe-area-inset-left, 0px))',
-        paddingRight: 'max(1rem, env(safe-area-inset-right, 0px))',
-      }}
-      onClick={() => { if (!processing) onClose(); }}
+    <Dialog open labelledBy={headingId} initialFocusRef={headingRef} returnFocusRef={returnFocusRef}
+      dismissible={!processing} onOpenChange={(open) => { if (!open && !processing) onClose(); }}
+      className="admin-scope bg-white rounded-lg max-w-md w-full flex flex-col min-h-0"
     >
-      <div
-        className="bg-white rounded-lg max-w-md w-full max-h-[min(85dvh,100%)] flex flex-col min-h-0 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
         <div className="p-6 border-b border-gray-200 shrink-0">
-          <h2 className="text-xl font-bold text-gray-900">Refund Order</h2>
+          <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-xl font-bold text-gray-900">Refund Order</h2>
           <PaymentEnvironmentBadge environment={order.payment_environment} />
           <p className="text-sm text-gray-500 mt-1">
             Order {order.order_number} &mdash; {formatCurrency(order.total_cents)}
@@ -164,14 +156,13 @@ export default function RefundModal({ order, processing, savedRequest, onProcess
           </button>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => { if (!processing) onClose(); }}
             disabled={processing}
             className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium disabled:opacity-50"
           >
             Close
           </button>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }

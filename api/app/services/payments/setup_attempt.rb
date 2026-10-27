@@ -5,6 +5,7 @@ module Payments
     def self.call(attempt:)
       Configuration.validate_identity!(attempt.payment_identity)
       return attempt if attempt.compensation_claimed_at || %w[captured compensated failed cancelled].include?(attempt.state)
+      return attempt.reload if cancel_gated_undispatched(attempt)
       if attempt.raw_provider_id.blank? && attempt.dispatched_at.nil? && attempt.checkout_session.expires_at.past?
         raise Conflict, "Collection expired; check the saved payment before starting again"
       end
@@ -50,6 +51,26 @@ module Payments
         end
       end
       raise
+    end
+
+    def self.cancel_gated_undispatched(attempt)
+      AttemptLock.call(attempt) do |session, current, charge, order|
+        # Only untouched intent can be closed locally. Dispatched, ambiguous or
+        # financial attempts retain the existing provider recovery path.
+        next false unless session.channel == "online" && %w[created unknown].include?(current.state)
+        next false if current.raw_provider_id.present? || current.setup_id.present? || current.dispatched_at || charge ||
+          current.approved_cents.positive? || current.captured_cents.positive? || current.compensation_claimed_at
+        next false if StorefrontEligibility.online_ordering_enabled_for_order?(order)
+
+        UpdateOrder.call(order: order, attributes: {
+          status: "cancelled",
+          metadata: order.metadata.merge("system_cancellation" => { "actor" => "system", "reason" => "catering_inquiry_required" })
+        }, user: nil, notify: false)
+        current.update!(state: "cancelled", error_classification: "catering_inquiry_required",
+          last_error: StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE, next_recovery_at: nil)
+        session.update!(state: "cancelled")
+        true
+      end
     end
   end
 end

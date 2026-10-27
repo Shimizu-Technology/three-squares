@@ -12,7 +12,7 @@ export interface CheckoutState {
   provider: 'stripe' | 'worldpay';
   environment: 'simulated' | 'sandbox' | 'production';
   flow: 'stripe_embedded' | 'worldpay_hosted_fields' | 'worldpay_hosted_page' | 'simulated_fields' | null;
-  collection_config: { client_secret?: string; hosted_url?: string; payment_environment?: string; payment_identity_id?: string; stripe_account_id?: string; stripe_publishable_key?: string };
+  collection_config: { available?: boolean; reason?: string; client_secret?: string; hosted_url?: string; payment_environment?: string; payment_identity_id?: string; stripe_account_id?: string; stripe_publishable_key?: string };
   order: { id: number; order_number: string; payment_status: string; inventory_committed: boolean };
 }
 

@@ -55,6 +55,8 @@ export default function AdminProductsPage() {
   const [detailError, setDetailError] = useState(false);
   const [detailTarget, setDetailTarget] = useState<Product | null>(null);
   const detailRequestId = useRef(0);
+  const detailActivationRef = useRef<HTMLElement | null>(null);
+  const detailReturnFocusRef = useRef<HTMLElement | null>(null);
 
   // URL is the only source of list state; POP navigation never syncs from stale local state.
   const query = parseProductQuery(location.search);
@@ -93,12 +95,6 @@ export default function AdminProductsPage() {
     });
   };
 
-  // Lock body scroll when modal open
-  useEffect(() => {
-    document.body.style.overflow = selectedProduct ? 'hidden' : 'unset';
-    return () => { document.body.style.overflow = 'unset'; };
-  }, [selectedProduct]);
-
   // ── Fetch ──────────────────────────────────────────────
   const fetchProducts = useCallback(async () => {
     if (!active.current) return;
@@ -130,6 +126,12 @@ export default function AdminProductsPage() {
   }, [fetchProducts]);
 
   const fetchProductDetails = async (product: Product) => {
+    // Capture the actual row control before authentication/network work can move focus.
+    // Retry preserves the original opener, rather than returning to a removed retry button.
+    if (detailTarget?.slug !== product.slug) {
+      detailReturnFocusRef.current = detailActivationRef.current ||
+        (typeof HTMLElement !== 'undefined' && document.activeElement instanceof HTMLElement ? document.activeElement : null);
+    }
     const id = ++detailRequestId.current;
     if (detailTarget?.slug !== product.slug) setDetailError(false);
     setDetailTarget(product);
@@ -276,7 +278,10 @@ export default function AdminProductsPage() {
 
   // ── Render ─────────────────────────────────────────────
   return (
-    <div className="space-y-6" onBlurCapture={() => { searchEditing.current = false; }}>
+    <div className="space-y-6" onClickCapture={(event) => {
+      detailActivationRef.current = event.target instanceof Element
+        ? event.target.closest<HTMLElement>('button, a[href], [tabindex]') : null;
+    }} onBlurCapture={() => { searchEditing.current = false; }}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -366,6 +371,7 @@ export default function AdminProductsPage() {
         <ProductDetailModal
           product={selectedProduct}
           loading={loadingDetails}
+          returnFocusRef={detailReturnFocusRef}
           onClose={closeProductDetails}
           onEdit={openEditor}
         />

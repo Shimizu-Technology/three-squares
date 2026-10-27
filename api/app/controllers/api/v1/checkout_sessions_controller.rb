@@ -64,6 +64,9 @@ module Api
         raise Payments::BindingError, 'Use the authorized reader controls for POS simulation' unless session.channel == 'online' || session.payment_attempts.order(:created_at).last.collection_mode == 'hosted'
         Payments::Simulation::Guard.validate!(session.payment_identity)
         attempt = session.payment_attempts.order(:created_at).last
+        unless StorefrontEligibility.online_ordering_enabled_for_order?(session.order)
+          raise Payments::FulfillmentError, StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE
+        end
         provider = Payments::ProviderResolver.for_attempt(attempt)
         result = provider.collect(attempt: attempt, scenario: params.require(:scenario), handle: params.require(:handle), mode: params.fetch(:mode, 'token'))
         Payments::FinalizeOrder.call(attempt: attempt, result: result)
@@ -117,13 +120,14 @@ module Api
       def session_json(session, attempt)
         order = session.order.reload
         identity = session.payment_identity
+        inquiry_required = !StorefrontEligibility.online_ordering_enabled_for_order?(order)
         client_config = identity.provider == 'stripe' ? {
           'payment_identity_id' => identity.id, 'payment_environment' => identity.environment, 'stripe_account_id' => identity.external_account_id,
           'stripe_publishable_key' => ENV[identity.environment == 'production' ? 'STRIPE_PUBLISHABLE_KEY' : 'STRIPE_PUBLISHABLE_KEY_TEST']
         } : { 'payment_identity_id' => identity.id, 'payment_environment' => identity.environment }
         { id: session.id, attempt_id: attempt.id, state: session.state, payment_state: attempt.state, amount_cents: session.amount_cents, currency: session.currency,
           payment_identity_id: identity.id, provider: session.payment_identity.provider, environment: session.payment_identity.environment, simulated: order.simulated, expires_at: session.expires_at.iso8601,
-          flow: attempt.collection_config["flow"], collection_config: collection_active?(session, attempt) ? attempt.collection_config.except("flow").merge(client_config) : {},
+          flow: attempt.collection_config["flow"], collection_config: inquiry_required ? { available: false, reason: StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE } : (collection_active?(session, attempt) ? attempt.collection_config.except("flow").merge(client_config) : {}),
           order: { id: order.id, order_number: order.order_number, payment_status: order.payment_status, inventory_committed: order.inventory_committed_at.present? } }
       end
 
