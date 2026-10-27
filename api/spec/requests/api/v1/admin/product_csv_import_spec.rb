@@ -36,12 +36,16 @@ RSpec.describe "Product CSV import", type: :request do
     expect(response).to have_http_status(:unprocessable_entity)
   end
 
+  let!(:main_location) { Location.create!(name: "Three Squares Main", slug: "main") }
+  let!(:donki_location) { Location.create!(name: "Three Squares @ Donki", slug: "donki") }
+
   it "imports exact cents, categories, default variants and active flags" do
     sign_in(admin)
-    upload_csv("\uFEFFname,description,price,category_name,active\nBeef Tapa,Tasty,12.99,Breakfast,true\nWater,,1.50,Breakfast,no\n")
+    upload_csv("\uFEFFname,description,price,category_name,active,locations\nBeef Tapa,Tasty,12.99,Breakfast,true,main\nWater,,1.50,Breakfast,no,main\n")
     expect(response).to have_http_status(:ok)
-    expect(response.parsed_body.fetch("data")).to include("imported" => 2, "skipped" => 0, "total" => 2)
+    expect(response.parsed_body.fetch("data")).to include("imported" => 2, "skipped" => 0, "total" => 2, "notices" => [])
     product = Product.find_by!(name: "Beef Tapa")
+    expect(product).to be_published
     expect(product.base_price_cents).to eq(1299)
     expect(product.product_variants.sole.price_cents).to eq(1299)
     expect(product).to be_allow_pickup
@@ -107,5 +111,47 @@ RSpec.describe "Product CSV import", type: :request do
     upload_csv("name,price\n" + ("Meal,1\n" * 2001))
     expect(response).to have_http_status(:unprocessable_entity)
     expect(Product.count).to eq(0)
+  end
+
+  it "assigns pickup locations by slug or name and limits availability to them" do
+    sign_in(admin)
+    upload_csv("name,price,locations\nDonki Bowl,9.50,Three Squares @ Donki\nShared Plate,11.00,main; DONKI\n")
+    expect(response.parsed_body.fetch("data")).to include("imported" => 2, "skipped" => 0)
+    donki_only = Product.find_by!(name: "Donki Bowl")
+    expect(donki_only).to be_published
+    expect(donki_only.available_for_location?(donki_location.id)).to be(true)
+    expect(donki_only.available_for_location?(main_location.id)).to be(false)
+    shared = Product.find_by!(name: "Shared Plate")
+    expect(shared.product_locations.available.pluck(:location_id)).to contain_exactly(main_location.id, donki_location.id)
+  end
+
+  it "imports rows without locations as unpublished drafts with a notice" do
+    sign_in(admin)
+    upload_csv("name,price,active\nNo Location,5.00,true\n")
+    data = response.parsed_body.fetch("data")
+    expect(data).to include("imported" => 1, "skipped" => 0)
+    expect(data.fetch("notices").sole).to include("row" => 2, "name" => "No Location")
+    product = Product.find_by!(name: "No Location")
+    expect(product).not_to be_published
+    expect(product.product_locations).to be_empty
+  end
+
+  it "skips rows with unknown locations without creating them" do
+    sign_in(admin)
+    upload_csv("name,price,locations\nGhost,5.00,main;tumon\nReal,6.00,main\n")
+    data = response.parsed_body.fetch("data")
+    expect(data).to include("imported" => 1, "skipped" => 1)
+    expect(data.fetch("errors").sole).to include("row" => 2, "error" => "Unknown location: tumon")
+    expect(Product.pluck(:name)).to eq(["Real"])
+  end
+
+  it "skips rows containing null characters and still reports counts" do
+    sign_in(admin)
+    upload_csv("name,price,category_name,locations\nGood,5.00,Lunch,main\nBad,6.00,Lun\u0000ch,main\nAlso Good,7.00,,main\n")
+    expect(response).to have_http_status(:ok)
+    data = response.parsed_body.fetch("data")
+    expect(data).to include("imported" => 2, "skipped" => 1, "total" => 3)
+    expect(data.fetch("errors").sole).to include("row" => 3, "error" => "Row contains an invalid null character")
+    expect(Collection.pluck(:name)).to eq(["Lunch"])
   end
 end

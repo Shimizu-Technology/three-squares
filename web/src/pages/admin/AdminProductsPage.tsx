@@ -26,18 +26,19 @@ interface ImportResult {
   skipped: number;
   total: number;
   errors: { row: number; name?: string; error: string }[];
+  notices?: { row: number; name?: string; message: string }[];
 }
 
 interface ImportResultResponse {
   data: ImportResult;
 }
 
-const CSV_TEMPLATE = `name,description,price,category_name,active
-Beef Tapa,Marinated beef served with garlic rice and egg,12.99,Breakfast,true
-Chicken Adobo,Classic Filipino chicken adobo with steamed rice,11.50,Lunch,true
-Pancit Canton,Stir-fried noodles with vegetables and pork,9.99,Mains,true
-Halo-Halo,Shaved ice dessert with mixed ingredients,7.50,Desserts,true
-Bottled Water,Cold bottled water 500ml,1.50,Drinks,true
+const CSV_TEMPLATE = `name,description,price,category_name,active,locations
+Beef Tapa,Marinated beef served with garlic rice and egg,12.99,Breakfast,true,three-squares-main
+Chicken Adobo,Classic Filipino chicken adobo with steamed rice,11.50,Lunch,true,three-squares-main;three-squares-donki
+Pancit Canton,Stir-fried noodles with vegetables and pork,9.99,Mains,true,three-squares-main
+Halo-Halo,Shaved ice dessert with mixed ingredients,7.50,Desserts,true,three-squares-donki
+Bottled Water,Cold bottled water 500ml,1.50,Drinks,true,three-squares-main;three-squares-donki
 `;
 
 function downloadTemplate() {
@@ -357,7 +358,7 @@ export default function AdminProductsPage() {
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <p className="text-sm text-blue-800 font-medium">CSV Format</p>
                     <p className="text-xs text-blue-700 mt-1">
-                      Required: <code>name, price</code>. Optional: <code>description, category_name, active</code>. Prices use dollars with at most two decimal places; active defaults to true. Maximum 2 MB / 2,000 rows. Imports create new pickup-only products; existing products are skipped. Review location availability after import.
+                      Required: <code>name, price</code>. Optional: <code>description, category_name, active, locations</code>. Prices use dollars with at most two decimal places; active defaults to true. List pickup locations by name or slug, separated by semicolons; rows without locations are imported as unpublished drafts. Maximum 2 MB / 2,000 rows. Imports create new pickup-only products; existing products are skipped.
                     </p>
                     <button
                       onClick={downloadTemplate}
@@ -414,6 +415,20 @@ export default function AdminProductsPage() {
                       <p className="text-xs text-gray-500">Total rows</p>
                     </div>
                   </div>
+                  {importResult.notices && importResult.notices.length > 0 && (
+                    <div className="border border-blue-200 rounded-lg overflow-hidden">
+                      <div className="bg-blue-50 px-4 py-2">
+                        <p className="text-sm font-medium text-blue-800">{importResult.notices.length} draft{importResult.notices.length > 1 ? 's' : ''} need pickup locations</p>
+                      </div>
+                      <ul className="divide-y divide-blue-100 max-h-40 overflow-y-auto">
+                        {importResult.notices.map((notice, i) => (
+                          <li key={i} className="px-4 py-2 text-sm text-blue-800">
+                            <span className="font-medium">Row {notice.row}{notice.name ? ` (${notice.name})` : ''}:</span> {notice.message}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                   {importResult.errors.length > 0 && (
                     <div className="border border-orange-200 rounded-lg overflow-hidden">
                       <div className="bg-orange-50 px-4 py-2">
