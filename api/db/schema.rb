@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_050000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_060000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -140,6 +140,33 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_050000) do
     t.index ["event_date"], name: "index_catering_inquiries_on_event_date"
     t.index ["responded_by_id"], name: "index_catering_inquiries_on_responded_by_id"
     t.index ["status"], name: "index_catering_inquiries_on_status"
+  end
+
+  create_table "checkout_sessions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.integer "amount_cents", null: false
+    t.string "caller_idempotency_key", null: false
+    t.string "channel", default: "online", null: false
+    t.datetime "consumed_at"
+    t.datetime "created_at", null: false
+    t.string "currency", default: "USD", null: false
+    t.datetime "expires_at", null: false
+    t.string "guest_capability_digest", null: false
+    t.bigint "location_id"
+    t.bigint "order_id", null: false
+    t.string "owner_key", null: false
+    t.uuid "payment_identity_id", null: false
+    t.jsonb "snapshot", default: {}, null: false
+    t.string "snapshot_digest", null: false
+    t.string "state", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["location_id"], name: "index_checkout_sessions_on_location_id"
+    t.index ["order_id"], name: "index_checkout_sessions_on_order_id", unique: true
+    t.index ["owner_key", "caller_idempotency_key"], name: "unique_checkout_request", unique: true
+    t.index ["payment_identity_id"], name: "index_checkout_sessions_on_payment_identity_id"
+    t.index ["user_id"], name: "index_checkout_sessions_on_user_id"
+    t.check_constraint "amount_cents > 0", name: "checkout_positive_amount"
+    t.check_constraint "user_id IS NULL AND guest_capability_digest::text <> ''::text OR user_id IS NOT NULL AND guest_capability_digest::text = ''::text", name: "checkout_owner_authority"
   end
 
   create_table "collections", force: :cascade do |t|
@@ -422,6 +449,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_050000) do
     t.text "admin_notes"
     t.integer "cash_change_cents"
     t.integer "cash_received_cents"
+    t.uuid "checkout_session_id"
     t.boolean "confirmation_email_sent", default: false, null: false
     t.boolean "confirmation_sms_sent", default: false, null: false
     t.datetime "created_at", null: false
@@ -432,6 +460,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_050000) do
     t.string "easypost_shipment_id"
     t.string "fulfillment_type", default: "shipping", null: false
     t.bigint "fundraiser_id"
+    t.string "guest_access_digest"
+    t.datetime "guest_access_expires_at"
+    t.uuid "inventory_commitment_id"
+    t.datetime "inventory_committed_at"
     t.integer "last_email_seq", default: 0, null: false
     t.integer "last_sms_seq", default: 0, null: false
     t.bigint "location_id"
@@ -440,8 +472,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_050000) do
     t.string "order_number"
     t.string "order_type"
     t.bigint "participant_id"
+    t.uuid "payment_attempt_id"
+    t.string "payment_environment"
+    t.uuid "payment_identity_id"
     t.string "payment_intent_id"
+    t.jsonb "payment_metadata", default: {}, null: false
     t.string "payment_method"
+    t.string "payment_provider"
+    t.string "payment_reference"
+    t.string "payment_session_id"
     t.string "payment_status"
     t.string "shipping_address_line1"
     t.string "shipping_address_line2"
@@ -451,6 +490,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_050000) do
     t.string "shipping_method"
     t.string "shipping_state"
     t.string "shipping_zip"
+    t.boolean "simulated", default: false, null: false
     t.string "source", default: "online", null: false
     t.boolean "staff_created", default: false, null: false
     t.string "status"
@@ -460,10 +500,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_050000) do
     t.string "tracking_number"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
+    t.index ["checkout_session_id"], name: "index_orders_on_checkout_session_id", unique: true
     t.index ["created_at"], name: "index_orders_on_created_at"
     t.index ["customer_email"], name: "index_orders_on_customer_email"
     t.index ["fulfillment_type"], name: "index_orders_on_fulfillment_type"
     t.index ["fundraiser_id"], name: "index_orders_on_fundraiser_id"
+    t.index ["inventory_commitment_id"], name: "index_orders_on_inventory_commitment_id", unique: true
     t.index ["location_id"], name: "index_orders_on_location_id"
     t.index ["order_number"], name: "index_orders_on_order_number", unique: true
     t.index ["order_type"], name: "index_orders_on_order_type"
@@ -501,6 +543,99 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_050000) do
     t.datetime "updated_at", null: false
     t.index ["fundraiser_id"], name: "index_participants_on_fundraiser_id"
     t.index ["unique_code"], name: "index_participants_on_unique_code", unique: true
+  end
+
+  create_table "payment_attempts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.integer "approved_cents", default: 0, null: false
+    t.integer "captured_cents", default: 0, null: false
+    t.uuid "checkout_session_id", null: false
+    t.jsonb "collection_config", default: {}, null: false
+    t.datetime "compensation_claimed_at"
+    t.datetime "created_at", null: false
+    t.string "currency", default: "USD", null: false
+    t.datetime "dispatched_at"
+    t.string "error_classification"
+    t.string "hosted_url"
+    t.datetime "next_recovery_at"
+    t.string "operation", default: "sale", null: false
+    t.uuid "operation_key", default: -> { "gen_random_uuid()" }, null: false
+    t.bigint "order_id", null: false
+    t.string "payload_digest", null: false
+    t.uuid "payment_identity_id", null: false
+    t.jsonb "provider_metadata", default: {}, null: false
+    t.string "raw_provider_id"
+    t.integer "recovery_count", default: 0, null: false
+    t.bigint "reference_number", null: false
+    t.integer "requested_cents", null: false
+    t.string "setup_id"
+    t.string "state", default: "created", null: false
+    t.datetime "updated_at", null: false
+    t.index ["checkout_session_id"], name: "index_payment_attempts_on_checkout_session_id"
+    t.index ["checkout_session_id"], name: "one_active_collection_per_session", unique: true, where: "(((operation)::text = 'sale'::text) AND ((state)::text <> ALL ((ARRAY['failed'::character varying, 'cancelled'::character varying, 'compensated'::character varying])::text[])))"
+    t.index ["order_id"], name: "index_payment_attempts_on_order_id"
+    t.index ["payment_identity_id", "operation_key"], name: "idx_on_payment_identity_id_operation_key_7304b18f9d", unique: true
+    t.index ["payment_identity_id", "raw_provider_id"], name: "idx_on_payment_identity_id_raw_provider_id_00e8d6929f", unique: true
+    t.index ["payment_identity_id"], name: "index_payment_attempts_on_payment_identity_id"
+    t.check_constraint "requested_cents > 0 AND approved_cents >= 0 AND captured_cents >= 0 AND captured_cents <= approved_cents AND approved_cents <= requested_cents", name: "payment_attempt_amount_bounds"
+  end
+
+  create_table "payment_identities", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "credential_reference", null: false
+    t.string "currency", default: "USD", null: false
+    t.string "environment", null: false
+    t.string "external_account_id", null: false
+    t.string "profile_key", null: false
+    t.string "provider", null: false
+    t.datetime "updated_at", null: false
+    t.index ["profile_key"], name: "index_payment_identities_on_profile_key", unique: true
+    t.check_constraint "(provider::text = ANY (ARRAY['stripe'::character varying, 'worldpay'::character varying]::text[])) AND (environment::text = ANY (ARRAY['simulated'::character varying, 'sandbox'::character varying, 'production'::character varying]::text[])) AND currency::text = 'USD'::text", name: "valid_payment_identity"
+  end
+
+  create_table "payment_operation_numbers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "payment_profiles", force: :cascade do |t|
+    t.jsonb "capabilities", default: {}, null: false
+    t.string "channel", null: false
+    t.datetime "created_at", null: false
+    t.boolean "enabled", default: false, null: false
+    t.bigint "location_id"
+    t.uuid "payment_identity_id", null: false
+    t.string "presentation", null: false
+    t.string "provider", null: false
+    t.datetime "updated_at", null: false
+    t.index ["channel", "provider"], name: "one_enabled_default_payment_profile", unique: true, where: "(enabled AND (location_id IS NULL))"
+    t.index ["location_id", "channel", "provider"], name: "one_enabled_payment_profile_per_location_channel", unique: true, where: "enabled"
+    t.index ["location_id"], name: "index_payment_profiles_on_location_id"
+    t.index ["payment_identity_id"], name: "index_payment_profiles_on_payment_identity_id"
+  end
+
+  create_table "payment_transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.integer "amount_cents", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.datetime "first_observed_at", null: false
+    t.datetime "last_observed_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.bigint "order_id"
+    t.uuid "payment_attempt_id", null: false
+    t.uuid "payment_identity_id", null: false
+    t.string "provider", null: false
+    t.string "raw_provider_id", null: false
+    t.string "reference", null: false
+    t.string "settlement_state", default: "unknown", null: false
+    t.string "state", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_id"], name: "index_payment_transactions_on_order_id"
+    t.index ["order_id"], name: "one_consumed_charge_per_order", unique: true, where: "(order_id IS NOT NULL)"
+    t.index ["payment_attempt_id"], name: "index_payment_transactions_on_payment_attempt_id"
+    t.index ["payment_identity_id", "raw_provider_id"], name: "unique_identity_transaction", unique: true
+    t.index ["payment_identity_id"], name: "index_payment_transactions_on_payment_identity_id"
+    t.index ["provider", "reference"], name: "index_payment_transactions_on_provider_and_reference", unique: true
+    t.check_constraint "amount_cents > 0", name: "transaction_positive_amount"
   end
 
   create_table "product_collections", force: :cascade do |t|
@@ -685,6 +820,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_050000) do
   add_foreign_key "cart_items", "product_variants"
   add_foreign_key "cart_items", "users"
   add_foreign_key "catering_inquiries", "users", column: "responded_by_id"
+  add_foreign_key "checkout_sessions", "locations"
+  add_foreign_key "checkout_sessions", "orders"
+  add_foreign_key "checkout_sessions", "payment_identities"
+  add_foreign_key "checkout_sessions", "users"
   add_foreign_key "fundraiser_order_items", "fundraiser_orders"
   add_foreign_key "fundraiser_order_items", "fundraiser_product_variants"
   add_foreign_key "fundraiser_orders", "fundraisers"
@@ -700,11 +839,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_050000) do
   add_foreign_key "order_items", "orders"
   add_foreign_key "order_items", "product_variants"
   add_foreign_key "order_items", "products"
+  add_foreign_key "orders", "checkout_sessions"
   add_foreign_key "orders", "fundraisers"
   add_foreign_key "orders", "locations"
   add_foreign_key "orders", "participants"
+  add_foreign_key "orders", "payment_attempts"
+  add_foreign_key "orders", "payment_identities"
   add_foreign_key "orders", "users"
   add_foreign_key "participants", "fundraisers"
+  add_foreign_key "payment_attempts", "checkout_sessions"
+  add_foreign_key "payment_attempts", "orders"
+  add_foreign_key "payment_attempts", "payment_identities"
+  add_foreign_key "payment_profiles", "locations"
+  add_foreign_key "payment_profiles", "payment_identities"
+  add_foreign_key "payment_transactions", "orders"
+  add_foreign_key "payment_transactions", "payment_attempts"
+  add_foreign_key "payment_transactions", "payment_identities"
   add_foreign_key "product_collections", "collections"
   add_foreign_key "product_collections", "products"
   add_foreign_key "product_images", "products"

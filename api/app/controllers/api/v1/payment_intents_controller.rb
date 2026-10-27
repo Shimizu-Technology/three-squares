@@ -3,6 +3,7 @@
 module Api
   module V1
     class PaymentIntentsController < ApplicationController
+      before_action { Payments::Configuration.validate_database! }
       include Authenticatable
       skip_before_action :authenticate_request, only: [ :create ]
       before_action :authenticate_optional, only: [ :create ]

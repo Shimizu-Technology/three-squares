@@ -4,6 +4,7 @@ module Api
   module V1
     module Admin
       class StripeTerminalController < ApplicationController
+        before_action { Payments::Configuration.validate_database! }
         include Authenticatable
         before_action :authenticate_request
         before_action :require_admin!
