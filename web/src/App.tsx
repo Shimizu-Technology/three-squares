@@ -11,7 +11,8 @@ import SmoothScroll from './components/SmoothScroll'; // Import SmoothScroll
 import { AnimatePresence } from 'framer-motion'; // Page transitions
 import NavDropdown from './components/NavDropdown'; // Import NavDropdown
 import MobileNavDropdown from './components/MobileNavDropdown'; // Import MobileNavDropdown
-import LocationPill from './components/LocationPill'; // Import LocationPill
+import LocationContextBar from './components/LocationContextBar';
+import StorefrontGate from './components/StorefrontGate';
 import { useCartStore } from './store/cartStore'; // Import cart store
 import { API_BASE_URL } from './config';
 import AnnouncementBanner from './components/AnnouncementBanner';
@@ -264,7 +265,7 @@ function AppContent() {
               </Link>
 
               {/* Location Pill - visible on ordering pages */}
-              {isOrderingPage && <LocationPill />}
+
 
               {/* Desktop Navigation Links */}
               <div className="hidden lg:flex items-center space-x-8">
@@ -480,7 +481,10 @@ function AppContent() {
         )}
 
         {/* Location picker modal — renders as fixed overlay when active */}
-        {!isAdminPage && isOrderingPage && <LocationPicker />}
+        {!isAdminPage && isOrderingPage && <>
+          <LocationContextBar />
+          <LocationPicker />
+        </>}
 
         {/* Routes with page transitions */}
         <RouteErrorBoundary key={routeTransitionKey}>
@@ -489,14 +493,14 @@ function AppContent() {
         <Routes location={location} key={routeTransitionKey}>
           <Route path="/" element={<HomePage />} />
           <Route path="/products" element={<ProductsPage />} />
-          <Route path="/shop/three-squares" element={<BusinessLineEntryPage businessLine="three_squares" />} />
-          <Route path="/shop/latte-stone-cookies" element={<BusinessLineEntryPage businessLine="latte_stone" />} />
-          <Route path="/shop/catering" element={<BusinessLineEntryPage businessLine="catering" />} />
+          <Route path="/shop/three-squares" element={<StorefrontGate storefront="three_squares"><BusinessLineEntryPage businessLine="three_squares" /></StorefrontGate>} />
+          <Route path="/shop/latte-stone-cookies" element={<StorefrontGate storefront="latte_stone"><BusinessLineEntryPage businessLine="latte_stone" /></StorefrontGate>} />
+          <Route path="/shop/catering" element={<StorefrontGate storefront="catering"><BusinessLineEntryPage businessLine="catering" /></StorefrontGate>} />
           <Route path="/products/:slug" element={<ProductDetailPage />} />
           <Route path="/collections" element={<CollectionsPage />} />
           <Route path="/collections/:slug" element={<CollectionDetailPage />} />
           <Route path="/about" element={<AboutPage />} />
-          <Route path="/catering" element={<CateringPage />} />
+          <Route path="/catering" element={<StorefrontGate storefront="catering"><CateringPage /></StorefrontGate>} />
           <Route path="/locations" element={<LocationsPage />} />
           
           <Route path="/checkout" element={<CheckoutPage />} />

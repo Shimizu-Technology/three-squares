@@ -8,6 +8,7 @@ export interface LocationInfo {
   address?: string | null;
   phone?: string | null;
   hours_json?: Record<string, string>;
+  accepting_orders_now?: boolean;
 }
 
 interface LocationStore {
