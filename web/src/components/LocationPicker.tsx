@@ -93,13 +93,17 @@ export default function LocationPicker() {
 
   const selectLocation = (loc: LocationInfo) => {
     setSelectedLocation(loc);
-    if (directMenu) navigate(`/menu/${encodeURIComponent(loc.slug)}`);
   };
 
   const handleLocationSelect = (loc: LocationInfo) => {
+    if (directMenu) {
+      // The route checks the server cart before changing global selection.
+      setShowPicker(false);
+      navigate(`/menu/${encodeURIComponent(loc.slug)}`);
+      return;
+    }
     if (selectedLocation?.id === loc.id) {
       setShowPicker(false);
-      if (directMenu) navigate(`/menu/${encodeURIComponent(loc.slug)}`);
       return;
     }
 
@@ -112,6 +116,13 @@ export default function LocationPicker() {
   };
 
   const confirmSwitch = async () => {
+    if (pendingLocation && directMenu) {
+      setShowConfirm(false);
+      setShowPicker(false);
+      navigate(`/menu/${encodeURIComponent(pendingLocation.slug)}`);
+      setPendingLocation(null);
+      return;
+    }
     if (pendingLocation) {
       try {
         await clearCart();

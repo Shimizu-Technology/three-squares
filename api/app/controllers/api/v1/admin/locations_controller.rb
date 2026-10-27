@@ -38,11 +38,18 @@ module Api
         end
 
         def generate_qr
-          service = QrCodeService.new(@location, base_url: params[:base_url])
-          @location.update!(qr_code_url: service.menu_url)
-          render_success({ menu_url: service.menu_url, svg: service.to_svg })
-        rescue ArgumentError => error
-          render_error(error.message)
+          begin
+            service = QrCodeService.new(@location, base_url: params[:base_url])
+            svg = service.to_svg
+          rescue ArgumentError => error
+            return render_error(error.message)
+          end
+
+          if @location.update(qr_code_url: service.menu_url)
+            render_success({ menu_url: service.menu_url, svg: svg })
+          else
+            render_error("Failed to save the location menu URL", errors: @location.errors.full_messages)
+          end
         end
 
         private

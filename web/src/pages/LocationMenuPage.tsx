@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import api, { locationsApi, type Location } from '../services/api';
@@ -17,10 +17,12 @@ export default function LocationMenuPage() {
   const [notFound, setNotFound] = useState(false);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  const lifecycle = useRef(0);
   const [switching, setSwitching] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
+    lifecycle.current += 1;
     setLoading(true);
     setError('');
     setNotFound(false);
@@ -39,19 +41,23 @@ export default function LocationMenuPage() {
       if (axios.isAxiosError(failure) && failure.response?.status === 404) setNotFound(true);
       else setError('We could not load this menu and check your cart. Please try again.');
     }).finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
+    return () => { cancelled = true; lifecycle.current += 1; };
   }, [locationSlug, retry, setSelectedLocation]);
 
   const switchLocation = async () => {
     if (!location) return;
+    const version = lifecycle.current;
+    const previousLocationId = useLocationStore.getState().selectedLocation?.id;
     setSwitching(true);
     setError('');
     try {
       await clearCart();
-      setSelectedLocation(location);
+      if (lifecycle.current === version && useLocationStore.getState().selectedLocation?.id === previousLocationId) {
+        setSelectedLocation(location);
+      }
     } catch {
-      setError('Unable to clear your cart. Your pickup location has not changed. Please try again.');
-    } finally { setSwitching(false); }
+      if (lifecycle.current === version) setError('Unable to clear your cart. Your pickup location has not changed. Please try again.');
+    } finally { if (lifecycle.current === version) setSwitching(false); }
   };
 
   if (loading) return <div role="status" className="px-6 py-20 text-center">Loading location menu…</div>;

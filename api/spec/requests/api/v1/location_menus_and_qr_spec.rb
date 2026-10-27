@@ -35,6 +35,11 @@ RSpec.describe "Location menu URLs and QR codes", type: :request do
     post "/api/v1/admin/locations/#{location.id}/generate_qr", params: { base_url: "https://evil.example" }
     expect(response).to have_http_status(:unprocessable_entity)
     expect(location.reload.qr_code_url).to eq(body.fetch("menu_url"))
+    location.update_column(:qr_code_url, "https://previous.example/menu/main")
+    allow_any_instance_of(QrCodeService).to receive(:to_svg).and_raise(ArgumentError, "QR render failed")
+    post "/api/v1/admin/locations/#{location.id}/generate_qr"
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(location.reload.qr_code_url).to eq("https://previous.example/menu/main")
   end
 end
 
@@ -60,7 +65,7 @@ RSpec.describe QrCodeService do
 
   it "rejects malformed and private production origins and invalid slugs" do
     allow(Rails.env).to receive(:production?).and_return(true)
-    %w[http://localhost:5173 https://127.0.0.1 https://192.168.1.1 https://thing.local https://thing.LOCAL https://thing.internal https://thing.test https://bad..host https://app.example.com/path].each do |origin|
+    %w[http://localhost:5173 https://127.0.0.1 https://127.1 https://0x7f.0.0.1 https://0177.0.0.1 https://192.168.1.1 https://thing.local https://thing.LOCAL https://thing.internal https://thing.test https://bad..host https://app.example.com/path].each do |origin|
       ENV["PUBLIC_STOREFRONT_ORIGIN"] = origin
       expect { described_class.new(location) }.to raise_error(ArgumentError)
     end
