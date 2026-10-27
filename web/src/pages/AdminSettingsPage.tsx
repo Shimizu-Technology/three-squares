@@ -332,6 +332,7 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
     } catch (err: any) {
       if (generation !== saveGeneration.current) return;
       await checkSavedImmediateField(field, generation);
+      if (generation !== saveGeneration.current) return;
       console.error('Failed to toggle email setting:', err);
       toast.error('Save response unavailable. Check the current saved value.');
     } finally {
@@ -371,6 +372,7 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
     } catch (err: unknown) {
       if (generation !== saveGeneration.current) return;
       await checkSavedImmediateField(field, generation);
+      if (generation !== saveGeneration.current) return;
       console.error('Failed to toggle storefront:', err);
       toast.error('Save response unavailable. Check the current saved value.');
     } finally {

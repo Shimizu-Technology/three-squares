@@ -216,3 +216,16 @@ test('an unknown save blocks another write until a field-only read succeeds', as
   assert.equal(writes, 1); assert.equal(h.generalProps().settings.enable_storefront_catering, true);
   assert.equal(h.button('Enable Catering storefront', h.general()).props.disabled, false);
 });
+
+for (const button of ['Retail order emails', 'Enable Catering storefront']) test(`${button} reconciliation completion after unmount emits no toast`, async t => {
+  const h = harness(t, Settings); await h.flush();
+  const original = console.error; console.error = () => {}; t.after(() => { console.error = original; });
+  const read = deferred();
+  h.put = async () => { throw Error('Response lost'); };
+  h.get = () => read.promise;
+  h.click(button, h.general()); await h.flush(); h.unmount();
+  const writes = h.writes, toasts = h.toasts.length;
+  read.resolve({ data: { settings: { send_retail_emails: true }, enable_storefront_catering: true } });
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+  assert.equal(h.writes, writes); assert.equal(h.toasts.length, toasts);
+});
