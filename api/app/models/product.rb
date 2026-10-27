@@ -20,8 +20,8 @@ class Product < ApplicationRecord
   validates :product_low_stock_threshold, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :allow_pickup, inclusion: { in: [ true, false ] }
   validates :allow_shipping, inclusion: { in: [ true, false ] }
-  validates :weight_oz, numericality: { greater_than: 0 }, allow_nil: true
-  validates :weight_oz, presence: { message: "is required when shipping is enabled" }, if: :allow_shipping?
+  validates :weight_oz, numericality: { greater_than: 0 }, allow_nil: true, if: :shipping_weight_edit?
+  validates :weight_oz, presence: { message: "is required when shipping is enabled" }, if: -> { allow_shipping? && shipping_weight_edit? }
   validate :check_variants_not_in_carts_before_level_change, on: :update
   validate :must_support_at_least_one_fulfillment_type
 
@@ -140,6 +140,12 @@ class Product < ApplicationRecord
   end
 
   private
+
+  # Legacy shipping items may keep their weight on variants only. Inventory
+  # commit/restoration must not revalidate unrelated catalog fields.
+  def shipping_weight_edit?
+    new_record? || will_save_change_to_allow_shipping? || will_save_change_to_weight_oz?
+  end
 
   def normalize_pickup_weight
     self.weight_oz = nil if !allow_shipping? && weight_oz == 0
