@@ -21,6 +21,8 @@ const mocks = {
   'react-hot-toast': url(`export default { success: (...args) => ${ctx}.toasts.push(args), error: (...args) => ${ctx}.toasts.push(args) };`),
   '../services/api': url('export default {}; export const collectionsApi = {};'),
   '../hooks/useAppConfig': url(`export const invalidateAppConfig = () => ${ctx}.invalidations++;`),
+  '../components/payment/PaymentStatusPanel': url('export default function PaymentStatusPanel() {}'),
+  './PaymentEnvironmentBadge': url('export default function PaymentEnvironmentBadge() {}'),
   '../config': url('export const API_BASE_URL = "https://api.example.test";'),
   '../constants/announcementStyles': url('export const ANNOUNCEMENT_STYLE_HEX = { gold: "#123456" };'),
   './productUtils': url('export const formatCurrency = value => `$${value / 100}`; export const getStockDisplay = () => ({ value: 5, color: "", tooltip: "" });'),
@@ -35,6 +37,7 @@ async function load(path) {
 const Analytics = await load('../src/pages/admin/AdminAnalyticsPage.tsx');
 const Dashboard = await load('../src/pages/admin/AdminDashboardPage.tsx');
 const Settings = await load('../src/pages/AdminSettingsPage.tsx');
+const PaymentsPanel = await load('../src/components/payment/PaymentStatusPanel.tsx');
 const Products = await load('../src/components/admin/products/ProductsTable.tsx');
 const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(nodes)];
 const text = node => typeof node === 'string' || typeof node === 'number' ? String(node) : node && typeof node !== 'boolean' ? [node.props?.children].flat(Infinity).map(text).join('') : '';
@@ -103,6 +106,41 @@ test('range changes hide old data; late requests cannot overwrite newer range; r
   const request = h.find(node => node.type?.name === 'RequestState'); assert.equal(request.props.error, true); assert.equal(request.props.hasData, true);
   assert.equal(h.button('Last 30 days').props['aria-pressed'], true);
 });
+
+test('zero daily series has a range- and measure-specific empty state with usable controls', async t => {
+  const h = harness(t, Analytics);
+  h.get = async (_, __, options) => ({ data: { ...chart(0, 0), series: Array.from({ length: options.params.days }, () => ({ orders: 0, revenue_cents: 0 })) } });
+  await h.flush();
+  for (const days of [7, 14, 30]) {
+    h.click(`Last ${days} days`); await h.flush();
+    for (const [label, phrase] of [['Revenue', 'net revenue'], ['Orders', 'orders']]) {
+      h.click(label); await h.flush();
+      assert.match(text(h.tree), new RegExp(`No production ${phrase} in the last ${days} days`));
+      assert.equal(nodes(h.tree).some(node => node.type?.name === 'BarChart'), false);
+      assert.equal(h.button(label).props['aria-pressed'], true);
+      assert.equal(h.button(`Last ${days} days`).props['aria-pressed'], true);
+    }
+  }
+});
+
+for (const values of [[1], [50, 75], [-1234, 100], [12500, 44000]]) {
+  test(`nonzero daily values ${values} have distinct cent and integer labels and an inclusive domain`, async t => {
+    const h = harness(t, Analytics);
+    h.get = async () => ({ data: { ...chart(), series: values.map(value => ({ orders: Math.abs(value), revenue_cents: value })) } });
+    await h.flush();
+    for (const mode of ['Revenue', 'Orders']) {
+      h.click(mode); await h.flush();
+      const axis = h.find(node => node.type?.name === 'YAxis').props;
+      const labels = axis.ticks.map(axis.tickFormatter ?? String);
+      assert.equal(new Set(labels).size, labels.length);
+      assert.ok(axis.ticks.every(Number.isInteger));
+      const displayed = mode === 'Revenue' ? values : values.map(Math.abs);
+      assert.ok(axis.domain[0] <= Math.min(0, ...displayed));
+      assert.ok(axis.domain[1] >= Math.max(0, ...displayed));
+      assert.equal(nodes(h.tree).some(node => text(node).includes('No production net revenue')), false);
+    }
+  });
+}
 
 test('dashboard describes scoped all-time production orders and global published products', async t => {
   const h = harness(t, Dashboard); h.access.scopeLabel = 'All locations';
@@ -246,3 +284,55 @@ for (const [name, Component] of [['dashboard', Dashboard], ['analytics', Analyti
     if (name === 'dashboard') assert.equal(h.find(node => node.props?.label === 'All-time net revenue').props.value, '$7.50');
   });
 }
+
+
+test('payment section is read-only and status refresh cannot replace an unrelated settings draft', async t => {
+  const h = harness(t, Settings); await h.flush();
+  h.generalProps().onUpdateSettings({ store_name: 'Unsaved owner draft' }); await h.flush();
+  assert.equal(h.generalProps().settings.store_name, 'Unsaved owner draft');
+  assert.equal(h.generalProps().onToggleTestMode, undefined);
+  assert.doesNotMatch(text(h.general()), /Payment Test Mode|Real payments will|all payments are simulated|Payment Processor|Active/);
+  assert.equal(nodes(h.general()).some(node => node.type === 'img' && /stripe\.com/.test(node.props?.src ?? '')), false);
+  assert.ok(nodes(h.general()).some(node => node.type?.name === 'PaymentStatusPanel'));
+  assert.equal(h.calls.length, 0);
+});
+
+const paymentStatus = provider => ({ selected_provider: provider, production_deployment: false,
+  profiles: [{location_id: 1, location_name: 'Fictional kitchen', channel: 'online', provider, identity_id: 'fixture-identity', profile_id: 'fixture-profile', environment: 'sandbox', network_gate_enabled: false, real_dispatch_enabled: false, blockers: ['Waiting on Worldpay credentials and application configuration.']}] });
+test('payments panel exposes loaded blockers, retains no active claim on refresh failure and retries independently', async t => {
+  const h = harness(t, PaymentsPanel); h.get = async () => ({ data: paymentStatus('worldpay') }); await h.flush();
+  assert.match(text(h.tree), /Waiting on Worldpay credentials/);
+  assert.match(text(h.tree), /Real processor requests: Blocked \/ disabled/);
+  assert.equal(nodes(h.tree).some(node => node.props?.role === 'switch'), false);
+  h.get = async () => { throw Error('Offline'); }; h.click('Refresh payments status'); await h.flush();
+  assert.match(text(h.find(node => node.props?.role === 'alert')), /Previously loaded status may be out of date/);
+  assert.doesNotMatch(text(h.tree), /Real processor requests:/);
+  h.get = async () => ({ data: paymentStatus('stripe') }); h.click('Retry payments status'); await h.flush();
+  assert.match(text(h.tree), /Selected provider for new payments: Stripe/);
+});
+test('payments panel discards late responses after refresh and after unmount', async t => {
+  const h = harness(t, PaymentsPanel); const old = deferred(); h.get = () => old.promise; await h.flush();
+  h.get = async () => ({ data: paymentStatus('stripe') }); h.click('Refresh payments status'); await h.flush();
+  old.resolve({data: paymentStatus('worldpay')}); await h.flush();
+  assert.match(text(h.tree), /Selected provider for new payments: Stripe/);
+  const late = deferred(); h.get = () => late.promise; h.click('Refresh payments status'); await h.flush();
+  h.unmount(); const writes = h.writes; late.resolve({ data: paymentStatus('worldpay') }); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  assert.equal(h.writes, writes);
+});
+
+
+test('payments panel reloads after a token function change, ignores its old response and can refresh again', async t => {
+  const h = harness(t, PaymentsPanel); const old = deferred(); h.get = () => old.promise; await h.flush();
+  const originalToken = h.getToken;
+  h.getToken = async () => 'replacement-synthetic-token';
+  h.get = async (_, token) => { assert.equal(token, h.getToken); return { data: paymentStatus('stripe') }; };
+  await h.flush();
+  assert.match(text(h.tree), /Selected provider for new payments: Stripe/);
+  assert.equal(h.button('Refresh payments status').props.disabled, false);
+  old.resolve({ data: paymentStatus('worldpay') }); await h.flush();
+  assert.match(text(h.tree), /Selected provider for new payments: Stripe/);
+  assert.notEqual(originalToken, h.getToken);
+  h.click('Refresh payments status'); await h.flush();
+  assert.equal(h.button('Refresh payments status').props.disabled, false);
+  assert.doesNotMatch(text(h.tree), /Loading payments status/);
+});
