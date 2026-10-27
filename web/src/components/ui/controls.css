@@ -1,0 +1,80 @@
+/* Shared recipes live above base and below layout utilities. Legacy recipes explicitly
+   exclude data-ui-control, so unlayered .btn-* can never outrank these controls. */
+@layer components {
+  .ui-button {
+    box-sizing: border-box;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    height: 44px;
+    min-width: 44px;
+    padding: 0 16px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 20px;
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+    vertical-align: middle;
+    cursor: pointer;
+    touch-action: manipulation;
+    user-select: none;
+    transition: color 120ms ease, background-color 120ms ease, border-color 120ms ease, opacity 120ms ease;
+  }
+  .ui-button--sm { height: 36px; min-width: 36px; padding: 0 12px; }
+  .ui-button--lg { height: 52px; min-width: 52px; padding: 0 24px; font-size: 16px; line-height: 24px; }
+  .ui-button__content { min-width: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+  .ui-button__icon { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; flex: 0 0 16px; }
+  .ui-button__icon > svg { width: 100%; height: 100%; }
+  .ui-button--lg .ui-button__content { min-width: 20px; }
+  .ui-button--lg .ui-button__icon { width: 20px; height: 20px; flex-basis: 20px; }
+  .ui-button.ui-icon-button { width: 44px; padding: 0; }
+  .ui-button--sm.ui-icon-button { width: 36px; }
+  .ui-button--lg.ui-icon-button { width: 52px; }
+  .ui-button--primary { background: var(--color-tsPrimary); color: white; }
+  .ui-button--secondary { background: white; border-color: #D1D5DB; color: #1F2937; }
+  .ui-button--ghost { background: transparent; color: #1F2937; }
+  .ui-button--destructive { background: #991B1B; color: white; }
+  .ui-button--link { background: transparent; color: var(--color-tsPrimary); text-decoration: underline; text-underline-offset: 3px; }
+  .ui-button:focus-visible { outline: 2px solid var(--color-tsPrimary); outline-offset: 2px; }
+  .ui-button:disabled, .ui-button[aria-disabled="true"] { opacity: 0.5; cursor: not-allowed; }
+  .ui-button--primary:active:not([aria-disabled="true"]) { background: var(--color-tsNavy); }
+  .ui-button--destructive:active:not([aria-disabled="true"]) { background: #7F1D1D; }
+  .ui-button--secondary:active:not([aria-disabled="true"]), .ui-button--ghost:active:not([aria-disabled="true"]) { background: #F3F4F6; }
+  .ui-button--link:active:not([aria-disabled="true"]) { color: var(--color-tsNavy); }
+  /* The reserved overlay spinner slot never removes the label/icon from layout or the
+     accessible name; toggling loading preserves even an intrinsic button's width. */
+  .ui-button[data-loading] .ui-button__content { opacity: 0; }
+  .ui-button__spinner { position: absolute; inset: 0; margin: auto; width: 16px; height: 16px; box-sizing: border-box; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: ui-button-spin 600ms linear infinite; }
+  .ui-button--lg .ui-button__spinner { width: 20px; height: 20px; }
+  @keyframes ui-button-spin { to { transform: rotate(360deg); } }
+  @media (hover: hover) and (pointer: fine) {
+    .ui-button--primary:hover:not([aria-disabled="true"]) { background: var(--color-tsNavy); }
+    .ui-button--destructive:hover:not([aria-disabled="true"]) { background: #7F1D1D; }
+    .ui-button--secondary:hover:not([aria-disabled="true"]), .ui-button--ghost:hover:not([aria-disabled="true"]) { background: #F3F4F6; }
+    .ui-button--link:hover:not([aria-disabled="true"]) { color: var(--color-tsNavy); }
+  }
+  @media (pointer: coarse) {
+    .ui-button--sm { height: 44px; min-width: 44px; }
+    .ui-button--sm.ui-icon-button { width: 44px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .ui-button { transition: none; }
+    .ui-button__spinner { animation: none; }
+  }
+  .ui-status-badge { box-sizing: border-box; display: inline-flex; align-items: center; gap: 4px; height: 24px; padding: 0 8px; border: 1px solid; border-radius: 9999px; font: 600 12px/16px var(--font-sans); white-space: nowrap; }
+  .ui-status-badge__icon { display: inline-flex; width: 12px; height: 12px; }
+  .ui-status-badge__icon > svg { width: 100%; height: 100%; }
+  .ui-notice { padding: 12px 16px; border: 1px solid; border-radius: 8px; font: 400 14px/20px var(--font-sans); }
+  .ui-notice p { color: inherit; }
+  .ui-tone--attention { color: #92400E; background: #FFFBEB; border-color: #FDE68A; }
+  .ui-tone--info { color: #1E40AF; background: #EFF6FF; border-color: #BFDBFE; }
+  .ui-tone--success { color: #166534; background: #F0FDF4; border-color: #BBF7D0; }
+  .ui-tone--neutral { color: #374151; background: #F3F4F6; border-color: #D1D5DB; }
+  .ui-tone--danger { color: #991B1B; background: #FEF2F2; border-color: #FECACA; }
+  .ui-tone--inactive { color: #475569; background: #F1F5F9; border-color: #CBD5E1; }
+}

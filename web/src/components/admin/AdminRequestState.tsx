@@ -1,3 +1,5 @@
+import { Button } from '../ui/Button';
+
 interface AdminRequestStateProps {
   resource: string;
   loading: boolean;
@@ -23,9 +25,9 @@ export default function AdminRequestState({ resource, loading, error, hasData, o
         {hasData && <p className="text-sm mt-1">Showing last loaded data. It may be out of date.</p>}
       </div>
       {error && (
-        <button type="button" onClick={onRetry} disabled={loading} className="btn-secondary min-h-[44px] shrink-0 self-start sm:self-auto disabled:opacity-60">
-          {loading ? 'Retrying…' : 'Retry'}
-        </button>
+        <Button variant="secondary" onClick={onRetry} loading={loading} className="shrink-0 self-start sm:self-auto">
+          Retry
+        </Button>
       )}
     </div>
   );

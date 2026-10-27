@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./components/ui/controls.css";
 
 /* Keep utility layout classes from revealing a closed native dialog. */
 .ts-dialog:not([open]) { display: none; }
@@ -110,13 +111,13 @@
   }
 }
 
-.public-site button,
-.public-site a,
-.public-site [role="button"] { touch-action: manipulation; }
-.public-site button,
-.public-site [role="button"] { -webkit-user-select: none; user-select: none; }
-.public-site button:active,
-.public-site [role="button"]:active { opacity: 0.88; }
+.public-site button:not([data-ui-control]),
+.public-site a:not([data-ui-control]),
+.public-site [role="button"]:not([data-ui-control]) { touch-action: manipulation; }
+.public-site button:not([data-ui-control]),
+.public-site [role="button"]:not([data-ui-control]) { -webkit-user-select: none; user-select: none; }
+.public-site button:not([data-ui-control]):active,
+.public-site [role="button"]:not([data-ui-control]):active { opacity: 0.88; }
 
 @media (pointer: coarse) {
   input, textarea, select { font-size: max(16px, 1em) !important; }
@@ -236,8 +237,10 @@
 }
 
 
-/* Clean button styling */
-.btn-primary {
+/* Legacy controls: unlayered rules historically outrank Tailwind utilities
+   (the .8rem padding caused 53.19px controls). Keep that behavior only for
+   unmigrated consumers; shared recipes are in the components layer. */
+.btn-primary:not([data-ui-control]) {
   background-color: #111827;
   color: white;
   font-weight: 600;
@@ -249,18 +252,18 @@
 }
 
 
-.btn-primary:active {
+.btn-primary:not([data-ui-control]):active {
   transform: translateY(0);
   box-shadow: 0 2px 6px rgba(17, 24, 39, 0.2);
 }
 
-.btn-primary:focus-visible {
+.btn-primary:not([data-ui-control]):focus-visible {
   outline: 2px solid var(--color-ts-blue);
   outline-offset: 2px;
   box-shadow: 0 0 0 4px rgba(74, 127, 181, 0.2);
 }
 
-.btn-secondary {
+.btn-secondary:not([data-ui-control]) {
   background-color: transparent;
   color: #111827;
   font-weight: 600;
@@ -272,12 +275,12 @@
 }
 
 
-.btn-secondary:active {
+.btn-secondary:not([data-ui-control]):active {
   transform: translateY(0);
   box-shadow: 0 2px 6px rgba(68, 63, 56, 0.15);
 }
 
-.btn-secondary:focus-visible {
+.btn-secondary:not([data-ui-control]):focus-visible {
   outline: 2px solid var(--color-ts-blue);
   outline-offset: 2px;
   box-shadow: 0 0 0 4px rgba(74, 127, 181, 0.15);
@@ -301,7 +304,7 @@
   border-radius: 0.25rem;
 }
 
-.btn-icon {
+.btn-icon:not([data-ui-control]) {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -316,13 +319,13 @@
     transform: translateY(-4px);
     box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.1);
   }
-  .btn-primary:hover {
+  .btn-primary:not([data-ui-control]):hover {
     background-color: #0b0f18;
     border-color: #0b0f18;
     box-shadow: 0 4px 12px rgba(17, 24, 39, 0.28);
     transform: translateY(-1px);
   }
-  .btn-secondary:hover {
+  .btn-secondary:not([data-ui-control]):hover {
     background-color: #111827;
     color: white;
     box-shadow: 0 4px 12px rgba(17, 24, 39, 0.2);
@@ -332,36 +335,36 @@
     color: var(--color-ts-navy);
     text-decoration: underline;
   }
-  .btn-icon:hover { background-color: rgba(0, 0, 0, 0.05); }
+  .btn-icon:not([data-ui-control]):hover { background-color: rgba(0, 0, 0, 0.05); }
 }
 
-.btn-icon:active {
+.btn-icon:not([data-ui-control]):active {
   background-color: rgba(0, 0, 0, 0.1);
 }
 
-.btn-icon:focus-visible {
+.btn-icon:not([data-ui-control]):focus-visible {
   outline: 2px solid var(--color-ts-blue);
   outline-offset: 2px;
 }
 
 /* Admin-wide focus/active feedback */
-.admin-scope a,
-.admin-scope button,
-.admin-scope [role="button"] {
+.admin-scope a:not([data-ui-control]),
+.admin-scope button:not([data-ui-control]),
+.admin-scope [role="button"]:not([data-ui-control]) {
   transition: color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease, transform 0.05s ease;
 }
 
-.admin-scope a:focus-visible,
-.admin-scope button:focus-visible,
-.admin-scope [role="button"]:focus-visible {
+.admin-scope a:not([data-ui-control]):focus-visible,
+.admin-scope button:not([data-ui-control]):focus-visible,
+.admin-scope [role="button"]:not([data-ui-control]):focus-visible {
   outline: 2px solid var(--color-ts-blue);
   outline-offset: 2px;
   border-radius: 0.25rem;
 }
 
-.admin-scope button:active,
-.admin-scope a:active,
-.admin-scope [role="button"]:active {
+.admin-scope button:not([data-ui-control]):active,
+.admin-scope a:not([data-ui-control]):active,
+.admin-scope [role="button"]:not([data-ui-control]):active {
   opacity: 0.9;
 }
 
