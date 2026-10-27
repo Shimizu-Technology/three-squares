@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
-import { motion } from 'framer-motion';
 import api, { configApi } from '../services/api';
 import type { AppConfig } from '../types/order';
 
@@ -106,7 +105,7 @@ export default function OrderConfirmationPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-dvh bg-gray-50 flex items-center justify-center px-4">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-4 border-tsPrimary border-t-transparent mb-4"></div>
           <p className="text-gray-600">Loading your order...</p>
@@ -117,7 +116,7 @@ export default function OrderConfirmationPage() {
 
   if (error || !order) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+      <div className="min-h-dvh bg-gray-50 flex items-center justify-center px-4">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
           <div className="mb-4"><svg className="w-16 h-16 mx-auto text-warm-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.182 16.318A4.486 4.486 0 0012.016 15a4.486 4.486 0 00-3.198 1.318M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z" /></svg></div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Order Not Found</h1>
@@ -175,7 +174,7 @@ export default function OrderConfirmationPage() {
           }
         }
       `}</style>
-      <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 print:bg-white print:py-0">
+      <div className="min-h-dvh bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 print:bg-white print:py-0">
         <div className="max-w-3xl mx-auto">
           {order.payment_environment && order.payment_environment !== 'production' && <p className="mb-4 rounded-lg bg-amber-50 p-3 text-amber-900">{order.payment_environment === 'simulated' ? 'Simulated payments — no money moves' : 'Sandbox payments'}</p>}
           {order.payment_status === 'pending' && <p role="status" className="mb-4 rounded-lg bg-amber-50 p-4">Payment status is being checked. Your order is saved; please check it before paying again.</p>}
@@ -352,15 +351,13 @@ export default function OrderConfirmationPage() {
                   );
                 })}
               </div>
-              {/* Animated Progress bar */}
+              {/* Show the current state immediately, including with reduced motion. */}
               <div className="h-1.5 bg-gray-200 rounded-full mt-2 overflow-hidden">
-                <motion.div
+                <div
                   className="h-1.5 bg-green-500 rounded-full"
-                  initial={{ width: 0 }}
-                  animate={{ 
+                  style={{
                     width: `${((['pending', 'processing', 'shipped', 'delivered'].indexOf(order.status) + 1) / 4) * 100}%` 
                   }}
-                  transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
                 />
               </div>
             </div>
