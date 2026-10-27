@@ -16,7 +16,7 @@ class StaffRouteCapabilities
       "update_current" => "devices.self", "subscribe_current" => "devices.self", "unsubscribe_current" => "devices.self"
     },
     "catering" => %w[index show update destroy quote status stats].index_with { "catering.manage" },
-    "site_settings" => %w[show update].index_with { "settings.manage" },
+    "site_settings" => %w[show update].index_with { "settings.manage" }.merge("payment_status" => "payment_settings.manage"),
     "settings" => %w[show update].index_with { "settings.manage" },
     "imports" => %w[index show create].index_with { "catalog.import" },
     "homepage_sections" => %w[index show create update destroy reorder].index_with { "homepage.manage" },

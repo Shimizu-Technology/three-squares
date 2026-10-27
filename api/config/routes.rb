@@ -79,7 +79,9 @@ Rails.application.routes.draw do
         end
 
         # Site Settings (singleton resource)
-        resource :site_settings, only: [ :show, :update ]
+        resource :site_settings, only: [ :show, :update ] do
+          get :payment_status
+        end
         resource :settings, only: [ :show, :update ] # New settings endpoint
 
         # Imports

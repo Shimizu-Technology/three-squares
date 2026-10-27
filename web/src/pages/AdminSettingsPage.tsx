@@ -8,14 +8,13 @@ import { invalidateAppConfig } from '../hooks/useAppConfig';
 
 import { API_BASE_URL } from '../config';
 import { ANNOUNCEMENT_STYLE_HEX } from '../constants/announcementStyles';
+import PaymentStatusPanel from '../components/payment/PaymentStatusPanel';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
 interface SiteSettings {
-  payment_test_mode: boolean;
-  payment_processor: string;
   // Per-order-type email settings
   send_retail_emails: boolean;
   send_wholesale_emails: boolean;
@@ -230,41 +229,6 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
   // ============================================================================
   // GENERAL SETTINGS HANDLERS
   // ============================================================================
-
-  const handleToggleTestMode = async () => {
-    if (!settings) return;
-
-    try {
-      setSaving(true);
-
-      const token = await getToken();
-      const response = await axios.put(
-        `${API_BASE_URL}/api/v1/admin/site_settings`,
-        {
-          site_setting: {
-            payment_test_mode: !settings.payment_test_mode
-          }
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-
-      setSettings((prev) => (prev ? { ...prev, ...response.data } : response.data));
-      setLastSavedSiteSettings((prev) => (prev ? { ...prev, ...response.data } : response.data));
-      const message = settings.payment_test_mode
-        ? 'Production mode enabled - Real payments will be processed'
-        : 'Test mode enabled - Payments will be simulated';
-
-      invalidateAppConfig();
-      toast.success(message, { duration: 4000 });
-    } catch (err: any) {
-      console.error('Failed to update settings:', err);
-      toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update payment mode' : 'Failed to update payment mode');
-    } finally {
-      setSaving(false);
-    }
-  };
 
   // A lost response cannot prove a write failed. Read only the affected field;
   // replacing a full settings response here would erase unrelated drafts.
@@ -631,7 +595,6 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
             placeholderUploading={placeholderUploading}
             showPlaceholderUrlInput={showPlaceholderUrlInput}
             isSiteSettingsDirty={isSiteSettingsDirty}
-            onToggleTestMode={handleToggleTestMode}
             onToggleEmailSetting={handleToggleEmailSetting}
             onUpdateSettings={updateSettings}
             onUpdateShippingAddress={updateShippingAddress}
@@ -677,7 +640,6 @@ interface GeneralSettingsTabProps {
   placeholderUploading: boolean;
   showPlaceholderUrlInput: boolean;
   isSiteSettingsDirty: boolean;
-  onToggleTestMode: () => void;
   onToggleEmailSetting: (field: 'send_retail_emails' | 'send_wholesale_emails') => void;
   onUpdateSettings: (updates: Partial<SiteSettings>) => void;
   onUpdateShippingAddress: (updates: Partial<SiteSettings['shipping_origin_address']>) => void;
@@ -697,7 +659,6 @@ function GeneralSettingsTab({
   placeholderUploading,
   showPlaceholderUrlInput,
   isSiteSettingsDirty,
-  onToggleTestMode,
   onToggleEmailSetting,
   onUpdateSettings,
   onUpdateShippingAddress,
@@ -810,61 +771,11 @@ function GeneralSettingsTab({
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Payment & Email Settings</h2>
-          <p className="text-sm text-gray-500 mt-1">Changes auto-save</p>
+          <p className="text-sm text-gray-500 mt-1">Payments are read-only. Email changes save immediately.</p>
         </div>
         <div className="p-6 space-y-6">
 
-        {/* Test Mode Toggle */}
-        <div className="border-b border-gray-200 pb-4 mb-4">
-          <div className="flex items-center justify-between">
-            <div className="grow">
-              <h3 className="font-medium text-gray-900">Payment Test Mode</h3>
-              <p className="text-sm text-gray-600 mt-1">
-                When enabled, all payments are simulated without charging customers.
-                Turn this off to process real payments via Stripe.
-              </p>
-            </div>
-            <button
-              onClick={onToggleTestMode}
-              disabled={saving}
-              className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ml-4 ${
-                settings.payment_test_mode ? 'bg-tsPrimary' : 'bg-gray-200'
-              } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <span
-                className={`inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                  settings.payment_test_mode ? 'translate-x-6' : 'translate-x-0'
-                }`}
-              />
-            </button>
-          </div>
-
-          <div className="mt-4 p-3 bg-gray-50 rounded-md">
-            <div className="flex items-center">
-              {settings.payment_test_mode ? (
-                <>
-                  <svg className="w-6 h-6 inline mr-2 text-gray-500" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                  <div>
-                    <p className="font-medium text-gray-900">Test Mode Active</p>
-                    <p className="text-sm text-gray-600">
-                      Orders will be created but no actual charges will be made.
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <svg className="w-6 h-6 inline mr-2 text-gray-500" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 8.25h19.5M2.25 9h19.5m-16.5 5.25h6m-6 2.25h3m-3.75 3h15a2.25 2.25 0 002.25-2.25V6.75A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25v10.5A2.25 2.25 0 004.5 19.5z" /></svg>
-                  <div>
-                    <p className="font-medium text-gray-900">Production Mode Active</p>
-                    <p className="text-sm text-gray-600">
-                      Real payments will be processed via Stripe.
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
+        <PaymentStatusPanel />
 
         {/* Customer Emails Toggles - Per Order Type */}
         <div className="border-b border-gray-200 pb-4 mb-4">

@@ -30,6 +30,11 @@ module Api
           }
         end
 
+        # Read-only projection; no credential values or provider requests.
+        def payment_status
+          render json: Payments::Status.call
+        end
+
         # PUT /api/v1/admin/site_settings
         def update
           settings = SiteSetting.instance
@@ -66,7 +71,6 @@ module Api
 
         def site_settings_params
           params.require(:site_setting).permit(
-            :payment_test_mode,
             :payment_processor,
             :store_name,
             :store_email,

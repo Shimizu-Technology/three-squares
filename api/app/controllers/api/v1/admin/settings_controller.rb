@@ -63,7 +63,6 @@ module Api
 
         def settings_params
           params.require(:settings).permit(
-            :payment_test_mode,
             :payment_processor,
             :send_customer_emails,
             :send_retail_emails,

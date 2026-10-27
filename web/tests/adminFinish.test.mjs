@@ -21,6 +21,8 @@ const mocks = {
   'react-hot-toast': url(`export default { success: (...args) => ${ctx}.toasts.push(args), error: (...args) => ${ctx}.toasts.push(args) };`),
   '../services/api': url('export default {}; export const collectionsApi = {};'),
   '../hooks/useAppConfig': url(`export const invalidateAppConfig = () => ${ctx}.invalidations++;`),
+  '../components/payment/PaymentStatusPanel': url('export default function PaymentStatusPanel() {}'),
+  './PaymentEnvironmentBadge': url('export default function PaymentEnvironmentBadge() {}'),
   '../config': url('export const API_BASE_URL = "https://api.example.test";'),
   '../constants/announcementStyles': url('export const ANNOUNCEMENT_STYLE_HEX = { gold: "#123456" };'),
   './productUtils': url('export const formatCurrency = value => `$${value / 100}`; export const getStockDisplay = () => ({ value: 5, color: "", tooltip: "" });'),
@@ -35,6 +37,7 @@ async function load(path) {
 const Analytics = await load('../src/pages/admin/AdminAnalyticsPage.tsx');
 const Dashboard = await load('../src/pages/admin/AdminDashboardPage.tsx');
 const Settings = await load('../src/pages/AdminSettingsPage.tsx');
+const PaymentsPanel = await load('../src/components/payment/PaymentStatusPanel.tsx');
 const Products = await load('../src/components/admin/products/ProductsTable.tsx');
 const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(nodes)];
 const text = node => typeof node === 'string' || typeof node === 'number' ? String(node) : node && typeof node !== 'boolean' ? [node.props?.children].flat(Infinity).map(text).join('') : '';
@@ -246,3 +249,37 @@ for (const [name, Component] of [['dashboard', Dashboard], ['analytics', Analyti
     if (name === 'dashboard') assert.equal(h.find(node => node.props?.label === 'All-time net revenue').props.value, '$7.50');
   });
 }
+
+
+test('payment section is read-only and status refresh cannot replace an unrelated settings draft', async t => {
+  const h = harness(t, Settings); await h.flush();
+  h.generalProps().onUpdateSettings({ store_name: 'Unsaved owner draft' }); await h.flush();
+  assert.equal(h.generalProps().settings.store_name, 'Unsaved owner draft');
+  assert.equal(h.generalProps().onToggleTestMode, undefined);
+  assert.doesNotMatch(text(h.general()), /Payment Test Mode|Real payments will|all payments are simulated/);
+  assert.ok(nodes(h.general()).some(node => node.type?.name === 'PaymentStatusPanel'));
+  assert.equal(h.calls.length, 0);
+});
+
+const paymentStatus = provider => ({ selected_provider: provider, production_deployment: false,
+  profiles: [{location_id: 1, location_name: 'Fictional kitchen', channel: 'online', provider, identity_id: 'fixture-identity', profile_id: 'fixture-profile', environment: 'sandbox', network_gate_enabled: false, real_dispatch_enabled: false, blockers: ['Waiting on Worldpay credentials and application configuration.']}] });
+test('payments panel exposes loaded blockers, retains no active claim on refresh failure and retries independently', async t => {
+  const h = harness(t, PaymentsPanel); h.get = async () => ({ data: paymentStatus('worldpay') }); await h.flush();
+  assert.match(text(h.tree), /Waiting on Worldpay credentials/);
+  assert.match(text(h.tree), /Real processor requests: Blocked \/ disabled/);
+  assert.equal(nodes(h.tree).some(node => node.props?.role === 'switch'), false);
+  h.get = async () => { throw Error('Offline'); }; h.click('Refresh payments status'); await h.flush();
+  assert.match(text(h.find(node => node.props?.role === 'alert')), /Previously loaded status may be out of date/);
+  assert.doesNotMatch(text(h.tree), /Real processor requests:/);
+  h.get = async () => ({ data: paymentStatus('stripe') }); h.click('Retry payments status'); await h.flush();
+  assert.match(text(h.tree), /Selected provider for new payments: Stripe/);
+});
+test('payments panel discards late responses after refresh and after unmount', async t => {
+  const h = harness(t, PaymentsPanel); const old = deferred(); h.get = () => old.promise; await h.flush();
+  h.get = async () => ({ data: paymentStatus('stripe') }); h.click('Refresh payments status'); await h.flush();
+  old.resolve({data: paymentStatus('worldpay')}); await h.flush();
+  assert.match(text(h.tree), /Selected provider for new payments: Stripe/);
+  const late = deferred(); h.get = () => late.promise; h.click('Refresh payments status'); await h.flush();
+  h.unmount(); const writes = h.writes; late.resolve({ data: paymentStatus('worldpay') }); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
+  assert.equal(h.writes, writes);
+});
