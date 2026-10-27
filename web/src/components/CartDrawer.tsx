@@ -184,7 +184,7 @@ export default function CartDrawer() {
                       <p className="text-base font-bold text-warm-900">
                         {`$${(item.subtotal_cents / 100).toFixed(2)}`}
                       </p>
-                      {item.quantity > 1 && item.pricing?.purchasable !== false && (
+                      {item.quantity > 1 && (
                         <p className="text-xs text-warm-400">
                           ${(item.product_variant.price_cents / 100).toFixed(2)} each
                         </p>
