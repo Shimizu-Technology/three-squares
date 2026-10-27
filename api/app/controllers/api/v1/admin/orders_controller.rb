@@ -200,31 +200,32 @@ module Api
           end
 
           # Restore inventory based on restock_items parameter
-          inventory_restored = false
+          restoration = { restored: false, status: "not_requested" }
           if @order.fully_refunded?
             # Always restore inventory for full refunds
-            restore_inventory_for_refund(@order, current_user)
-            inventory_restored = true
+            restoration = restore_inventory_for_refund(@order, current_user)
           elsif restock_items.present?
             # Partial refund with explicit restock request
             if restock_items == true || restock_items == "true" || restock_items == "all"
               # Restock all items
-              restore_inventory_for_refund(@order, current_user)
-              inventory_restored = true
+              restoration = restore_inventory_for_refund(@order, current_user)
             elsif restock_items.is_a?(Array)
               # Restock specific items by order_item_id
-              restore_inventory_for_items(@order, restock_items, current_user)
-              inventory_restored = true
+              restoration = restore_inventory_for_items(@order, restock_items, current_user)
             end
           end
 
+          refund.update!(metadata: refund.metadata.merge('inventory_restoration' => restoration.stringify_keys))
+          @order.update!(metadata: @order.metadata.merge('inventory_restoration' => restoration.stringify_keys)) if restoration[:status] != 'not_requested'
           # Send refund notifications asynchronously (email + SMS)
           # Avoids blocking the refund response on slow Resend/ClickSend API calls
           SendRefundNotificationJob.perform_later(refund.id)
 
           render json: {
-            message: "Refund processed successfully",
-            inventory_restored: inventory_restored,
+            message: restoration[:status] == "manual_review_required" ? "Refund processed. Inventory restoration requires manual review; no stock was restored." : "Refund processed successfully",
+            inventory_restored: restoration[:restored],
+            inventory_restoration_required: restoration[:status] == "manual_review_required",
+            inventory_restoration_status: restoration[:status],
             refund: refund_json(refund),
             order: detailed_order_json(@order.reload)
           }

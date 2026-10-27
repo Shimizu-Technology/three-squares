@@ -88,7 +88,7 @@ module Api
           if @order.payment_attempt_id
             attempt = PaymentAttempt.find(@order.payment_attempt_id)
             Payments::SetupAttempt.call(attempt: attempt)
-            @client_secret = attempt.reload.collection_config["client_secret"]
+            @client_secret = attempt.reload.collection_config["client_secret"] if attempt.state == "collecting"
           end
           render json: pos_order_json(@order.reload), status: :created
         rescue Payments::Conflict => error

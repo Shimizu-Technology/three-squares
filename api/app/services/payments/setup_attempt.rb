@@ -4,6 +4,7 @@ module Payments
   class SetupAttempt
     def self.call(attempt:)
       Configuration.validate_identity!(attempt.payment_identity)
+      return attempt if attempt.compensation_claimed_at || %w[captured compensated failed cancelled].include?(attempt.state)
       if attempt.raw_provider_id.blank? && attempt.dispatched_at.nil? && attempt.checkout_session.expires_at.past?
         raise Conflict, 'Collection expired; check the saved payment before starting again'
       end

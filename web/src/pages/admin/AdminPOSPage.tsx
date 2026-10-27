@@ -119,7 +119,7 @@ async function createPOSOrder(token: string, orderData: Record<string, unknown>,
   return data;
 }
 
-async function confirmTerminalPayment(token: string, orderId: number) {
+async function confirmTerminalPayment(token: string, orderId: number, allowClosed = false) {
   const res = await fetch(`${API_BASE}/api/v1/admin/pos/orders/${orderId}/confirm_terminal_payment`, {
     method: 'POST',
     headers: {
@@ -128,6 +128,7 @@ async function confirmTerminalPayment(token: string, orderId: number) {
     },
   });
   const data = await res.json();
+  if (res.ok && allowClosed && ['failed', 'cancelled', 'compensated'].includes(data.payment_state)) return data;
   if (!res.ok || data.payment_status !== 'paid' || !data.inventory_committed) throw new Error(data.error || 'Payment status is being checked. Keep this saved order; do not collect another payment.');
   return data;
 }
@@ -565,7 +566,12 @@ export default function AdminPOSPage() {
       if (!token) return;
       // Replaying creation uses the saved payload and original request key.
       const order = pending.order_data ? await createPOSOrder(token, pending.order_data, userId) : pending;
-      const confirmed = await confirmTerminalPayment(token, order.id || order.order_id);
+      const confirmed = await confirmTerminalPayment(token, order.id || order.order_id, true);
+      if (['failed', 'cancelled', 'compensated'].includes(confirmed.payment_state)) {
+        clearPendingTerminalSession();
+        setTerminalError('Saved payment is closed. Review the cart before taking payment.');
+        return;
+      }
       setLastOrder(confirmed);
       clearCart();
       clearPendingTerminalSession();

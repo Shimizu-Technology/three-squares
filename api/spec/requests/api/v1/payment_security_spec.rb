@@ -231,4 +231,48 @@ RSpec.describe 'Payment ingress controls', type: :request do
     expect(PaymentAttempt.count).to eq(0)
   end
 
+  it 'returns a closed expired POS attempt on creation replay without invoking setup again' do
+    configure_payment_fixture!
+    admin = create(:user, :admin)
+    controller = Api::V1::Admin::PosOrdersController
+    allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
+    allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
+    location = Location.create!(name: 'Expired POS fixture', slug: SecureRandom.hex(6), active: true, hours_json: { 'Daily' => '00:00-23:59' })
+    product = create(:product, published: true, allow_pickup: true, inventory_level: 'variant')
+    variant = create(:product_variant, product: product, available: true, stock_quantity: 5, price_cents: 1000)
+    key = SecureRandom.uuid
+    payload = { order: { payment_method: 'card_present', location_id: location.id, items: [{ product_variant_id: variant.id, quantity: 1 }] } }
+    post '/api/v1/admin/pos/orders', params: payload, headers: { 'Idempotency-Key' => key }
+    expect(response).to have_http_status(:created), response.body
+    order = Order.find(response.parsed_body['id'])
+    attempt = PaymentAttempt.find(order.payment_attempt_id)
+    attempt.update!(state: 'cancelled', raw_provider_id: nil, dispatched_at: nil, collection_config: {})
+    attempt.checkout_session.update!(expires_at: 1.minute.ago)
+    expect_any_instance_of(PaymentFoundationHelpers::Provider).not_to receive(:setup)
+    post '/api/v1/admin/pos/orders', params: payload, headers: { 'Idempotency-Key' => key }
+    expect(response).to have_http_status(:created), response.body
+    expect(response.parsed_body).to include('id' => order.id, 'payment_state' => 'cancelled')
+    expect(response.parsed_body['client_secret']).to be_nil
+    post "/api/v1/admin/pos/orders/#{order.id}/confirm_terminal_payment"
+    expect(response.parsed_body['payment_state']).to eq('cancelled')
+    expect(Order.count).to eq(1)
+  end
+
+  it 'reports and persists manual stock restoration for a verified successful legacy refund' do
+    admin = create(:user, :admin)
+    controller = Api::V1::Admin::OrdersController
+    allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
+    allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
+    order = create(:order, payment_status: 'paid', payment_method: 'stripe', payment_intent_id: 'pi_legacyfixture')
+    allow(PaymentService).to receive(:refund_payment) do |**args|
+      refund = Refund.create!(order: args[:order], amount_cents: args[:amount_cents], status: 'succeeded', user: admin)
+      { success: true, refund: refund }
+    end
+    post "/api/v1/admin/orders/#{order.id}/refund", params: { amount_cents: order.total_cents }
+    expect(response).to have_http_status(:ok), response.body
+    expect(response.parsed_body).to include('inventory_restored' => false, 'inventory_restoration_required' => true, 'inventory_restoration_status' => 'manual_review_required')
+    expect(order.reload.metadata.dig('inventory_restoration', 'status')).to eq('manual_review_required')
+    expect(order.refunds.first.metadata.dig('inventory_restoration', 'status')).to eq('manual_review_required')
+  end
+
 end
