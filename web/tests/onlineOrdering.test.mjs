@@ -12,8 +12,10 @@ const mocks={react:url(['useState','useEffect','useCallback','useRef','useId'].m
   '../ui/Dialog':url('export default function Dialog() {}'),
   '../store/cartStore':url(`export const useCartStore=selector=>selector({cart:${ctx}.cart});`),
   'react-router-dom':url(`export const useLocation=()=>({pathname:${ctx}.pathname});`),
+  './useBackendAvailability':url(`export const useBackendAvailability=()=>${ctx}.availability;`),
   '../hooks/useBackendAvailability':url(`export const useBackendAvailability=()=>{${ctx}.probes++;return ${ctx}.availability;};`)};
 async function load(path){return import(url(ts.transpileModule(readFileSync(new URL(path,import.meta.url),'utf8'),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace(/from ["']([^"']+)["']/g,(_,n)=>`from ${JSON.stringify(mocks[n]||import.meta.resolve(n))}`)));}
+const {useOrderingAvailability}=await load('../src/hooks/useOrderingAvailability.ts');
 const Owner=(await load('../src/components/admin/OnlineOrderingSection.tsx')).default;
 const {default:Boundary,CustomerConnection}=await load('../src/components/CustomerAvailability.tsx');
 const nodes=n=>!n||typeof n!=='object'?[]:[n,...[n.props?.children].flat(Infinity).flatMap(nodes)];
@@ -42,3 +44,36 @@ for (const [name, cart, hasItems] of [['unknown', null, false], ['empty', { item
     assert.doesNotMatch(copy, /saved cart|on this device|Fake menu|paused/);
   });
 }
+
+
+test('ordering request timeouts release controls and require confirmation of an uncertain save', async t => {
+  const h = harness(t);
+  h.get = async (_, __, config) => { assert.equal(config.timeout, 15_000); throw Object.assign(Error('timeout'), { code: 'ECONNABORTED' }); };
+  await h.flush();
+  assert.match(text(h.tree), /Could not check the saved ordering status/);
+  assert.equal(h.button('Check saved status').props.disabled, false);
+  h.get = async (_, __, config) => { assert.equal(config.timeout, 15_000); return { data: { paused: false, customer_message: null, history: [] } }; };
+  h.click('Check saved status'); await h.flush();
+  h.put = async (_, __, ___, config) => { assert.equal(config.timeout, 15_000); throw Object.assign(Error('timeout'), { code: 'ECONNABORTED' }); };
+  h.click('Pause online ordering'); await h.flush(); h.click('Confirm change'); await h.flush();
+  assert.match(text(h.tree), /could not confirm whether the change was saved/);
+  assert.equal(h.find(n => n.type?.name === 'Dialog').props.open, false);
+  assert.equal(h.button('Check saved status').props.disabled, false);
+  assert.equal(h.button('Pause online ordering').props.disabled, true);
+});
+
+for (const message of [undefined, '', '   ', 'Back soon.']) test(`ordering hook provides pause copy for ${JSON.stringify(message)}`, t => {
+  const h = harness(t); h.availability = { status: 'available', config: { online_ordering_paused: true, online_ordering_pause_message: message } };
+  assert.deepEqual(useOrderingAvailability(), { blocked: true, message: message?.trim() || 'Online ordering is paused.' });
+});
+
+test('ordering hook fails closed, preserves action copy and recovers', t => {
+  const h = harness(t);
+  for (const config of [null, { online_ordering_paused: false }]) {
+    h.availability = { status: 'unavailable', config };
+    assert.deepEqual(useOrderingAvailability(), { blocked: true, message: 'We can’t reach ordering right now. Please retry the connection before checkout.' });
+    assert.match(useOrderingAvailability('starting payment').message, /before starting payment\./);
+  }
+  h.availability = { status: 'available', config: { online_ordering_paused: false } };
+  assert.equal(useOrderingAvailability().blocked, false);
+});

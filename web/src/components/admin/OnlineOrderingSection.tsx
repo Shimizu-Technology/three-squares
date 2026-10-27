@@ -28,7 +28,7 @@ function OwnerOrderingSection() {
     setBusy(true);
     setConfirmed(false);
     try {
-      const { data } = await authGet<OrderingState>('/admin/online_ordering', getToken);
+      const { data } = await authGet<OrderingState>('/admin/online_ordering', getToken, { timeout: 15_000 });
       if (id !== requestId.current) return;
       setSaved(data);
       setMessage(data.customer_message ?? '');
@@ -52,7 +52,7 @@ function OwnerOrderingSection() {
     setBusy(true);
     setConfirmed(false);
     try {
-      const { data } = await authPut<OrderingState>('/admin/online_ordering', { online_ordering: { paused: pending, customer_message: message } }, getToken);
+      const { data } = await authPut<OrderingState>('/admin/online_ordering', { online_ordering: { paused: pending, customer_message: message } }, getToken, { timeout: 15_000 });
       if (id !== requestId.current) return;
       setSaved(data);
       setMessage(data.customer_message ?? '');

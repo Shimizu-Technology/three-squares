@@ -1,5 +1,5 @@
 import { useLocationStore } from '../store/locationStore';
-import { useBackendAvailability } from '../hooks/useBackendAvailability';
+import { useOrderingAvailability } from '../hooks/useOrderingAvailability';
 import useAppConfig from '../hooks/useAppConfig';
 import { useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -13,9 +13,7 @@ export default function CartDrawer() {
   const navigate = useNavigate();
   const location = useLocationStore((state) => state.selectedLocation);
   const config = useAppConfig();
-  const { status: connectionStatus } = useBackendAvailability();
-  const orderingBlocked = connectionStatus !== 'available' || config?.online_ordering_paused !== false;
-  const orderingMessage = config?.online_ordering_paused ? config.online_ordering_pause_message : 'We can’t reach ordering right now. Please retry the connection before checkout.';
+  const { blocked: orderingBlocked, message: orderingMessage } = useOrderingAvailability('checkout');
   const {
     cart,
     isOpen,
@@ -288,7 +286,7 @@ export default function CartDrawer() {
                 closeCart();
                 navigate('/checkout');
               }}
-              className="w-full bg-tsPrimary text-white py-4 rounded-xl font-bold text-lg hover:bg-primary-dark transition shadow-lg shadow-tsPrimary/25 flex items-center justify-center gap-2"
+              className="w-full bg-tsPrimary text-white py-4 rounded-xl font-bold text-lg enabled:hover:bg-primary-dark transition shadow-lg shadow-tsPrimary/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
               aria-describedby={orderingBlocked ? "cart-ordering-status" : undefined}
               disabled={orderingBlocked || isLoading || cart.items.some((item) => item.pricing?.purchasable === false)}
             >

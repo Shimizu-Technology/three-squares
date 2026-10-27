@@ -14,14 +14,12 @@ import type { ShippingAddress, ShippingMethod, AppConfig } from '../types/order'
 import type { Location } from '../services/api';
 import PlaceholderImage from '../components/ui/PlaceholderImage';
 import OptimizedImage from '../components/ui/OptimizedImage';
-import { useBackendAvailability } from '../hooks/useBackendAvailability';
+import { useOrderingAvailability } from '../hooks/useOrderingAvailability';
 import { useLocationStore } from '../store/locationStore';
 
 function CheckoutForm() {
   const navigate = useNavigate();
-  const { status: connectionStatus, config: orderingConfig } = useBackendAvailability();
-  const orderingBlocked = connectionStatus !== 'available' || orderingConfig?.online_ordering_paused !== false;
-  const orderingMessage = orderingConfig?.online_ordering_paused ? orderingConfig.online_ordering_pause_message : 'We can’t reach ordering right now. Please retry the connection before starting payment.';
+  const { blocked: orderingBlocked, message: orderingMessage } = useOrderingAvailability('starting payment');
   const { getToken, isSignedIn, isLoaded: authLoaded, userId } = useAuth();
   const { cart, sessionId, fetchCart, validateCart, removeItem, isLoading: cartLoading, isRepricing, pricingError } = useCartStore();
   const { selectedLocation: storedLocation, setSelectedLocation } = useLocationStore();

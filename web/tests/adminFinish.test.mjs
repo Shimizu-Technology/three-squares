@@ -337,3 +337,18 @@ test('payments panel reloads after a token function change, ignores its old resp
   assert.equal(h.button('Refresh payments status').props.disabled, false);
   assert.doesNotMatch(text(h.tree), /Loading payments status/);
 });
+
+
+for (const endpoint of ['/site_settings', '/settings']) test(`ordering section remains mounted while General Settings ${endpoint} loads or fails`, async t => {
+  const h = harness(t, Settings), pending = deferred();
+  const get = h.get;
+  h.get = path => path.endsWith(endpoint) ? pending.promise : get(path);
+  await h.flush();
+  h.find(node => node.type?.name === 'OnlineOrderingSection');
+  assert.match(text(h.tree), /Loading settings/);
+  const original = console.error; console.error = () => {}; t.after(() => { console.error = original; });
+  pending.reject(Error('Synthetic settings failure')); await h.flush();
+  h.find(node => node.type?.name === 'OnlineOrderingSection');
+  assert.match(text(h.tree), /Failed to load settings/);
+  assert.equal(nodes(h.tree).some(node => node.type?.name === 'GeneralSettingsTab'), false);
+});

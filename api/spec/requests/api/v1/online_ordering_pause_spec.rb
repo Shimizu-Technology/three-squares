@@ -101,6 +101,20 @@ RSpec.describe "Explicit online ordering pause", type: :request do
     expect(response.parsed_body.fetch("items").size).to eq(1)
   end
 
+  it "refuses a paused legacy product addition before creating a default variant" do
+    legacy = create(:product, product_type: "local", published: true)
+    legacy.product_variants.destroy_all
+    SiteSetting.instance.update!(online_ordering_paused: true, online_ordering_pause_message: "Back soon.")
+
+    expect {
+      post "/api/v1/cart/items", headers: { "X-Session-ID" => cart_id }, params: { product_id: legacy.id, quantity: 1 }
+    }.not_to change(ProductVariant, :count)
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body).to include("error" => "Back soon.")
+    expect(legacy.reload.product_variants).to be_empty
+    expect(CartItem.count).to eq(0)
+  end
+
   it "allows scoped staff cash POS sales during the public pause" do
     configure_payment_fixture!
     SiteSetting.instance.update!(online_ordering_paused: true)
