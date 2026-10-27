@@ -46,11 +46,11 @@ Rails.application.configure do
   # Use memory cache store (Solid Cache requires separate database setup)
   config.cache_store = :memory_store
 
-  # Use a durable queue adapter in production.
-  # Default to Solid Queue, with optional override (e.g. sidekiq) via env var.
-  # Default to :async until Solid Queue is fully set up in production
-  # Switch via ACTIVE_JOB_QUEUE_ADAPTER=solid_queue once migrations are in place
-  config.active_job.queue_adapter = ENV.fetch("ACTIVE_JOB_QUEUE_ADAPTER", "async").to_sym
+  # Recovery/outbox durability requires the queue DB and an explicit bin/jobs worker.
+  raise 'Production requires Solid Queue' unless ENV.fetch('ACTIVE_JOB_QUEUE_ADAPTER', 'solid_queue') == 'solid_queue'
+  raise 'Production requires QUEUE_DATABASE_URL' if ENV['QUEUE_DATABASE_URL'].blank?
+  config.active_job.queue_adapter = :solid_queue
+  config.solid_queue.connects_to = { database: { writing: :queue } }
 
   # Ignore bad email addresses and do not raise email delivery errors.
   # Set this to true and configure the email server for immediate delivery to raise delivery errors.

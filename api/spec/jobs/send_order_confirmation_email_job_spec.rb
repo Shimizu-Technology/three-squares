@@ -47,3 +47,39 @@ RSpec.describe SendOrderConfirmationEmailJob, type: :job do
     end
   end
 end
+
+RSpec.describe 'Notification delivery acknowledgement', type: :job do
+  it 'sets the delivered flag only after the transport succeeds' do
+    order = create(:order)
+    allow(EmailService).to receive(:send_order_confirmation) do
+      expect(order.reload.confirmation_email_sent).to be false
+      expect(PaymentOutbox.find_by!(effect_key: "notification:Order:#{order.id}:confirmation_email").state).to eq('dispatching')
+      { success: true }
+    end
+    SendOrderConfirmationEmailJob.new.perform(order.id)
+    expect(order.reload.confirmation_email_sent).to be true
+  end
+
+  it 'keeps a skipped send pending and unsent for durable retries' do
+    order = create(:order)
+    allow(EmailService).to receive(:send_order_confirmation).and_return(success: false, skipped: true)
+    expect { SendOrderConfirmationEmailJob.new.perform(order.id) }.to raise_error(Payments::DeliverNotification::Retryable)
+    expect(order.reload.confirmation_email_sent).to be false
+    expect(PaymentOutbox.find_by!(effect_key: "notification:Order:#{order.id}:confirmation_email").state).to eq('pending')
+  end
+end
+
+RSpec.describe 'Explicit notification resend', type: :job do
+  it 'honors an explicitly reset delivered flag without preclaiming the new delivery' do
+    order = create(:order)
+    allow(EmailService).to receive(:send_order_confirmation).and_return(success: true)
+    SendOrderConfirmationEmailJob.new.perform(order.id)
+    order.reload.update!(confirmation_email_sent: false)
+    expect(EmailService).to receive(:send_order_confirmation) do
+      expect(order.reload.confirmation_email_sent).to be false
+      { success: true }
+    end
+    SendOrderConfirmationEmailJob.new.perform(order.id)
+    expect(order.reload.confirmation_email_sent).to be true
+  end
+end
