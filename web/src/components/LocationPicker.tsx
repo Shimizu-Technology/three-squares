@@ -15,13 +15,25 @@ import { useLocation, useNavigate } from 'react-router-dom';
 export default function LocationPicker() {
   const { selectedLocation, locations, showPicker, setSelectedLocation, setLocations, setShowPicker } = useLocationStore();
   const { cart, clearCart } = useCartStore();
+  const [switching, setSwitching] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<LocationInfo | null>(null);
   const navigate = useNavigate();
-  const directMenu = useLocation().pathname.startsWith('/menu/');
+  const pathname = useLocation().pathname;
+  const directMenu = pathname.startsWith('/menu/');
+  const selectionVersion = useRef(0);
   const pickerRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLDivElement>(null);
   const showModal = locations.length > 1 && ((!selectedLocation && !directMenu) || showPicker);
+
+  useEffect(() => {
+    selectionVersion.current += 1;
+    setShowConfirm(false);
+    setPendingLocation(null);
+    setSwitching(false);
+    setShowPicker(false);
+    return () => { selectionVersion.current += 1; };
+  }, [pathname, setShowPicker]);
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -56,10 +68,11 @@ export default function LocationPicker() {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const buttons = () => Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
-    buttons()[0]?.focus();
+    (buttons()[0] || dialog).focus();
     const onKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         event.preventDefault();
+        if (switching) return;
         if (showConfirm) {
           setShowConfirm(false);
           setPendingLocation(null);
@@ -69,6 +82,7 @@ export default function LocationPicker() {
       }
       if (event.key !== 'Tab') return;
       const focusable = buttons();
+      if (focusable.length === 0) { event.preventDefault(); dialog.focus(); return; }
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
       if (event.shiftKey && document.activeElement === first) {
@@ -85,7 +99,7 @@ export default function LocationPicker() {
       document.body.style.overflow = previousOverflow;
       if (previousFocus?.isConnected) previousFocus.focus();
     };
-  }, [showModal, showConfirm, selectedLocation, setShowPicker]);
+  }, [showModal, showConfirm, selectedLocation, setShowPicker, switching]);
 
   if (locations.length <= 1) return null;
 
@@ -116,23 +130,32 @@ export default function LocationPicker() {
   };
 
   const confirmSwitch = async () => {
-    if (pendingLocation && directMenu) {
+    const nextLocation = pendingLocation;
+    if (!nextLocation || switching) return;
+    if (directMenu) {
       setShowConfirm(false);
       setShowPicker(false);
-      navigate(`/menu/${encodeURIComponent(pendingLocation.slug)}`);
+      navigate(`/menu/${encodeURIComponent(nextLocation.slug)}`);
       setPendingLocation(null);
       return;
     }
-    if (pendingLocation) {
-      try {
-        await clearCart();
-        selectLocation(pendingLocation);
-      } catch {
-        toast.error('Unable to clear cart. Please check your connection and try again.');
+    const version = selectionVersion.current;
+    const previousLocationId = useLocationStore.getState().selectedLocation?.id;
+    setSwitching(true);
+    try {
+      await clearCart();
+      if (selectionVersion.current === version && useLocationStore.getState().selectedLocation?.id === previousLocationId) {
+        selectLocation(nextLocation);
+      }
+    } catch {
+      if (selectionVersion.current === version) toast.error('Unable to clear cart. Please check your connection and try again.');
+    } finally {
+      if (selectionVersion.current === version) {
+        setShowConfirm(false);
+        setPendingLocation(null);
+        setSwitching(false);
       }
     }
-    setShowConfirm(false);
-    setPendingLocation(null);
   };
 
   const cancelSwitch = () => {
@@ -150,6 +173,7 @@ export default function LocationPicker() {
         >
           <div
             ref={pickerRef}
+            tabIndex={-1}
             role="dialog"
             aria-modal="true"
             aria-labelledby="location-picker-title"
@@ -180,6 +204,7 @@ export default function LocationPicker() {
               {locations.map((loc) => (
                 <button
                   key={loc.id}
+                  disabled={switching}
                   onClick={() => handleLocationSelect(loc)}
                   className={`w-full text-left rounded-xl p-4 border-2 transition-all ${
                     selectedLocation?.id === loc.id
@@ -222,7 +247,7 @@ export default function LocationPicker() {
       {/* Cart clear confirmation modal */}
       {showConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div ref={confirmRef} role="dialog" aria-modal="true" aria-labelledby="cart-clear-title" className="bg-white rounded-xl p-6 max-w-sm w-full max-h-[90dvh] overflow-y-auto shadow-xl">
+          <div ref={confirmRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby="cart-clear-title" className="bg-white rounded-xl p-6 max-w-sm w-full max-h-[90dvh] overflow-y-auto shadow-xl">
             <div className="flex items-center gap-3 mb-4">
               <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0" />
               <h3 id="cart-clear-title" className="text-lg font-semibold text-warm-900">Change Location?</h3>
@@ -234,6 +259,7 @@ export default function LocationPicker() {
             <div className="flex gap-3">
               <button
                 onClick={cancelSwitch}
+                disabled={switching}
                 autoFocus
                 className="flex-1 px-4 py-2.5 border border-warm-300 rounded-lg text-warm-700 font-medium hover:bg-warm-50 transition"
               >
@@ -241,9 +267,10 @@ export default function LocationPicker() {
               </button>
               <button
                 onClick={confirmSwitch}
+                disabled={switching}
                 className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition"
               >
-                Switch & Clear
+                {switching ? 'Switching…' : 'Switch & Clear'}
               </button>
             </div>
           </div>
