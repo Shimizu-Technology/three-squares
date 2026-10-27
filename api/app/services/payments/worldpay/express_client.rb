@@ -96,6 +96,17 @@ module Payments
         report
       end
 
+      def transaction_query(setup_id:)
+        raise Configuration::Invalid, "original_setup_guid_required" unless setup_id.is_a?(String) && Configuration::GUID.match?(setup_id)
+        raise Configuration::Invalid, "report_contract_required" unless @report_contract
+        wire = @builder.build(method: "TransactionQuery", fields: { "Parameters" => { "TransactionSetupID" => setup_id } })
+        xml = send_wire(:reporting, wire)
+        return report_result([], false, "transport_outcome_unknown", 0) unless xml
+        report = ExpressReportParser.query(xml, configuration: @configuration, contract: @report_contract)
+        report[:metadata][:queried_setup_id] = setup_id
+        report
+      end
+
       # Collect completely before the parent persists a checkpoint. Completeness
       # refers to report enumeration only, never to financial/payment success.
       def query_all(fields:, page_size: 1000, max_pages: 1000, max_rows: MAX_REPORT_ROWS)

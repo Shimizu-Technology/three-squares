@@ -52,6 +52,9 @@ module Payments
         order.save!
         snapshot = { "order" => order.attributes.slice(*ORDER_FIELDS), "items" => order.order_items.order(:id).map { |item| item.attributes.slice(*ITEM_FIELDS) },
           "cart_items" => cart_items.select { |item| item.is_a?(CartItem) }.map { |item| { "id" => item.id, "quantity" => item.quantity, "updated_at" => item.updated_at.iso8601(6) } }, "request_digest" => request_digest }
+        if identity.provider == 'worldpay' && identity.environment != 'simulated'
+          snapshot['payment_profile'] = Worldpay::ProfileSnapshot.capture(profile)
+        end
         session = CheckoutSession.create!(order: order, user: user, location_id: location_id, channel: channel, payment_identity: identity,
           owner_key: owner_key, guest_capability_digest: user ? "" : CheckoutSession.digest(capability), caller_idempotency_key: idempotency_key,
           snapshot: snapshot, snapshot_digest: Snapshot.digest(snapshot), amount_cents: pricing.total_cents, currency: identity.currency, expires_at: 30.minutes.from_now)

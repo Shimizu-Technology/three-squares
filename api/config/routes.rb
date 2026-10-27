@@ -198,6 +198,7 @@ Rails.application.routes.draw do
           post :cancel
         end
       end
+      get 'payments/worldpay/return', to: 'worldpay_returns#show'
 
       # Orders
       resources :orders, only: [ :create, :show, :index, :update ] do

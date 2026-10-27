@@ -5,7 +5,7 @@ module Payments
     # A return is a hint to query the original account, never payment evidence.
     # Keep capabilities, card data, and validation codes out of the return URL.
     class ReturnState
-      PURPOSE = 'worldpay-hosted-return-v1'
+      PURPOSE = "worldpay-hosted-return-v1"
       MAX_BYTES = 4096
 
       def initialize(verifier: Rails.application.message_verifier(PURPOSE))
@@ -27,11 +27,11 @@ module Payments
 
       def binding(attempt, operation_key)
         unless Configuration::GUID.match?(operation_key.to_s)
-          raise Configuration::Invalid, 'invalid_return_operation_key'
+          raise Configuration::Invalid, "invalid_return_operation_key"
         end
-        { 'attempt' => attempt.id.to_s, 'session' => attempt.checkout_session_id.to_s,
-          'identity' => attempt.payment_identity_id.to_s, 'snapshot' => attempt.payload_digest.to_s,
-          'amount' => attempt.requested_cents, 'currency' => attempt.currency, 'operation' => operation_key }
+        { "attempt" => attempt.id.to_s, "session" => attempt.checkout_session_id.to_s,
+          "identity" => attempt.payment_identity_id.to_s, "snapshot" => attempt.payload_digest.to_s,
+          "amount" => attempt.requested_cents, "currency" => attempt.currency, "operation" => operation_key }
       end
     end
   end

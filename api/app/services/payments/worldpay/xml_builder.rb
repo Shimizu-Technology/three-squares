@@ -8,7 +8,7 @@ module Payments
   module Worldpay
     class XmlBuilder
       TRANSACTION_METHODS = %w[TransactionSetup CreditCardSale CreditCardAuthorization CreditCardAuthorizationCompletion CreditCardReturn CreditCardVoid CreditCardReversal BatchTotalsQuery BatchClose].freeze
-      REPORTING_METHODS = %w[TransactionQueryPagination].freeze
+      REPORTING_METHODS = %w[TransactionQuery TransactionQueryPagination].freeze
       SERVICES_METHODS = %w[PaymentAccountCreate PaymentAccountCreateWithTransID PaymentAccountQuery PaymentAccountUpdate PaymentAccountDelete].freeze
       SECTIONS = %w[Terminal Transaction TransactionSetup PaymentAccount Parameters Batch].freeze
       # Raw card collection and arbitrary XML are never supported by this port.

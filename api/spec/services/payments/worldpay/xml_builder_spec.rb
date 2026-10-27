@@ -33,7 +33,8 @@ RSpec.describe Payments::Worldpay::XmlBuilder do
     described_class::TRANSACTION_METHODS.each { |method| expect(described_class.interface(method)).to eq(:transaction) }
     expect(described_class.interface("TransactionQueryPagination")).to eq(:reporting)
     described_class::SERVICES_METHODS.each { |method| expect(described_class.interface(method)).to eq(:services) }
-    %w[TransactionQuery Arbitrary SOAP CreditCardCredit].each do |method|
+    expect(described_class.interface('TransactionQuery')).to eq(:reporting)
+    %w[Arbitrary SOAP CreditCardCredit].each do |method|
       expect { described_class.interface(method) }.to raise_error(Payments::Worldpay::Configuration::Invalid, "unsupported_express_method")
     end
   end

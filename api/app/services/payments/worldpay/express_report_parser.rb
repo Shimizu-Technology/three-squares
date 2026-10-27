@@ -34,6 +34,35 @@ module Payments
         unknown(error.message)
       end
 
+      # Published HPP recovery queries the exact server-stored setup ID (PDF
+      # pp. 19-20, 66-67). Reaching the 1000-row cap cannot prove completeness.
+      def self.query(xml, configuration:, contract:)
+        validate_report_contract!(contract)
+        root, response, code = envelope(xml, "TransactionQuery", configuration.namespace(:reporting), interface: :reporting)
+        raise Xml::Invalid, "report_query_not_successful" unless code.to_i.zero?
+        data = Xml.at(response, contract[:reporting_data_path], required: true)
+        path = contract[:rows_path]
+        if data.element_children.empty? && !data.text.strip.empty?
+          data = Xml.parse(data.text, interface: :reporting)
+          path = contract[:embedded_roots][data.name]
+          unless path && [ nil, configuration.namespace(:reporting) ].include?(data.namespace&.href)
+            raise Xml::Invalid, "unexpected_report_structure"
+          end
+        end
+        nodes = rows_at(data, path, strict: true)
+        raise Xml::Invalid, "report_row_limit" if nodes.length > MAX_ROWS
+        rows = nodes.map { |node| row(node, contract[:fields], allow_empty: true) }
+        unless rows.all? { |entry| entry[:raw_id] } && rows.map { |entry| entry[:raw_id] }.uniq.size == rows.size
+          raise Xml::Invalid, "report_transaction_id_required"
+        end
+        result = { status: "unknown", complete: nodes.any? && nodes.size < MAX_ROWS, rows: rows,
+          metadata: { contract_verified: false, express_response_code: code } }
+        raise Xml::Invalid, "sensitive_response" if configuration.secrets_in?(result, allow_report_identifiers: true)
+        result
+      rescue Xml::Invalid, Money::Invalid => error
+        { status: "unknown", complete: false, rows: [], metadata: { contract_verified: false, parse_error: error.message } }
+      end
+
       # Generic counts are relative to Response. Published counts are relative
       # to every Item and require an exact requested page and fixed page size.
       # Embedded reporting XML is bounded separately and uses explicit roots.

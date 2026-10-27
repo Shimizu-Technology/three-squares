@@ -101,6 +101,10 @@ module Payments
         },
         # Request layout only. The existing report/page-size ports cannot consume
         # the published response. See UNSUPPORTED and REPORTING_LAYOUT.
+        "TransactionQuery" => {
+          fields: { "Parameters" => %w[TransactionSetupID] },
+          required_paths: [ %w[Parameters TransactionSetupID] ]
+        },
         "TransactionQueryPagination" => {
           fields: { "Parameters" => %w[TransactionDateTimeBegin TransactionDateTimeEnd PageNumber ReferenceNumber TransactionStatusCode TransactionType LaneNumber ReverseOrder] },
           required_paths: %w[TransactionDateTimeBegin TransactionDateTimeEnd PageNumber].map { |name| [ "Parameters", name ] }
