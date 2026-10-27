@@ -426,6 +426,9 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   };
 
   const handleSearch = () => {
+    // Invalidate the typing buffer on submit. A fast Back can skip React's
+    // intermediate navigation render and return to the same history key.
+    setSearchDraft({ key: '', value: searchQuery.trim() });
     if (searchQuery.trim() === appliedSearch && page === 1) reconcileOrders();
     else changeQuery({ search: searchQuery, page: 1 });
   };
