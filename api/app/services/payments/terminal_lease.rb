@@ -7,11 +7,18 @@ module Payments
       ActiveRecord::Base.connection.execute("SELECT pg_advisory_xact_lock(#{key})")
     end
 
+    def self.lock_reader!(identity:, terminal_id:)
+      return unless identity.provider == 'stripe'
+      key = Digest::SHA256.hexdigest("stripe-reader:#{identity.id}:#{terminal_id}")[0, 15].to_i(16)
+      ActiveRecord::Base.connection.execute("SELECT pg_advisory_xact_lock(#{key})")
+    end
+
     # Caller holds session → attempt → charge → order before appending the lane.
     # Administration takes only lane/terminal locks and never locks an attempt.
     def self.reserve_locked!(attempt)
       TerminalContext.validate!(attempt: attempt, available: true)
       terminal = attempt.payment_terminal
+      lock_reader!(identity: terminal.payment_identity, terminal_id: terminal.terminal_id)
       lock_lane!(identity_id: terminal.payment_identity_id, lane_id: terminal.lane_id)
       terminal.lock!
       terminal.release_resolved!

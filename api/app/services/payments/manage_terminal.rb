@@ -20,11 +20,21 @@ module Payments
       identity = profile.payment_identity
       payload = {kind: kind, profile: profile.id, location: location.id, lane: lane_id, terminal: terminal_reference, label: label}
       operation = TerminalAdministration.transaction do
+        TerminalLease.lock_reader!(identity: identity, terminal_id: terminal_reference)
         TerminalLease.lock_lane!(identity_id: identity.id, lane_id: lane_id)
         prior = TerminalAdministration.find_by(payment_identity: identity, operation_key: operation_key)
         if prior
           raise Conflict, 'Administration key was reused for different reader details' unless prior.payload_digest == Snapshot.digest(payload) && prior.user_id == user.id
           next prior
+        end
+        if identity.provider == 'stripe'
+          reader = PaymentTerminal.lock.find_by(payment_identity: identity, stripe_reader_key: terminal_reference)
+          if reader && reader.lane_id != lane_id
+            raise Conflict, 'Stripe reader is already registered under its original lane'
+          end
+          if TerminalAdministration.active.exists?(payment_identity: identity, terminal_reference: terminal_reference)
+            raise Conflict, 'Stripe reader administration is unresolved. Check the original saved operation.'
+          end
         end
         existing = PaymentTerminal.lock.find_by(payment_identity: identity, lane_id: lane_id)
         if existing
@@ -74,6 +84,7 @@ module Payments
 
     def apply(operation, observation)
       TerminalAdministration.transaction do
+        TerminalLease.lock_reader!(identity: operation.payment_identity, terminal_id: operation.terminal_reference)
         TerminalLease.lock_lane!(identity_id: operation.payment_identity_id, lane_id: operation.lane_id)
         operation.lock!
         return operation if %w[succeeded failed].include?(operation.state)

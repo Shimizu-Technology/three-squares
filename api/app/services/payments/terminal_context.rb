@@ -18,6 +18,7 @@ module Payments
     def self.capture(profile:, location_id:, terminal_id:)
       raise Error, 'Select a payment reader before saving a card-present order' if terminal_id.blank?
       terminal = PaymentTerminal.find(terminal_id)
+      validate_reader_key!(terminal)
       unless terminal.payment_identity_id == profile.payment_identity_id && terminal.location_id.to_s == location_id.to_s &&
           (!terminal.payment_profile_id || terminal.payment_profile_id == profile.id) && terminal.enabled? && !terminal.retired_at
         raise BindingError, 'Reader does not match the selected location/payment account'
@@ -39,6 +40,7 @@ module Payments
         raise BindingError, 'Original terminal binding is unavailable'
       end
       terminal = attempt.payment_terminal || raise(BindingError, 'Original reader is unavailable')
+      validate_reader_key!(terminal)
       expected = saved.slice('lane_id', 'terminal_id', 'payment_identity_id', 'location_id')
       expected.merge!(saved.slice('device_serial', 'device_model')) if available || attempt.dispatched_at.nil?
       unless expected.all? { |key, value| terminal.public_send(key) == value }
@@ -48,6 +50,12 @@ module Payments
         raise Conflict, 'Reader is offline or unavailable. Reconnect it before taking payment.'
       end
       saved
+    end
+
+    def self.validate_reader_key!(terminal)
+      if terminal.payment_identity.provider == 'stripe' && terminal.stripe_reader_key != terminal.terminal_id
+        raise BindingError, 'Original Stripe reader registration requires reconciliation'
+      end
     end
 
     def self.validate_mode!(attempt)

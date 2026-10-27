@@ -47,6 +47,7 @@ module Api
         def update
           terminal = scope.find(params[:id])
           PaymentTerminal.transaction do
+            Payments::TerminalLease.lock_reader!(identity: terminal.payment_identity, terminal_id: terminal.terminal_id)
             Payments::TerminalLease.lock_lane!(identity_id: terminal.payment_identity_id, lane_id: terminal.lane_id)
             terminal.lock!
             if TerminalAdministration.active.exists?(payment_identity_id: terminal.payment_identity_id, lane_id: terminal.lane_id)

@@ -24,7 +24,7 @@ module Payments
           'currencyCode' => attempt.currency, 'isApproved' => %w[captured partial].include?(record.state),
           'approvedAmount' => Worldpay::Money::DecimalLexeme.new(Worldpay::Money.format(approved, allow_zero: true)),
           'totalAmount' => Worldpay::Money::DecimalLexeme.new(Worldpay::Money.format(approved, allow_zero: true)),
-          '_processor' => {'expressResponseCode' => record.state == 'failed' ? '20' : '0', 'hostResponseCode' => '00'},
+          '_processor' => {'expressResponseCode' => record.state == 'failed' ? '20' : (record.state == 'partial' ? '5' : '0'), 'hostResponseCode' => '00'},
           'accountNumber' => 'XXXXXXXXXXXX4242', 'cardLogo' => 'Simulated card', 'entryMode' => 'Simulated tap',
           'approvalNumber' => 'SIMULATED', 'emv' => {'tags' => [{'key' => '95', 'value' => '0000000000'}, {'key' => '9B', 'value' => 'E800'}]})
         Worldpay::TriPosResponseParser.call(wire, operation: :sale)
@@ -39,7 +39,7 @@ module Payments
         rows = []
         if visible && %w[captured partial failed cancelled].include?(record.state)
           approved = record.facts.fetch('approved_cents', 0)
-          code = record.state == 'failed' ? '20' : '0'
+          code = record.state == 'failed' ? '20' : (record.state == 'partial' ? '5' : '0')
           status_code = {'captured' => '1', 'partial' => '1', 'failed' => '2', 'cancelled' => '17'}.fetch(record.state)
           account = identity.external_account_id
           rows << {'AccountId' => {'Value' => account}, 'accountId' => account,

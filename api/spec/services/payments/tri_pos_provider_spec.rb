@@ -68,6 +68,46 @@ RSpec.describe Payments::Worldpay::TriPosProvider do
     expect(InventoryCommitment.where(order_id: attempt.order_id)).to be_empty
     expect(attempt.order.reload.payment_status).to eq('pending')
   end
+  %w[5 005].each do |code|
+    it "retains code #{code} partial sale evidence for compensation despite a nonzero host partial code" do
+      allow(client).to receive(:sale).and_return(native_sale(approvedAmount: Payments::Worldpay::Money::DecimalLexeme.new('6.25'),
+        _processor: {'expressResponseCode' => code, 'hostResponseCode' => '10'}))
+      result = provider.sale(attempt: attempt)
+      expect(result).to have_attributes(status: 'partial', raw_id: 'bound-charge', requested_cents: 1250, approved_cents: 625, captured_cents: 0)
+      Payments::FinalizeOrder.call(attempt: attempt, result: result)
+      expect(attempt.reload.compensation_claimed_at).to be_present
+      expect(attempt.raw_provider_id).to eq('bound-charge')
+      expect(attempt.approved_cents).to eq(625)
+      expect(InventoryCommitment.where(order_id: attempt.order_id)).to be_empty
+      expect(attempt.order.reload.payment_status).to eq('pending')
+    end
+  end
+  it 'recovers code 5 partial query evidence with the bound charge and actual approved cents' do
+    allow(client).to receive(:query).and_return(native_query([row(approvedAmount: Payments::Worldpay::Money::DecimalLexeme.new('6.25'),
+      expressResponseCode: '5', HostResponseCode: '10')]))
+    result = provider.query(attempt: attempt)
+    expect(result).to have_attributes(status: 'partial', raw_id: 'bound-charge', requested_cents: 1250, approved_cents: 625, captured_cents: 0)
+    Payments::FinalizeOrder.call(attempt: attempt, result: result)
+    expect(attempt.reload.compensation_claimed_at).to be_present
+    expect(attempt.approved_cents).to eq(625)
+    expect(InventoryCommitment.where(order_id: attempt.order_id)).to be_empty
+    expect(attempt.order.reload.payment_status).to eq('pending')
+  end
+  it 'quarantines a contradictory full-amount code 5 result instead of authorizing capture' do
+    allow(client).to receive(:sale).and_return(native_sale(_processor: {'expressResponseCode' => '5', 'hostResponseCode' => '00'}))
+    expect(provider.sale(attempt: attempt).status).to eq('unknown')
+    expect(attempt.reload.provider_metadata['worldpay_financial_quarantine']).to be_present
+  end
+  it 'does not compensate a foreign code 5 partial observation against this order' do
+    allow(client).to receive(:query).and_return(native_query([row(terminalId: 'foreign-reader', approvedAmount: Payments::Worldpay::Money::DecimalLexeme.new('6.25'),
+      expressResponseCode: '5', HostResponseCode: '10')]))
+    result = provider.query(attempt: attempt)
+    expect(result.status).to eq('unknown')
+    Payments::FinalizeOrder.call(attempt: attempt, result: result)
+    expect(attempt.reload.compensation_claimed_at).to be_nil
+    expect(attempt.provider_metadata['worldpay_financial_quarantine']).to be_present
+    expect(attempt.order.reload.payment_status).to eq('pending')
+  end
   it 'keeps a terminal/amount mismatch quarantined through a later valid capture query' do
     allow(client).to receive(:sale).and_return(native_sale(terminalId: 'other-terminal'))
     expect(provider.sale(attempt: attempt).status).to eq('unknown')

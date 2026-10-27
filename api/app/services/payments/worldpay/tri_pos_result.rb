@@ -45,11 +45,14 @@ module Payments
         if %w[20 21].include?(code) && facts[:is_approved] == false && approved.zero?
           return result('failed', facts[:transaction_id], 0, 0, receipt: facts[:receipt])
         end
-        unless code.to_s.match?(/\A0+\z/) && processor[:host_response_code].to_s.match?(/\A0+\z/) && facts[:is_approved] == true && facts[:transaction_id].present?
-          return unknown('sale_approval_not_proven', ambiguity: approved.positive?)
-        end
-        if approved.positive? && approved < @attempt.requested_cents
+        bound_approval = facts[:is_approved] == true && facts[:transaction_id].present?
+        partial_code = code.to_s.match?(/\A0*5\z/)
+        if bound_approval && approved.positive? && approved < @attempt.requested_cents &&
+            (partial_code || (code.to_s.match?(/\A0+\z/) && processor[:host_response_code].to_s.match?(/\A0+\z/)))
           return result('partial', facts[:transaction_id], approved, 0, receipt: facts[:receipt])
+        end
+        unless code.to_s.match?(/\A0+\z/) && processor[:host_response_code].to_s.match?(/\A0+\z/) && bound_approval
+          return unknown('sale_approval_not_proven', ambiguity: approved.positive?)
         end
         unless approved == @attempt.requested_cents && facts[:total_amount_cents] == @attempt.requested_cents
           return unknown('sale_amount_mismatch', ambiguity: true)
@@ -76,9 +79,10 @@ module Payments
             declines << facts
           elsif @caps.fetch('cancelled_statuses', []).include?(facts[:transaction_status_code]) && facts[:approved_amount_cents] == 0
             cancelled << facts
-          elsif @caps.fetch('captured_statuses').include?(facts[:transaction_status_code]) && facts[:express_response_code].to_s.match?(/\A0+\z/) &&
-              facts[:host_response_code].to_s.match?(/\A0+\z/) && facts[:transaction_amount_cents] == @attempt.requested_cents &&
-              facts[:approved_amount_cents].is_a?(Integer) && facts[:approved_amount_cents].between?(1, @attempt.requested_cents)
+          elsif @caps.fetch('captured_statuses').include?(facts[:transaction_status_code]) && facts[:transaction_amount_cents] == @attempt.requested_cents &&
+              facts[:approved_amount_cents].is_a?(Integer) && facts[:approved_amount_cents].between?(1, @attempt.requested_cents) &&
+              ((facts[:express_response_code].to_s.match?(/\A0*5\z/) && facts[:approved_amount_cents] < @attempt.requested_cents) ||
+                (facts[:express_response_code].to_s.match?(/\A0+\z/) && facts[:host_response_code].to_s.match?(/\A0+\z/)))
             captures << facts
           else
             return unknown('query_financial_proof_incomplete', ambiguity: true)

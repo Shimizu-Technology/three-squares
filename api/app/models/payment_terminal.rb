@@ -3,7 +3,8 @@ class PaymentTerminal < ApplicationRecord
   belongs_to :location
   belongs_to :payment_profile, optional: true
   belongs_to :leased_attempt, class_name: 'PaymentAttempt', optional: true
-  attr_readonly :payment_identity_id, :location_id, :lane_id, :terminal_id
+  before_validation :bind_stripe_reader_key, on: :create
+  attr_readonly :payment_identity_id, :location_id, :lane_id, :terminal_id, :stripe_reader_key
   validates :label, :lane_id, :terminal_id, presence: true
   validates :status, inclusion: {in: %w[ready waiting_for_card card_inserted processing offline retired]}
 
@@ -20,5 +21,11 @@ class PaymentTerminal < ApplicationRecord
       update!(leased_attempt: nil, leased_at: nil, command_token: nil, command_claimed_at: nil,
         status: connection_state == 'offline' || status == 'offline' ? 'offline' : (retired_at ? 'retired' : 'ready'))
     end
+  end
+
+  private
+
+  def bind_stripe_reader_key
+    self.stripe_reader_key = payment_identity&.provider == 'stripe' ? terminal_id : nil
   end
 end

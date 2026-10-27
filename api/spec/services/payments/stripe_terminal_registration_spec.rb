@@ -13,8 +13,8 @@ RSpec.describe 'Registration of an existing Stripe reader' do
     allow(Stripe::StripeClient).to receive(:new).with('sk_test_fictional_fixture', stripe_account: identity.external_account_id).and_return(double(v1: double(terminal: double(readers: readers))))
     allow_any_instance_of(Net::HTTP).to receive(:request) { raise 'Provider HTTP forbidden' }
   end
-  def register(key = SecureRandom.uuid)
-    Payments::ManageTerminal.call(user: user, profile: profile, location: location, lane_id: 'stripe-local-lane',
+  def register(key = SecureRandom.uuid, lane: 'stripe-local-lane')
+    Payments::ManageTerminal.call(user: user, profile: profile, location: location, lane_id: lane,
       terminal_reference: 'tmr_fixture', label: 'Registered fixture', operation_key: key, kind: 'pair')
   end
   it 'verifies the original account/location/mode without creating or deleting a reader at Stripe' do
@@ -41,6 +41,34 @@ RSpec.describe 'Registration of an existing Stripe reader' do
     expect(register(key).state).to eq('succeeded')
     expect(calls).to eq(2)
     expect(PaymentTerminal.count).to eq(1)
+  end
+  it 'rejects an alias lane for the same registered reader before any provider request' do
+    expect(readers).to receive(:retrieve).once.with('tmr_fixture').and_return(reader)
+    original = register.payment_terminal
+    expect(original.stripe_reader_key).to eq('tmr_fixture')
+    expect { register(lane: 'alias-lane') }.to raise_error(Payments::Conflict, /original lane/)
+    expect(PaymentTerminal.count).to eq(1)
+    expect(TerminalAdministration.count).to eq(1)
+  end
+  it 'keeps an unknown registration exclusive across alias lanes and recovers only the original key' do
+    calls = 0
+    allow(readers).to receive(:retrieve).with('tmr_fixture') { calls += 1; raise IOError, 'lost lookup' if calls == 1; reader }
+    key = SecureRandom.uuid
+    expect(register(key).state).to eq('unknown')
+    expect { register(lane: 'alias-lane') }.to raise_error(Payments::Conflict, /administration is unresolved/)
+    expect(calls).to eq(1)
+    expect(register(key).state).to eq('succeeded')
+    expect(PaymentTerminal.count).to eq(1)
+  end
+  it 'enforces one physical reader per identity in the database even under a different lane' do
+    allow(readers).to receive(:retrieve).and_return(reader)
+    register
+    expect do
+      PaymentTerminal.transaction(requires_new: true) do
+        PaymentTerminal.create!(payment_identity: identity, payment_profile: profile, location: location,
+          lane_id: 'alias-lane', terminal_id: 'tmr_fixture', label: 'Alias')
+      end
+    end.to raise_error(ActiveRecord::RecordNotUnique)
   end
   it 'retires the local reader while preserving its Stripe registration and historical row' do
     allow(readers).to receive(:retrieve).with('tmr_fixture').and_return(reader)

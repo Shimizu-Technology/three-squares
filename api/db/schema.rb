@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_123000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_123100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -776,15 +776,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_123000) do
     t.bigint "payment_profile_id"
     t.datetime "retired_at"
     t.string "status", default: "ready", null: false
+    t.string "stripe_reader_key"
     t.string "terminal_id", null: false
     t.datetime "updated_at", null: false
     t.index ["leased_attempt_id"], name: "index_payment_terminals_on_leased_attempt_id"
     t.index ["leased_attempt_id"], name: "one_reader_per_attempt", unique: true, where: "(leased_attempt_id IS NOT NULL)"
     t.index ["location_id"], name: "index_payment_terminals_on_location_id"
     t.index ["payment_identity_id", "lane_id"], name: "index_payment_terminals_on_payment_identity_id_and_lane_id", unique: true
+    t.index ["payment_identity_id", "stripe_reader_key"], name: "one_stripe_reader_per_identity", unique: true, where: "(stripe_reader_key IS NOT NULL)"
     t.index ["payment_identity_id"], name: "index_payment_terminals_on_payment_identity_id"
     t.index ["payment_profile_id"], name: "index_payment_terminals_on_payment_profile_id"
     t.check_constraint "connection_state::text = ANY (ARRAY['unknown'::character varying, 'connected'::character varying, 'offline'::character varying]::text[])", name: "terminal_connection_state"
+    t.check_constraint "stripe_reader_key IS NULL OR stripe_reader_key::text = terminal_id::text", name: "stripe_reader_key_matches_terminal"
   end
 
   create_table "payment_transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
