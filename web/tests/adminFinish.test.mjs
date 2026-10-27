@@ -148,9 +148,11 @@ for (const [button, retry, field, payload] of [
   h.put = async () => { throw Error('Synthetic failure'); };
   if (field === 'enable_catering_online_ordering') h.find(node => node.type === 'input' && node.props.role === 'switch', h.general()).props.onChange();
   else h.click(button, h.general());
-  await h.flush(); assert.equal(h.generalProps().settings[field], false); assert.match(text(h.general()), /Error. Change was not saved/);
+  await h.flush(); assert.equal(h.generalProps().settings[field], false); assert.match(text(h.general()), /Save was not confirmed. Current saved value loaded/);
   h.put = async (path, body) => { h.calls.push([path, body]); return { data: { settings: body.settings } }; };
-  h.click(`Retry ${retry}`, h.general()); await h.flush(); assert.deepEqual(h.calls[0][1], { [payload]: { [field]: true } });
+  if (field === 'enable_catering_online_ordering') h.find(node => node.type === 'input' && node.props.role === 'switch', h.general()).props.onChange();
+  else h.click(button, h.general());
+  await h.flush(); assert.deepEqual(h.calls[0][1], { [payload]: { [field]: true } });
   assert.equal(h.generalProps().settings[field], true); assert.equal(h.generalProps().settings.announcement_text, 'Keep this draft'); assert.match(text(h.general()), /Saved/);
 });
 
@@ -177,4 +179,40 @@ for (const button of ['Retail order emails', 'Enable Catering storefront']) test
   pending.resolve({ data: { settings: { send_retail_emails: true } } });
   for (let i = 0; i < 10; i++) await Promise.resolve();
   assert.equal(h.writes, writes); assert.equal(h.toasts.length, toasts); assert.equal(h.invalidations, 0);
+});
+
+for (const [field, button, email] of [
+  ['enable_catering_online_ordering', null, false],
+  ['enable_storefront_catering', 'Enable Catering storefront', false],
+  ['send_retail_emails', 'Retail order emails', true],
+]) test(`${field}: lost write response reads the committed field without overwriting drafts`, async t => {
+  const h = harness(t, Settings); await h.flush();
+  const original = console.error; console.error = () => {}; t.after(() => { console.error = original; });
+  h.generalProps().onUpdateSettings({ announcement_text: 'Keep newer banner', store_name: 'Keep newer store' }); await h.flush();
+  h.put = async () => { throw Error('Response lost after commit'); };
+  h.get = async () => ({ data: email ? { settings: { [field]: true } } : { [field]: true, announcement_text: 'Old server banner' } });
+  if (button) h.click(button, h.general());
+  else h.find(node => node.type === 'input' && node.props.role === 'switch', h.general()).props.onChange();
+  await h.flush();
+  assert.equal(h.generalProps().settings[field], true);
+  assert.equal(h.generalProps().settings.announcement_text, 'Keep newer banner');
+  assert.equal(h.generalProps().settings.store_name, 'Keep newer store');
+  assert.match(text(h.general()), /Current saved value loaded/);
+  assert.doesNotMatch(text(h.general()), /Change was not saved/);
+});
+
+test('an unknown save blocks another write until a field-only read succeeds', async t => {
+  const h = harness(t, Settings); await h.flush();
+  const original = console.error; console.error = () => {}; t.after(() => { console.error = original; });
+  let writes = 0;
+  h.put = async () => { writes++; throw Error('Lost response'); };
+  h.get = async () => { throw Error('Still offline'); };
+  h.click('Enable Catering storefront', h.general()); await h.flush();
+  assert.equal(h.button('Enable Catering storefront', h.general()).props.disabled, true);
+  assert.match(text(h.general()), /Save outcome unknown/);
+  assert.doesNotMatch(text(h.general()), /Change was not saved/);
+  h.get = async () => ({ data: { enable_storefront_catering: true } });
+  h.click('Check saved Catering storefront', h.general()); await h.flush();
+  assert.equal(writes, 1); assert.equal(h.generalProps().settings.enable_storefront_catering, true);
+  assert.equal(h.button('Enable Catering storefront', h.general()).props.disabled, false);
 });

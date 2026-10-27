@@ -92,7 +92,7 @@ interface HomepageSection {
 type EmailField = 'send_retail_emails' | 'send_wholesale_emails';
 type StorefrontField = 'enable_storefront_three_squares' | 'enable_storefront_latte_stone' | 'enable_storefront_catering' | 'enable_catering_online_ordering';
 type ImmediateField = EmailField | StorefrontField;
-type SaveState = 'saving' | 'saved' | 'error';
+type SaveState = 'saving' | 'saved' | 'checking' | 'checked' | 'uncertain';
 
 type TabType = 'general' | 'homepage';
 
@@ -266,6 +266,37 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
     }
   };
 
+  // A lost response cannot prove a write failed. Read only the affected field;
+  // replacing a full settings response here would erase unrelated drafts.
+  const checkSavedImmediateField = async (field: ImmediateField, generation = saveGeneration.current) => {
+    setFieldSaveStates((prev) => ({ ...prev, [field]: 'checking' }));
+    try {
+      const token = await getToken();
+      const emailField = field === 'send_retail_emails' || field === 'send_wholesale_emails';
+      const response = await axios.get(
+        `${API_BASE_URL}/api/v1/admin/${emailField ? 'settings' : 'site_settings'}`,
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 20000 }
+      );
+      const value = (emailField ? response.data.settings : response.data)[field];
+      if (typeof value !== 'boolean') throw new Error('Saved value unavailable');
+      if (generation !== saveGeneration.current) return;
+      setSettings((prev) => prev ? { ...prev, [field]: value } : prev);
+      setLastSavedSiteSettings((prev) => prev ? { ...prev, [field]: value } : prev);
+      setFieldSaveStates((prev) => ({ ...prev, [field]: 'checked' }));
+      if (!emailField) invalidateAppConfig();
+    } catch {
+      if (generation !== saveGeneration.current) return;
+      setFieldSaveStates((prev) => ({ ...prev, [field]: 'uncertain' }));
+    }
+  };
+
+  const handleCheckSavedField = async (field: ImmediateField) => {
+    if (pendingFields.current.has(field)) return;
+    pendingFields.current.add(field);
+    try { await checkSavedImmediateField(field); }
+    finally { pendingFields.current.delete(field); }
+  };
+
   // Toggle individual email settings per order type
   const handleToggleEmailSetting = async (field: EmailField) => {
     if (!settings || saving || pendingFields.current.has(field)) return;
@@ -300,9 +331,9 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
       toast.success(message, { duration: 3000 });
     } catch (err: any) {
       if (generation !== saveGeneration.current) return;
-      setFieldSaveStates((prev) => ({ ...prev, [field]: 'error' }));
+      await checkSavedImmediateField(field, generation);
       console.error('Failed to toggle email setting:', err);
-      toast.error('Failed to update email setting');
+      toast.error('Save response unavailable. Check the current saved value.');
     } finally {
       pendingFields.current.delete(field);
     }
@@ -339,9 +370,9 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
       toast.success(`${labels[field]} ${newValue ? 'enabled' : 'disabled'}`, { duration: 3000 });
     } catch (err: unknown) {
       if (generation !== saveGeneration.current) return;
-      setFieldSaveStates((prev) => ({ ...prev, [field]: 'error' }));
+      await checkSavedImmediateField(field, generation);
       console.error('Failed to toggle storefront:', err);
-      toast.error('Failed to update storefront setting');
+      toast.error('Save response unavailable. Check the current saved value.');
     } finally {
       pendingFields.current.delete(field);
     }
@@ -594,6 +625,7 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
             settings={settings}
             saving={saving}
             fieldSaveStates={fieldSaveStates}
+            onCheckSavedField={handleCheckSavedField}
             placeholderUploading={placeholderUploading}
             showPlaceholderUrlInput={showPlaceholderUrlInput}
             isSiteSettingsDirty={isSiteSettingsDirty}
@@ -639,6 +671,7 @@ interface GeneralSettingsTabProps {
   settings: SiteSettings;
   saving: boolean;
   fieldSaveStates: Partial<Record<ImmediateField, SaveState>>;
+  onCheckSavedField: (field: ImmediateField) => void;
   placeholderUploading: boolean;
   showPlaceholderUrlInput: boolean;
   isSiteSettingsDirty: boolean;
@@ -658,6 +691,7 @@ function GeneralSettingsTab({
   settings,
   saving,
   fieldSaveStates,
+  onCheckSavedField,
   placeholderUploading,
   showPlaceholderUrlInput,
   isSiteSettingsDirty,
@@ -672,11 +706,12 @@ function GeneralSettingsTab({
   onDiscardSiteSettings,
   onToggleStorefront,
 }: GeneralSettingsTabProps) {
-  const immediateSaving = Object.values(fieldSaveStates).includes('saving');
-  const saveFeedback = (field: ImmediateField, label: string, retry: () => void) => (
+  const immediateSaving = Object.values(fieldSaveStates).some((state) => state === 'saving' || state === 'checking');
+  const fieldUnavailable = (field: ImmediateField) => ['saving', 'checking', 'uncertain'].includes(fieldSaveStates[field] || '');
+  const saveFeedback = (field: ImmediateField, label: string) => (
     <div className="mt-1 text-sm text-gray-700">
-      <p role="status">{fieldSaveStates[field] === 'saving' ? `${label}: Saving…` : fieldSaveStates[field] === 'saved' ? `${label}: Saved` : fieldSaveStates[field] === 'error' ? `${label}: Error. Change was not saved.` : 'Saves immediately.'}</p>
-      {fieldSaveStates[field] === 'error' && <button type="button" disabled={saving} onClick={retry} className="min-h-[44px] rounded px-3 font-medium text-tsPrimary underline disabled:opacity-50">Retry {label}</button>}
+      <p role="status">{fieldSaveStates[field] === 'saving' ? `${label}: Saving…` : fieldSaveStates[field] === 'saved' ? `${label}: Saved` : fieldSaveStates[field] === 'checking' ? `${label}: Save not confirmed. Checking saved value…` : fieldSaveStates[field] === 'checked' ? `${label}: Save was not confirmed. Current saved value loaded; review before changing it again.` : fieldSaveStates[field] === 'uncertain' ? `${label}: Save outcome unknown. Check the saved value before changing it again.` : 'Saves immediately.'}</p>
+      {fieldSaveStates[field] === 'uncertain' && <button type="button" disabled={saving} onClick={() => onCheckSavedField(field)} className="min-h-[44px] rounded px-3 font-medium text-tsPrimary underline disabled:opacity-50">Check saved {label}</button>}
     </div>
   );
   const missingOriginFields = getMissingOriginFields(settings.shipping_origin_address);
@@ -842,7 +877,7 @@ function GeneralSettingsTab({
             <div>
               <p className="font-medium text-gray-900">Retail Orders</p>
               <p className="text-sm text-gray-500">Online store purchases</p>
-              {saveFeedback('send_retail_emails', 'Retail order emails', () => onToggleEmailSetting('send_retail_emails'))}
+              {saveFeedback('send_retail_emails', 'Retail order emails')}
             </div>
             <button
               type="button"
@@ -850,7 +885,7 @@ function GeneralSettingsTab({
               aria-label="Retail order emails"
               aria-checked={settings.send_retail_emails}
               onClick={() => onToggleEmailSetting('send_retail_emails')}
-              disabled={saving || fieldSaveStates.send_retail_emails === 'saving'}
+              disabled={saving || fieldUnavailable('send_retail_emails')}
               className={`relative inline-flex min-h-[44px] w-16 items-center shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ${
                 settings.send_retail_emails ? 'bg-green-500' : 'bg-gray-200'
               } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -868,7 +903,7 @@ function GeneralSettingsTab({
             <div>
               <p className="font-medium text-gray-900">Wholesale Orders</p>
               <p className="text-sm text-gray-500">Wholesale orders</p>
-              {saveFeedback('send_wholesale_emails', 'Wholesale order emails', () => onToggleEmailSetting('send_wholesale_emails'))}
+              {saveFeedback('send_wholesale_emails', 'Wholesale order emails')}
             </div>
             <button
               type="button"
@@ -876,7 +911,7 @@ function GeneralSettingsTab({
               aria-label="Wholesale order emails"
               aria-checked={settings.send_wholesale_emails}
               onClick={() => onToggleEmailSetting('send_wholesale_emails')}
-              disabled={saving || fieldSaveStates.send_wholesale_emails === 'saving'}
+              disabled={saving || fieldUnavailable('send_wholesale_emails')}
               className={`relative inline-flex min-h-[44px] w-16 items-center shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ${
                 settings.send_wholesale_emails ? 'bg-green-500' : 'bg-gray-200'
               } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -938,7 +973,7 @@ function GeneralSettingsTab({
               <div>
                 <p className="font-medium text-gray-900">{label}</p>
                 <p className="text-sm text-gray-500">{desc}</p>
-                {saveFeedback(field, `${label} storefront`, () => onToggleStorefront(field))}
+                {saveFeedback(field, `${label} storefront`)}
               </div>
               <button
                 type="button"
@@ -946,7 +981,7 @@ function GeneralSettingsTab({
                 role="switch"
                 aria-checked={settings[field]}
                 onClick={() => onToggleStorefront(field)}
-                disabled={saving || fieldSaveStates[field] === 'saving'}
+                disabled={saving || fieldUnavailable(field)}
                 className={`relative inline-flex min-h-[44px] w-16 items-center shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ${
                   settings[field] ? 'bg-green-500' : 'bg-gray-200'
                 } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -966,11 +1001,11 @@ function GeneralSettingsTab({
         <h2 id="catering-ordering-title" className="text-lg font-semibold text-gray-900">Catering online ordering</h2>
         <p className="mt-2 text-sm text-gray-700">Off by default. Customers can browse catering items and submit an inquiry. Enable only when the menu is ready for direct online orders. This does not add minimum quantities, lead times or capacity rules.</p>
         <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 text-gray-900">
-          <input type="checkbox" role="switch" checked={settings.enable_catering_online_ordering === true} disabled={saving || fieldSaveStates.enable_catering_online_ordering === 'saving'} onChange={() => onToggleStorefront('enable_catering_online_ordering')} className="h-6 w-6" />
+          <input type="checkbox" role="switch" checked={settings.enable_catering_online_ordering === true} disabled={saving || fieldUnavailable('enable_catering_online_ordering')} onChange={() => onToggleStorefront('enable_catering_online_ordering')} className="h-6 w-6" />
           <span>Allow catering online orders</span>
         </label>
-        <p role="status" className="mt-2 text-sm text-gray-700">{settings.enable_catering_online_ordering ? 'Online orders enabled. Saves immediately.' : 'Inquiry only. Saves immediately.'}</p>
-        {saveFeedback('enable_catering_online_ordering', 'Catering online ordering', () => onToggleStorefront('enable_catering_online_ordering'))}
+        <p role="status" className="mt-2 text-sm text-gray-700">{fieldSaveStates.enable_catering_online_ordering === 'checking' || fieldSaveStates.enable_catering_online_ordering === 'uncertain' ? 'Saved ordering status is unconfirmed.' : settings.enable_catering_online_ordering ? 'Online orders enabled. Saves immediately.' : 'Inquiry only. Saves immediately.'}</p>
+        {saveFeedback('enable_catering_online_ordering', 'Catering online ordering')}
       </section>
 
       {/* Store Info Card */}

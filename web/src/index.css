@@ -363,7 +363,6 @@
 .admin-scope a:active,
 .admin-scope [role="button"]:active {
   opacity: 0.9;
-  transform: translateY(1px);
 }
 
 /* Mega menu animation */
