@@ -296,14 +296,15 @@ export default function AdminSettingsPage() {
       setSaving(true);
       const newValue = !settings[field];
       const token = await getToken();
-      const response = await axios.put(
+      await axios.put(
         `${API_BASE_URL}/api/v1/admin/site_settings`,
         { site_setting: { [field]: newValue } },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setSettings((prev) => (prev ? { ...prev, ...response.data } : response.data));
-      setLastSavedSiteSettings((prev) => (prev ? { ...prev, ...response.data } : response.data));
+      // Saving one toggle must not replace unrelated unsaved form fields.
+      setSettings((prev) => (prev ? { ...prev, [field]: newValue } : prev));
+      setLastSavedSiteSettings((prev) => (prev ? { ...prev, [field]: newValue } : prev));
 
       const labels: Record<string, string> = {
         enable_storefront_three_squares: 'Three Squares',
@@ -873,8 +874,8 @@ function GeneralSettingsTab({
       {/* Storefronts Card */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">Storefronts</h2>
-          <p className="text-sm text-gray-500 mt-1">Enable or disable storefronts visible to customers on the website</p>
+          <h2 className="text-lg font-semibold text-gray-900">Storefront navigation</h2>
+          <p className="text-sm text-gray-500 mt-1">Show storefronts in the homepage chooser and Shop menus. Existing menu URLs and information pages remain available.</p>
         </div>
         <div className="p-6 space-y-1">
           {([
@@ -888,6 +889,9 @@ function GeneralSettingsTab({
                 <p className="text-sm text-gray-500">{desc}</p>
               </div>
               <button
+                type="button"
+                aria-label={`Show ${label} in storefront navigation`}
+                aria-pressed={settings[field]}
                 onClick={() => onToggleStorefront(field)}
                 disabled={saving}
                 className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ${

@@ -98,6 +98,7 @@ function CustomUserButton({ isAdmin }: { isAdmin: boolean }) {
 // AppContent component (uses useNavigate, must be inside BrowserRouter)
 function AppContent() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
@@ -129,6 +130,7 @@ function AppContent() {
   // Helper to close both mobile menu and cart (for explicit link clicks)
   const handleNavClick = () => {
     setMobileMenuOpen(false);
+    setDesktopSearchOpen(false);
     closeCart();
   };
 
@@ -238,13 +240,13 @@ function AppContent() {
         {!isAdminPage && (
         <nav className="bg-warm-50 border-b border-warm-200 sticky top-0 z-40 print:hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-18 py-3.5">
+            <div className="flex justify-between items-center gap-2 h-18 py-3.5">
               {/* Logo */}
               <Link to="/" className="flex items-center gap-3 group" onClick={handleNavClick}>
                 <img 
                   src="/images/three-squares-logo.svg" 
                   alt="Three Squares" 
-                  className="block h-8 sm:h-9 w-auto object-contain"
+                  className="block h-8 sm:h-9 w-auto max-w-[120px] sm:max-w-[160px] xl:max-w-none object-contain"
                 />
                 <span className="hidden xl:block text-[11px] tracking-wide uppercase text-warm-500">
                   by B&amp;G Pacific
@@ -282,7 +284,7 @@ function AppContent() {
               </div>
 
               {/* Right Side: Search, Cart, Auth, Mobile Menu */}
-              <div className="flex items-center space-x-3 lg:space-x-4">
+              <div className="flex shrink-0 items-center space-x-1 sm:space-x-3 lg:space-x-4">
                 {/* Search Bar - Desktop (xl+) */}
                 <form onSubmit={handleSearch} className="hidden xl:block">
                   <div className="relative">
@@ -313,10 +315,8 @@ function AppContent() {
                 <button
                   type="button"
                   className="hidden lg:flex xl:hidden p-2.5 min-w-[44px] min-h-[44px] items-center justify-center text-warm-600 hover:text-tsPrimary transition rounded-lg"
-                  onClick={() => {
-                    const input = document.querySelector('input[placeholder="Search menu..."]') as HTMLInputElement;
-                    if (input) input.focus();
-                  }}
+                  onClick={() => setDesktopSearchOpen((open) => !open)}
+                  aria-expanded={desktopSearchOpen}
                   aria-label="Search"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -361,6 +361,19 @@ function AppContent() {
               </div>
             </div>
           </div>
+
+          {desktopSearchOpen && (
+            <form onSubmit={handleSearch} className="hidden lg:block xl:hidden px-6 pb-4">
+              <input
+                autoFocus
+                aria-label="Search menu"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="Search menu..."
+                className="w-full rounded-lg border border-warm-200 px-4 py-3 text-warm-900"
+              />
+            </form>
+          )}
 
           {/* Mobile Menu */}
           {mobileMenuOpen && (

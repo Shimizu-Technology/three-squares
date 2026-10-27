@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { MapPin, Clock, Phone, AlertTriangle, X } from 'lucide-react';
 import { locationsApi } from '../services/api';
 import { useLocationStore } from '../store/locationStore';
@@ -16,6 +16,9 @@ export default function LocationPicker() {
   const { cart, clearCart } = useCartStore();
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<LocationInfo | null>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const confirmRef = useRef<HTMLDivElement>(null);
+  const showModal = locations.length > 1 && (!selectedLocation || showPicker);
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -42,18 +45,48 @@ export default function LocationPicker() {
     fetchLocations();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Escape key dismisses modal (only when a location is already selected)
   useEffect(() => {
-    if (!showPicker || !selectedLocation) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowPicker(false); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [showPicker, selectedLocation, setShowPicker]);
+    if (!showModal && !showConfirm) return;
+    const dialog = showConfirm ? confirmRef.current : pickerRef.current;
+    if (!dialog) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const buttons = () => Array.from(dialog.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
+    buttons()[0]?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        if (showConfirm) {
+          setShowConfirm(false);
+          setPendingLocation(null);
+        } else if (selectedLocation) {
+          setShowPicker(false);
+        }
+      }
+      if (event.key !== 'Tab') return;
+      const focusable = buttons();
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last?.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first?.focus();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = previousOverflow;
+      if (previousFocus?.isConnected) previousFocus.focus();
+    };
+  }, [showModal, showConfirm, selectedLocation, setShowPicker]);
 
   if (locations.length <= 1) return null;
 
   const cartHasItems = (cart?.items?.length ?? 0) > 0;
-  const showModal = !selectedLocation || showPicker;
 
   const handleLocationSelect = (loc: LocationInfo) => {
     if (selectedLocation?.id === loc.id) {
@@ -61,7 +94,7 @@ export default function LocationPicker() {
       return;
     }
 
-    if (cartHasItems && selectedLocation) {
+    if (cartHasItems) {
       setPendingLocation(loc);
       setShowConfirm(true);
     } else {
@@ -96,10 +129,11 @@ export default function LocationPicker() {
           onClick={(e) => { if (selectedLocation && e.target === e.currentTarget) setShowPicker(false); }}
         >
           <div
+            ref={pickerRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="location-picker-title"
-            className="bg-white w-full sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl overflow-hidden animate-slide-up sm:animate-fade-in"
+            className="bg-white w-full max-h-[90dvh] overflow-y-auto sm:max-w-lg sm:rounded-2xl rounded-t-2xl shadow-2xl animate-slide-up sm:animate-fade-in"
           >
             {/* Header */}
             <div className="px-6 pt-6 pb-4 text-center relative">
@@ -168,7 +202,7 @@ export default function LocationPicker() {
       {/* Cart clear confirmation modal */}
       {showConfirm && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4">
-          <div role="dialog" aria-modal="true" aria-labelledby="cart-clear-title" className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl">
+          <div ref={confirmRef} role="dialog" aria-modal="true" aria-labelledby="cart-clear-title" className="bg-white rounded-xl p-6 max-w-sm w-full max-h-[90dvh] overflow-y-auto shadow-xl">
             <div className="flex items-center gap-3 mb-4">
               <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0" />
               <h3 id="cart-clear-title" className="text-lg font-semibold text-warm-900">Change Location?</h3>
