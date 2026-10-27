@@ -74,12 +74,12 @@ export default function AdminCateringPage() {
   const [loadError, setLoadError] = useState(false);
   const [refreshVersion, setRefreshVersion] = useState(0);
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [drafts, setDrafts] = useState<Record<number, { quote: string; notes: string }>>({});
+  const [drafts, setDrafts] = useState<Record<number, { quote: string; notes: string; notesDirty: boolean }>>({});
   const quoteAmount = detailId === null ? '' : drafts[detailId]?.quote || '';
   const adminNotes = detailId === null ? '' : drafts[detailId]?.notes || '';
   const updateDraft = (patch: Partial<{ quote: string; notes: string }>) => {
     if (detailId === null) return;
-    setDrafts(previous => ({ ...previous, [detailId]: { ...(previous[detailId] || { quote: '', notes: '' }), ...patch } }));
+    setDrafts(previous => ({ ...previous, [detailId]: { ...(previous[detailId] || { quote: '', notes: '', notesDirty: false }), ...patch, ...(patch.notes !== undefined ? { notesDirty: true } : {}) } }));
   };
   const hasData = loadedFilter === statusFilter;
 
@@ -142,9 +142,11 @@ export default function AdminCateringPage() {
       if (generation !== detailRequest.current) return;
       if (res.data.inquiry?.id !== id) throw new Error('Invalid inquiry response');
       setSelectedInquiry(res.data.inquiry);
-      setDrafts(previous => previous[id] ? previous : {
-        ...previous, [id]: { quote: '', notes: res.data.inquiry.admin_notes || '' },
-      });
+      setDrafts(previous => ({
+        ...previous, [id]: previous[id]?.notesDirty ? previous[id] : {
+          quote: previous[id]?.quote || '', notes: res.data.inquiry.admin_notes || '', notesDirty: false,
+        },
+      }));
       setDetailError(false);
     } catch (error) {
       if (generation !== detailRequest.current) return;
@@ -165,7 +167,7 @@ export default function AdminCateringPage() {
       if (!active.current) return;
       setRefreshVersion(version => version + 1);
       fetchInquiryDetails(selectedInquiry.id, true);
-      setDrafts(previous => ({ ...previous, [selectedInquiry.id]: { ...previous[selectedInquiry.id], quote: previous[selectedInquiry.id]?.quote === quoteAmount ? '' : previous[selectedInquiry.id]?.quote || '' } }));
+      setDrafts(previous => ({ ...previous, [selectedInquiry.id]: { ...previous[selectedInquiry.id], quote: previous[selectedInquiry.id]?.quote === quoteAmount ? '' : previous[selectedInquiry.id]?.quote || '', notesDirty: previous[selectedInquiry.id]?.notes === adminNotes ? false : previous[selectedInquiry.id]?.notesDirty || false } }));
     } catch (error) {
       console.error('Error sending quote:', error);
     }
@@ -189,6 +191,9 @@ export default function AdminCateringPage() {
       await authPatch(`/admin/catering/${selectedInquiry.id}`, {
         inquiry: { admin_notes: adminNotes },
       }, getToken);
+      setDrafts(previous => ({ ...previous, [selectedInquiry.id]: {
+        ...previous[selectedInquiry.id], notesDirty: previous[selectedInquiry.id]?.notes === adminNotes ? false : previous[selectedInquiry.id]?.notesDirty || false,
+      } }));
       fetchInquiryDetails(selectedInquiry.id, true);
     } catch (error) {
       console.error('Error updating notes:', error);

@@ -463,6 +463,7 @@ export default function AdminLocationsPage() {
                   <label className="flex items-center gap-2 text-sm text-gray-700">
                     <input
                       type="checkbox"
+                      disabled={savingId === location.id}
                       checked={editForm.active}
                       onChange={(event) => updateEditForm(location.id, { active: event.target.checked })}
                       className="w-4 h-4"

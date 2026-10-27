@@ -42,6 +42,7 @@ export default function AdminUsersPage() {
   const [appliedSearch, setAppliedSearch] = useState('');
   const [loadedContext, setLoadedContext] = useState<string | null>(null);
   const [loadError, setLoadError] = useState(false);
+  const [refreshVersion, setRefreshVersion] = useState(0);
   const requestId = useRef(0);
   const active = useRef(false);
   const [roleFilter, setRoleFilter] = useState('all');
@@ -79,7 +80,7 @@ export default function AdminUsersPage() {
     setLoadError(false);
     void fetchUsers();
     return () => { active.current = false; requestId.current += 1; };
-  }, [fetchUsers]);
+  }, [fetchUsers, refreshVersion]);
 
   const handleSearch = () => {
     if (searchQuery === appliedSearch) void fetchUsers();
@@ -95,18 +96,14 @@ export default function AdminUsersPage() {
       return;
     }
 
-    const generation = requestId.current;
     try {
       setUpdatingUserId(user.id);
       const response = await authPatch<AdminUserResponse>(`/admin/users/${user.id}`, { user: { role: newRole } }, getToken);
       
-      if (!active.current || generation !== requestId.current) return;
-      setUsers((previous) => previous.map(u => u.id === user.id ? response.data.user : u));
-      setStats((previous) => previous && ({
-        ...previous,
-        admins: previous.admins + (newRole === 'admin' ? 1 : -1),
-        customers: previous.customers + (newRole === 'admin' ? -1 : 1),
-      }));
+      if (!active.current) return;
+      // Reconcile the currently selected context, even if filters changed
+      // while the role update was pending. Counts come from the server.
+      setRefreshVersion(version => version + 1);
 
       toast.success(response.data.message);
     } catch (err) {

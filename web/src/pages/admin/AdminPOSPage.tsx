@@ -925,9 +925,9 @@ export default function AdminPOSPage() {
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="h-screen flex bg-linear-to-br from-slate-100 via-white to-slate-100 overflow-hidden">
+    <div className="h-dvh flex flex-col md:flex-row bg-linear-to-br from-slate-100 via-white to-slate-100 overflow-hidden">
       {/* ── Left Panel: Menu ────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-h-0 min-w-0">
         {/* Header */}
         <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
@@ -1130,7 +1130,7 @@ export default function AdminPOSPage() {
       </div>
 
       {/* ── Right Panel: Cart ───────────────────────────────────────────── */}
-      <div className="w-80 lg:w-104 bg-white/95 backdrop-blur border-l border-slate-200 flex flex-col shrink-0">
+      <div className="h-[45dvh] min-h-0 w-full md:h-auto md:w-80 lg:w-104 bg-white/95 backdrop-blur border-l border-slate-200 flex flex-col shrink-0">
         {/* Customer + order type */}
         <div className="p-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2 mb-3">
