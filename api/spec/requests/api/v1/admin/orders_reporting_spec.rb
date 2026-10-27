@@ -27,6 +27,7 @@ RSpec.describe 'Admin orders reporting', type: :request do
       order_type: 'retail',
       fulfillment_type: fulfillment_type,
       payment_status: 'paid',
+      payment_environment: 'production',
       total_cents: total_cents,
       subtotal_cents: total_cents,
       shipping_cost_cents: 0,
@@ -95,6 +96,23 @@ RSpec.describe 'Admin orders reporting', type: :request do
     expect(response.body).to include(matching_order.order_number)
     expect(response.body).to include('latte_stone')
     expect(response.body).not_to include('three_squares')
+  end
+
+  it 'includes only explicit production money in summary revenue and CSV' do
+    production = create_retail_order_with_collection(collection: mains_collection, fulfillment_type: 'pickup', location: pickup_location, total_cents: 2200)
+    excluded = ['sandbox', 'simulated', nil].map do |environment|
+      order = create_retail_order_with_collection(collection: mains_collection, fulfillment_type: 'pickup', location: pickup_location, total_cents: 9900)
+      order.update_columns(payment_environment: environment, simulated: environment == 'simulated')
+      order
+    end
+    get '/api/v1/admin/orders/summary'
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body['total_revenue_cents']).to eq(2200)
+    get '/api/v1/admin/orders/export'
+    expect(response).to have_http_status(:ok)
+    numbers = CSV.parse(response.body, headers: true).map { |row| row['order_number'] }
+    expect(numbers).to eq([production.order_number])
+    expect(numbers & excluded.map(&:order_number)).to be_empty
   end
   it 'keeps admin listing query counts constant as independently associated products grow' do
     measure = lambda do

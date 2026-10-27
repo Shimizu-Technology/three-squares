@@ -19,6 +19,7 @@ module Api
           app_mode: environment == "production" ? "production" : "test",
           payment_test_mode: environment != "production",
           payment_environment: environment,
+          simulation_enabled: environment == "simulated" && !Payments::Configuration.production? && ENV["PAYMENTS_SIMULATION_ENABLED"] == "true",
           payment_processor: settings.payment_processor,
           stripe_publishable_key: key,
           stripe_account_id: identity&.external_account_id,

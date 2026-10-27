@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import {
@@ -21,6 +21,8 @@ import {
 } from '../../services/stripeTerminal';
 import AdminRequestState from '../../components/admin/AdminRequestState';
 import type { Reader } from '@stripe/terminal-js';
+
+const SimulatedTerminalPanel = import.meta.env.DEV ? lazy(() => import('../../components/payment/simulation/SimulatedTerminalPanel')) : null;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -120,6 +122,11 @@ async function createPOSOrder(token: string, orderData: Record<string, unknown>,
     }
     throw new Error(data.error || 'Failed to create order');
   }
+  localStorage.setItem(POS_PENDING_TERMINAL_KEY, JSON.stringify({
+    user_id: owner, order_data: orderData, order_id: data.id, order_number: data.order_number,
+    simulated_attempt_id: data.payment_environment === 'simulated' ? data.payment_attempt_id : null,
+    created_at: new Date().toISOString(),
+  }));
   return data;
 }
 
@@ -305,7 +312,12 @@ export default function AdminPOSPage() {
   // Filters
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState<number | undefined>();
+  const [selectedLocation, setSelectedLocation] = useState<number | undefined>(() => {
+    try {
+      const id = JSON.parse(localStorage.getItem(POS_PENDING_TERMINAL_KEY) || 'null')?.order_data?.location_id;
+      return Number.isInteger(id) && id > 0 ? id : undefined;
+    } catch { return undefined; }
+  });
 
   const selectedLocationRef = useRef(selectedLocation);
   selectedLocationRef.current = selectedLocation;
@@ -328,6 +340,15 @@ export default function AdminPOSPage() {
   // Terminal
   const [terminalLocationReady, setTerminalLocationReady] = useState(false);
   const [resettingReader, setResettingReader] = useState(false);
+  const [simulationActive, setSimulationActive] = useState(false);
+  const [simulatedAttempt, setSimulatedAttempt] = useState<string | null>(() => { try { return JSON.parse(localStorage.getItem(POS_PENDING_TERMINAL_KEY) || 'null')?.simulated_attempt_id || null; } catch { return null; } });
+  useEffect(() => {
+    let active = true;
+    void getToken().then(token => fetch(`${API_BASE}/api/v1/admin/payment_terminals`, { headers: { Authorization: `Bearer ${token}` } })).then(response => response.json()).then(data => {
+      if (active) setSimulationActive(import.meta.env.DEV && (data.terminals || []).some((row: {location_id: number; environment: string}) => row.location_id === selectedLocation && row.environment === 'simulated'));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [getToken, selectedLocation]);
   const [terminalStatus, setTerminalStatus] = useState<TerminalStatus>('not_initialized');
   const [terminalReader, setTerminalReader] = useState<Reader | null>(null);
   const [terminalError, setTerminalError] = useState<string | null>(null);
@@ -497,7 +518,7 @@ export default function AdminPOSPage() {
     () => cart.reduce((sum, c) => sum + c.quantity, 0),
     [cart]
   );
-  const terminalLabel = terminalReader ? 'Connected' : 'Offline';
+  const terminalLabel = simulationActive ? 'Simulated reader' : terminalReader ? 'Connected' : 'Offline';
   const connectedReaderName = terminalReader
     ? (getReaderMeta(terminalReader).label || getReaderMeta(terminalReader).serial_number || 'Unknown Reader')
     : null;
@@ -609,6 +630,7 @@ export default function AdminPOSPage() {
     localStorage.removeItem(POS_PENDING_TERMINAL_KEY);
     clearPOSRequest();
     setHasPendingTerminalSession(false);
+    setSimulatedAttempt(null);
   }, []);
 
   const handleCheckSavedPayment = useCallback(async () => {
@@ -620,6 +642,10 @@ export default function AdminPOSPage() {
       if (!token) return;
       // Replaying creation uses the saved payload and original request key.
       const order = pending.order_data ? await createPOSOrder(token, pending.order_data, userId) : pending;
+      if (order.payment_environment === 'simulated' && order.payment_attempt_id) {
+        setSimulatedAttempt(order.payment_attempt_id);
+        setSelectedLocation(order.location_id);
+      }
       const confirmed = order.payment_method === 'cash' && order.payment_status === 'paid' && order.inventory_committed
         ? order : await confirmTerminalPayment(token, order.id || order.order_id, true);
       if (['failed', 'cancelled', 'compensated'].includes(confirmed.payment_state)) {
@@ -709,11 +735,12 @@ export default function AdminPOSPage() {
       const orderResult = await createPOSOrder(token, orderData, userId);
 
       if (!orderResult.client_secret) {
-        throw new Error('No client secret returned — check Stripe configuration');
+        throw new Error('Card collection is unavailable. Your saved order can be checked again.');
       }
 
       localStorage.setItem(POS_PENDING_TERMINAL_KEY, JSON.stringify({
         user_id: userId,
+        simulated_attempt_id: orderResult.payment_environment === 'simulated' ? orderResult.payment_attempt_id : null,
         order_id: orderResult.id,
         order_data: orderData,
         order_number: orderResult.order_number,
@@ -721,6 +748,11 @@ export default function AdminPOSPage() {
         created_at: new Date().toISOString(),
       }));
       setHasPendingTerminalSession(true);
+
+      if (orderResult.payment_environment === 'simulated') {
+        setSimulatedAttempt(orderResult.payment_attempt_id);
+        return;
+      }
 
       // 2. Collect payment via terminal reader
       await collectPayment(orderResult.client_secret);
@@ -807,13 +839,13 @@ export default function AdminPOSPage() {
 
   const handleCardAction = useCallback(() => {
     if (!canSubmitPayment || !terminalLocationReady) return;
-    if (!terminalReader) {
-      setTerminalError('Connect a Stripe reader before taking card payments.');
+    if (!terminalReader && !simulationActive) {
+      setTerminalError('Reader unavailable. Choose a reader or retry. Resolve any saved card payment before taking cash.');
       void handleDiscoverReaders();
       return;
     }
     void handleTerminalPayment();
-  }, [canSubmitPayment, terminalReader, handleTerminalPayment, handleDiscoverReaders, terminalLocationReady]);
+  }, [canSubmitPayment, terminalReader, handleTerminalPayment, handleDiscoverReaders, terminalLocationReady, simulationActive]);
 
   useEffect(() => {
     if (cart.length === 0) {
@@ -926,6 +958,7 @@ export default function AdminPOSPage() {
 
   return (
     <div className="min-h-dvh md:h-dvh flex flex-col md:flex-row bg-linear-to-br from-slate-100 via-white to-slate-100 md:overflow-hidden">
+      {simulationActive && SimulatedTerminalPanel && <Suspense fallback={null}><SimulatedTerminalPanel locationId={selectedLocation ?? null} attemptId={simulatedAttempt} getToken={getToken} onChange={handleCheckSavedPayment} /></Suspense>}
       {/* ── Left Panel: Menu ────────────────────────────────────────────── */}
       <div className="flex h-[55dvh] shrink-0 flex-col min-h-0 min-w-0 md:h-auto md:flex-1">
         {/* Header */}
@@ -1342,7 +1375,7 @@ export default function AdminPOSPage() {
             </button>
             <button
               onClick={handleCardAction}
-              disabled={!canSubmitPayment || !terminalReader || !terminalLocationReady}
+              disabled={!canSubmitPayment || (!terminalReader && !simulationActive) || !terminalLocationReady}
               className="flex items-center justify-center gap-2 py-3 text-white rounded-xl font-medium bg-tsNavy hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {terminalCollecting ? (
@@ -1352,7 +1385,7 @@ export default function AdminPOSPage() {
               ) : (
                 <WifiOff className="w-5 h-5" />
               )}
-              {terminalCollecting ? 'Tap Card...' : terminalReader ? 'Tap Card' : 'Connect Reader'}
+              {terminalCollecting ? 'Tap Card...' : simulationActive ? 'Card (simulated)' : terminalReader ? 'Tap Card' : 'Connect Reader'}
             </button>
           </div>
 

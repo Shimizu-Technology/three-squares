@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_070100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -734,6 +734,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
     t.index ["payment_identity_id"], name: "index_payment_profiles_on_payment_identity_id"
   end
 
+  create_table "payment_terminals", force: :cascade do |t|
+    t.jsonb "configuration", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.string "label", null: false
+    t.string "lane_id", null: false
+    t.datetime "leased_at"
+    t.uuid "leased_attempt_id"
+    t.bigint "location_id", null: false
+    t.uuid "payment_identity_id", null: false
+    t.datetime "retired_at"
+    t.string "status", default: "ready", null: false
+    t.string "terminal_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["leased_attempt_id"], name: "index_payment_terminals_on_leased_attempt_id"
+    t.index ["location_id"], name: "index_payment_terminals_on_location_id"
+    t.index ["payment_identity_id", "lane_id"], name: "index_payment_terminals_on_payment_identity_id_and_lane_id", unique: true
+    t.index ["payment_identity_id"], name: "index_payment_terminals_on_payment_identity_id"
+  end
+
   create_table "payment_transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.integer "amount_cents", null: false
     t.datetime "created_at", null: false
@@ -953,6 +972,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
     t.index ["owner_key", "caller_idempotency_key"], name: "unique_rejected_payment_request", unique: true
   end
 
+  create_table "simulated_payment_records", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.integer "amount_cents", null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at"
+    t.jsonb "facts", default: {}, null: false
+    t.string "handle_digest"
+    t.string "kind", null: false
+    t.string "operation_key", null: false
+    t.string "original_reference"
+    t.string "payload_digest", null: false
+    t.uuid "payment_attempt_id"
+    t.uuid "payment_identity_id", null: false
+    t.string "raw_id", null: false
+    t.datetime "redeemed_at"
+    t.string "scenario", default: "approve", null: false
+    t.string "state", default: "collecting", null: false
+    t.datetime "updated_at", null: false
+    t.index ["payment_attempt_id"], name: "index_simulated_payment_records_on_payment_attempt_id"
+    t.index ["payment_identity_id", "operation_key"], name: "simulation_operation_identity", unique: true
+    t.index ["payment_identity_id", "raw_id"], name: "simulation_raw_identity", unique: true
+    t.index ["payment_identity_id"], name: "index_simulated_payment_records_on_payment_identity_id"
+  end
+
+  create_table "simulation_clocks", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "now", null: false
+    t.uuid "payment_identity_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["payment_identity_id"], name: "index_simulation_clocks_on_payment_identity_id", unique: true
+  end
+
   create_table "site_settings", force: :cascade do |t|
     t.string "acai_gallery_heading"
     t.string "acai_gallery_image_a_url"
@@ -1060,6 +1110,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
   add_foreign_key "payment_events", "payment_identities"
   add_foreign_key "payment_profiles", "locations"
   add_foreign_key "payment_profiles", "payment_identities"
+  add_foreign_key "payment_terminals", "locations"
+  add_foreign_key "payment_terminals", "payment_attempts", column: "leased_attempt_id"
+  add_foreign_key "payment_terminals", "payment_identities"
   add_foreign_key "payment_transactions", "orders"
   add_foreign_key "payment_transactions", "payment_attempts"
   add_foreign_key "payment_transactions", "payment_attempts", column: ["payment_attempt_id", "order_id"], primary_key: ["id", "order_id"], name: "charge_consumption_matches_original_order"
@@ -1080,5 +1133,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
   add_foreign_key "refunds", "orders"
   add_foreign_key "refunds", "refund_operations"
   add_foreign_key "refunds", "users"
+  add_foreign_key "simulated_payment_records", "payment_attempts"
+  add_foreign_key "simulated_payment_records", "payment_identities"
+  add_foreign_key "simulation_clocks", "payment_identities"
   add_foreign_key "users", "locations", column: "assigned_location_id"
 end

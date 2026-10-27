@@ -7,10 +7,16 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 // Compile the real TSX with the existing compiler; no browser or app auth.
 const source = new URL('../src/components/admin/orders/PickupPackingList.tsx', import.meta.url);
+const badgeSource = new URL('../src/components/payment/PaymentEnvironmentBadge.tsx', import.meta.url);
+const badgeCompiled = ts.transpileModule(readFileSync(badgeSource, 'utf8'), {
+  compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
+}).outputText.replace(/from ["']react\/jsx-runtime["']/g, `from ${JSON.stringify(import.meta.resolve('react/jsx-runtime'))}`);
+const badgeModule = `data:text/javascript;base64,${Buffer.from(badgeCompiled).toString('base64')}`;
 const compiled = ts.transpileModule(readFileSync(source, 'utf8'), {
   compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText.replace(/from ["']react\/jsx-runtime["']/g, `from ${JSON.stringify(import.meta.resolve('react/jsx-runtime'))}`)
-  .replace(/from ["']\.\/orderUtils["']/g, `from ${JSON.stringify(new URL('../src/components/admin/orders/orderUtils.ts', import.meta.url).href)}`);
+  .replace(/from ["']\.\/orderUtils["']/g, `from ${JSON.stringify(new URL('../src/components/admin/orders/orderUtils.ts', import.meta.url).href)}`)
+  .replace(/from ["']\.\.\/\.\.\/payment\/PaymentEnvironmentBadge["']/g, `from ${JSON.stringify(badgeModule)}`);
 const { default: PackingList } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
 const note = 'Severe peanut allergy. Sauce separately. '.repeat(30);
 const order = {
@@ -36,6 +42,15 @@ test('packing renders quantities, variants, full instructions and customer excep
   for (const text of [order.customer_name, note, '2×', '3×', '5 to pack · 2 lines', 'Grilled chicken', 'Large meal', 'Short stack', 'Sauce separately\nLabel for auntie.', 'No butter', 'Donki', 'Paid', 'Acknowledge']) assert.ok(html.includes(text), text);
   assert.equal((html.match(/<li /g) || []).length, 2);
   assert.ok(html.includes('aria-label="Packing items"'));
+});
+
+test('packing distinguishes simulated and sandbox payments and omits the badge for production', () => {
+  const forEnvironment = payment_environment => render({ orders: [{ ...order, payment_environment }] });
+  assert.ok(forEnvironment('simulated').includes('Simulated payments — no money moves'));
+  assert.ok(forEnvironment('sandbox').includes('Sandbox payments'));
+  assert.ok(!forEnvironment('sandbox').includes('Simulated payments'));
+  assert.ok(!forEnvironment('production').includes('payments'));
+  assert.ok(!forEnvironment(undefined).includes('payments'));
 });
 
 test('unpaid and terminal pickups have no fulfillment action; authorized next stages remain authoritative', () => {

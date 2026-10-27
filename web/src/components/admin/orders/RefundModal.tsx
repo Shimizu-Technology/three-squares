@@ -1,3 +1,4 @@
+import PaymentEnvironmentBadge from '../../payment/PaymentEnvironmentBadge';
 import { useRef, useState } from 'react';
 import type { SavedRefundRequest } from '../../../lib/refundRequest';
 import useLockBodyScroll from '../../../hooks/useLockBodyScroll';
@@ -42,6 +43,7 @@ export default function RefundModal({ order, processing, savedRequest, onProcess
       >
         <div className="p-6 border-b border-gray-200 shrink-0">
           <h2 className="text-xl font-bold text-gray-900">Refund Order</h2>
+          <PaymentEnvironmentBadge environment={order.payment_environment} />
           <p className="text-sm text-gray-500 mt-1">
             Order {order.order_number} &mdash; {formatCurrency(order.total_cents)}
           </p>

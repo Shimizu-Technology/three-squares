@@ -43,6 +43,26 @@ module Api
         render json: session_json(session.reload, attempt.reload), status: :accepted
       end
 
+      def advance_simulation
+        session = authorized_session!
+        Payments::Simulation::Guard.validate!(session.payment_identity)
+        Payments::Simulation::Events.deliver_due(session.payment_identity)
+        SimulationClock.for(session.payment_identity).advance!(params.require(:seconds))
+        render json: session_json(session.reload, session.payment_attempts.order(:created_at).last)
+      end
+
+      # Local simulator only: all authority comes from the saved session, never
+      # a supplied order, amount, provider reference or string prefix.
+      def simulate
+        session = authorized_session!
+        Payments::Simulation::Guard.validate!(session.payment_identity)
+        attempt = session.payment_attempts.order(:created_at).last
+        provider = Payments::ProviderResolver.for_identity(session.payment_identity)
+        result = provider.collect(attempt: attempt, scenario: params.require(:scenario), handle: params.require(:handle), mode: params.fetch(:mode, 'token'))
+        Payments::FinalizeOrder.call(attempt: attempt, result: result)
+        render json: session_json(session.reload, attempt.reload)
+      end
+
       private
 
       def authorized_session!
@@ -81,9 +101,9 @@ module Api
         client_config = identity.provider == 'stripe' ? {
           'payment_identity_id' => identity.id, 'payment_environment' => identity.environment, 'stripe_account_id' => identity.external_account_id,
           'stripe_publishable_key' => ENV[identity.environment == 'production' ? 'STRIPE_PUBLISHABLE_KEY' : 'STRIPE_PUBLISHABLE_KEY_TEST']
-        } : {}
+        } : { 'payment_identity_id' => identity.id, 'payment_environment' => identity.environment }
         { id: session.id, attempt_id: attempt.id, state: session.state, payment_state: attempt.state, amount_cents: session.amount_cents, currency: session.currency,
-          provider: session.payment_identity.provider, environment: session.payment_identity.environment, simulated: order.simulated, expires_at: session.expires_at.iso8601,
+          payment_identity_id: identity.id, provider: session.payment_identity.provider, environment: session.payment_identity.environment, simulated: order.simulated, expires_at: session.expires_at.iso8601,
           flow: attempt.collection_config["flow"], collection_config: session.expires_at.future? && attempt.state == "collecting" ? attempt.collection_config.except("flow").merge(client_config) : {},
           order: { id: order.id, order_number: order.order_number, payment_status: order.payment_status, inventory_committed: order.inventory_committed_at.present? } }
       end

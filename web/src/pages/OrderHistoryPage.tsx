@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { SignInButton } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import axios from 'axios';
 
 import { API_BASE_URL } from '../config';
+import { savedGuestOrderIds } from '../lib/guestOrderRecovery';
 
 interface OrderItem {
   product_name: string;
@@ -116,13 +118,14 @@ export default function OrderHistoryPage() {
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="bg-white rounded-lg shadow-sm p-8 text-center">
             <div className="mb-4"><svg className="w-16 h-16 mx-auto text-warm-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg></div>
-            <h1 className="text-2xl font-bold text-warm-900 mb-4">Sign In Required</h1>
+            <h1 className="text-2xl font-bold text-warm-900 mb-4">Find your order</h1>
             <p className="text-warm-600 mb-6">
               Please sign in to view your order history.
             </p>
-            <p className="text-sm text-warm-500">
-              If you placed an order as a guest, you can view it using the confirmation link in your email.
-            </p>
+            <SignInButton mode="modal"><button className="min-h-11 rounded-lg bg-tsPrimary px-5 py-3 text-white font-semibold">Sign in for order history</button></SignInButton>
+            <div className="mt-6 text-left"><h2 className="font-semibold">Guest orders saved on this device</h2><p className="mt-2 text-sm text-warm-600">These private links work on this browser until access expires. Keep your order number for support.</p>
+            <div className="mt-3 flex flex-col gap-2">{savedGuestOrderIds().map(id => <Link key={id} className="min-h-11 underline p-2" to={`/orders/${id}`}>View saved order #{id}</Link>)}</div>
+            <Link className="mt-4 inline-block min-h-11 underline" to="/checkout">Check an unfinished payment</Link></div>
           </div>
         </div>
       </div>

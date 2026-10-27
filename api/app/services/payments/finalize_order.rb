@@ -62,6 +62,10 @@ module Payments
           record_effects!(order, session)
           next order
         end
+        if result.metadata[:compensation_required]
+          mark_compensation!(session, stored, 'fraud_policy')
+          next order
+        end
         unless result.captured? && result.approved_cents == stored.requested_cents
           mark_compensation!(session, stored) if result.approved_cents < stored.requested_cents || result.captured_cents.positive?
           next order

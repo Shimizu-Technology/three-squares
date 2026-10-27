@@ -26,7 +26,7 @@ module Payments
       provider = ProviderResolver.for_identity(attempt.payment_identity)
       response = dispatch == :recover ? provider.collection(attempt: attempt) : provider.setup(attempt: attempt)
       attempt.with_lock do
-        attempt.update!(raw_provider_id: response.fetch(:raw_id), collection_config: response.slice(:flow, :client_secret), state: %w[captured compensated compensation_required reconciliation_required cancelled failed].include?(attempt.state) || attempt.compensation_claimed_at ? attempt.state : "collecting", next_recovery_at: 30.seconds.from_now)
+        attempt.update!(raw_provider_id: response.fetch(:raw_id), collection_config: response.slice(:flow, :client_secret, :hosted_url), state: %w[captured compensated compensation_required reconciliation_required cancelled failed].include?(attempt.state) || attempt.compensation_claimed_at ? attempt.state : "collecting", next_recovery_at: 30.seconds.from_now)
         attempt.order.update!(payment_intent_id: response[:raw_id], payment_reference: attempt.payment_identity.canonical_reference(response[:raw_id]), payment_session_id: attempt.checkout_session_id)
       end
       attempt

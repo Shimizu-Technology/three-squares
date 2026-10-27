@@ -56,7 +56,7 @@ module Api
         status_counts = orders.group(:status).count
         total_orders = orders.count
         paid_orders = orders.where(payment_status: "paid").count
-        total_revenue_cents = orders.where(payment_status: "paid").sum(:total_cents)
+        total_revenue_cents = orders.where(simulated: false, payment_environment: "production").where(payment_status: "paid").sum(:total_cents)
 
         render json: {
           total_orders: total_orders,
@@ -429,6 +429,7 @@ module Api
       end
 
       def build_orders_csv(orders)
+        orders = orders.where(simulated: false, payment_environment: "production")
         CSV.generate(headers: true) do |csv|
           csv << [
             "order_number",
@@ -653,6 +654,8 @@ module Api
           order_number: order.order_number,
           status: order.status,
           payment_status: order.payment_status,
+          payment_environment: order.payment_environment,
+          payment_provider: order.payment_provider,
           inventory_restoration_status: order.metadata.dig('inventory_restoration', 'status'),
           order_type: order.order_type,
           business_line: infer_business_line(order),
