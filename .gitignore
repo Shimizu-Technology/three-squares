@@ -4,3 +4,6 @@ Backups/
 *.env.*
 !.env.example
 
+
+# Local simulated demo process state and logs
+/tmp/demo/

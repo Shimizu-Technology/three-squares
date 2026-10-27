@@ -1,0 +1,11 @@
+development:
+  recover_payments:
+    class: PaymentRecoveryJob
+    schedule: every minute
+  dispatch_payment_outbox:
+    class: OutboxDispatchJob
+    schedule: every minute
+  recover_refunds:
+    class: RefundRecoveryJob
+    queue: payments
+    schedule: every minute

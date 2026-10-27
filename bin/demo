@@ -1,0 +1,292 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+ENV['BUNDLE_GEMFILE'] = File.expand_path('../api/Gemfile', __dir__)
+begin
+  require 'bundler/setup'
+rescue LoadError => error
+  STDERR.puts "Demo: install the API bundle with the project's Ruby first (#{error.class})."
+  exit 1
+end
+
+require 'fileutils'
+require 'json'
+require 'net/http'
+require 'optparse'
+require 'open3'
+require 'rbconfig'
+require 'socket'
+require 'uri'
+require_relative '../api/lib/demo_database'
+
+class Demo
+  ROOT = File.realpath('..', __dir__)
+  API = File.join(ROOT, 'api')
+  TMP = File.join(ROOT, 'tmp/demo')
+  STATE = File.join(TMP, 'pids.json')
+  RUBY = RbConfig.ruby
+
+  def initialize(args)
+    @action = args.shift
+    @db = 'three_squares_demo'
+    @catalog = 'three-squares'
+    @api_port = ENV.fetch('DEMO_API_PORT', '3000')
+    @web_port = ENV.fetch('DEMO_WEB_PORT', '5173')
+    OptionParser.new do |options|
+      options.on('--catalog CATALOG', %w[three-squares fictional]) { |catalog| @catalog = catalog }
+      options.on('--db NAME') { |name| @db = name }
+      options.on('--api-port PORT') { |port| @api_port = port }
+      options.on('--web-port PORT') { |port| @web_port = port }
+    end.parse!(args)
+    raise 'Usage: bin/demo start|stop|reset [--db tsq_demo] [--catalog three-squares|fictional] [--api-port 3000] [--web-port 5173]' unless
+      %w[start stop reset].include?(@action) && args.empty?
+    FileUtils.mkdir_p(TMP, mode: 0o700)
+    @children = []
+  end
+
+  def run
+    return stop if @action == 'stop'
+    raise 'Refusing database name: use three_squares_demo or a tsq_*demo*/tsq_*sim* name without prod/live/development/test' unless DemoDatabase.valid_name?(@db)
+    @lock = File.open(File.join(TMP, 'launcher.lock'), File::RDWR | File::CREAT, 0o600)
+    @owns_lock = @lock.flock(File::LOCK_EX | File::LOCK_NB)
+    raise 'Demo already running or preparing; run bin/demo stop first' unless @owns_lock
+    if File.exist?(STATE)
+      stop
+      raise 'Previous demo has not stopped; inspect tmp/demo/pids.json' if File.exist?(STATE)
+    end
+    configure
+    trap('INT') { @stopping = true }
+    trap('TERM') { @stopping = true }
+    write_state
+    if @action == 'reset'
+      command('reset', RUBY, 'bin/demo-process', 'rails', 'db:drop', 'db:create', 'db:migrate', 'demo:prepare')
+      puts "Demo database #{@db} reset. Start with bin/demo start --db #{@db} --catalog #{@catalog}."
+      return
+    end
+    check_port(@api_port)
+    check_port(@web_port)
+    raise 'API and web ports must differ' if @api_port == @web_port
+    command('prepare', RUBY, 'bin/demo-process', 'rails', 'db:create', 'db:migrate', 'demo:prepare')
+    raise 'Stopped' if @stopping
+    launch('api', API, RUBY, 'bin/demo-process', 'rails', 'server', '-b', '127.0.0.1', '-p', @api_port,
+      '--pid', File.join(TMP, 'rails.pid'))
+    launch('queue', API, RUBY, 'bin/demo-process', 'demo-queue')
+    vite_config = File.join(TMP, 'vite.config.mjs')
+    File.write(vite_config, "import config from #{File.join(ROOT, 'web/vite.config.ts').to_json};\nexport default {...config, envDir: false};\n")
+    launch('web', File.join(ROOT, 'web'), 'npm', 'run', 'dev', '--', '--host', '127.0.0.1', '--port', @web_port, '--strictPort', '--config', vite_config)
+    wait_for("#{@env.fetch('VITE_API_BASE_URL')}/health")
+    wait_for(@env.fetch('FRONTEND_URL'))
+    puts "Catalog: #{@catalog}. Menu prices will be confirmed before launch." if @catalog == 'three-squares'
+    puts "\nSimulated payments — no money moves.\nCustomer: #{@env.fetch('FRONTEND_URL')}\nWorkspace: #{@env.fetch('FRONTEND_URL')}/admin\nAPI: #{@env.fetch('VITE_API_BASE_URL')}/health"
+    puts "Sign in with the dev Clerk account matching DEMO_OWNER_EMAIL for owner/all-location access.\nKeep this terminal open. Ctrl-C or bin/demo stop stops this demo.\nLogs: tmp/demo/*.log"
+    $stdout.flush
+    until @stopping
+      check_children
+      sleep 0.25
+    end
+  ensure
+    if @owns_lock
+      cleanup(@children)
+      FileUtils.rm_f(STATE)
+      @lock.close
+    end
+  end
+
+  def configure
+    common, status = Open3.capture2('git', '-C', ROOT, 'rev-parse', '--path-format=absolute', '--git-common-dir')
+    raise 'Cannot locate Git checkout for environment files' unless status.success?
+    main = File.dirname(common.strip)
+    # Parse data, never source shell code. Local files override the main checkout;
+    # explicit shell values override files. Never load provider/email credentials.
+    paths = [ROOT, main].uniq.flat_map do |root|
+      ['.env.development.local', '.env.local', '.env.development', '.env'].flat_map do |name|
+        [File.join(root, name), File.join(root, 'api', name), File.join(root, 'web', name)]
+      end
+    end
+    allowed = %w[CLERK_SECRET_KEY CLERK_PUBLISHABLE_KEY VITE_CLERK_PUBLISHABLE_KEY DEMO_OWNER_EMAIL]
+    values = {}
+    paths.each do |path|
+      next unless File.file?(path)
+      File.foreach(path) do |line|
+        match = line.match(/\A\s*(?:export\s+)?([A-Z_]+)\s*=\s*(.*?)\s*\z/)
+        next unless match && allowed.include?(match[1]) && !values.key?(match[1])
+        value = match[2].sub(/\s+#.*\z/, '')
+        value = value[1...-1] if (value.start_with?('"') && value.end_with?('"')) || (value.start_with?("'") && value.end_with?("'"))
+        values[match[1]] = value
+      end
+    end
+    values.merge!(ENV.to_h.select { |key, _| allowed.include?(key) })
+    secret = values['CLERK_SECRET_KEY'].to_s
+    public_key = values['VITE_CLERK_PUBLISHABLE_KEY'] || values['CLERK_PUBLISHABLE_KEY']
+    raise 'Missing Clerk dev keys. Set CLERK_SECRET_KEY and VITE_CLERK_PUBLISHABLE_KEY in your shell or api/.env and web/.env (see docs/DEMO.md).' unless
+      secret.start_with?('sk_test_') && public_key.to_s.start_with?('pk_test_') && ![secret, public_key].any? { |key| key.include?('YOUR_') }
+    if values['CLERK_PUBLISHABLE_KEY'] && values['CLERK_PUBLISHABLE_KEY'] != public_key
+      raise 'Clerk API/web publishable keys differ; use the same dev instance'
+    end
+    owner = values['DEMO_OWNER_EMAIL'].to_s.strip.downcase
+    raise 'Set DEMO_OWNER_EMAIL to your dev Clerk account email before starting (see docs/DEMO.md).' unless owner.match?(/\A[^\s@]+@[^\s@]+\.[^\s@]+\z/)
+    [@api_port, @web_port].each { |port| raise 'Ports must be integers from 1024 to 65535' unless port.match?(/\A\d+\z/) && (1024..65535).cover?(port.to_i) }
+    pg_port = ENV.fetch('DEMO_PG_PORT', '5432')
+    raise 'DEMO_PG_PORT must be a valid port' unless pg_port.match?(/\A\d+\z/) && (1..65535).cover?(pg_port.to_i)
+    db_url = "postgresql://127.0.0.1:#{pg_port}/#{@db}"
+    # unsetenv_others also keeps developer .env provider credentials out of Vite.
+    @env = ENV.to_h.select { |key, _| %w[PATH HOME USER LOGNAME SHELL TMPDIR LANG LC_ALL RBENV_ROOT RBENV_VERSION NODENV_ROOT NODENV_VERSION GEM_HOME GEM_PATH BUNDLE_PATH PGUSER PGPASSWORD].include?(key) }
+    @env.merge!('BUNDLE_GEMFILE' => File.join(API, 'Gemfile'), 'RAILS_ENV' => 'development',
+      'APP_DEPLOYMENT_ENV' => 'development', 'APP_MODE' => 'test', 'DEMO_QUEUE' => '1', 'DEMO_CATALOG' => @catalog,
+      'DATABASE_URL' => db_url, 'SCHEMA' => File.join(TMP, 'schema.rb'), 'PAYMENTS_SIMULATION_ENABLED' => 'true', 'WORLDPAY_MODE' => 'simulated',
+      'PAYMENTS_DEFAULT_PROVIDER' => 'worldpay', 'WORLDPAY_TRANSPORT_ENABLED' => 'false',
+      'WORLDPAY_TRIPOS_TRANSPORT_ENABLED' => 'false', 'CLERK_SECRET_KEY' => secret,
+      'CLERK_PUBLISHABLE_KEY' => public_key, 'VITE_CLERK_PUBLISHABLE_KEY' => public_key,
+      'ADMIN_EMAILS' => owner, 'DEMO_OWNER_EMAIL' => owner,
+      'FRONTEND_URL' => "http://localhost:#{@web_port}", 'ALLOWED_ORIGINS' => "http://localhost:#{@web_port}",
+      'VITE_API_BASE_URL' => "http://localhost:#{@api_port}", 'VITE_PUBLIC_POSTHOG_KEY' => '',
+      'RAILS_MAX_THREADS' => '12', 'WEB_CONCURRENCY' => '0')
+  end
+
+  def check_port(port)
+    socket = TCPServer.new('127.0.0.1', port.to_i)
+    socket.close
+  rescue Errno::EADDRINUSE
+    raise "Port #{port} is in use. Stop its owner yourself or choose --api-port/--web-port."
+  end
+
+  def identity(pid)
+    output, status = Open3.capture2('ps', '-p', pid.to_s, '-o', 'lstart=')
+    status.success? ? output.strip : nil
+  end
+
+  def launch(label, cwd, *argv)
+    log = File.open(File.join(TMP, "#{label}.log"), 'a', 0o600)
+    pid = Process.spawn(@env, *argv, chdir: cwd, pgroup: true, unsetenv_others: true, out: log, err: log)
+    log.close
+    child = { 'pid' => pid, 'started' => identity(pid), 'label' => label }
+    @children << child
+    write_state
+    # Optional agent integration; ordinary developer use needs no lifecycle tool.
+    session = ENV['DEMO_LIFECYCLE_SESSION']
+    if session && !system('dev-lifecycle', 'claim', '--session', session, '--reason', "Three Squares demo #{label}", 'process', pid.to_s, out: File::NULL)
+      raise "Could not claim demo #{label} in lifecycle session"
+    end
+    child
+  end
+
+  def command(label, *argv)
+    puts "Preparing #{@db} (#{label}; log: tmp/demo/#{label}.log)…"
+    child = launch(label, API, *argv)
+    loop do
+      raise 'Stopped' if @stopping
+      result = Process.waitpid2(child['pid'], Process::WNOHANG)
+      if result
+        @children.delete(child)
+        write_state
+        raise "#{label} failed; inspect tmp/demo/#{label}.log" unless result.last.success?
+        break
+      end
+      sleep 0.2
+    end
+  end
+
+  def write_state
+    File.write("#{STATE}.new", JSON.generate('supervisor' => { 'pid' => Process.pid, 'started' => identity(Process.pid) }, 'database' => @db, 'children' => @children), perm: 0o600)
+    File.rename("#{STATE}.new", STATE)
+  end
+
+  def check_children
+    @children.each do |child|
+      state, = Open3.capture2('ps', '-p', child['pid'].to_s, '-o', 'stat=')
+      if state.strip.empty? || state.strip.start_with?('Z')
+        raise "Demo #{child['label']} exited; stopping the rest. Inspect tmp/demo/#{child['label']}.log"
+      end
+    end
+  end
+
+  def wait_for(url)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 90
+    loop do
+      raise 'Stopped' if @stopping
+      check_children
+      begin
+        uri = URI(url)
+        response = Net::HTTP.start(uri.hostname, uri.port, nil, open_timeout: 1, read_timeout: 2) { |http| http.get(uri.request_uri) }
+        return if response.is_a?(Net::HTTPSuccess)
+      rescue SystemCallError, IOError, Timeout::Error
+        # Startup is bounded; never print ready URLs until health succeeds.
+      end
+      raise "Timed out waiting for #{uri.path.empty? ? 'Vite' : 'API health'}; inspect tmp/demo logs" if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+      sleep 0.3
+    end
+  end
+
+  def matches?(record)
+    record['started'] && identity(Integer(record.fetch('pid'))) == record['started']
+  end
+
+  def running?(record)
+    return false unless matches?(record)
+    status, = Open3.capture2('ps', '-p', record['pid'].to_s, '-o', 'stat=')
+    !status.strip.empty? && !status.strip.start_with?('Z')
+  end
+
+  def group_running?(pid)
+    output, = Open3.capture2('ps', '-axo', 'pgid=,stat=')
+    output.lines.any? do |line|
+      group, status = line.split
+      group.to_i == pid && status && !status.start_with?('Z')
+    end
+  end
+
+  def signal_group(child, signal)
+    return unless matches?(child) && group_running?(child['pid'])
+    Process.kill(signal, -child['pid'])
+  rescue Errno::ESRCH
+    nil
+  rescue Errno::EPERM
+    # A group may become entirely zombies between inspection and signaling.
+    raise if group_running?(child['pid'])
+  end
+
+  def cleanup(children)
+    owned = children.select do |child|
+      matches?(child) && Process.getpgid(child['pid']) == child['pid']
+    rescue Errno::ESRCH
+      false
+    end
+    owned.each { |child| signal_group(child, 'TERM') }
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 8
+    while owned.any? { |child| group_running?(child['pid']) } && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+      sleep 0.1
+    end
+    # Keep unreaped leaders as identity anchors until all descendants stop.
+    owned.each { |child| signal_group(child, 'KILL') }
+    children.each { |child| Process.waitpid(child['pid']) rescue Errno::ECHILD }
+  end
+
+  def stop
+    unless File.exist?(STATE)
+      puts 'No demo is running from this checkout.'
+      return
+    end
+    state = JSON.parse(File.read(STATE))
+    supervisor = state.fetch('supervisor')
+    if running?(supervisor) && supervisor['pid'] != Process.pid
+      Process.kill('TERM', supervisor['pid'])
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 15
+      while running?(supervisor) && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+        sleep 0.1
+      end
+      raise 'Demo is still shutting down; inspect tmp/demo logs and retry stop' if running?(supervisor)
+    end
+    cleanup(state.fetch('children'))
+    FileUtils.rm_f(STATE)
+    puts 'Demo processes stopped. Database retained.'
+  end
+end
+
+if $PROGRAM_NAME == __FILE__
+  begin
+    Demo.new(ARGV).run
+  rescue StandardError, LoadError => error
+    STDERR.puts "Demo: #{error.message}"
+    exit 1
+  end
+end

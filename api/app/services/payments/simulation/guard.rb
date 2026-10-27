@@ -10,7 +10,9 @@ module Payments
         # requires a dedicated database, shared development DBs are forbidden.
         name = ActiveRecord::Base.connection_db_config.database.to_s
         raise Configuration::UnsafeConfiguration, 'Shared development/test databases cannot simulate' if %w[three_squares_development three_squares_test].include?(name)
-        unless name.match?(/\A(?:tsq_.*(?:sim|p4a)|three_squares_ci_)/) || Rails.env.test?
+        require Rails.root.join('lib/demo_database')
+        demo = Rails.env.development? && ENV['DEMO_QUEUE'] == '1' && DemoDatabase.valid_name?(name)
+        unless demo || name.match?(/\A(?:tsq_.*(?:sim|p4a)|three_squares_ci_)/) || Rails.env.test?
           raise Configuration::UnsafeConfiguration, 'Simulation requires a dedicated fixture database'
         end
         identity
