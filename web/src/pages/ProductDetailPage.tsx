@@ -58,6 +58,7 @@ export default function ProductDetailPage() {
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const productRequest = useRef(0);
   const sizeGuideContentRef = useRef<HTMLDivElement | null>(null);
+  const sizeGuideTriggerRef = useRef<HTMLButtonElement | null>(null);
   
   const { addItem, cart, openCart } = useCartStore();
   
@@ -576,6 +577,7 @@ export default function ProductDetailPage() {
                 {/* Size Guide Button */}
                 {sizeChartUrl && (
                   <button
+                    ref={sizeGuideTriggerRef}
                     type="button"
                     onClick={() => setShowSizeGuide(true)}
                     className="inline-flex items-center px-4 py-2 border-2 border-tsPrimary text-tsPrimary hover:bg-tsPrimary hover:text-white font-semibold rounded-lg transition-colors"
@@ -815,7 +817,7 @@ export default function ProductDetailPage() {
         
         {/* Size Guide Modal */}
         {showSizeGuide && sizeChartUrl && (
-          <Dialog open={showSizeGuide} onOpenChange={setShowSizeGuide} labelledBy="size-guide-title"
+          <Dialog open={showSizeGuide} onOpenChange={setShowSizeGuide} labelledBy="size-guide-title" returnFocusRef={sizeGuideTriggerRef}
             className="rounded-lg w-[calc(100vw-2rem)] max-w-4xl flex flex-col min-h-0">
               {/* Header */}
               <div className="bg-white border-b px-6 py-4 flex items-center justify-between z-10 shrink-0">
