@@ -345,8 +345,8 @@ module Api
 
         start_at = parse_datetime_param(params[:start_date])
         end_at = parse_datetime_param(params[:end_date], end_of_day: true)
-        orders_query = orders_query.where("created_at >= ?", start_at) if start_at
-        orders_query = orders_query.where("created_at <= ?", end_at) if end_at
+        orders_query = orders_query.where("orders.created_at >= ?", start_at) if start_at
+        orders_query = orders_query.where("orders.created_at <= ?", end_at) if end_at
 
         if params[:business_line].present?
           orders_query = apply_business_line_filter(orders_query, params[:business_line].to_s)
@@ -397,11 +397,13 @@ module Api
         when "catering"
           relation.where(order_type: "wholesale")
         when "latte_stone"
-          relation
-            .where(order_type: "retail")
+          # Filter order IDs rather than joining the outer relation: multiple cookie
+          # lines must not duplicate orders or make revenue SUM(DISTINCT amount).
+          cookie_order_ids = Order
             .joins(order_items: { product_variant: { product: :collections } })
             .where(collections: { slug: COOKIE_COLLECTION_SLUGS })
-            .distinct
+            .select(:id)
+          relation.where(order_type: "retail", id: cookie_order_ids)
         when "three_squares"
           latte_stone_order_ids = Order
             .where(order_type: "retail")
