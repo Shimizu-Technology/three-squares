@@ -58,6 +58,7 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await page.getByLabel('Banner Message', { exact: true }).fill('Unsaved lunch banner');
     expect(writes).toBe(0);
     await page.getByRole('button', { name: 'Save changes', exact: true }).click();
+    await expect(page.getByText('Settings saved', { exact: true })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Save changes', exact: true })).toHaveCount(0);
     expect(saved.announcement_text).toBe('Unsaved lunch banner');
     await page.getByLabel('Banner Message', { exact: true }).fill('Keep this newer draft');
