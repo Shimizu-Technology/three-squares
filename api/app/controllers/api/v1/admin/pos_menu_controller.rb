@@ -35,11 +35,13 @@ module Api
           # Group by collection (category)
           categories = {}
           products.order(:name).each do |product|
+            serialized = pos_product_json(product, effective_location_id)
+            next if serialized[:variants].empty?
             collection_names = product.collections.map(&:name)
             category = collection_names.first || "Uncategorized"
 
             categories[category] ||= []
-            categories[category] << pos_product_json(product)
+            categories[category] << serialized
           end
 
           # Also return locations for the location picker
@@ -48,13 +50,13 @@ module Api
           render json: {
             categories: categories.map { |name, items| { name: name, items: items } },
             locations: locations,
-            total_products: products.count
+            total_products: categories.values.sum(&:size)
           }
         end
 
         private
 
-        def pos_product_json(product)
+        def pos_product_json(product, effective_location_id)
           primary_image = product.product_images.find_by(primary: true) || product.product_images.first
           variants = product.product_variants.where(available: true).order(:variant_name)
 
@@ -64,12 +66,14 @@ module Api
             slug: product.slug,
             product_type: product.product_type,
             image_url: primary_image&.url,
-            variants: variants.map do |v|
+            variants: variants.filter_map do |v|
+              price = CatalogPrice.resolve(product: product, variant: v, location_id: effective_location_id)
+              next unless price.purchasable
               {
                 id: v.id,
                 name: v.display_name,
-                price_cents: v.effective_unit_price_cents,
-                price_formatted: "$#{'%.2f' % (v.effective_unit_price_cents / 100.0)}",
+                price_cents: price.unit_price_cents,
+                price_formatted: "$#{'%.2f' % (price.unit_price_cents / 100.0)}",
                 sku: v.sku,
                 in_stock: v.in_stock?,
                 stock_quantity: v.stock_quantity

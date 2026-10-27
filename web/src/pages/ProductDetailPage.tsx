@@ -1,3 +1,5 @@
+import CatalogPrice from '../components/CatalogPrice';
+import { useLocationStore } from '../store/locationStore';
 import { useRef, useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import type { ProductFull, ProductVariant } from '../services/api';
@@ -42,6 +44,7 @@ const getColorCSS = (colorName: string): string | null => {
 
 // ── Component ───────────────────────────────────────────────────────────────
 export default function ProductDetailPage() {
+  const locationId = useLocationStore((state) => state.selectedLocation?.id);
   const { slug } = useParams<{ slug: string }>();
   const [product, setProduct] = useState<ProductFull | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
@@ -70,7 +73,7 @@ export default function ProductDetailPage() {
     if (slug) {
       fetchProduct(slug);
     }
-  }, [slug]);
+  }, [slug, locationId]);
 
   useEffect(() => {
     const loadLocations = async () => {
@@ -229,7 +232,7 @@ export default function ProductDetailPage() {
   const fetchProduct = async (productSlug: string) => {
     try {
       setLoading(true);
-      const data = await productsApi.getProduct(productSlug);
+      const data = await productsApi.getProduct(productSlug, locationId);
       setProduct(data);
       
       // For products with variants, select the first one
@@ -276,7 +279,7 @@ export default function ProductDetailPage() {
     );
   }
 
-  const displayPrice = selectedVariant ? selectedVariant.price_cents : product.base_price_cents;
+  const pricing = selectedVariant?.pricing || product.pricing;
   const displayImages = product.images.length > 0 ? product.images : [{ id: 0, url: '', alt_text: product.name, position: 0, primary: true }];
   const cartItems = cart?.items || [];
   
@@ -316,9 +319,9 @@ export default function ProductDetailPage() {
   
   // For products WITH variants: require selectedVariant
   // For products WITHOUT variants (product-level inventory): no variant needed
-  const canAddToCart = hasVariants 
+  const canAddToCart = pricing?.purchasable && (hasVariants
     ? (isProductAvailable && isVariantAvailable && selectedVariant && quantity > 0 && quantity <= maxQuantity && !cartCompatibility.hasConflict)
-    : (isProductAvailable && quantity > 0 && quantity <= maxQuantity && !cartCompatibility.hasConflict);
+    : (isProductAvailable && quantity > 0 && quantity <= maxQuantity && !cartCompatibility.hasConflict));
   
   const handleAddToCart = async () => {
     if (!canAddToCart) {
@@ -441,8 +444,8 @@ export default function ProductDetailPage() {
 
           // Price difference relative to base price
           const priceDiff =
-            variant && variant.price_cents !== product.base_price_cents
-              ? variant.price_cents - product.base_price_cents
+            variant?.pricing?.unit_price_cents != null && product.pricing?.unit_price_cents != null
+              ? variant.pricing.unit_price_cents - product.pricing.unit_price_cents
               : null;
 
           return (
@@ -569,22 +572,8 @@ export default function ProductDetailPage() {
               {/* Name & Price */}
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-warm-900 mb-3">{product.name}</h1>
               <div className="flex items-baseline gap-3 mb-6">
-                {product.product_type === 'market_price' ? (
-                  <span className="text-2xl sm:text-3xl font-semibold text-warm-600 italic">
-                    Market Price
-                  </span>
-                ) : (
-                  <>
-                    <span className="text-3xl sm:text-4xl font-bold text-tsPrimary">
-                      {formatPrice(displayPrice)}
-                    </span>
-                    {product.sale_price_cents && product.sale_price_cents < product.base_price_cents && (
-                      <span className="text-xl text-warm-400 line-through">
-                        {formatPrice(product.base_price_cents)}
-                      </span>
-                    )}
-                  </>
-                )}
+                <div className="text-2xl"><CatalogPrice pricing={pricing} productType={product.product_type} /></div>
+                {!pricing?.purchasable && <Link to="/catering" className="mt-3 inline-flex min-h-11 items-center text-tsPrimary underline">Ask about this dish</Link>}
               </div>
 
               {/* Description */}
@@ -740,6 +729,8 @@ export default function ProductDetailPage() {
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                       Adding to Cart...
                     </>
+                  ) : !pricing?.purchasable ? (
+                    'Price confirmed by request'
                   ) : !isProductAvailable || (hasVariants && selectedVariant && !selectedVariant.in_stock) ? (
                     <>
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

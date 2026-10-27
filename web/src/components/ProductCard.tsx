@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { Product } from '../services/api';
-import { formatPrice } from '../services/api';
+import CatalogPrice from './CatalogPrice';
 import { useCartStore } from '../store/cartStore';
 import { evaluateCartCompatibility } from '../utils/cartCompatibility';
 import ProductBadge from './ProductBadge';
@@ -15,7 +15,7 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, locationNameById = {} }: ProductCardProps) {
-  const isOnSale = Boolean(product.sale_price_cents && product.sale_price_cents < product.base_price_cents);
+  const isOnSale = product.pricing?.compare_at_price_cents != null;
   const cartItems = useCartStore((state) => state.cart?.items) ?? EMPTY_CART_ITEMS;
   const cartCompatibility = evaluateCartCompatibility(cartItems, product);
   const relevantLocationNames = cartCompatibility.relevantPickupLocationIds
@@ -57,24 +57,7 @@ export default function ProductCard({ product, locationNameById = {} }: ProductC
         </h3>
 
         <div className="mt-auto">
-          {product.product_type === 'market_price' ? (
-            <span className="text-base font-medium text-warm-600 italic">
-              Market Price
-            </span>
-          ) : isOnSale ? (
-            <div className="flex items-center gap-2">
-              <span className="text-base font-medium text-warm-900">
-                {formatPrice(product.sale_price_cents!)}
-              </span>
-              <span className="text-sm text-warm-400 line-through">
-                {formatPrice(product.base_price_cents)}
-              </span>
-            </div>
-          ) : (
-            <span className="text-base font-medium text-warm-900">
-              {formatPrice(product.base_price_cents)}
-            </span>
-          )}
+          <CatalogPrice pricing={product.pricing} productType={product.product_type} />
 
           {cartCompatibility.reason === 'pickup_location' && (
             <p className="mt-2 text-xs font-medium text-amber-700">

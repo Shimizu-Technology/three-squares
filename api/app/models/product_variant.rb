@@ -28,9 +28,10 @@ class ProductVariant < ApplicationRecord
   before_validation :generate_sku, if: -> { sku.blank? }
 
   # Money handling
-  # Catalog sale prices apply to all variants; location overrides are not checkout prices.
-  def effective_unit_price_cents
-    product.sale_price_cents.nil? ? price_cents : product.sale_price_cents
+  def effective_unit_price_cents(location_id: nil)
+    price = CatalogPrice.resolve(product: product, variant: self, location_id: location_id)
+    raise CheckoutPricingService::PricingError, "#{product.name}: #{price.reason}" unless price.purchasable
+    price.unit_price_cents
   end
 
   def price
@@ -38,7 +39,7 @@ class ProductVariant < ApplicationRecord
   end
 
   def price=(amount)
-    self.price_cents = (amount.to_f * 100).to_i
+    self.price_cents = (BigDecimal(amount.to_s) * 100).round.to_i
   end
 
   # ==========================================

@@ -22,7 +22,7 @@ module Payments
       location_id = attrs["location_id"].presence
       Eligibility.validate!(items: cart_items, fulfillment_type: fulfillment, location_id: location_id, online: channel == "online")
       pricing = CheckoutPricingService.resolve!(cart_items: cart_items, fulfillment_type: fulfillment,
-        shipping_address: attrs["shipping_address"], shipping_method: attrs["shipping_method"])
+        shipping_address: attrs["shipping_address"], shipping_method: attrs["shipping_method"], location_id: location_id)
       raise Error, "Order total must be greater than zero" unless pricing.total_cents.positive?
       profile = ProviderResolver.profile!(location_id: location_id, channel: channel)
       identity = profile.payment_identity
@@ -75,8 +75,9 @@ module Payments
         subtotal_cents: pricing.subtotal_cents, shipping_cost_cents: pricing.shipping_cost_cents, tax_cents: 0, total_cents: pricing.total_cents)
       cart_items.each do |item|
         variant = item.product_variant
+        unit_price = variant.effective_unit_price_cents(location_id: order.location_id)
         order.order_items.build(product_variant: variant, product_id: variant.product_id, quantity: item.quantity,
-          unit_price_cents: variant.effective_unit_price_cents, total_price_cents: variant.effective_unit_price_cents * item.quantity,
+          unit_price_cents: unit_price, total_price_cents: unit_price * item.quantity,
           special_instructions: attrs.fetch("item_special_instructions", {})[item.id.to_s])
       end
       order

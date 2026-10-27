@@ -42,13 +42,15 @@ module Api
           @products = @products.where("products.name ILIKE ? OR products.description ILIKE ?", "%#{params[:search]}%", "%#{params[:search]}%")
         end
 
+        price_sql = CatalogPrice.sql(location_id: params[:location_id])
+
         # Price range
         if params[:min_price].present? || params[:max_price].present?
-          min = params[:min_price].to_i * 100 if params[:min_price].present?
-          max = params[:max_price].to_i * 100 if params[:max_price].present?
+          min = (BigDecimal(params[:min_price].to_s, exception: false).to_d * 100).round.to_i if params[:min_price].present?
+          max = (BigDecimal(params[:max_price].to_s, exception: false).to_d * 100).round.to_i if params[:max_price].present?
 
-          @products = @products.where("base_price_cents >= ?", min) if min
-          @products = @products.where("base_price_cents <= ?", max) if max
+          @products = @products.where(Arel.sql(price_sql).gteq(min)) if min
+          @products = @products.where(Arel.sql(price_sql).lteq(max)) if max
         end
 
         # Type choices describe the complete eligible result set, independent of
@@ -61,9 +63,9 @@ module Api
         if params[:sort].present?
           case params[:sort]
           when "price_asc"
-            @products = @products.order(base_price_cents: :asc)
+            @products = @products.select("products.*, (#{price_sql}) AS catalog_price_cents").order(Arel.sql("catalog_price_cents ASC NULLS LAST, products.id ASC"))
           when "price_desc"
-            @products = @products.order(base_price_cents: :desc)
+            @products = @products.select("products.*, (#{price_sql}) AS catalog_price_cents").order(Arel.sql("catalog_price_cents DESC NULLS LAST, products.id ASC"))
           when "newest"
             @products = @products.order(created_at: :desc)
           when "name_asc"
@@ -81,7 +83,7 @@ module Api
         per_page = [ params[:per_page]&.to_i || 12, 50 ].min # Max 50 per page
 
         # Get total count BEFORE pagination
-        total_count = @products.count
+        total_count = @products.except(:select, :order).count
 
         @products = @products.page(page).per(per_page) rescue @products.limit(per_page).offset((page - 1) * per_page)
 
@@ -120,7 +122,7 @@ module Api
 
       def public_products_scope
         MenuEligibility.scope(StorefrontEligibility.scope(Product.published.active), at: @menu_time)
-          .includes(:product_variants, :product_images, :collections, :product_locations)
+          .preload(:product_variants, :product_images, :collections, :product_locations)
       end
 
       def serialize_product(product)
@@ -129,6 +131,7 @@ module Api
           name: product.name,
           slug: product.slug,
           description: product.description&.truncate(200),
+          pricing: CatalogPrice.resolve(product: product, location_id: params[:location_id]).as_json,
           base_price_cents: product.base_price_cents,
           sale_price_cents: product.sale_price_cents,
           new_product: product.new_product,
@@ -154,6 +157,7 @@ module Api
           name: product.name,
           slug: product.slug,
           description: product.description,
+          pricing: CatalogPrice.resolve(product: product, location_id: params[:location_id]).as_json,
           base_price_cents: product.base_price_cents,
           sale_price_cents: product.sale_price_cents,
           new_product: product.new_product,
@@ -197,6 +201,7 @@ module Api
           display_name: variant.display_name,
           sku: variant.sku,
           price_cents: variant.price_cents,
+          pricing: CatalogPrice.resolve(product: variant.product, variant: variant, location_id: params[:location_id]).as_json,
           available: variant.available,
           actually_available: variant.actually_available?,
           in_stock: variant.in_stock?,

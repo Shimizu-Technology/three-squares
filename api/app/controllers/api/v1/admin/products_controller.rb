@@ -41,8 +41,8 @@ module Api
 
           @product.collection_ids = params[:collection_ids] if params[:collection_ids].present?
           render_created(serialize_product_full(@product))
-        rescue ActiveRecord::RecordInvalid
-          render_error("Failed to create product", errors: @product.errors.full_messages)
+        rescue ActiveRecord::RecordInvalid => error
+          render_error("Failed to create product", errors: error.record.errors.full_messages)
         end
 
         # PATCH/PUT /api/v1/admin/products/:id
@@ -55,8 +55,8 @@ module Api
 
           @product.collection_ids = params[:collection_ids] if params[:collection_ids].present?
           render_success(serialize_product_full(@product), message: "Product updated successfully")
-        rescue ActiveRecord::RecordInvalid
-          render_error("Failed to update product", errors: @product.errors.full_messages)
+        rescue ActiveRecord::RecordInvalid => error
+          render_error("Failed to update product", errors: error.record.errors.full_messages)
         end
 
         # DELETE /api/v1/admin/products/:id (Actually archives instead of deleting)
