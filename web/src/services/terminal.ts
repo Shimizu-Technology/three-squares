@@ -10,8 +10,9 @@ export interface PaymentTerminal {
   location_id: number;
   lane_id: string;
   terminal_id: string;
-  payment_profile_id: number;
+  payment_profile_id: number | null;
   enabled: boolean;
+  collectable?: boolean;
   environment: PaymentEnvironment;
   provider: PaymentProvider;
   connection_state: string;
@@ -35,7 +36,7 @@ export interface TerminalProfile {
 export interface TerminalsResponse { terminals: PaymentTerminal[]; profiles?: TerminalProfile[] }
 export type AdministrationState = 'reserved' | 'dispatching' | 'unknown' | 'succeeded' | 'failed';
 export interface TerminalAdministrationResponse {
-  administration: { id: number; state: AdministrationState; kind: string; error: string | null };
+  administration: { id: string; state: AdministrationState; kind: string; error: string | null };
   terminal: PaymentTerminal | null;
 }
 export interface NewTerminalPayload {
@@ -57,7 +58,7 @@ export interface TerminalPaymentResponse {
   payment_terminal_id?: number;
   inventory_committed?: boolean;
   checkout_session_id?: string;
-  receipt?: PaymentReceiptFacts | null;
+  payment_receipt?: PaymentReceiptFacts | null;
   pending?: boolean;
 }
 type Auth = { token: string };

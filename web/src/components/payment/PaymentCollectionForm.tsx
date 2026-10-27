@@ -4,6 +4,7 @@ import type { StripeClientConfiguration } from './StripeProvider';
 import WorldpayHostedPage from './WorldpayHostedPage';
 
 export interface CollectionConfiguration extends StripeClientConfiguration {
+  checkout_session_id?: string;
   simulation_enabled?: boolean;
   payment_processor?: string;
   payment_presentation?: string | null;

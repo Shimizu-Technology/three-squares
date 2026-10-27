@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import api, { configApi } from '../services/api';
+import PaymentReceipt from '../components/payment/PaymentReceipt';
+import type { PaymentReceiptFacts } from '../types/paymentReceipt';
 import type { AppConfig } from '../types/order';
 
 interface OrderItem {
@@ -16,6 +18,7 @@ interface OrderItem {
 }
 
 interface Order {
+  payment_receipt?: PaymentReceiptFacts | null;
   id: number;
   order_number: string;
   status: string;
@@ -427,6 +430,8 @@ export default function OrderConfirmationPage() {
             </div>
           </div>
         )}
+
+        <PaymentReceipt receipt={order.payment_receipt ?? null} orderReference={order.order_number} onPrint={() => window.print()} />
 
         {/* Actions - Hidden when printing */}
         <div className="flex flex-col sm:flex-row gap-4 print:hidden">

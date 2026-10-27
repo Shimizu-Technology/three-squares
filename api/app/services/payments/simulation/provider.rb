@@ -20,13 +20,26 @@ module Payments
         # The local host may commit a payment and lose its HTTP response.
         # Only a later query provides financial evidence to the application.
         raise Error, 'Simulated response lost; check the saved payment' if %w[timeout_after_approval cancel_race late_event].include?(record.scenario)
+        if attempt.collection_mode == 'terminal' && attempt.snapshot.dig('collection', 'terminal') &&
+            %w[captured partial failed].include?(record.state) && !%w[duplicate query_lag].include?(record.scenario)
+          response = NativeTriPosClient.sale_response(record)
+          result = Worldpay::TriPosResult.call(attempt: attempt, response: response, profile: NativeTriPosClient.profile(attempt), simulated: true)
+          return result.with(metadata: result.metadata.merge(compensation_required: %w[avs_fail cvv_fail].include?(record.scenario), simulated: true))
+        end
         query(attempt: attempt)
       end
 
       def query(attempt:)
         record = engine.query(attempt)
-        pos = attempt.checkout_session.channel == 'pos'
-        wire = (pos ? SimulatedTriPosCloudClient : SimulatedExpressClient).response(record, now: SimulationClock.for(identity).now)
+        pos = attempt.collection_mode == 'terminal'
+        if pos && attempt.snapshot.dig('collection', 'terminal')
+          response = NativeTriPosClient.response(record, now: SimulationClock.for_attempt(attempt).now)
+          result = Worldpay::TriPosResult.call(attempt: attempt, response: response, profile: NativeTriPosClient.profile(attempt), simulated: true)
+          return result.with(metadata: result.metadata.merge(cancellable: record.state == 'collecting',
+            compensation_required: %w[avs_fail cvv_fail].include?(record.scenario), simulated: true,
+            reader_state: record.state == 'collecting' ? 'waiting_for_card' : nil))
+        end
+        wire = (pos ? SimulatedTriPosCloudClient : SimulatedExpressClient).response(record, now: SimulationClock.for_attempt(attempt).now)
         parsed = (pos ? Worldpay::TriPosParser : Worldpay::ExpressParser).call(wire)
         if parsed.dig(:metadata, :parse_error)
           return Result.new(status: 'unknown', identity_id: identity.id, raw_id: nil, requested_cents: attempt.requested_cents,
@@ -43,7 +56,7 @@ module Payments
 
       def cancel(attempt:)
         record = engine.query(attempt)
-        if record.scenario == 'cancel_race' && record.facts['visible_after'] && Time.iso8601(record.facts['visible_after']) > SimulationClock.for(identity).now
+        if record.scenario == 'cancel_race' && record.facts['visible_after'] && Time.iso8601(record.facts['visible_after']) > SimulationClock.for_attempt(attempt).now
           return Result.new(status: 'cancelled', identity_id: identity.id, raw_id: record.raw_id, requested_cents: attempt.requested_cents, approved_cents: 0, captured_cents: 0, currency: 'USD', metadata: { simulated: true })
         end
         record.with_lock { record.update!(state: 'cancelled') if %w[collecting failed].include?(record.state) }

@@ -15,10 +15,29 @@ RSpec.describe 'Local simulated payment journeys', type: :request do
     ProductLocation.create!(product: product, location: location)
     CartItem.create!(session_id: cart_key, product_variant: variant, quantity: 1)
   end
-  def start_checkout
-    post '/api/v1/checkout_sessions', params: {order: {customer_name:'Simulated Guest',email:'guest@example.test',phone:'6715550100',fulfillment_type:'pickup',location_id:location.id}}, headers: headers
+  def start_checkout(headers_override: headers)
+    post '/api/v1/checkout_sessions', params: {order: {customer_name:'Simulated Guest',email:'guest@example.test',phone:'6715550100',fulfillment_type:'pickup',location_id:location.id}}, headers: headers_override
     expect(response).to have_http_status(:created), response.body
     response.parsed_body
+  end
+  it 'advances only the owning saved attempt and delivers no other session events' do
+    first = start_checkout
+    second = start_checkout(headers_override: headers.merge('Idempotency-Key' => SecureRandom.uuid))
+    [first, second].each do |state|
+      post "/api/v1/checkout_sessions/#{state.fetch('id')}/simulate", params: {
+        handle: state.dig('collection_config', 'client_secret'), scenario: 'late_event'
+      }, headers: headers, as: :json
+      expect(response).to have_http_status(:unprocessable_entity)
+    end
+    identity_time = SimulationClock.for(identity).now
+    post "/api/v1/checkout_sessions/#{first.fetch('id')}/advance_simulation", params: {seconds: 61}, headers: headers, as: :json
+    expect(response).to have_http_status(:ok), response.body
+    expect(Order.find(first.dig('order', 'id')).payment_status).to eq('paid')
+    expect(Order.find(second.dig('order', 'id')).payment_status).to eq('pending')
+    expect(PaymentAttempt.find(first.fetch('attempt_id')).simulation_offset_seconds).to eq(61)
+    expect(PaymentAttempt.find(second.fetch('attempt_id')).simulation_offset_seconds).to eq(0)
+    expect(SimulationClock.for(identity).now).to eq(identity_time)
+    expect(SimulatedPaymentRecord.find_by!(payment_attempt_id: second.fetch('attempt_id')).facts['event_delivered']).to be_nil
   end
   it 'requires the owning capability and opaque DB handle, then recovers one paid order' do
     state = start_checkout
@@ -43,12 +62,13 @@ RSpec.describe 'Local simulated payment journeys', type: :request do
     end
     terminal = PaymentTerminal.create!(payment_identity:identity,location:location,lane_id:'sim-lane',terminal_id:'sim-terminal',label:'Simulation Reader')
     attempts = 2.times.map do
-      post '/api/v1/admin/pos/orders', params:{order:{customer_name:'Walk-in',payment_method:'card_present',location_id:location.id,items:[{product_variant_id:variant.id,quantity:1}]}},headers:{'Idempotency-Key'=>SecureRandom.uuid}
+      post '/api/v1/admin/pos/orders', params:{order:{customer_name:'Walk-in',payment_method:'card_present',location_id:location.id,payment_terminal_id:terminal.id,items:[{product_variant_id:variant.id,quantity:1}]}},headers:{'Idempotency-Key'=>SecureRandom.uuid}
       expect(response).to have_http_status(:created), response.body
       response.parsed_body.fetch('payment_attempt_id')
     end
     post "/api/v1/admin/payment_terminals/#{terminal.id}/collect",params:{attempt_id:attempts.first}
     expect(response).to have_http_status(:accepted),response.body
+    ProcessTerminalSaleJob.perform_now(attempts.first)
     post "/api/v1/admin/payment_terminals/#{terminal.id}/collect",params:{attempt_id:attempts.last}
     expect(response).to have_http_status(:conflict)
     post "/api/v1/admin/payment_terminals/#{terminal.id}/simulate",params:{command:'approve',attempt_id:attempts.last}
@@ -73,7 +93,7 @@ RSpec.describe 'Local simulated payment journeys', type: :request do
     terminal.update!(leased_attempt_id:attempts.first,status:'offline')
     terminal.with_lock { terminal.release_resolved! }
     expect(terminal.reload.status).to eq('offline')
-    expect { terminal.reserve!(PaymentAttempt.find(attempts.last)) }.to raise_error(Payments::BindingError)
+    expect { terminal.reserve!(PaymentAttempt.find(attempts.last)) }.to raise_error(Payments::Conflict)
     terminal.update!(leased_attempt_id: attempts.first) # reconnect itself must release this resolved lease
     post "/api/v1/admin/payment_terminals/#{terminal.id}/simulate", params: {command:'reconnect',attempt_id:nil}
     expect(response).to have_http_status(:ok)

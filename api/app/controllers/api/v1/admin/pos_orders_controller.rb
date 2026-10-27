@@ -17,11 +17,38 @@ module Api
           unless order.source == "pos" && order.staff_created? && order.payment_attempt_id
             return render json: { error: "This payment requires reconciliation" }, status: :conflict
           end
+          return render json: {error: 'Order not found'}, status: :not_found unless order.created_by_user_id == current_user.id
           Payments::ReconcileAttempt.call(attempt: PaymentAttempt.find(order.payment_attempt_id))
           order.reload
           render json: pos_order_json(order), status: order.payment_status == "paid" ? :ok : :accepted
         rescue Payments::Error, Payments::FulfillmentError, Payments::ReserveInventory::Unavailable, Payments::Configuration::UnsafeConfiguration, Stripe::StripeError => e
           render json: { error: e.message }, status: :unprocessable_entity
+        end
+
+        def start_payment
+          order = staff_scope(Order).find(params[:id])
+          raise ActiveRecord::RecordNotFound unless order.source == 'pos' && order.created_by_user_id == current_user.id && order.payment_attempt_id
+          attempt = PaymentAttempt.find(order.payment_attempt_id)
+          unless request.headers['Idempotency-Key'] == attempt.checkout_session.caller_idempotency_key
+            raise Payments::Conflict, 'Use the saved payment request key'
+          end
+          unless attempt.collection_mode == 'terminal' && attempt.payment_terminal_id.to_s == params.require(:payment_terminal_id).to_s
+            raise Payments::BindingError, 'Reader does not match the saved payment'
+          end
+          Payments::StartTerminalSale.call(attempt: attempt)
+          effect = PaymentOutbox.find_by(effect_key: "attempt:#{attempt.id}:terminal_sale")
+          begin
+            Payments::DispatchOutbox.call(outbox: effect) if effect
+          rescue StandardError => error
+            Rails.logger.error("Terminal enqueue attempt=#{attempt.id} error=#{error.class}")
+          end
+          render json: pos_order_json(order.reload), status: :accepted
+        rescue Payments::Conflict => error
+          render json: {error: error.message}, status: :conflict
+        rescue ActiveRecord::RecordNotFound, Payments::BindingError
+          render json: {error: 'Reader or payment not found'}, status: :not_found
+        rescue Payments::Error, Payments::Configuration::UnsafeConfiguration => error
+          render json: {error: error.message}, status: :unprocessable_entity
         end
 
         def create
@@ -87,7 +114,11 @@ module Api
           return render json: { error: rejected, outcome: "rejected", no_attempt: true }, status: :unprocessable_entity if rejected
           if @order.payment_attempt_id
             attempt = PaymentAttempt.find(@order.payment_attempt_id)
-            Payments::SetupAttempt.call(attempt: attempt)
+            begin
+              Payments::SetupAttempt.call(attempt: attempt)
+            rescue Payments::Conflict, Payments::UnsupportedCapability, Payments::Configuration::UnsafeConfiguration
+              return render json: pos_order_json(@order.reload), status: :accepted
+            end
             @client_secret = attempt.reload.collection_config["client_secret"] if attempt.state == "collecting"
           end
           render json: pos_order_json(@order.reload), status: :created
@@ -161,11 +192,13 @@ module Api
 
         def pos_order_json(order)
           json = {
+            payment_receipt: Payments::ReceiptFacts.for_order(order),
             id: order.id,
             order_number: order.order_number,
             status: order.status,
             payment_status: order.payment_status,
             payment_environment: order.payment_environment,
+            payment_provider: order.payment_provider,
             checkout_session_id: order.checkout_session_id,
             payment_attempt_id: order.payment_attempt_id,
             payment_state: order.payment_attempt_id ? PaymentAttempt.find(order.payment_attempt_id).state : nil,
@@ -202,6 +235,20 @@ module Api
 
           # Stripe client secret for card payments
           json[:client_secret] = @client_secret if @client_secret.present?
+          if order.payment_attempt_id
+            attempt = PaymentAttempt.find(order.payment_attempt_id)
+            json.merge!(collection_mode: attempt.collection_mode, payment_terminal_id: attempt.payment_terminal_id,
+              flow: attempt.collection_config['flow'], status_url: "/api/v1/checkout_sessions/#{attempt.checkout_session_id}")
+            if Payments::CollectionAccess.active?(attempt.checkout_session, attempt)
+              json[:collection_config] = attempt.collection_config.merge(
+                'checkout_session_id' => attempt.checkout_session_id, 'payment_identity_id' => attempt.payment_identity_id, 'payment_environment' => order.payment_environment,
+                'payment_processor' => order.payment_provider, 'payment_presentation' => attempt.collection_config['flow'])
+              if order.payment_provider == 'stripe'
+                json[:collection_config].merge!('stripe_account_id' => attempt.payment_identity.external_account_id,
+                  'stripe_publishable_key' => ENV[order.payment_environment == 'production' ? 'STRIPE_PUBLISHABLE_KEY' : 'STRIPE_PUBLISHABLE_KEY_TEST'])
+              end
+            end
+          end
 
           json
         end
@@ -210,7 +257,7 @@ module Api
           params.require(:order).permit(
             :customer_name, :customer_email, :customer_phone,
             :order_type, :location_id, :payment_method,
-            :special_instructions, :cash_received_cents,
+            :special_instructions, :cash_received_cents, :payment_terminal_id,
             items: [:product_variant_id, :quantity]
           )
         end

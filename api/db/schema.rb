@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_080100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_123000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -638,9 +638,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_080100) do
 
   create_table "payment_attempts", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
     t.integer "approved_cents", default: 0, null: false
+    t.datetime "cancel_requested_at"
     t.integer "captured_cents", default: 0, null: false
     t.uuid "checkout_session_id", null: false
     t.jsonb "collection_config", default: {}, null: false
+    t.string "collection_mode", default: "hosted", null: false
     t.datetime "compensation_claimed_at"
     t.datetime "compensation_dispatched_at"
     t.datetime "compensation_lease_until"
@@ -660,6 +662,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_080100) do
     t.bigint "order_id", null: false
     t.string "payload_digest", null: false
     t.uuid "payment_identity_id", null: false
+    t.bigint "payment_terminal_id"
     t.jsonb "provider_metadata", default: {}, null: false
     t.string "raw_provider_id"
     t.integer "recovery_count", default: 0, null: false
@@ -668,6 +671,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_080100) do
     t.integer "requested_cents", null: false
     t.integer "retry_count", default: 0, null: false
     t.string "setup_id"
+    t.integer "simulation_offset_seconds", default: 0, null: false
     t.jsonb "snapshot", default: {}, null: false
     t.string "state", default: "created", null: false
     t.datetime "updated_at", null: false
@@ -679,7 +683,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_080100) do
     t.index ["payment_identity_id", "operation_key"], name: "idx_on_payment_identity_id_operation_key_7304b18f9d", unique: true
     t.index ["payment_identity_id", "raw_provider_id"], name: "idx_on_payment_identity_id_raw_provider_id_00e8d6929f", unique: true
     t.index ["payment_identity_id"], name: "index_payment_attempts_on_payment_identity_id"
+    t.index ["payment_terminal_id"], name: "index_payment_attempts_on_payment_terminal_id"
+    t.check_constraint "collection_mode::text = ANY (ARRAY['hosted'::character varying, 'terminal'::character varying]::text[])", name: "payment_collection_mode"
     t.check_constraint "requested_cents > 0 AND approved_cents >= 0 AND captured_cents >= 0 AND captured_cents <= approved_cents AND approved_cents <= requested_cents", name: "payment_attempt_amount_bounds"
+    t.check_constraint "simulation_offset_seconds >= 0 AND simulation_offset_seconds <= 31536000", name: "simulation_attempt_time_bounds"
   end
 
   create_table "payment_events", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -750,22 +757,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_080100) do
   end
 
   create_table "payment_terminals", force: :cascade do |t|
+    t.datetime "command_claimed_at"
+    t.uuid "command_token"
     t.jsonb "configuration", default: {}, null: false
+    t.string "connection_state", default: "unknown", null: false
+    t.datetime "connection_verified_at"
     t.datetime "created_at", null: false
+    t.string "device_firmware"
+    t.string "device_model"
+    t.string "device_serial"
+    t.boolean "enabled", default: true, null: false
     t.string "label", null: false
     t.string "lane_id", null: false
     t.datetime "leased_at"
     t.uuid "leased_attempt_id"
     t.bigint "location_id", null: false
     t.uuid "payment_identity_id", null: false
+    t.bigint "payment_profile_id"
     t.datetime "retired_at"
     t.string "status", default: "ready", null: false
     t.string "terminal_id", null: false
     t.datetime "updated_at", null: false
     t.index ["leased_attempt_id"], name: "index_payment_terminals_on_leased_attempt_id"
+    t.index ["leased_attempt_id"], name: "one_reader_per_attempt", unique: true, where: "(leased_attempt_id IS NOT NULL)"
     t.index ["location_id"], name: "index_payment_terminals_on_location_id"
     t.index ["payment_identity_id", "lane_id"], name: "index_payment_terminals_on_payment_identity_id_and_lane_id", unique: true
     t.index ["payment_identity_id"], name: "index_payment_terminals_on_payment_identity_id"
+    t.index ["payment_profile_id"], name: "index_payment_terminals_on_payment_profile_id"
+    t.check_constraint "connection_state::text = ANY (ARRAY['unknown'::character varying, 'connected'::character varying, 'offline'::character varying]::text[])", name: "terminal_connection_state"
   end
 
   create_table "payment_transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -903,6 +922,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_080100) do
   create_table "refund_observations", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "event_key", null: false
+    t.jsonb "facts", default: {}, null: false
     t.string "observed_state", null: false
     t.string "payload_digest", null: false
     t.uuid "refund_operation_id", null: false
@@ -1052,6 +1072,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_080100) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "terminal_administrations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.datetime "dispatched_at"
+    t.string "error_classification"
+    t.jsonb "facts", default: {}, null: false
+    t.string "kind", null: false
+    t.string "label", null: false
+    t.string "lane_id", null: false
+    t.bigint "location_id", null: false
+    t.uuid "operation_key", null: false
+    t.string "payload_digest", null: false
+    t.uuid "payment_identity_id", null: false
+    t.bigint "payment_profile_id", null: false
+    t.bigint "payment_terminal_id"
+    t.string "state", default: "reserved", null: false
+    t.string "terminal_reference", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["location_id"], name: "index_terminal_administrations_on_location_id"
+    t.index ["payment_identity_id", "lane_id"], name: "one_terminal_administration_per_lane", unique: true, where: "((state)::text = ANY ((ARRAY['reserved'::character varying, 'dispatching'::character varying, 'unknown'::character varying])::text[]))"
+    t.index ["payment_identity_id", "operation_key"], name: "terminal_admin_operation_key", unique: true
+    t.index ["payment_identity_id"], name: "index_terminal_administrations_on_payment_identity_id"
+    t.index ["payment_profile_id"], name: "index_terminal_administrations_on_payment_profile_id"
+    t.index ["payment_terminal_id"], name: "index_terminal_administrations_on_payment_terminal_id"
+    t.index ["user_id"], name: "index_terminal_administrations_on_user_id"
+    t.check_constraint "kind::text = ANY (ARRAY['pair'::character varying, 'update'::character varying, 'retire'::character varying]::text[])", name: "terminal_administration_kind"
+    t.check_constraint "state::text = ANY (ARRAY['reserved'::character varying, 'dispatching'::character varying, 'unknown'::character varying, 'succeeded'::character varying, 'failed'::character varying]::text[])", name: "terminal_administration_state"
+  end
+
   create_table "users", force: :cascade do |t|
     t.bigint "assigned_location_id"
     t.string "clerk_id"
@@ -1123,12 +1173,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_080100) do
   add_foreign_key "payment_attempts", "checkout_sessions"
   add_foreign_key "payment_attempts", "orders"
   add_foreign_key "payment_attempts", "payment_identities"
+  add_foreign_key "payment_attempts", "payment_terminals"
   add_foreign_key "payment_events", "payment_identities"
   add_foreign_key "payment_profiles", "locations"
   add_foreign_key "payment_profiles", "payment_identities"
   add_foreign_key "payment_terminals", "locations"
   add_foreign_key "payment_terminals", "payment_attempts", column: "leased_attempt_id"
   add_foreign_key "payment_terminals", "payment_identities"
+  add_foreign_key "payment_terminals", "payment_profiles"
   add_foreign_key "payment_transactions", "orders"
   add_foreign_key "payment_transactions", "payment_attempts"
   add_foreign_key "payment_transactions", "payment_attempts", column: ["payment_attempt_id", "order_id"], primary_key: ["id", "order_id"], name: "charge_consumption_matches_original_order"
@@ -1152,5 +1204,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_080100) do
   add_foreign_key "simulated_payment_records", "payment_attempts"
   add_foreign_key "simulated_payment_records", "payment_identities"
   add_foreign_key "simulation_clocks", "payment_identities"
+  add_foreign_key "terminal_administrations", "locations"
+  add_foreign_key "terminal_administrations", "payment_identities"
+  add_foreign_key "terminal_administrations", "payment_profiles"
+  add_foreign_key "terminal_administrations", "payment_terminals"
+  add_foreign_key "terminal_administrations", "users"
   add_foreign_key "users", "locations", column: "assigned_location_id"
 end

@@ -154,7 +154,7 @@ module Payments
       end
 
       def unknown(operation, reason)
-        TriPosResponseParser.unknown(operation: operation, reason: reason)
+        TriPosResponseParser.freeze_tree(TriPosResponseParser.unknown(operation: operation, reason: reason).merge(transport_failure: true))
       end
 
       def valid_headers?(headers)

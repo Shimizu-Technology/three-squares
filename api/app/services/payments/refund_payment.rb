@@ -101,7 +101,7 @@ module Payments
       amount = observation[:status] == "unknown" && observation[:raw_id].blank? ? operation.amount_cents : observation.fetch(:amount_cents)
       ApplyPaymentEvent.call(operation: operation, event_key: event_key,
         status: observation.fetch(:status), raw_id: observation[:raw_id], amount_cents: amount,
-        identity_id: operation.payment_identity_id, original_reference: operation.original_reference)
+        identity_id: operation.payment_identity_id, original_reference: operation.original_reference, receipt: observation[:receipt])
     end
 
     def result(operation)

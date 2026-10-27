@@ -418,6 +418,7 @@ RSpec.describe "Staff authorization attack boundaries", type: :request do
       PaymentProfile.create!(payment_identity: identity, provider: "worldpay", channel: "pos", presentation: "worldpay_terminal", enabled: true)
       states = 2.times.map do
         request_as(:post, "/api/v1/admin/pos/orders", params: { order: { payment_method: "card_present", location_id: main.id,
+          payment_terminal_id: reader.id,
           items: [ { product_variant_id: variant.id, quantity: 1 } ] } }, extra_headers: { "Idempotency-Key" => SecureRandom.uuid })
         expect(response).to have_http_status(:created), response.body
         response.parsed_body

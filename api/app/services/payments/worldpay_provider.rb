@@ -18,6 +18,7 @@ module Payments
     end
 
     def replay_setup? = false
+    def replay_reversal? = false
 
     def setup(attempt:)
       validate_attempt!(attempt)
@@ -69,7 +70,8 @@ module Payments
 
     def validate_attempt!(attempt)
       unless attempt.payment_identity_id == identity.id && attempt.checkout_session.payment_identity_id == identity.id &&
-          attempt.checkout_session.channel == "online" && attempt.order_id == attempt.checkout_session.order_id
+          (attempt.checkout_session.channel == "online" || (attempt.checkout_session.channel == 'pos' &&
+            attempt.collection_mode == 'hosted' && attempt.snapshot.dig('collection', 'mode') == 'hosted')) && attempt.order_id == attempt.checkout_session.order_id
         raise BindingError, "Worldpay adapter does not match the saved online attempt"
       end
       Snapshot.validate!(session: attempt.checkout_session, attempt: attempt, order: attempt.order, current: false)

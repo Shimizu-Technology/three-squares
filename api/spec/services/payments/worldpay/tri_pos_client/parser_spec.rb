@@ -2,7 +2,7 @@
 
 require_relative "support"
 
-RSpec.describe Payments::Worldpay::TriPosResponseParser do
+RSpec.describe Payments::Worldpay::TriPosResponseParser, tripos_client: true do
   it "reads native nested processor facts and exact amounts without authorizing" do
     result = parse
     expect(result).to include(authorizing: false, financial_outcome: :unknown, complete: false)
@@ -62,6 +62,15 @@ RSpec.describe Payments::Worldpay::TriPosResponseParser do
     expect(parse(sale_data(_processor: nil))[:ambiguity_hints]).to include("invalid_processor")
   end
 
+  it "projects only allowlisted EMV receipt tags, excluding PAN and track tags" do
+    result = parse(sale_data(emv: {'tags' => [
+      {'key' => '95', 'value' => '0000000000'}, {'key' => '9B', 'value' => 'E800'},
+      {'key' => '5A', 'value' => '4111111111111111'}, {'key' => '57', 'value' => '4111111111111111'},
+      {'key' => '9F26', 'value' => 'not-hex'}]}))
+    expect(result.dig(:observations, :receipt, :emv)).to eq('95' => '0000000000', '9B' => 'E800')
+    expect(result.to_s).not_to include('4111111111111111', 'not-hex')
+  end
+
   it "drops noise, PAN, tracks, signature, raw processor response and EMV" do
     pan = "4111111111111111"
     data = sale_data(accountNumber: pan, cardLogo: "Visa", entryMode: "Contactless", approvalNumber: "synthetic-approval",
@@ -75,7 +84,9 @@ RSpec.describe Payments::Worldpay::TriPosResponseParser do
     expect(parse(sale_data(accountNumber: "XXXX")).dig(:observations, :receipt)).to eq({})
     expect(parse(sale_data(accountNumber: "----"))[:observations]).to be_empty
     expect(parse(sale_data(accountNumber: ";#{pan}=999"))[:observations]).to be_empty
-    expect(parse(sale_data(transactionId: pan))[:observations]).to be_empty
+    # Opaque processor identifiers can be numeric; the schema's card-number
+    # field is separately projected to last-four and never retained in full.
+    expect(parse(sale_data(transactionId: '0000123456789012345')).dig(:observations, :transaction_id)).to eq('0000123456789012345')
   end
 
   it "rejects nonstring input, malformed roots, duplicate keys and invalid encodings" do

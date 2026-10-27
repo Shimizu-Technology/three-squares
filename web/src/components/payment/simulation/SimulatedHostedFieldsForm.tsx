@@ -18,7 +18,7 @@ export default forwardRef<CardPaymentHandle, CollectionFormProps>(function Simul
   useImperativeHandle(ref, () => ({
     async confirm(handle, identityId) {
       if (!identityId || identityId !== configuration?.payment_identity_id) throw new Error('Payment identity changed. Check the saved order.');
-      const saved = pendingCheckout();
+      const saved = configuration?.checkout_session_id ? { id: configuration.checkout_session_id, capability: '' } : pendingCheckout();
       if (!saved) throw new Error('Save the checkout before collecting payment.');
       if (!container.current) throw new Error('Payment fields are unavailable.');
       const execute = async () => checkoutApi.simulate(saved.id, isSignedIn ? await getToken() : null, saved.capability, handle, scenario, mode);
@@ -33,7 +33,7 @@ export default forwardRef<CardPaymentHandle, CollectionFormProps>(function Simul
       } finally { bridge.destroy(); }
       return {};
     },
-  }), [configuration?.payment_identity_id, scenario, mode, getToken, isSignedIn]);
+  }), [configuration?.payment_identity_id, configuration?.checkout_session_id, scenario, mode, getToken, isSignedIn]);
   return <section ref={container} className="rounded-xl border border-amber-300 bg-amber-50 p-6 space-y-4" aria-label="Simulated payment">
     <h2 className="font-bold text-lg text-amber-950">Simulated payments — no money moves</h2>
     <p className="text-sm text-amber-950">Use a fictional card outcome. Do not enter real card details.</p>

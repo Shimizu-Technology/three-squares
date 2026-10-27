@@ -2,7 +2,7 @@
 
 require_relative "support"
 
-RSpec.describe Payments::Worldpay::TriPosConfiguration do
+RSpec.describe Payments::Worldpay::TriPosConfiguration, tripos_client: true do
   it "binds the fixed certification origin and original account/acceptor" do
     config = configuration
     expect(config.endpoint).to eq("https://triposcert.vantiv.com")

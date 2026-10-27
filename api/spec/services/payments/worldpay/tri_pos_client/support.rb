@@ -74,8 +74,8 @@ module TriPosClientSupport
 end
 
 RSpec.configure do |config|
-  config.include TriPosClientSupport
-  config.before do
+  config.include TriPosClientSupport, tripos_client: true
+  config.before(tripos_client: true) do
     # A real socket is always a test failure; do not test opt-in provider I/O.
     allow(Net::HTTP).to receive(:new).and_raise("network forbidden")
     allow(TCPSocket).to receive(:new).and_raise("network forbidden")

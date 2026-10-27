@@ -27,7 +27,7 @@ module Payments
         end
         SetupAttempt.call(attempt: stored)
       end
-      provider = ProviderResolver.for_identity(stored.payment_identity)
+      provider = ProviderResolver.for_attempt(stored)
       result = provider.query(attempt: stored)
       if result.status == 'unknown' && result.raw_id.blank? && stored.raw_provider_id.blank? &&
           stored.dispatched_at && stored.dispatched_at > 23.hours.ago && stored.retry_count <= 5
@@ -63,6 +63,8 @@ module Payments
         end
       end
       raise
+    ensure
+      TerminalLease.release_resolved(attempt) if attempt.payment_terminal_id
     end
   end
 end

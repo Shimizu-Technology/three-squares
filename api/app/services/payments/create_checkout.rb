@@ -62,9 +62,11 @@ module Payments
         pricing = CheckoutPricingService.resolve!(cart_items: cart_items, fulfillment_type: fulfillment,
           shipping_address: attrs["shipping_address"], shipping_method: attrs["shipping_method"], location_id: location_id)
         raise Error, "Order total must be greater than zero" unless pricing.total_cents.positive?
-        profile = ProviderResolver.profile!(location_id: location_id, channel: channel)
+        collection_mode = TerminalContext.mode(channel: channel, attributes: attrs)
+        profile = ProviderResolver.profile!(location_id: location_id, channel: channel, collection_mode: collection_mode)
         identity = profile.payment_identity
         Configuration.validate_identity!(identity)
+        terminal = TerminalContext.capture(profile: profile, location_id: location_id, terminal_id: attrs['payment_terminal_id']) if collection_mode == 'terminal'
         cart_items.each do |item|
           next unless item.is_a?(CartItem)
           fresh = CartItem.lock.find(item.id)
@@ -80,14 +82,16 @@ module Payments
         order.save!
         snapshot = { "order" => order.attributes.slice(*ORDER_FIELDS), "items" => order.order_items.order(:id).map { |item| item.attributes.slice(*ITEM_FIELDS) },
           "cart_items" => cart_items.select { |item| item.is_a?(CartItem) }.map { |item| { "id" => item.id, "quantity" => item.quantity, "updated_at" => item.updated_at.iso8601(6) } }, "request_digest" => request_digest }
-        if identity.provider == "worldpay" && identity.environment != "simulated"
+        snapshot['collection'] = {'mode' => collection_mode, 'terminal' => terminal}.compact
+        if identity.provider == "worldpay" && identity.environment != "simulated" && collection_mode == 'hosted'
           snapshot["payment_profile"] = Worldpay::ProfileSnapshot.capture(profile)
         end
         session = CheckoutSession.create!(order: order, user: user, location_id: location_id, channel: channel, payment_identity: identity,
           owner_key: owner_key, guest_capability_digest: user ? "" : CheckoutSession.digest(capability), caller_idempotency_key: idempotency_key,
           snapshot: snapshot, snapshot_digest: Snapshot.digest(snapshot), amount_cents: pricing.total_cents, currency: identity.currency, expires_at: 30.minutes.from_now)
         attempt = PaymentAttempt.create!(checkout_session: session, order: order, payment_identity: identity,
-          requested_cents: session.amount_cents, currency: session.currency, payload_digest: session.snapshot_digest, next_recovery_at: 1.minute.from_now)
+          requested_cents: session.amount_cents, currency: session.currency, payload_digest: session.snapshot_digest, next_recovery_at: 1.minute.from_now,
+          collection_mode: collection_mode, payment_terminal_id: terminal&.fetch('id'))
         order.update!(checkout_session_id: session.id, payment_attempt_id: attempt.id)
         Snapshot.persist!(session: session, attempt: attempt, order: order)
         ReserveInventory.call(order: order, expires_at: session.expires_at)

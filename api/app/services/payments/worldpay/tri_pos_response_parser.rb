@@ -46,6 +46,8 @@ module Payments
       QUERY_REQUIRED = %w[AccountId accountId acceptorId transactionId referenceNumber terminalId transactionAmount approvedAmount transactionStatus transactionStatusCode transactionType expressResponseCode].freeze
       LANE_TEXT = { "terminalId" => :terminal_id, "description" => :description, "modelNumber" => :model_number,
         "serialNumber" => :serial_number, "applicationVersion1" => :application_version_1, "applicationVersion2" => :application_version_2 }.freeze
+      IDENTIFIER_FIELDS = %i[transaction_id terminal_id reference_number account_id acceptor_id application_id
+                             account_id_value host_batch_id host_item_id approval_number].freeze
 
       def self.call(wire, operation:)
         new(operation).parse(wire)
@@ -247,7 +249,7 @@ module Payments
         if row.key?("AccountId")
           wrapper = row["AccountId"]
           raise Money::Invalid, "invalid_account_wrapper" unless wrapper.is_a?(Hash)
-          facts[:account_id_value] = text!(wrapper["Value"])
+          facts[:account_id_value] = text!(wrapper["Value"], identifier: true)
         end
         facts[:receipt] = receipt!(row, "cardNumberMasked")
         missing = QUERY_REQUIRED - row.keys
@@ -288,13 +290,21 @@ module Payments
           suffix = normalized[-4, 4]
           result[:last4] = suffix if /\A[0-9]{4}\z/.match?(suffix)
         end
-        # No tags, cryptogram, signature, raw processor payload, track, expiry,
-        # cardholder name, token, _links, or _logs survive this allowlist.
+        if data['emv'].is_a?(Hash) && data['emv']['tags'].is_a?(Array)
+          tags = data['emv']['tags'].each_with_object({}) do |tag, safe|
+            next unless tag.is_a?(Hash) && %w[95 9B 9F06 9F26 9F27 9F36].include?(tag['key'])
+            value = tag['value']
+            safe[tag['key']] = value if value.is_a?(String) && value.match?(/\A[0-9A-Fa-f]{2,32}\z/)
+          end
+          result[:emv] = tags unless tags.empty?
+        end
+        # PAN/track tags (5A/57), signature, raw processor payload, expiry,
+        # cardholder name, token, _links and _logs never survive this allowlist.
         result
       end
 
       def copy_text!(source, destination, mapping)
-        mapping.each { |key, target| destination[target] = text!(source[key]) if source.key?(key) }
+        mapping.each { |key, target| destination[target] = text!(source[key], identifier: IDENTIFIER_FIELDS.include?(target)) if source.key?(key) }
       end
 
       def copy_money!(source, destination, mapping)
@@ -307,9 +317,9 @@ module Payments
         end
       end
 
-      def text!(value)
+      def text!(value, identifier: false)
         unless value.is_a?(String) && value.bytesize.between?(1, 256) && !value.match?(/[[:cntrl:]]/) &&
-            !value.match?(/(?:[0-9][ -]?){12,}/) && !value.match?(/[%^;=]/)
+            (identifier || !value.match?(/(?:[0-9][ -]?){12,}/)) && !value.match?(/[%^;=]/)
           raise Money::Invalid, "invalid_observation_text"
         end
         value.dup

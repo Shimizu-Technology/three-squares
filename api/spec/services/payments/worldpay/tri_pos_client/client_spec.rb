@@ -2,7 +2,7 @@
 
 require_relative "support"
 
-RSpec.describe Payments::Worldpay::TriPosClient do
+RSpec.describe Payments::Worldpay::TriPosClient, tripos_client: true do
   let(:transport) { TriPosClientSupport::MemoryTransport.new(JSON.generate(sale_data)) }
   let(:client) { described_class.new(configuration: configuration, transport: transport) }
 

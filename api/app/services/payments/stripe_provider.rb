@@ -26,14 +26,14 @@ module Payments
                     payment_identity_id: identity.id, order_id: attempt.order_id,
                     snapshot_digest: attempt.payload_digest }
       }
-      if session.channel == "pos"
+      if attempt.collection_mode == 'terminal'
         params[:payment_method_types] = ["card_present"]
       else
         params[:automatic_payment_methods] = { enabled: true, allow_redirects: "never" }
       end
       intent = client.v1.payment_intents.create(params, { idempotency_key: attempt.operation_key })
       validate_binding!(intent, attempt)
-      { raw_id: intent.id, flow: session.channel == "pos" ? "stripe_terminal" : "stripe_embedded", client_secret: intent.client_secret }
+      { raw_id: intent.id, flow: attempt.collection_mode == 'terminal' ? "stripe_terminal" : "stripe_embedded", client_secret: intent.client_secret }
     end
 
     def query(attempt:)
@@ -82,7 +82,7 @@ module Payments
       validate_attempt_identity!(attempt)
       intent = client.v1.payment_intents.retrieve(attempt.raw_provider_id)
       validate_binding!(intent, attempt)
-      { raw_id: intent.id, flow: attempt.checkout_session.channel == "pos" ? "stripe_terminal" : "stripe_embedded", client_secret: intent.client_secret }
+      { raw_id: intent.id, flow: attempt.collection_mode == 'terminal' ? "stripe_terminal" : "stripe_embedded", client_secret: intent.client_secret }
     end
 
     def cancel(attempt:)

@@ -5,7 +5,7 @@ module PaymentFoundationHelpers
     end
 
     def setup(attempt:)
-      { raw_id: "pi_#{attempt.id.delete('-')}", flow: attempt.checkout_session.channel == 'pos' ? 'stripe_terminal' : 'stripe_embedded', client_secret: 'fixture_client_secret' }
+      { raw_id: "pi_#{attempt.id.delete('-')}", flow: attempt.collection_mode == 'terminal' ? 'stripe_terminal' : 'stripe_embedded', client_secret: 'fixture_client_secret' }
     end
 
     def query(attempt:)
@@ -30,6 +30,7 @@ module PaymentFoundationHelpers
       PaymentProfile.create!(provider: 'stripe', payment_identity: @payment_identity, channel: channel, presentation: channel == 'online' ? 'stripe_embedded' : 'stripe_terminal', enabled: true)
     end
     allow(Payments::ProviderResolver).to receive(:for_identity) { |identity| Provider.new(identity) }
+    allow(Payments::ProviderResolver).to receive(:for_attempt) { |attempt| Provider.new(attempt.payment_identity) }
     @capability = SecureRandom.hex(32)
     @request_key = SecureRandom.uuid
   end

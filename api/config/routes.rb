@@ -16,11 +16,14 @@ Rails.application.routes.draw do
 
       # Admin routes (require admin authentication)
       namespace :admin do
-        resources :payment_terminals, only: [:index, :create] do
+        resources :payment_terminals, only: [:index, :create, :show, :update, :destroy] do
           member do
             get :status
             post :collect
+            post :cancel
+            post :pair
             post :simulate unless Rails.env.production? || ENV['APP_DEPLOYMENT_ENV'] == 'production'
+            post :advance_simulation unless Rails.env.production? || ENV['APP_DEPLOYMENT_ENV'] == 'production'
           end
         end
         # Dashboard
@@ -150,6 +153,7 @@ Rails.application.routes.draw do
         get "pos/menu", to: "pos_menu#show"
         post "pos/orders", to: "pos_orders#create"
         post "pos/orders/:id/confirm_terminal_payment", to: "pos_orders#confirm_terminal_payment"
+        post "pos/orders/:id/payments", to: "pos_orders#start_payment"
 
         # Stripe Terminal
         post "stripe_terminal/connection_token", to: "stripe_terminal#connection_token"

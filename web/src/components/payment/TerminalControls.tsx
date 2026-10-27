@@ -36,7 +36,7 @@ export default function TerminalControls({ terminals, selected, selectedId, sele
           className="min-h-11 w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base disabled:opacity-60">
           <option value="">Choose a reader</option>
           {unavailable && <option value={selectedId!}>Saved reader #{selectedId} — unavailable</option>}
-          {terminals.map(row => <option key={row.id} value={row.id} disabled={!row.enabled || row.status === 'retired'}>
+          {terminals.map(row => <option key={row.id} value={row.id} disabled={!row.enabled || row.status === 'retired' || row.collectable === false}>
             {row.label} · Lane {row.lane_id} · {row.environment}{!row.enabled ? ' · disabled' : ''}
           </option>)}
         </select>

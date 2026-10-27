@@ -13,9 +13,9 @@ const dollars = (cents: number) => Number.isSafeInteger(cents)
 const cardFact = (value?: string | null) => typeof value === 'string'
   ? value.slice(0, 160).replace(/(?:\d[ -]?){12,19}/g, '[redacted]') : '';
 const emvFacts = [
-  { key: 'aid', label: 'Application ID', valid: /^[a-f][a-f\d]{9,31}$/i },
-  { key: 'tvr', label: 'Terminal verification results', valid: /^[a-f\d]{10}$/i },
-  { key: 'tsi', label: 'Transaction status information', valid: /^[a-f\d]{4}$/i },
+  { key: '9F06', label: 'Application ID', valid: /^[a-f][a-f\d]{9,31}$/i },
+  { key: '95', label: 'Terminal verification results', valid: /^[a-f\d]{10}$/i },
+  { key: '9B', label: 'Transaction status information', valid: /^[a-f\d]{4}$/i },
   { key: 'application_label', label: 'Application label', valid: /^[a-z][a-z .-]{0,31}$/i },
   { key: 'authorization_response_code', label: 'Authorization response code', valid: /^[a-z\d]{2}$/i },
 ] as const;

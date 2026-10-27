@@ -43,15 +43,16 @@ module Payments
             last_error: 'reversal_idempotency_window_elapsed', next_recovery_at: 1.hour.from_now)
           next nil
         end
+        previously_dispatched = stored.compensation_dispatched_at.present?
         stored.update!(compensation_dispatched_at: stored.compensation_dispatched_at || Time.current, state: 'compensating', compensation_lease_until: LEASE.from_now,
           retry_count: stored.retry_count + 1, next_recovery_at: LEASE.from_now)
-        [stored, stored.compensation_operation_key]
+        [stored, stored.compensation_operation_key, previously_dispatched]
       end
       return unless dispatch
-      stored, key = dispatch
+      stored, key, previously_dispatched = dispatch
       # Financial network calls are deliberately outside all database locks.
-      provider = ProviderResolver.for_identity(stored.payment_identity)
-      result = if stored.compensation_provider_id.present?
+      provider = ProviderResolver.for_attempt(stored)
+      result = if stored.compensation_provider_id.present? || (previously_dispatched && provider.respond_to?(:replay_reversal?) && !provider.replay_reversal?)
         provider.query_reversal(attempt: stored, operation_key: key)
       else
         provider.reverse(attempt: stored, operation_key: key)
