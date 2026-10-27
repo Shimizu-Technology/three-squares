@@ -47,6 +47,13 @@ jobs:
           bundler-cache: true
       - name: Prepare test database
         run: bin/rails db:prepare
+      - name: Verify fresh migration replay matches schema
+        env:
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/three_squares_ci_replay
+        run: |
+          # Rails 8.1 otherwise initializes an empty DB from the existing dump.
+          SCHEMA="$RUNNER_TEMP/migration-replay.rb" bin/rails db:create db:migrate
+          diff -u db/schema.rb "$RUNNER_TEMP/migration-replay.rb"
       - name: Run RSpec
         run: bundle exec rspec
       - name: Scan Rails security

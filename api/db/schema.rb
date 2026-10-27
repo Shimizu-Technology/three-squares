@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_13_140000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_050000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -145,7 +145,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_140000) do
   create_table "collections", force: :cascade do |t|
     t.boolean "auto_hide", default: false, null: false
     t.string "banner_text"
-    t.string "business_line", default: "three_squares", null: false
     t.string "collection_type", default: "standard", null: false
     t.datetime "created_at", null: false
     t.text "description"
@@ -161,7 +160,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_140000) do
     t.integer "sort_order"
     t.datetime "starts_at"
     t.datetime "updated_at", null: false
-    t.index ["business_line"], name: "index_collections_on_business_line"
     t.index ["collection_type"], name: "index_collections_on_collection_type"
     t.index ["is_featured"], name: "index_collections_on_is_featured"
     t.index ["slug"], name: "index_collections_on_slug", unique: true
@@ -386,23 +384,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_140000) do
     t.string "address"
     t.string "admin_email"
     t.jsonb "admin_sms_phones", default: [], null: false
-    t.boolean "auto_deactivate", default: false, null: false
     t.datetime "created_at", null: false
-    t.text "description"
-    t.datetime "ends_at"
     t.jsonb "hours_json", default: {}, null: false
-    t.string "location_type", default: "permanent", null: false
-    t.bigint "menu_collection_id"
     t.string "name", null: false
     t.string "phone"
     t.string "qr_code_url"
     t.string "slug", null: false
-    t.datetime "starts_at"
     t.datetime "updated_at", null: false
-    t.index ["active", "location_type"], name: "index_locations_on_active_and_location_type"
     t.index ["active"], name: "index_locations_on_active"
-    t.index ["location_type"], name: "index_locations_on_location_type"
-    t.index ["menu_collection_id"], name: "index_locations_on_menu_collection_id"
     t.index ["slug"], name: "index_locations_on_slug", unique: true
   end
 
@@ -582,7 +571,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_140000) do
     t.boolean "allow_shipping", default: false, null: false
     t.boolean "archived", default: false, null: false
     t.integer "base_price_cents"
-    t.string "business_line", default: "three_squares", null: false
     t.datetime "created_at", null: false
     t.text "description"
     t.boolean "featured"
@@ -608,7 +596,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_140000) do
     t.index ["allow_pickup"], name: "index_products_on_allow_pickup"
     t.index ["allow_shipping"], name: "index_products_on_allow_shipping"
     t.index ["archived"], name: "index_products_on_archived"
-    t.index ["business_line"], name: "index_products_on_business_line"
     t.index ["slug"], name: "index_products_on_slug", unique: true
   end
 
@@ -710,7 +697,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_140000) do
   add_foreign_key "inventory_audits", "product_variants"
   add_foreign_key "inventory_audits", "products"
   add_foreign_key "inventory_audits", "users"
-  add_foreign_key "locations", "collections", column: "menu_collection_id"
   add_foreign_key "order_items", "orders"
   add_foreign_key "order_items", "product_variants"
   add_foreign_key "order_items", "products"
