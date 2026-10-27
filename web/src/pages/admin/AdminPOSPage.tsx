@@ -21,47 +21,17 @@ import {
   type TerminalStatus,
 } from '../../services/stripeTerminal';
 import AdminRequestState from '../../components/admin/AdminRequestState';
+import { reconcilePOSCart, remainingPOSCapacity, type POSProduct, type POSVariant, type POSCategory, type CartItem } from '../../components/admin/posCart';
 import type { Reader } from '@stripe/terminal-js';
 
 const SimulatedTerminalPanel = import.meta.env.DEV ? lazy(() => import('../../components/payment/simulation/SimulatedTerminalPanel')) : null;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
-interface POSVariant {
-  id: number;
-  name: string;
-  price_cents: number;
-  price_formatted: string;
-  sku: string;
-  in_stock: boolean;
-  stock_quantity: number;
-}
-
-interface POSProduct {
-  id: number;
-  name: string;
-  slug: string;
-  product_type: string;
-  image_url: string | null;
-  variants: POSVariant[];
-}
-
-interface POSCategory {
-  name: string;
-  items: POSProduct[];
-}
-
 interface POSLocation {
   id: number;
   name: string;
   address: string;
-}
-
-interface CartItem {
-  cartId: string;
-  product: POSProduct;
-  variant: POSVariant;
-  quantity: number;
 }
 
 type ReaderMeta = {
@@ -342,8 +312,9 @@ function AdminPOSWorkspace() {
   const [orderType, setOrderType] = useState<'pickup' | 'dine_in'>('pickup');
   const [quickAdjustVariantId, setQuickAdjustVariantId] = useState<number | null>(null);
   const [lastAddedItem, setLastAddedItem] = useState<{ product: POSProduct; variant: POSVariant } | null>(null);
-  const desktopSearchRef = useRef<HTMLInputElement | null>(null);
-  const mobileSearchRef = useRef<HTMLInputElement | null>(null);
+  const searchRef = useRef<HTMLInputElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const cartRef = useRef<HTMLDivElement | null>(null);
 
   // Modals
   const [variantPickerProduct, setVariantPickerProduct] = useState<POSProduct | null>(null);
@@ -431,6 +402,8 @@ function AdminPOSWorkspace() {
 
   const visibleCategories = useMemo(() => hasMenu ? categories : [], [hasMenu, categories]);
   const allItems = useMemo(() => visibleCategories.flatMap((c) => c.items), [visibleCategories]);
+  const cartState = useMemo(() => reconcilePOSCart(cart, allItems), [cart, allItems]);
+  const liveCart = cartState.items;
 
   const filteredItems = useMemo(() => {
     let items = activeCategory === 'All'
@@ -457,10 +430,11 @@ function AdminPOSWorkspace() {
     if (!canSelectMenu) return;
     const currentProduct = allItems.find(item => item.id === product.id);
     const currentVariant = currentProduct?.variants.find(item => item.id === variant.id && item.in_stock);
-    if (!currentProduct || !currentVariant) return;
+    if (!currentProduct || !currentVariant || remainingPOSCapacity(currentVariant, liveCart) < 1) return;
     product = currentProduct;
     variant = currentVariant;
     setCart((prev) => {
+      if (remainingPOSCapacity(variant, reconcilePOSCart(prev, allItems).items) < 1) return prev;
       const existing = prev.find((c) => c.variant.id === variant.id);
       if (existing) {
         return prev.map((c) =>
@@ -476,35 +450,35 @@ function AdminPOSWorkspace() {
     });
     setQuickAdjustVariantId(variant.id);
     setLastAddedItem({ product, variant });
-  }, [canSelectMenu, allItems]);
+  }, [canSelectMenu, allItems, liveCart]);
 
   const handleProductClick = useCallback((product: POSProduct) => {
     if (!canSelectMenu) return;
-    const availableVariants = product.variants.filter((v) => v.in_stock);
+    const availableVariants = product.variants.filter(variant => remainingPOSCapacity(variant, liveCart) > 0);
     if (availableVariants.length === 0) return;
     if (availableVariants.length === 1) {
       addToCart(product, availableVariants[0]);
     } else {
-      setVariantPickerProduct(product);
+      setVariantPickerProduct({ ...product, variants: availableVariants });
     }
-  }, [addToCart, canSelectMenu]);
+  }, [addToCart, canSelectMenu, liveCart]);
 
   const updateQuantity = useCallback((variantId: number, delta: number) => {
-    if (delta > 0 && (!canSelectMenu || !allItems.some(item => item.variants.some(variant => variant.id === variantId && variant.in_stock)))) return;
-    setCart((prev) =>
-      prev
-        .map((c) => (c.variant.id === variantId ? { ...c, quantity: c.quantity + delta } : c))
-        .filter((c) => c.quantity > 0)
-    );
-  }, [canSelectMenu, allItems]);
+    const variant = allItems.flatMap(item => item.variants).find(item => item.id === variantId);
+    if (delta > 0 && (!canSelectMenu || !variant || remainingPOSCapacity(variant, liveCart) < delta)) return;
+    setCart(prev => {
+      if (delta > 0 && variant && remainingPOSCapacity(variant, reconcilePOSCart(prev, allItems).items) < delta) return prev;
+      return prev.map(line => line.variant.id === variantId ? { ...line, quantity: line.quantity + delta } : line).filter(line => line.quantity > 0);
+    });
+  }, [canSelectMenu, allItems, liveCart]);
 
   const removeFromCart = useCallback((variantId: number) => {
     setCart((prev) => prev.filter((c) => c.variant.id !== variantId));
   }, []);
 
   const quickAdjustItem = useMemo(
-    () => cart.find((item) => item.variant.id === quickAdjustVariantId) ?? null,
-    [cart, quickAdjustVariantId]
+    () => liveCart.find((item) => item.variant.id === quickAdjustVariantId) ?? null,
+    [liveCart, quickAdjustVariantId]
   );
 
   const adjustQuickItem = useCallback((delta: number) => {
@@ -524,8 +498,8 @@ function AdminPOSWorkspace() {
   }, []);
 
   const cartTotal = useMemo(
-    () => cart.reduce((sum, c) => sum + c.variant.price_cents * c.quantity, 0),
-    [cart]
+    () => liveCart.reduce((sum, c) => sum + c.variant.price_cents * c.quantity, 0),
+    [liveCart]
   );
 
   const cartCount = useMemo(
@@ -536,10 +510,10 @@ function AdminPOSWorkspace() {
   const connectedReaderName = terminalReader
     ? (getReaderMeta(terminalReader).label || getReaderMeta(terminalReader).serial_number || 'Unknown Reader')
     : null;
-  const canSubmitPayment = cart.length > 0 && !submitting && !terminalCollecting && !hasPendingTerminalSession;
+  const canSubmitPayment = canSelectMenu && cartState.issues.length === 0 && cart.length > 0 && !submitting && !terminalCollecting && !hasPendingTerminalSession;
 
   const focusSearchField = useCallback(() => {
-    const target = desktopSearchRef.current ?? mobileSearchRef.current;
+    const target = searchRef.current;
     if (!target) return;
     target.focus();
     target.select();
@@ -812,6 +786,11 @@ function AdminPOSWorkspace() {
     async (paymentMethod: 'cash' | 'stripe', cashReceivedCents?: number) => {
       if (cart.length === 0 || hasPendingTerminalSession || localStorage.getItem(POS_PENDING_TERMINAL_KEY)) return;
       setSubmitting(true);
+      if (!canSelectMenu || cartState.issues.length) {
+        alert('Review the current location menu and resolve unavailable items before taking cash.');
+        setShowCashModal(false);
+        return;
+      }
       try {
         const token = await getToken();
         if (!token) return;
@@ -848,7 +827,7 @@ function AdminPOSWorkspace() {
         setSubmitting(false);
       }
     },
-    [cart, customerName, orderType, selectedLocation, getToken, userId, clearCart, hasPendingTerminalSession, clearPendingTerminalSession]
+    [cart, customerName, orderType, selectedLocation, getToken, userId, clearCart, hasPendingTerminalSession, clearPendingTerminalSession, canSelectMenu, cartState.issues]
   );
 
   const handleCardAction = useCallback(() => {
@@ -971,59 +950,30 @@ function AdminPOSWorkspace() {
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-dvh md:h-dvh flex flex-col md:flex-row bg-linear-to-br from-slate-100 via-white to-slate-100 md:overflow-hidden">
+    <div className="min-h-dvh pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 md:h-dvh flex flex-col md:flex-row bg-linear-to-br from-slate-100 via-white to-slate-100 md:overflow-hidden">
       {simulationActive && SimulatedTerminalPanel && <Suspense fallback={null}><SimulatedTerminalPanel locationId={selectedLocation ?? null} attemptId={simulatedAttempt} getToken={getToken} onChange={handleCheckSavedPayment} /></Suspense>}
       {/* ── Left Panel: Menu ────────────────────────────────────────────── */}
-      <div className="flex h-[55dvh] shrink-0 flex-col min-h-0 min-w-0 md:h-auto md:flex-1">
+      <div ref={menuRef} tabIndex={-1} aria-label="POS menu" className="flex h-[65dvh] shrink-0 flex-col min-h-0 min-w-0 md:h-auto md:flex-1">
         {/* Header */}
         <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <button
               onClick={() => navigate('/admin')}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors -ml-2 text-slate-600"
+              aria-label="Exit POS to staff workspace"
+              className="min-h-11 min-w-11 p-2 hover:bg-slate-100 rounded-lg transition-colors -ml-2 text-slate-600"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
-            <div className="w-10 h-10 rounded-xl bg-tsNavy text-white flex items-center justify-center shadow-sm">
+            <div className="hidden sm:flex w-10 h-10 shrink-0 rounded-xl bg-tsNavy text-white flex items-center justify-center shadow-sm">
               <ChefHat className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h1 className="text-lg font-semibold text-slate-900 whitespace-nowrap">POS Mode</h1>
+              <h1 style={{ fontSize: '1.125rem', lineHeight: '1.5rem' }} className="font-semibold text-slate-900">POS</h1>
               <p className="text-xs text-slate-500 truncate">{access.roleLabel} · {access.scopeLabel} · {selectedLocationName}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2 md:gap-3">
-            {/* Location selector */}
-            <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-              <MapPin className="w-4 h-4 text-slate-500" />
-              <select
-                disabled={access.user?.operational_scope === 'specific' || hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)}
-                value={selectedLocation || ''}
-                onChange={(e) => setSelectedLocation(Number(e.target.value))}
-                className="bg-transparent text-slate-700 text-sm outline-none cursor-pointer"
-              >
-                {locations.map((loc) => (
-                  <option key={loc.id} value={loc.id} className="text-slate-900">
-                    {loc.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {/* Search */}
-            <div className="relative hidden lg:block">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                ref={desktopSearchRef}
-                type="text"
-                placeholder="Search menu..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 text-sm w-56 focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary"
-              />
-            </div>
-
             {/* Terminal status */}
             {access.can('payments.terminals.discover') && <button
               onClick={handleReaderButtonClick}
@@ -1048,35 +998,21 @@ function AdminPOSWorkspace() {
         </header>
 
         <div className="shrink-0 bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap gap-2 items-center">
-          <div className="md:hidden w-full">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                ref={mobileSearchRef}
-                type="text"
-                placeholder="Search menu..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary"
-              />
-            </div>
-          </div>
-          <div className="md:hidden w-full">
-            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
-              <MapPin className="w-4 h-4 text-slate-500" />
-              <select
-                disabled={access.user?.operational_scope === 'specific' || hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)}
-                value={selectedLocation || ''}
-                onChange={(e) => setSelectedLocation(Number(e.target.value))}
-                className="w-full bg-transparent text-slate-700 text-sm outline-none cursor-pointer"
-              >
-                {locations.map((loc) => (
-                  <option key={loc.id} value={loc.id} className="text-slate-900">
-                    {loc.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+          <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            <label className="block min-w-0 text-xs font-semibold text-slate-600">Sale location
+              <span className="mt-1 flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3">
+                <MapPin aria-hidden="true" className="h-4 w-4 shrink-0" />
+                <select aria-label="Sale location" disabled={access.user?.operational_scope === 'specific' || hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)} value={selectedLocation || ''} onChange={event => setSelectedLocation(Number(event.target.value))} className="min-h-11 min-w-0 w-full bg-transparent text-base text-slate-900">
+                  {locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}
+                </select>
+              </span>
+            </label>
+            <label className="block min-w-0 text-xs font-semibold text-slate-600">Find a menu item
+              <span className="relative mt-1 block">
+                <Search aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <input ref={searchRef} type="search" placeholder="Search menu..." value={searchQuery} onChange={event => setSearchQuery(event.target.value)} className="min-h-11 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-tsPrimary" />
+              </span>
+            </label>
           </div>
           <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
             <ShoppingCart className="w-3.5 h-3.5" />
@@ -1135,7 +1071,8 @@ function AdminPOSWorkspace() {
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               {filteredItems.map((item) => {
-                const hasStock = item.variants.some((v) => v.in_stock);
+                const hasStock = item.variants.some(variant => variant.in_stock);
+                const canAdd = item.variants.some(variant => remainingPOSCapacity(variant, liveCart) > 0);
                 const price = item.variants[0]?.price_formatted || '';
                 const inCartQuantity = cart
                   .filter((c) => c.product.id === item.id)
@@ -1146,7 +1083,7 @@ function AdminPOSWorkspace() {
                   <button
                     key={item.id}
                     onClick={() => handleProductClick(item)}
-                    disabled={!hasStock || !canSelectMenu}
+                    disabled={!canAdd || !canSelectMenu}
                     className={`p-3.5 rounded-2xl text-left transition-all min-h-[112px] border ${
                       inCart
                         ? 'border-tsPrimary/40 bg-tsPrimary/5 shadow-sm'
@@ -1162,6 +1099,7 @@ function AdminPOSWorkspace() {
                     {!hasStock && (
                       <span className="inline-flex mt-2 text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-600">Sold Out</span>
                     )}
+                    {hasStock && !canAdd && <span className="mt-2 inline-flex text-xs font-semibold text-slate-700">Stock limit in cart</span>}
                     {inCart && (
                       <div className="mt-2 inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
                         <Check className="w-3.5 h-3.5" />
@@ -1177,7 +1115,11 @@ function AdminPOSWorkspace() {
       </div>
 
       {/* ── Right Panel: Cart ───────────────────────────────────────────── */}
-      <div className="min-h-0 w-full md:w-80 lg:w-104 bg-white/95 backdrop-blur border-l border-slate-200 flex flex-col shrink-0">
+      <div ref={cartRef} tabIndex={-1} aria-label="Current sale" className="min-h-0 w-full md:w-80 lg:w-104 bg-white/95 backdrop-blur border-l border-slate-200 flex flex-col shrink-0">
+        <div className="flex items-center justify-between gap-2 px-4 pt-3 md:hidden">
+          <h2 className="text-lg font-semibold">Current sale</h2>
+          <button type="button" onClick={() => { menuRef.current?.scrollIntoView(); searchRef.current?.focus({ preventScroll: true }); }} className="min-h-11 rounded-lg border border-slate-300 px-3 text-sm font-semibold">Back to menu</button>
+        </div>
         {/* Customer + order type */}
         <div className="p-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2 mb-3">
@@ -1216,7 +1158,7 @@ function AdminPOSWorkspace() {
             </div>
           ) : (
             <div className="space-y-3">
-              {cart.map((item) => (
+              {liveCart.map((item) => (
                 <div
                   key={item.variant.id}
                   role="button"
@@ -1252,6 +1194,7 @@ function AdminPOSWorkspace() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-1">
                       <button
+                        aria-label={`Decrease quantity for ${item.product.name}`}
                         onClick={() => updateQuantity(item.variant.id, -1)}
                         className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100"
                       >
@@ -1259,7 +1202,8 @@ function AdminPOSWorkspace() {
                       </button>
                       <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
                       <button
-                        disabled={!canSelectMenu || !allItems.some(product => product.variants.some(variant => variant.id === item.variant.id && variant.in_stock))}
+                        disabled={!canSelectMenu || cartState.issues.some(issue => issue.variantId === item.variant.id) || remainingPOSCapacity(item.variant, liveCart) < 1}
+                        aria-label={`Increase quantity for ${item.product.name}`}
                         onClick={() => updateQuantity(item.variant.id, 1)}
                         className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100"
                       >
@@ -1267,6 +1211,7 @@ function AdminPOSWorkspace() {
                       </button>
                     </div>
                     <button
+                      aria-label={`Remove ${item.product.name}`}
                       onClick={() => removeFromCart(item.variant.id)}
                       className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                     >
@@ -1281,6 +1226,9 @@ function AdminPOSWorkspace() {
 
         {/* Cart footer */}
         <div className="p-4 border-t border-slate-200 bg-white shrink-0">
+          {cart.length > 0 && (!canSelectMenu || cartState.issues.length > 0) && <div role="alert" className="mb-3 space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
+            {!canSelectMenu ? <p>Load the current location menu before taking payment. Your cart is still here.</p> : cartState.issues.map(issue => <p key={issue.variantId}>{issue.message}</p>)}
+          </div>}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 mb-3">
             <div className="flex items-center justify-between mb-1">
               <span className="text-slate-500 text-sm">
@@ -1291,7 +1239,7 @@ function AdminPOSWorkspace() {
               </span>
             </div>
             <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-500">Payment due</span>
+              <span className="text-xs text-slate-600">Prices for {selectedLocationName}</span>
               <span className="text-2xl font-bold text-slate-900">
                 ${(cartTotal / 100).toFixed(2)}
               </span>
@@ -1465,6 +1413,10 @@ function AdminPOSWorkspace() {
       )}
 
       {/* ── Modals ──────────────────────────────────────────────────────── */}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-300 bg-white px-4 pt-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] md:hidden">
+        <button type="button" onClick={() => { cartRef.current?.scrollIntoView(); cartRef.current?.focus({ preventScroll: true }); }} className="flex min-h-11 w-full items-center justify-between rounded-lg bg-tsNavy px-4 font-semibold text-white"><span>View cart · {cartCount} items</span><span>${(cartTotal / 100).toFixed(2)}</span></button>
+      </div>
+
       {showCashModal && (
         <CashModal
           totalCents={cartTotal}

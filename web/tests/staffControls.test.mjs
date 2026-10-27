@@ -21,6 +21,11 @@ async function load(relative, extra = '') {
   for (const node of ast.statements.filter(ts.isImportDeclaration)) {
     const name = node.moduleSpecifier.text;
     if (name === 'react') { mocks[name] = react; continue; }
+    if (name.endsWith('/posCart')) {
+      const helper = readFileSync(new URL('../src/components/admin/posCart.ts', import.meta.url), 'utf8');
+      mocks[name] = dataModule(ts.transpileModule(helper, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText);
+      continue;
+    }
     if (name.includes('StaffAccess')) {
       mocks[name] = dataModule(`export const useStaffAccess = () => ${stateKey}; export const StaffAccessProvider = () => null; export const StaffAccessDenied = () => null;`);
       continue;
