@@ -3,7 +3,7 @@
 The root `.github/workflows/ci.yml` runs on pull requests and pushes to main.
 
 - API: Ruby from `api/.ruby-version`, PostgreSQL 16, `bin/rails db:prepare`, all RSpec examples, and Brakeman. No live provider credentials are required. Test databases disable demo seeds; specs own their factory data.
-- Web: Node 22, `npm ci`, ESLint regression checks, and `npm run build` (TypeScript plus Vite). No web unit-test script is currently configured. Playwright is intentionally deferred until its fixtures are stable.
+- Web: Node 22, `npm ci`, ESLint regression checks, and `npm run build` (TypeScript plus Vite). Three black-box lint-gate tests run in CI; no application unit-test suite is currently configured. Playwright is intentionally deferred until its fixtures are stable.
 
 Start each command block from the repository root. Use an isolated database, never a shared development/test database:
 
