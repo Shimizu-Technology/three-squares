@@ -281,7 +281,7 @@ export default function AdminProductsPage() {
         <SkeletonListPage />
       ) : filteredProducts.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-          <h3 id="csv-import-title" className="text-lg font-bold text-gray-900 mb-2">No products found</h3>
+          <h3 className="text-lg font-bold text-gray-900 mb-2">No products found</h3>
           <p className="text-gray-500">Try adjusting your filters or search query.</p>
         </div>
       ) : (
