@@ -80,6 +80,10 @@ module Api
               raise Payments::Conflict, "Exception was already reviewed with another reason" unless row.reviewed_by_id == current_user.id && row.review_reason == reason
             else
               row.update!(state: "reviewed", reviewed_by: current_user, review_reason: reason, reviewed_at: Time.current)
+            end
+            # A new acknowledgement still consumes its request key even when
+            # the evidence was already reviewed. Replays retain that binding.
+            unless prior
               Payments::Reconciliation::Access.audit!(identity: selected, user: current_user, subject: row, event: "exception_reviewed", reason: reason, facts: { "operation_key" => key })
             end
             row

@@ -131,6 +131,25 @@ RSpec.describe 'Payment reconciliation observations', type: :request do
     expect(attempt.order.reload.payment_status).to eq('paid')
     expect(product.reload.product_stock_quantity).to eq(19)
   end
+  it 'binds a fresh acknowledgement key even when its exception was already reviewed' do
+    2.times { capture; close(scenario: 'external_refund') }
+    first, second = ReconciliationException.where(category: 'external_refund').order(:created_at).to_a
+    original_key, acknowledgement_key = SecureRandom.uuid, SecureRandom.uuid
+    [ original_key, acknowledgement_key, acknowledgement_key ].each do |key|
+      post "#{base}/exceptions/#{first.id}/review", params: scope.merge(reason: 'Compared with synthetic source'),
+        headers: { 'Idempotency-Key' => key }, as: :json
+      expect(response).to have_http_status(:ok), response.body
+    end
+    expect(ReconciliationAudit.where(event: 'exception_reviewed', subject_id: first.id).count).to eq(2)
+    [ { id: second.id, reason: 'Compared with synthetic source' }, { id: first.id, reason: 'Changed reason' } ].each do |changed|
+      post "#{base}/exceptions/#{changed[:id]}/review", params: scope.merge(reason: changed[:reason]),
+        headers: { 'Idempotency-Key' => acknowledgement_key }, as: :json
+      expect(response).to have_http_status(:conflict), response.body
+      expect(response.parsed_body).not_to have_key('rejected_before_operation')
+    end
+    expect(second.reload.state).to eq('open')
+    expect(ReconciliationAudit.where(event: 'exception_reviewed').count).to eq(2)
+  end
   it 'retains a mismatched deposit balance and binds manual decisions to the original actor, amount and reason' do
     capture
     saved = close(scenario: 'mismatch')
