@@ -57,7 +57,7 @@ module Payments
       AttemptLock.call(attempt) do |session, current, charge, order|
         # Only untouched intent can be closed locally. Dispatched, ambiguous or
         # financial attempts retain the existing provider recovery path.
-        next false unless session.channel == "online" && current.state == "created"
+        next false unless session.channel == "online" && %w[created unknown].include?(current.state)
         next false if current.raw_provider_id.present? || current.setup_id.present? || current.dispatched_at || charge ||
           current.approved_cents.positive? || current.captured_cents.positive? || current.compensation_claimed_at
         next false if StorefrontEligibility.online_ordering_enabled_for_order?(order)

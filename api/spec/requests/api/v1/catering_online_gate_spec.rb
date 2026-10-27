@@ -171,6 +171,26 @@ RSpec.describe "Catering online ordering gate", type: :request do
     expect(attempt.reload.state).to eq("cancelled")
   end
 
+  it "closes an unknown preflight failure proven never dispatched before transport is restored" do
+    session = create_undispatched_checkout
+    attempt = session.payment_attempts.last
+    provider = PaymentFoundationHelpers::Provider.new(session.payment_identity)
+    allow(provider).to receive(:preflight).and_raise(Payments::Configuration::UnsafeConfiguration, "Fixture transport disabled")
+    allow(Payments::ProviderResolver).to receive(:for_attempt).and_return(provider)
+    expect { Payments::SetupAttempt.call(attempt: attempt) }.to raise_error(Payments::Configuration::UnsafeConfiguration)
+    expect(attempt.reload).to have_attributes(state: "unknown", dispatched_at: nil, raw_provider_id: nil, setup_id: nil)
+    SiteSetting.instance.update!(enable_catering_online_ordering: false)
+    attempt.update!(next_recovery_at: 1.minute.ago)
+    expect(Payments::ProviderResolver).not_to receive(:for_attempt)
+    PaymentRecoveryJob.perform_now
+    expect(attempt.reload).to have_attributes(state: "cancelled", error_classification: "catering_inquiry_required", next_recovery_at: nil)
+    expect(InventoryReservation.where(order_id: session.order_id, state: "held")).to be_empty
+    retries = attempt.retry_count
+    attempt.update_columns(updated_at: 1.day.ago)
+    PaymentRecoveryJob.perform_now
+    expect(attempt.reload.retry_count).to eq(retries)
+  end
+
   it "does not locally close a previously dispatched or ambiguous attempt" do
     session = create_undispatched_checkout
     attempt = session.payment_attempts.last
