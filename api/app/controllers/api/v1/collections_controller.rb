@@ -54,6 +54,9 @@ module Api
             .distinct
         end
 
+        product_types = products.except(:includes, :order).distinct.pluck(:product_type)
+                                .compact.reject(&:blank?).sort
+
         # Apply filters if provided
         products = products.where(product_type: params[:product_type]) if params[:product_type].present?
 
@@ -73,7 +76,8 @@ module Api
           meta: {
             page: page,
             per_page: per_page,
-            total: total_count
+            total: total_count,
+            product_types: product_types
           }
         }
       end

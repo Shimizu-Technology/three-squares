@@ -109,6 +109,17 @@ RSpec.describe "Seasonal menu public APIs", type: :request do
     end
   end
 
+  it "keeps collection type choices independent of result pagination and the selected type" do
+    current_product.update!(product_type: "Meal")
+    drink = create(:product, collections: [current], product_type: "Drink")
+    get "/api/v1/collections/#{current.slug}", params: { per_page: 1, product_type: "Meal" }
+    expect(ids("products")).to eq([current_product.id])
+    expect(response.parsed_body.dig("meta", "product_types")).to eq(["Drink", "Meal"])
+    get "/api/v1/collections/#{current.slug}", params: { per_page: 1, product_type: "Drink" }
+    expect(ids("products")).to eq([drink.id])
+    expect(response.parsed_body.dig("meta", "product_types")).to eq(["Drink", "Meal"])
+  end
+
   it "changes catalog availability at boundaries without changing publication and follows republishing" do
     travel_to(at + 1.hour)
     get "/api/v1/products/#{current_product.id}"
