@@ -12,8 +12,9 @@ module Payments
           next
         end
         # A dispatch interrupted by a crash is recovered by the same immutable operation key.
-        if attempt.state == "created"
-          attempt.update!(state: "dispatching", dispatched_at: Time.current, next_recovery_at: 1.minute.from_now)
+        if attempt.state == "created" || (%w[dispatching unknown].include?(attempt.state) && attempt.raw_provider_id.blank? &&
+            attempt.dispatched_at && attempt.dispatched_at > 23.hours.ago && (attempt.next_recovery_at.nil? || attempt.next_recovery_at <= Time.current))
+          attempt.update!(state: "dispatching", dispatched_at: attempt.dispatched_at || Time.current, next_recovery_at: 1.minute.from_now)
           dispatch = true
         end
       end
@@ -26,7 +27,11 @@ module Payments
       end
       attempt
     rescue Stripe::StripeError, UnsupportedCapability, Configuration::UnsafeConfiguration => e
-      attempt.with_lock { attempt.update!(state: "unknown", error_classification: e.class.name, next_recovery_at: 1.minute.from_now) }
+      attempt.with_lock do
+        unless attempt.compensation_claimed_at || %w[captured compensated compensation_required reconciliation_required cancelled failed].include?(attempt.state)
+          attempt.update!(state: "unknown", error_classification: e.class.name, next_recovery_at: 1.minute.from_now)
+        end
+      end
       raise
     end
   end

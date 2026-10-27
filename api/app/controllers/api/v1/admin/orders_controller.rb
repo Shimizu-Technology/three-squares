@@ -75,35 +75,10 @@ module Api
       # PATCH/PUT /api/v1/admin/orders/:id
       # Update order (status, tracking, notes)
       def update
-        if @order.update(order_update_params)
-          notification_warnings = []
-
-          # Handle status changes — send notifications via both channels.
-          # Rescue enqueue failures (Redis down) — the status update already
-          # committed, so return success with a warning instead of a 500.
-          if @order.saved_change_to_status?
-            begin
-              sent = send_status_notifications(@order)
-              notification_warnings = sent[:warnings] if sent[:warnings]&.any?
-            rescue StandardError => e
-              Rails.logger.error "❌ Failed to enqueue notifications for order ##{@order.order_number}: #{e.message}"
-              notification_warnings = ["Status updated but notifications failed to enqueue — use Notify button to retry"]
-            end
-
-            # Restore inventory when order is cancelled
-            restore_inventory(@order, current_user) if @order.status == "cancelled"
-          end
-
-          response = {
-            order: detailed_order_json(@order),
-            message: "Order updated successfully"
-          }
-          response[:notification_warnings] = notification_warnings if notification_warnings.any?
-
-          render json: response
-        else
-          render json: { error: @order.errors.full_messages.join(", ") }, status: :unprocessable_entity
-        end
+        @order = Payments::UpdateOrder.call(order: @order, attributes: order_update_params, user: current_user)
+        render json: { order: detailed_order_json(@order), message: "Order updated successfully" }
+      rescue Payments::Error, ActiveRecord::RecordInvalid => error
+        render json: { error: error.message }, status: :unprocessable_entity
       end
 
       # POST /api/v1/admin/orders/:id/notify

@@ -12,6 +12,7 @@ class CreatePaymentFulfillmentCore < ActiveRecord::Migration[8.1]
     add_column :payment_attempts, :compensation_provider_id, :string unless column_exists?(:payment_attempts, :compensation_provider_id)
     add_column :payment_attempts, :compensation_status, :string unless column_exists?(:payment_attempts, :compensation_status)
     add_column :payment_attempts, :compensation_dispatched_at, :datetime unless column_exists?(:payment_attempts, :compensation_dispatched_at)
+    add_column :payment_attempts, :last_queried_at, :datetime unless column_exists?(:payment_attempts, :last_queried_at)
     add_index :payment_attempts, :next_recovery_at, if_not_exists: true
     create_table :inventory_commitments, id: :uuid, if_not_exists: true do |t|
       t.references :order, null: false, foreign_key: true, index: { unique: true }
@@ -27,6 +28,8 @@ class CreatePaymentFulfillmentCore < ActiveRecord::Migration[8.1]
       t.datetime :expires_at, null: false
       t.timestamps
     end
+    add_column :inventory_reservations, :item_quantities, :jsonb, null: false, default: {} unless column_exists?(:inventory_reservations, :item_quantities)
+    add_column :inventory_reservations, :restored_quantities, :jsonb, null: false, default: {} unless column_exists?(:inventory_reservations, :restored_quantities)
     add_index :inventory_reservations, [:order_id, :pool_type, :pool_id], unique: true, name: 'unique_order_inventory_pool', if_not_exists: true
     add_index :inventory_reservations, [:pool_type, :pool_id, :state, :expires_at], name: 'active_inventory_reservations', if_not_exists: true
     add_check_constraint :inventory_reservations, "quantity > 0 AND pool_type IN ('Product', 'ProductVariant') AND state IN ('held', 'committed', 'released')", name: 'valid_inventory_reservation', if_not_exists: true

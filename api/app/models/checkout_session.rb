@@ -16,8 +16,8 @@ class CheckoutSession < ApplicationRecord
     Digest::SHA256.hexdigest(value.to_s)
   end
 
-  def authorized?(user:, capability: nil)
+  def authorized?(user:, capability: nil, recovery: false)
     return user&.id == user_id if user_id
-    capability.present? && expires_at.future? && ActiveSupport::SecurityUtils.secure_compare(guest_capability_digest, self.class.digest(capability))
+    capability.present? && (expires_at.future? || (recovery && order.guest_access_expires_at&.future?)) && ActiveSupport::SecurityUtils.secure_compare(guest_capability_digest, self.class.digest(capability))
   end
 end

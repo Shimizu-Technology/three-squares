@@ -100,6 +100,7 @@ function CheckoutForm() {
   const submitting = useRef(false);
   const creationKey = useRef(crypto.randomUUID());
   const capability = useRef(checkoutCapability());
+  const [resolvedWithoutPayment, setResolvedWithoutPayment] = useState(false);
   const [canRetryCollection, setCanRetryCollection] = useState(false);
   const [pendingPayment, setPendingPayment] = useState(pendingCheckout);
 
@@ -123,6 +124,7 @@ function CheckoutForm() {
         const token = isSignedIn ? await getToken() : null;
         const state = await checkoutApi.confirm(pendingPayment.id, token, pendingPayment.capability);
         if (stopped || await finishCheckout(state)) return;
+        setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
         setCanRetryCollection(state.payment_state === 'collecting' && !!state.collection_config.client_secret);
         setError(`Payment status is being checked for order ${state.order.order_number}. Your order is saved. Keep this page or check your order before paying again.`);
         if (Date.now() - started < 90000) timer = setTimeout(poll, Date.now() - started < 10000 ? 2000 : 10000);
@@ -207,10 +209,10 @@ function CheckoutForm() {
   // Redirect if cart is empty (but wait for cart to load first!)
   useEffect(() => {
     // Only redirect if cart has loaded AND is empty
-    if (!cartLoading && cart !== null && items.length === 0 && !configLoading) {
+    if (!cartLoading && cart !== null && items.length === 0 && !configLoading && !pendingPayment && !pendingCheckout() && !submitting.current) {
       navigate('/products');
     }
-  }, [cartLoading, cart, items.length, navigate, configLoading]);
+  }, [cartLoading, cart, items.length, navigate, configLoading, pendingPayment]);
 
   // Keep delivery method aligned with cart fulfillment capabilities
   useEffect(() => {
@@ -481,12 +483,16 @@ function CheckoutForm() {
           {/* Left Column - Forms */}
           <div className="lg:col-span-2">
             {pendingPayment && <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4" role="status">
-              <p className="font-semibold">Your order is saved. Payment status is being checked.</p>
+              <p className="font-semibold">Your order {pendingPayment.orderNumber || pendingPayment.orderId} is saved{pendingPayment.amountCents !== undefined ? ` for $${(pendingPayment.amountCents / 100).toFixed(2)}` : ''}. Payment status is being checked.</p>
               <button type="button" className="mt-3 underline" onClick={async () => {
                 try {
                   const token = isSignedIn ? await getToken() : null;
                   const state = await checkoutApi.confirm(pendingPayment.id, token, pendingPayment.capability);
-                  if (!(await finishCheckout(state))) setError(`Payment status: ${state.payment_state}. Order ${state.order.order_number} remains saved.`);
+                  if (!(await finishCheckout(state))) {
+                    setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
+                    setCanRetryCollection(state.payment_state === 'collecting' && !!state.collection_config.client_secret);
+                    setError(`Payment status: ${state.payment_state}. Order ${state.order.order_number} remains saved.`);
+                  }
                 } catch { setError('We could not check payment status. Your order remains saved.'); }
               }}>Check payment status</button>
               {canRetryCollection && <button type="button" className="ml-4 mt-3 underline" disabled={loading || !paymentReady} onClick={async () => {
@@ -506,6 +512,21 @@ function CheckoutForm() {
                 } catch (error) { setError(error instanceof Error ? error.message : 'Payment status is being checked.'); }
                 finally { submitting.current = false; setLoading(false); }
               }}>Retry card payment for this saved order</button>}
+              {!resolvedWithoutPayment && <button type="button" className="mt-3 block underline" disabled={loading} onClick={async () => {
+                try {
+                  const token = isSignedIn ? await getToken() : null;
+                  const state = await checkoutApi.cancel(pendingPayment.id, token, pendingPayment.capability);
+                  if (!(await finishCheckout(state))) {
+                    setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
+                    setCanRetryCollection(false);
+                    setError(`Payment status: ${state.payment_state}. Your order remains saved.`);
+                  }
+                } catch { setError('Cancellation is not confirmed. Check the saved payment before starting another.'); }
+              }}>Cancel saved payment</button>}
+              {resolvedWithoutPayment && <button type="button" className="mt-3 block underline" onClick={() => {
+                clearPendingCheckout(); setPendingPayment(null); setResolvedWithoutPayment(false); setCanRetryCollection(false);
+                creationKey.current = crypto.randomUUID(); capability.current = checkoutCapability(); setError(null);
+              }}>Payment closed — review cart and start again</button>}
               <button type="button" className="ml-4 mt-3 underline" onClick={() => navigate(`/orders/${pendingPayment.orderId}`)}>View saved order</button>
             </div>}
             <form onSubmit={handleSubmit} className="space-y-6">

@@ -2,18 +2,27 @@
 
 module Payments
   class ReconcileAttempt
-    def self.call(attempt:)
+    def self.call(attempt:, force: false)
       stored = AttemptLock.call(attempt) do |session, current, _, order|
         AttemptLock.validate!(session, current, order)
         next nil if %w[compensated failed cancelled].include?(current.state)
+        next nil if !force && current.last_queried_at && current.last_queried_at > 2.seconds.ago
         # Reserve the next query slot durably; a worker death is retried by the sweep.
-        current.update!(retry_count: current.retry_count + 1, recovery_count: current.recovery_count + 1,
+        current.update!(last_queried_at: Time.current, retry_count: current.retry_count + 1, recovery_count: current.recovery_count + 1,
           recovery_deadline_at: current.recovery_deadline_at || 24.hours.from_now, next_recovery_at: 1.minute.from_now)
         current
       end
       return unless stored
       return CompensateAttempt.call(attempt: stored) if stored.compensation_claimed_at
-      result = ProviderResolver.for_identity(stored.payment_identity).query(attempt: stored)
+      provider = ProviderResolver.for_identity(stored.payment_identity)
+      result = provider.query(attempt: stored)
+      if result.status == 'unknown' && result.raw_id.blank? && stored.raw_provider_id.blank? &&
+          stored.dispatched_at && stored.dispatched_at > 23.hours.ago && stored.retry_count <= 5
+        # Replay only the original immutable operation inside its safe window.
+        stored.update!(next_recovery_at: Time.current)
+        SetupAttempt.call(attempt: stored)
+        result = provider.query(attempt: stored.reload) if stored.raw_provider_id.present?
+      end
       order = FinalizeOrder.call(attempt: stored, result: result)
       # Fast, local after-commit consumption keeps the browser cart current;
       # the durable sweeper owns retries if the request disappears here.

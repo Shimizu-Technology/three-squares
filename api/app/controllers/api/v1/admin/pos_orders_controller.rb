@@ -155,6 +155,8 @@ module Api
             status: order.status,
             payment_status: order.payment_status,
             payment_environment: order.payment_environment,
+            checkout_session_id: order.checkout_session_id,
+            payment_state: order.payment_attempt_id ? PaymentAttempt.find(order.payment_attempt_id).state : nil,
             inventory_committed: order.inventory_committed_at.present?,
             source: order.source,
             order_type: order.order_type,

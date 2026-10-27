@@ -39,24 +39,26 @@ module Payments
         end
         raise Unavailable, 'Invalid quantity' unless item.quantity.is_a?(Integer) && item.quantity.positive?
         key = [pool.class.name, pool.id]
-        pools[key] ||= [pool, 0]
+        pools[key] ||= [pool, 0, {}]
         pools[key][1] += item.quantity
+        pools[key][2][item.id.to_s] = item.quantity
       end
       pools
     end
 
     def self.reserve!(order, pools, expires_at)
       rows = InventoryReservation.where(order_id: order.id).order(:id).lock.to_a
-      expected = pools.transform_values(&:last)
+      expected = pools.transform_values { |value| value[1] }
       existing = rows.reject { |r| r.state == 'released' }.to_h { |r| [[r.pool_type, r.pool_id], r.quantity] }
       raise Unavailable, 'Reservation contents changed' if existing.any? && existing != expected
-      pools.each do |(type, id), (pool, quantity)|
+      pools.each do |(type, id), (pool, quantity, item_quantities)|
         others = InventoryReservation.where(pool_type: type, pool_id: id, state: 'held').where.not(order_id: order.id).where('expires_at > ?', Time.current).sum(:quantity)
         stock = type == 'Product' ? pool.product_stock_quantity : pool.stock_quantity
         raise Unavailable, 'Insufficient inventory' if stock.to_i - others < quantity
         row = rows.find { |r| r.pool_type == type && r.pool_id == id }
         row ||= InventoryReservation.new(order_id: order.id, pool_type: type, pool_id: id)
-        row.update!(quantity: quantity, state: 'held', expires_at: expires_at)
+        raise Unavailable, 'Reservation item snapshot changed' if row.item_quantities.present? && row.item_quantities != item_quantities
+        row.update!(quantity: quantity, item_quantities: item_quantities, state: 'held', expires_at: expires_at)
       end
       InventoryReservation.where(order_id: order.id).to_a
     end

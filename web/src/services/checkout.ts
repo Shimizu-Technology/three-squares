@@ -15,12 +15,12 @@ export interface CheckoutState {
 }
 
 const STORAGE_KEY = 'tsq-checkout-pending';
-interface PendingCheckout { id: string; capability: string; key: string; orderId: number }
+interface PendingCheckout { id: string; capability: string; key: string; orderId: number; amountCents?: number; orderNumber?: string }
 export function pendingCheckout(): PendingCheckout | null {
   try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null'); } catch { return null; }
 }
 export function saveCheckout(state: CheckoutState, capability: string, key: string) {
-  sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ id: state.id, capability, key, orderId: state.order.id }));
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ id: state.id, capability, key, orderId: state.order.id, amountCents: state.amount_cents, orderNumber: state.order.order_number }));
   if (capability) localStorage.setItem(`tsq-order-capability:${state.order.id}`, capability);
 }
 export function clearPendingCheckout() { sessionStorage.removeItem(STORAGE_KEY); }
@@ -33,6 +33,8 @@ function headers(token: string | null, capability: string, cartSession?: string 
     'X-Checkout-Capability': capability, ...(cartSession ? { 'X-Session-ID': cartSession } : {}), ...(key ? { 'Idempotency-Key': key } : {}) };
 }
 export const checkoutApi = {
+  cancel: async (id: string, token: string | null, capability: string) =>
+    (await api.post<CheckoutState>(`/checkout_sessions/${id}/cancel`, {}, { headers: headers(token, capability) })).data,
   create: async (order: object, token: string | null, capability: string, key: string, cartSession: string | null) =>
     (await api.post<CheckoutState>('/checkout_sessions', { order }, { headers: headers(token, capability, cartSession, key) })).data,
   confirm: async (id: string, token: string | null, capability: string) =>

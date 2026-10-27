@@ -253,6 +253,7 @@ RSpec.describe 'Durable payment fulfillment core' do
     expect(attempt.reload.raw_provider_id).to eq('pi_recovered')
     expect(attempt.state).to eq('collecting')
     expect(attempt.retry_count).to eq(1)
+    attempt.update!(last_queried_at: 3.seconds.ago)
     expect(provider).to receive(:query).and_return(result(attempt))
     Payments::ReconcileAttempt.call(attempt: PaymentAttempt.find(attempt.id))
     expect(order.reload.payment_status).to eq('paid')
@@ -397,4 +398,82 @@ RSpec.describe 'Durable payment fulfillment core' do
     expect(Stripe::Refund).not_to receive(:create)
     expect { ProcessPaymentReversalJob.new.perform('pi_unbound') }.to raise_error(Payments::BindingError)
   end
+  it 'cancels an uncommitted intent without increasing stock and compensates a late capture' do
+    attempt, order, product = fixture
+    Payments::ReserveInventory.call(order: order, expires_at: 1.hour.from_now)
+    Payments::UpdateOrder.call(order: order, attributes: { status: 'cancelled' }, user: nil)
+    expect(product.reload.product_stock_quantity).to eq(5)
+    Payments::FinalizeOrder.call(attempt: attempt, result: result(attempt))
+    expect(order.reload.status).to eq('cancelled')
+    expect(order.inventory_commitment_id).to be_nil
+    expect(attempt.reload.compensation_claimed_at).to be_present
+    expect(product.reload.product_stock_quantity).to eq(5)
+  end
+
+  it 'serializes cancellation against finalization without stock inflation or resurrection' do
+    attempt, order, product = fixture
+    Payments::ReserveInventory.call(order: order, expires_at: 1.hour.from_now)
+    race(-> { Payments::FinalizeOrder.call(attempt: attempt, result: result(attempt)) },
+      -> { Payments::UpdateOrder.call(order: order, attributes: { status: 'cancelled' }, user: nil) })
+    expect(order.reload.status).to eq('cancelled')
+    expect(product.reload.product_stock_quantity).to eq(5)
+    expect { Payments::UpdateOrder.call(order: order, attributes: { status: 'pending' }, user: nil) }.to raise_error(Payments::Conflict)
+  end
+
+  it 'shares per-item restoration across repeated decisions using the original committed stock pool' do
+    attempt, order, product = fixture(quantity: 2)
+    Payments::FinalizeOrder.call(attempt: attempt, result: result(attempt))
+    product.update_column(:inventory_level, 'variant')
+    item = order.order_items.first
+    Payments::RestoreInventory.call(order: order, item_ids: [item.id])
+    Payments::RestoreInventory.call(order: order)
+    expect(product.reload.product_stock_quantity).to eq(5)
+    expect(InventoryReservation.find_by!(order_id: order.id).restored_quantities).to eq(item.id.to_s => 2)
+  end
+
+  it 'does not regress compensation when collection configuration recovery fails' do
+    attempt, = fixture
+    provider = double('provider')
+    allow(Payments::ProviderResolver).to receive(:for_identity).and_return(provider)
+    allow(provider).to receive(:collection) do
+      attempt.update!(state: 'compensated')
+      raise Stripe::APIConnectionError, 'fixture interrupted response'
+    end
+    expect { Payments::SetupAttempt.call(attempt: attempt) }.to raise_error(Stripe::APIConnectionError)
+    expect(attempt.reload.state).to eq('compensated')
+  end
+
+  it 'retries a pre-send setup failure only with its original operation and within the idempotency window' do
+    attempt, = fixture(raw_id: nil)
+    key = attempt.operation_key
+    provider = double('provider')
+    allow(Payments::ProviderResolver).to receive(:for_identity).and_return(provider)
+    allow(provider).to receive(:setup).and_raise(Stripe::APIConnectionError, 'fixture before send')
+    expect { Payments::SetupAttempt.call(attempt: attempt) }.to raise_error(Stripe::APIConnectionError)
+    attempt.update!(next_recovery_at: 1.second.ago)
+    allow(provider).to receive(:setup).and_return({ raw_id: 'pi_retry_same_operation', flow: 'stripe_embedded', client_secret: 'fixture' })
+    Payments::SetupAttempt.call(attempt: attempt)
+    expect(attempt.reload.operation_key).to eq(key)
+    expect(attempt.state).to eq('collecting')
+    expect(provider).to have_received(:setup).twice
+  end
+
+  it 'rejects recovered nonproduction attempts in production before provider dispatch' do
+    attempt, order = fixture
+    allow(Payments::Configuration).to receive(:production?).and_return(true)
+    allow(Payments::Configuration).to receive(:validate_environment!).and_return(true)
+    expect(Payments::ProviderResolver).not_to receive(:for_identity)
+    expect { Payments::ReconcileAttempt.call(attempt: attempt) }.to raise_error(Payments::Configuration::UnsafeConfiguration)
+    expect(order.reload.payment_status).to eq('pending')
+    expect(InventoryCommitment.count).to eq(0)
+  end
+
+  it 'spaces repeated request queries without losing a later capture' do
+    attempt, = fixture
+    provider = double('provider', query: result(attempt, status: 'unknown', approved_cents: 0, captured_cents: 0))
+    allow(Payments::ProviderResolver).to receive(:for_identity).and_return(provider)
+    2.times { Payments::ReconcileAttempt.call(attempt: attempt) }
+    expect(provider).to have_received(:query).once
+  end
+
 end

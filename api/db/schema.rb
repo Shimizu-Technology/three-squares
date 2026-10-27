@@ -449,10 +449,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
   create_table "inventory_reservations", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "expires_at", null: false
+    t.jsonb "item_quantities", default: {}, null: false
     t.bigint "order_id", null: false
     t.bigint "pool_id", null: false
     t.string "pool_type", null: false
     t.integer "quantity", null: false
+    t.jsonb "restored_quantities", default: {}, null: false
     t.string "state", default: "held", null: false
     t.datetime "updated_at", null: false
     t.index ["order_id", "pool_type", "pool_id"], name: "unique_order_inventory_pool", unique: true
@@ -618,6 +620,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
     t.string "error_classification"
     t.string "hosted_url"
     t.string "last_error"
+    t.datetime "last_queried_at"
     t.datetime "next_recovery_at"
     t.string "operation", default: "sale", null: false
     t.uuid "operation_key", default: -> { "gen_random_uuid()" }, null: false

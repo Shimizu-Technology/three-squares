@@ -61,6 +61,7 @@ module Payments
           # Roll back any stock mutations on eligibility/stock failure while retaining payment evidence.
           Order.transaction(requires_new: true) do
             Snapshot.validate!(session: session, attempt: stored, order: order)
+            raise FulfillmentError, 'Order was cancelled' if order.status == 'cancelled'
             Eligibility.validate_order!(order)
             commitment = ReserveInventory.commit!(order: order, snapshot_digest: session.snapshot_digest)
             charge.update!(order_id: order.id, state: 'captured')

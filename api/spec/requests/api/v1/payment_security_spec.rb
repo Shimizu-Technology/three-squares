@@ -101,6 +101,17 @@ RSpec.describe 'Payment ownership and recovery', type: :request do
     expect(response).to have_http_status(:not_found)
   end
 
+  it 'allows capability-bound status recovery after collection expiry without exposing collection credentials' do
+    state = start_checkout
+    session = CheckoutSession.find(state['id'])
+    session.update!(expires_at: 1.minute.ago)
+    get "/api/v1/checkout_sessions/#{session.id}", headers: payment_headers(cart_id)
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body['collection_config']).to eq({})
+    get "/api/v1/checkout_sessions/#{session.id}", headers: { 'X-Checkout-Capability' => SecureRandom.hex(32) }
+    expect(response).to have_http_status(:not_found)
+  end
+
   it 'blocks disabled storefronts and unpublished/unavailable variants at cart/session boundaries' do
     product.update!(published: false)
     post '/api/v1/cart/items', params: { product_variant_id: variant.id, quantity: 1, location_id: location.id }, headers: { 'X-Session-ID' => cart_id }
@@ -134,6 +145,9 @@ RSpec.describe 'Payment ingress controls', type: :request do
     expect(response).to have_http_status(:too_many_requests)
     10.times { post '/api/v1/checkout_sessions', params: { order: { customer_email: 'fixture@example.test' } } }
     post '/api/v1/checkout_sessions', params: { order: { customer_email: 'fixture@example.test' } }
+    expect(response).to have_http_status(:too_many_requests)
+    60.times { post '/api/v1/checkout_sessions/nonexistent/confirm' }
+    post '/api/v1/checkout_sessions/nonexistent/cancel'
     expect(response).to have_http_status(:too_many_requests)
   ensure
     Rack::Attack.cache.store = previous

@@ -46,7 +46,7 @@ module Api
 
       def authorized_session!
         session = CheckoutSession.find(params[:id])
-        raise ActiveRecord::RecordNotFound unless session.authorized?(user: current_user, capability: capability)
+        raise ActiveRecord::RecordNotFound unless session.authorized?(user: current_user, capability: capability, recovery: true)
         session
       end
 
@@ -78,7 +78,7 @@ module Api
         order = session.order.reload
         { id: session.id, attempt_id: attempt.id, state: session.state, payment_state: attempt.state, amount_cents: session.amount_cents, currency: session.currency,
           provider: session.payment_identity.provider, environment: session.payment_identity.environment, simulated: order.simulated, expires_at: session.expires_at.iso8601,
-          flow: attempt.collection_config["flow"], collection_config: attempt.collection_config.except("flow"),
+          flow: attempt.collection_config["flow"], collection_config: session.expires_at.future? ? attempt.collection_config.except("flow") : {},
           order: { id: order.id, order_number: order.order_number, payment_status: order.payment_status, inventory_committed: order.inventory_committed_at.present? } }
       end
 
