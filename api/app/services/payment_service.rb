@@ -47,25 +47,20 @@ class PaymentService
     { success: false, error: "An unexpected error occurred. Please try again." }
   end
 
-  # Process a refund (real or simulated based on test_mode)
+  # Request an idempotent refund against the original payment identity.
   # @param order [Order] - The order to refund
   # @param amount_cents [Integer] - Amount to refund in cents
   # @param reason [String] - Reason for refund
   # @param admin_user [User] - Admin processing the refund
-  # @param test_mode [Boolean] - Whether to simulate refund
+  # @param test_mode [Boolean] - Compatibility argument; ignored for routing
+  # @param request_key [String] - Caller idempotency key (required)
   # @return [Hash] - { success: boolean, refund: Refund, error: string }
-  def self.refund_payment(order:, amount_cents:, reason: nil, admin_user: nil, test_mode: false)
-    if test_mode
-      process_test_refund(order, amount_cents, reason, admin_user)
-    else
-      process_real_refund(order, amount_cents, reason, admin_user)
-    end
-  rescue Stripe::StripeError => e
-    Rails.logger.error "Stripe Refund Error: #{e.message}"
-    { success: false, error: e.message }
-  rescue StandardError => e
-    Rails.logger.error "Refund Error: #{e.class} - #{e.message}"
-    { success: false, error: "An unexpected error occurred during refund." }
+  def self.refund_payment(order:, amount_cents:, reason: nil, admin_user: nil, test_mode: false,
+    request_key: nil, metadata: {}, restoration_request: {})
+    # test_mode is retained for public signature compatibility, never routing.
+    Payments::RefundPayment.call(order: order, amount_cents: amount_cents, reason: reason,
+      admin_user: admin_user, request_key: request_key, metadata: metadata,
+      restoration_request: restoration_request)
   end
 
   private

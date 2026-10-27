@@ -157,88 +157,32 @@ module Api
       # POST /api/v1/admin/orders/:id/refund
       # Process a refund for an order
       def refund
-        amount_cents = params[:amount_cents].to_i
-        reason = params[:reason]
-        # Optional: restock specific items or all items
-        # - restock_items: true = restock all order items
-        # - restock_items: [item_id, item_id, ...] = restock specific items
-        restock_items = params[:restock_items]
-
-        # Validate amount
-        if amount_cents <= 0
-          return render json: { error: "amount_cents must be greater than 0" }, status: :unprocessable_entity
+        request_key = request.headers["Idempotency-Key"]
+        if request_key.blank?
+          return render json: { error: "Idempotency-Key header is required" }, status: :bad_request
         end
-
-        # Validate the order can be refunded
-        unless @order.can_refund?
-          return render json: { error: "This order cannot be refunded" }, status: :unprocessable_entity
+        raw_amount = params[:amount_cents]
+        unless raw_amount.is_a?(Integer) || (raw_amount.is_a?(String) && raw_amount.match?(/\A[1-9]\d*\z/))
+          return render json: { error: "amount_cents must be a positive integer" }, status: :unprocessable_entity
         end
-
-        # Validate amount doesn't exceed refundable amount
-        if amount_cents > @order.refundable_amount_cents
-          return render json: {
-            error: "Refund amount exceeds refundable amount (max: #{@order.refundable_amount_cents} cents)"
-          }, status: :unprocessable_entity
-        end
-
-        # Determine test mode
-        test_mode = ENV["APP_MODE"] == "test"
-
-        # Process the refund
-        result = PaymentService.refund_payment(
-          order: @order,
-          amount_cents: amount_cents,
-          reason: reason,
-          admin_user: current_user,
-          test_mode: test_mode
-        )
-
-        if result[:success]
-          refund = result[:refund]
-          # Update payment status if fully refunded
-          if @order.reload.fully_refunded?
-            @order.update!(payment_status: "refunded")
-          end
-
-          # Restore inventory based on restock_items parameter
-          restoration = { restored: false, status: "not_requested" }
-          if @order.fully_refunded?
-            # Always restore inventory for full refunds
-            restoration = restore_inventory_for_refund(@order, current_user)
-          elsif restock_items.present?
-            # Partial refund with explicit restock request
-            if restock_items == true || restock_items == "true" || restock_items == "all"
-              # Restock all items
-              restoration = restore_inventory_for_refund(@order, current_user)
-            elsif restock_items.is_a?(Array)
-              # Restock specific items by order_item_id
-              restoration = restore_inventory_for_items(@order, restock_items, current_user)
-            end
-          end
-
-          refund.update!(metadata: refund.metadata.merge('inventory_restoration' => restoration.stringify_keys))
-          @order.update!(metadata: @order.metadata.merge('inventory_restoration' => restoration.stringify_keys)) if restoration[:status] != 'not_requested'
-          # Send refund notifications asynchronously (email + SMS)
-          # Avoids blocking the refund response on slow Resend/ClickSend API calls
-          SendRefundNotificationJob.perform_later(refund.id)
-
-          render json: {
-            message: restoration[:status] == "manual_review_required" ? "Refund processed. Inventory restoration requires manual review; no stock was restored." : "Refund processed successfully",
-            inventory_restored: restoration[:restored],
-            inventory_restoration_required: restoration[:status] == "manual_review_required",
-            inventory_restoration_status: restoration[:status],
-            refund: refund_json(refund),
-            order: detailed_order_json(@order.reload)
-          }
-        else
-          render json: {
-            error: "Refund failed",
-            details: result[:error] || "An error occurred processing the refund"
-          }, status: :unprocessable_entity
-        end
-      rescue StandardError => e
-        Rails.logger.error "Refund error for order ##{@order.order_number}: #{e.message}"
-        render json: { error: "Refund failed: #{e.message}" }, status: :internal_server_error
+        restoration_request = { restock_items: params[:restock_items] }.compact
+        metadata = params.permit(metadata: {})[:metadata]&.to_h || {}
+        result = PaymentService.refund_payment(order: @order, amount_cents: raw_amount.to_i,
+          reason: params[:reason], admin_user: current_user, request_key: request_key,
+          metadata: metadata, restoration_request: restoration_request)
+        refund = result[:refund]
+        operation = refund&.refund_operation
+        restoration_required = operation.present? && operation.restoration_request["restock_items"].present?
+        render json: {
+          message: result[:success] ? "Refund confirmed" : "Refund #{result[:status]}",
+          error: result[:error], status: result[:status],
+          refund: refund && refund_json(refund), operation_uuid: operation&.id,
+          inventory_restored: false,
+          restoration_requested: operation&.restoration_request || restoration_request,
+          inventory_restoration_required: restoration_required,
+          restoration_status: restoration_required ? "manual_review_required" : "not_requested",
+          order: detailed_order_json(@order.reload)
+        }, status: result[:http_status]
       end
 
 
