@@ -111,7 +111,7 @@ function CheckoutForm() {
   useEffect(() => {
     if (draftLoaded && !checkoutCompleted.current) sessionStorage.setItem('tsq-checkout-draft', JSON.stringify({ expires: Date.now() + 2 * 60 * 60 * 1000, contact: contact.values, orderNotes, instructions: specialInstructions, shippingAddress, deliveryMethod }));
     setReviewed(false);
-  }, [draftLoaded, contact.values, orderNotes, specialInstructions, shippingAddress, deliveryMethod, pickupLocationId, subtotalCents]);
+  }, [draftLoaded, contact.values, orderNotes, specialInstructions, shippingAddress, deliveryMethod, pickupLocationId, subtotalCents, shippingMethod]);
 
   // Loading/error states
   const [loading, setLoading] = useState(false);
@@ -447,7 +447,7 @@ function CheckoutForm() {
         item_special_instructions: Object.keys(itemInstructions).length ? itemInstructions : undefined,
       };
       const state = await checkoutApi.create(orderData, token, capability.current, creationKey.current, sessionId);
-      saveCheckout(state, capability.current, creationKey.current);
+      saveCheckout(state, capability.current, creationKey.current, !token);
       setSavedClientConfig(checkoutClientConfiguration(state));
       if (!['stripe_embedded', 'simulated_fields'].includes(state.flow || '') || !state.collection_config.client_secret) {
         setPendingPayment(pendingCheckout());

@@ -81,6 +81,20 @@ RSpec.describe Payments::Simulation::Provider do
     expect(SimulatedPaymentRecord.where(kind:'reversal')).to be_empty
   end
 
+  it 'does not compensate a fulfilled payment when later fraud metadata arrives' do
+    result = collect('approve')
+    Payments::FinalizeOrder.call(attempt: attempt, result: result)
+    Payments::FinalizeOrder.call(attempt: attempt, result: result.with(metadata: { compensation_required: true }))
+    expect(attempt.reload.compensation_claimed_at).to be_nil
+    expect(attempt.state).to eq('captured')
+    expect(order.reload.payment_status).to eq('paid')
+    expect(session.reload.state).to eq('fulfilled')
+    expect(product.reload.product_stock_quantity).to eq(4)
+    expect(InventoryCommitment.where(order: order).count).to eq(1)
+    expect(PaymentOutbox.where(kind: 'compensate')).to be_empty
+    expect(SimulatedPaymentRecord.where(kind: 'reversal')).to be_empty
+  end
+
   it 'compensates a late capture after confirmed cancellation and deduplicates replayed events' do
     expect { collect('cancel_race') }.to raise_error(Payments::Error)
     Payments::CancelCheckout.call(attempt: attempt)

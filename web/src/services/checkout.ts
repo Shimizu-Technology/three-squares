@@ -1,4 +1,5 @@
 import api from './api';
+import { rememberOrderCapability } from '../lib/guestOrderRecovery';
 
 export interface CheckoutState {
   id: string;
@@ -24,9 +25,9 @@ interface PendingCheckout { id: string; capability: string; key: string; orderId
 export function pendingCheckout(): PendingCheckout | null {
   try { return JSON.parse(sessionStorage.getItem(STORAGE_KEY) || 'null'); } catch { return null; }
 }
-export function saveCheckout(state: CheckoutState, capability: string, key: string) {
+export function saveCheckout(state: CheckoutState, capability: string, key: string, guest: boolean) {
   sessionStorage.setItem(STORAGE_KEY, JSON.stringify({ id: state.id, capability, key, orderId: state.order.id, amountCents: state.amount_cents, orderNumber: state.order.order_number }));
-  if (capability) localStorage.setItem(`tsq-order-capability:${state.order.id}`, capability);
+  rememberOrderCapability(state.order.id, capability, guest);
 }
 export function clearPendingCheckout() { sessionStorage.removeItem(STORAGE_KEY); }
 export function checkoutCapability(): string {

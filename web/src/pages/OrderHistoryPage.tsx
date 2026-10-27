@@ -5,6 +5,7 @@ import { useAuth } from '@clerk/clerk-react';
 import axios from 'axios';
 
 import { API_BASE_URL } from '../config';
+import { savedGuestOrderIds } from '../lib/guestOrderRecovery';
 
 interface OrderItem {
   product_name: string;
@@ -123,7 +124,7 @@ export default function OrderHistoryPage() {
             </p>
             <SignInButton mode="modal"><button className="min-h-11 rounded-lg bg-tsPrimary px-5 py-3 text-white font-semibold">Sign in for order history</button></SignInButton>
             <div className="mt-6 text-left"><h2 className="font-semibold">Guest orders saved on this device</h2><p className="mt-2 text-sm text-warm-600">These private links work on this browser until access expires. Keep your order number for support.</p>
-            <div className="mt-3 flex flex-col gap-2">{Object.keys(localStorage).filter(key => /^tsq-order-capability:\d+$/.test(key)).map(key => key.split(':')[1]).map(id => <Link key={id} className="min-h-11 underline p-2" to={`/orders/${id}`}>View saved order #{id}</Link>)}</div>
+            <div className="mt-3 flex flex-col gap-2">{savedGuestOrderIds().map(id => <Link key={id} className="min-h-11 underline p-2" to={`/orders/${id}`}>View saved order #{id}</Link>)}</div>
             <Link className="mt-4 inline-block min-h-11 underline" to="/checkout">Check an unfinished payment</Link></div>
           </div>
         </div>

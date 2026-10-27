@@ -52,10 +52,6 @@ module Payments
           end
           next order
         end
-        if result.metadata[:compensation_required]
-          mark_compensation!(session, stored, 'fraud_policy')
-          next order
-        end
         if collection_closed
           mark_compensation!(session, stored, 'capture_after_collection_closed')
           next order
@@ -64,6 +60,10 @@ module Payments
           order.update!(inventory_committed_at: commitment.created_at, inventory_commitment_id: commitment.id)
           session.update!(state: 'fulfilled', consumed_at: session.consumed_at || Time.current)
           record_effects!(order, session)
+          next order
+        end
+        if result.metadata[:compensation_required]
+          mark_compensation!(session, stored, 'fraud_policy')
           next order
         end
         unless result.captured? && result.approved_cents == stored.requested_cents
