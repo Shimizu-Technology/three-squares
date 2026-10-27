@@ -5,7 +5,7 @@ module Api
     class CheckoutSessionsController < ApplicationController
       include Authenticatable
       skip_before_action :authenticate_request
-      before_action :authenticate_optional
+      before_action :authenticate_checkout_owner
       before_action { Payments::Configuration.validate_database! }
       rescue_from Payments::Error, Payments::FulfillmentError, Payments::ReserveInventory::Unavailable, CheckoutPricingService::PricingError, ActiveRecord::RecordInvalid, with: :invalid
       rescue_from Payments::Configuration::UnsafeConfiguration, Stripe::StripeError, with: :unavailable
@@ -16,7 +16,13 @@ module Api
         session = Payments::CreateCheckout.call(user: current_user, capability: capability, idempotency_key: request.headers["Idempotency-Key"],
           cart_items: cart_items, attributes: checkout_params.to_h)
         attempt = session.payment_attempts.order(:created_at).last
-        Payments::SetupAttempt.call(attempt: attempt)
+        begin
+          Payments::SetupAttempt.call(attempt: attempt)
+        rescue Payments::UnsupportedCapability, Payments::Configuration::UnsafeConfiguration, Payments::Conflict, Stripe::StripeError
+          # Return the durable intent even when setup is unavailable/unknown,
+          # so reload recovery retains its owner and idempotency key.
+          return render json: session_json(session, attempt.reload), status: :accepted
+        end
         render json: session_json(session, attempt), status: :created
       end
 
@@ -31,7 +37,7 @@ module Api
         # Client references/hints never select which charge is queried or consumed.
         Payments::ReconcileAttempt.call(attempt: attempt)
         attempt.reload
-        Payments::SetupAttempt.call(attempt: attempt) if attempt.state == "collecting" && attempt.raw_provider_id.present? && attempt.collection_config.blank?
+        Payments::SetupAttempt.call(attempt: attempt) if attempt.state == "collecting" && (attempt.raw_provider_id.present? || attempt.setup_id.present?) && attempt.collection_config.blank?
         render json: session_json(session.reload, attempt.reload), status: attempt.order.reload.payment_status == "paid" ? :ok : :accepted
       end
 
@@ -64,6 +70,12 @@ module Api
       end
 
       private
+
+      def authenticate_checkout_owner
+        # A supplied but invalid identity cannot silently create a guest setup
+        # under a different idempotency namespace on a later replay.
+        authenticate_request if request.headers['Authorization'].present?
+      end
 
       def authorized_session!
         session = CheckoutSession.find(params[:id])
@@ -104,8 +116,18 @@ module Api
         } : { 'payment_identity_id' => identity.id, 'payment_environment' => identity.environment }
         { id: session.id, attempt_id: attempt.id, state: session.state, payment_state: attempt.state, amount_cents: session.amount_cents, currency: session.currency,
           payment_identity_id: identity.id, provider: session.payment_identity.provider, environment: session.payment_identity.environment, simulated: order.simulated, expires_at: session.expires_at.iso8601,
-          flow: attempt.collection_config["flow"], collection_config: session.expires_at.future? && attempt.state == "collecting" ? attempt.collection_config.except("flow").merge(client_config) : {},
+          flow: attempt.collection_config["flow"], collection_config: collection_active?(session, attempt) ? attempt.collection_config.except("flow").merge(client_config) : {},
           order: { id: order.id, order_number: order.order_number, payment_status: order.payment_status, inventory_committed: order.inventory_committed_at.present? } }
+      end
+
+      def collection_active?(session, attempt)
+        return false unless session.expires_at.future?
+        return attempt.state == "collecting" unless attempt.collection_config["flow"] == "worldpay_hosted_page"
+        return false unless %w[collecting unknown].include?(attempt.state) && attempt.approved_cents.zero? && attempt.captured_cents.zero? &&
+          !attempt.compensation_claimed_at && !attempt.provider_metadata['worldpay_collection_blocked'] && attempt.last_error != 'Payments::BindingError'
+        # Expiry hides collection; it never proves cancellation or permits a
+        # replacement setup. Published legacy setup lifetime: ten minutes.
+        attempt.dispatched_at.present? && attempt.dispatched_at > 10.minutes.ago
       end
 
       def not_found(*)
@@ -117,7 +139,7 @@ module Api
       end
 
       def invalid(error)
-        render json: { error: error.message }, status: :unprocessable_entity
+        render json: { error: error.message, checkout_rejected_before_intent: error.is_a?(Payments::CheckoutRejected) }, status: :unprocessable_entity
       end
 
       def unavailable(*)

@@ -12,12 +12,12 @@ export interface CheckoutState {
   provider: 'stripe' | 'worldpay';
   environment: 'simulated' | 'sandbox' | 'production';
   flow: 'stripe_embedded' | 'worldpay_hosted_fields' | 'worldpay_hosted_page' | 'simulated_fields' | null;
-  collection_config: { client_secret?: string; payment_environment?: string; payment_identity_id?: string; stripe_account_id?: string; stripe_publishable_key?: string };
+  collection_config: { client_secret?: string; hosted_url?: string; payment_environment?: string; payment_identity_id?: string; stripe_account_id?: string; stripe_publishable_key?: string };
   order: { id: number; order_number: string; payment_status: string; inventory_committed: boolean };
 }
 
 export function checkoutClientConfiguration(state: CheckoutState) {
-  return { ...state.collection_config, payment_identity_id: state.payment_identity_id || state.collection_config.payment_identity_id, payment_environment: state.environment, payment_processor: state.provider };
+  return { ...state.collection_config, payment_identity_id: state.payment_identity_id || state.collection_config.payment_identity_id, payment_environment: state.environment, payment_processor: state.provider, payment_presentation: state.flow };
 }
 
 const STORAGE_KEY = 'tsq-checkout-pending';

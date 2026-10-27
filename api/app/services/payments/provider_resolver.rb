@@ -17,6 +17,7 @@ module Payments
       return Simulation::Provider.new(identity) if identity.environment == "simulated"
       case identity.provider
       when "stripe" then StripeProvider.new(identity)
+      when "worldpay" then WorldpayProvider.new(identity)
       else raise UnsupportedCapability, "Worldpay collection is not installed yet"
       end
     end

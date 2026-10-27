@@ -6,6 +6,8 @@ import { configApi, locationsApi, shippingApi, formatPrice } from '../services/a
 import { checkoutApi, checkoutClientConfiguration, checkoutCapability, pendingCheckout, saveCheckout, clearPendingCheckout } from '../services/checkout';
 import { authGet } from '../services/authApi';
 import { checkoutContactReducer, emptyCheckoutContact } from '../lib/checkoutContact';
+import { hostedPageUrl, collectionAvailable } from '../lib/hostedPage';
+import { readPendingCreation, savePendingCreation, clearPendingCreation, creationRejected } from '../lib/checkoutCreation';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { CardPaymentHandle } from '../components/payment/PaymentForm';
 import PaymentForm, { type CollectionConfiguration } from '../components/payment/PaymentCollectionForm';
@@ -132,7 +134,39 @@ function CheckoutForm() {
   const capability = useRef(checkoutCapability());
   const [resolvedWithoutPayment, setResolvedWithoutPayment] = useState(false);
   const [canRetryCollection, setCanRetryCollection] = useState(false);
+  const [savedAmountReviewed, setSavedAmountReviewed] = useState(false);
   const [pendingPayment, setPendingPayment] = useState(pendingCheckout);
+  const [creationPending, setCreationPending] = useState(() => !!readPendingCreation());
+  const [creationRetry, setCreationRetry] = useState(0);
+
+  useEffect(() => {
+    if (!creationPending || !authLoaded) return;
+    const saved = readPendingCreation();
+    if (!saved) { setCreationPending(false); return; }
+    if (saved.owner !== (userId || 'guest')) {
+      setError('Sign in with the account that started this checkout to recover its saved payment.');
+      return;
+    }
+    let stopped = false;
+    void (async () => {
+      try {
+        const token = isSignedIn ? await getToken() : null;
+        if (isSignedIn && !token) throw new Error('Sign in again to recover this checkout.');
+        const state = await checkoutApi.create(saved.order, token, saved.capability, saved.key, saved.cartSession);
+        if (stopped) return;
+        saveCheckout(state, saved.capability, saved.key, saved.owner === 'guest');
+        clearPendingCreation(); setCreationPending(false);
+        setSavedClientConfig(checkoutClientConfiguration(state)); setPendingPayment(pendingCheckout());
+      } catch (error) {
+        if (!stopped && creationRejected(error)) {
+          clearPendingCreation(); setCreationPending(false); setReviewed(false);
+          creationKey.current = crypto.randomUUID(); capability.current = checkoutCapability();
+          setError('The checkout was not created. Review your cart and availability before paying.');
+        } else if (!stopped) setError('We could not recover the checkout response yet. Check again before starting another payment.');
+      }
+    })();
+    return () => { stopped = true; };
+  }, [creationPending, creationRetry, authLoaded, userId, isSignedIn, getToken]);
 
   const finishCheckout = useCallback(async (state: Awaited<ReturnType<typeof checkoutApi.show>>) => {
     if (state.order.payment_status === 'paid' && state.order.inventory_committed) {
@@ -158,7 +192,7 @@ function CheckoutForm() {
         if (stopped || await finishCheckout(state)) return;
         setSavedClientConfig(checkoutClientConfiguration(state));
         setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
-        setCanRetryCollection(state.payment_state === 'collecting' && !!state.collection_config.client_secret);
+        setCanRetryCollection((state.payment_state === 'collecting' && !!state.collection_config.client_secret) || !!hostedPageUrl(state));
         setError(['failed', 'cancelled', 'compensated'].includes(state.payment_state) ? `Payment closed for order ${state.order.order_number}. No payment is due on this saved attempt. Review your cart before starting again.` : `Payment status is being checked for order ${state.order.order_number}. Your order is saved. Keep this page or check your order before paying again.`);
         if (Date.now() - started < 90000) timer = setTimeout(poll, Date.now() - started < 10000 ? 2000 : 10000);
       } catch {
@@ -363,7 +397,7 @@ function CheckoutForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitting.current || pendingPayment || pricePending || pricingError || !reviewed) return;
+    if (submitting.current || pendingPayment || creationPending || pricePending || pricingError || !reviewed) return;
     submitting.current = true;
     setError(null);
     setValidationIssues(null);
@@ -385,6 +419,7 @@ function CheckoutForm() {
       let token: string | null = null;
       if (isSignedIn && authLoaded) {
         token = await getToken();
+        if (!token) throw new Error('Sign in again before starting checkout.');
       }
 
       // Build shipping data
@@ -446,9 +481,20 @@ function CheckoutForm() {
         notes: orderNotes.trim() || undefined,
         item_special_instructions: Object.keys(itemInstructions).length ? itemInstructions : undefined,
       };
+      savePendingCreation({ order: orderData, key: creationKey.current, capability: capability.current, cartSession: sessionId, owner: userId || 'guest' });
       const state = await checkoutApi.create(orderData, token, capability.current, creationKey.current, sessionId);
       saveCheckout(state, capability.current, creationKey.current, !token);
+      clearPendingCreation();
       setSavedClientConfig(checkoutClientConfiguration(state));
+      if (state.amount_cents !== subtotalCents + (deliveryMethod === 'pickup' ? 0 : (shippingMethod?.rate_cents || 0))) {
+        setPendingPayment(pendingCheckout());
+        throw new Error('The saved order total changed. Review its amount before continuing payment.');
+      }
+      const hostedUrl = hostedPageUrl(state);
+      if (hostedUrl) {
+        window.location.assign(hostedUrl);
+        return;
+      }
       if (!['stripe_embedded', 'simulated_fields'].includes(state.flow || '') || !state.collection_config.client_secret) {
         setPendingPayment(pendingCheckout());
         throw new Error('Your order is saved. Payment collection is being prepared; check its status before starting again.');
@@ -464,6 +510,13 @@ function CheckoutForm() {
       if (saved) setPendingPayment(saved);
       console.error('Checkout error:', err);
       const axiosErr = err as { response?: { data?: { error?: string; issues?: Array<{ message: string }> } } };
+      // A definite validation rejection has no saved financial intent. Network
+      // loss and server failures retain the original key across back/reload.
+      if (creationRejected(err)) {
+        clearPendingCreation(); setReviewed(false);
+        creationKey.current = crypto.randomUUID(); capability.current = checkoutCapability();
+      }
+      else if (!saved && readPendingCreation()) setCreationPending(true);
       if (axiosErr.response?.data?.issues && axiosErr.response.data.issues.length > 0) {
         const issues = axiosErr.response.data.issues;
         const errorMessages = issues.map((issue) => `• ${issue.message}`).join('\n');
@@ -481,6 +534,13 @@ function CheckoutForm() {
   // Calculate total
   const shippingCostCents = deliveryMethod === 'pickup' ? 0 : (shippingMethod?.rate_cents || 0);
   const totalCents = subtotalCents + shippingCostCents;
+
+  if (creationPending && !pendingPayment) return <div className="mx-auto max-w-xl p-6" role="status">
+    <h1 className="text-xl font-semibold">Checking your saved checkout</h1>
+    <p className="mt-3">Your cart and payment request are saved on this device. Check the original request before starting another payment.</p>
+    {error && <p className="mt-3" role="alert">{error}</p>}
+    <button type="button" className="mt-4 min-h-11 underline" onClick={() => setCreationRetry(value => value + 1)}>Check saved checkout</button>
+  </div>;
 
   if (configLoading) {
     return (
@@ -534,7 +594,8 @@ function CheckoutForm() {
                   const state = await checkoutApi.confirm(pendingPayment.id, token, pendingPayment.capability);
                   if (!(await finishCheckout(state))) {
                     setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
-                    setCanRetryCollection(state.payment_state === 'collecting' && !!state.collection_config.client_secret);
+                    setSavedClientConfig(checkoutClientConfiguration(state));
+                    setCanRetryCollection((state.payment_state === 'collecting' && !!state.collection_config.client_secret) || !!hostedPageUrl(state));
                     setError(`Payment status: ${state.payment_state}. Order ${state.order.order_number} remains saved.`);
                   }
                 } catch { setError('We could not check payment status. Your order remains saved.'); }
@@ -545,15 +606,19 @@ function CheckoutForm() {
                   if (!(await finishCheckout(state))) { setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state)); setError(`Simulation payment status: ${state.payment_state}`); }
                 } catch { setError('Simulation time could not advance. Your payment remains saved.'); }
               }}>Advance simulated time by 61 seconds</button>}
-              {canRetryCollection && <button type="button" className="ml-4 mt-3 underline" disabled={loading || !paymentReady} onClick={async () => {
-                if (!paymentForm.current || submitting.current) return;
+              {canRetryCollection && <label className="mt-3 flex min-h-11 items-center gap-3"><input type="checkbox" checked={savedAmountReviewed} onChange={event => setSavedAmountReviewed(event.target.checked)} />I have reviewed the saved order total{pendingPayment.amountCents !== undefined ? ` of $${(pendingPayment.amountCents / 100).toFixed(2)}` : ''}.</label>}
+              {canRetryCollection && <button type="button" className="ml-4 mt-3 underline" disabled={loading || !paymentReady || !savedAmountReviewed} onClick={async () => {
+                if (submitting.current) return;
                 submitting.current = true;
                 setLoading(true);
                 try {
                   const token = isSignedIn ? await getToken() : null;
                   const state = await checkoutApi.show(pendingPayment.id, token, pendingPayment.capability);
+                  const hostedUrl = hostedPageUrl(state);
+                  if (hostedUrl) { window.location.assign(hostedUrl); return; }
                   if (!state.collection_config.client_secret || state.payment_state !== 'collecting') throw new Error('Payment status changed. Check the saved order.');
                   setSavedClientConfig(checkoutClientConfiguration(state));
+                  if (!paymentForm.current) throw new Error('Card collection is not ready. Check the saved order.');
                   const result = await paymentForm.current.confirm(state.collection_config.client_secret, state.collection_config.payment_identity_id, { name, email, phone });
                   if (result.error) setError(result.error.message || 'Card payment could not complete.');
                   const confirmed = await checkoutApi.confirm(state.id, token, pendingPayment.capability);
@@ -926,7 +991,7 @@ function CheckoutForm() {
               <PaymentForm
                 ref={paymentForm}
                 configuration={savedClientConfig || locationClientConfig}
-                available={activeClientConfig?.payment_environment === 'simulated' || (!!activeClientConfig?.stripe_publishable_key && !!activeClientConfig?.stripe_account_id)}
+                available={collectionAvailable(activeClientConfig)}
                 onPaymentReady={handlePaymentReady}
               />
 

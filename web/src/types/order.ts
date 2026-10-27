@@ -74,6 +74,7 @@ export interface CreateOrderResponse {
 }
 
 export interface AppConfig {
+  payment_presentation?: string;
   payment_environment?: 'simulated' | 'sandbox' | 'production';
   app_mode: 'test' | 'production';
   stripe_enabled: boolean;

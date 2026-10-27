@@ -21,8 +21,9 @@ module Api
           payment_environment: environment,
           simulation_enabled: environment == "simulated" && !Payments::Configuration.production? && ENV["PAYMENTS_SIMULATION_ENABLED"] == "true",
           payment_processor: settings.payment_processor,
+          payment_presentation: profile&.presentation,
           stripe_publishable_key: key,
-          stripe_account_id: identity&.external_account_id,
+          stripe_account_id: identity&.provider == 'stripe' ? identity.external_account_id : nil,
           payment_identity_id: identity&.id,
           placeholder_image_url: settings.placeholder_image_url,
           features: {

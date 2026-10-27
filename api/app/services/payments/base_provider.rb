@@ -8,6 +8,9 @@ module Payments
       @identity = Configuration.validate_identity!(identity)
     end
 
+    # Validate configuration without financial dispatch or network access.
+    def preflight(attempt:); end
+
     %i[setup collect query authorize capture sale cancel reverse void refund tokenize terminal report].each do |method|
       define_method(method) { |**| raise UnsupportedCapability, "#{method} is not supported by this profile" }
     end
