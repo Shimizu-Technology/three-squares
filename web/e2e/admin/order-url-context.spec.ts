@@ -107,16 +107,37 @@ test('successful last-row mutation replaces an invalid page before publishing an
 });
 
 
-test('a saved historical Today URL retains its dates with an honest Custom range label', async ({ page }) => {
+test('an old Today URL ignores stale concrete dates and loads the current Guam day', async ({ page }) => {
+  const requests: string[] = [];
+  page.on('request', request => { if (request.url().includes('/admin/orders?')) requests.push(request.url()); });
   await page.goto('/admin/orders/pickup-queue?datepreset=today&start=2000-01-01&end=2000-01-01');
-  await expect(page.getByLabel('Period', { exact: true })).toHaveValue('custom');
-  await expect(page.getByLabel('Start date', { exact: true })).toHaveValue('2000-01-01');
-  await expect(page.getByLabel('End date', { exact: true })).toHaveValue('2000-01-01');
-  expect(await query(page, 'datepreset')).toBe('custom');
-  await page.getByLabel('Period', { exact: true }).selectOption('today');
   await expect(page.getByLabel('Period', { exact: true })).toHaveValue('today');
-  expect(await query(page, 'start')).not.toBe('2000-01-01');
-  await page.goBack();
-  await expect(page.getByLabel('Period', { exact: true })).toHaveValue('custom');
-  await expect(page.getByLabel('Start date', { exact: true })).toHaveValue('2000-01-01');
+  const current = await page.evaluate(() => new Intl.DateTimeFormat('en-CA', { timeZone: 'Pacific/Guam', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()));
+  await expect(page.getByLabel('Start date', { exact: true })).toHaveValue(current);
+  await expect(page.getByLabel('End date', { exact: true })).toHaveValue(current);
+  await expect.poll(() => requests.some(url => new URL(url).searchParams.get('start_date') === current)).toBe(true);
+  expect(await query(page, 'datepreset')).toBe('today');
+  expect(await query(page, 'start')).toBeNull();
+  expect(await query(page, 'end')).toBeNull();
+});
+
+test('an open Today queue rolls over at Guam midnight and discovers new-day paid work', async ({ page }) => {
+  await page.clock.install({ time: new Date('2026-10-27T23:59:55+10:00') });
+  const dates: string[] = [];
+  await page.route('**/api/v1/admin/orders**', route => {
+    const url = new URL(route.request().url());
+    const day = url.searchParams.get('start_date') || '';
+    if (url.pathname.endsWith('/summary')) return route.fulfill({ json: { ...summary, total_orders: 1, queue_stage_counts: { ...summary.queue_stage_counts, new_paid: 1 } } });
+    dates.push(day);
+    const id = day === '2026-10-28' ? 91002 : 91001;
+    return route.fulfill({ json: { orders: [{ ...fixture(id), created_at: `${day}T00:00:01+10:00` }], pagination: { total_count: 1, total_pages: 1 } } });
+  });
+  await page.goto('/admin/orders/pickup-queue?datepreset=today');
+  await expect(page.getByRole('article', { name: 'Order URL-91001', exact: true })).toBeVisible();
+  await page.clock.fastForward(11_000);
+  await expect(page.getByRole('article', { name: 'Order URL-91002', exact: true })).toBeVisible();
+  await expect(page.getByRole('article', { name: 'Order URL-91001', exact: true })).not.toBeVisible();
+  await expect(page.getByLabel('Period', { exact: true })).toHaveValue('today');
+  expect(dates).toContain('2026-10-28');
+  expect(await query(page, 'start')).toBeNull();
 });

@@ -1,3 +1,5 @@
+import { toGuamDateInput } from '../../../utils/collectionSchedule.ts';
+
 export type OrderPageMode = 'default' | 'pickup_queue' | 'shipping_queue';
 export type OrderDatePreset = 'today' | 'last_7_days' | 'this_month' | 'all_time' | 'custom';
 
@@ -29,8 +31,8 @@ function positiveInteger(value: string | null) {
   return Number.isSafeInteger(number) && number > 0 ? number : null;
 }
 
-function formatDate(date: Date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+export function orderBusinessDate(now = new Date()) {
+  return toGuamDateInput(now.toISOString()).slice(0, 10);
 }
 
 function validDate(value: string | null): value is string {
@@ -41,31 +43,26 @@ function validDate(value: string | null): value is string {
 
 export function orderDateRange(preset: OrderDatePreset, now = new Date()) {
   if (preset === 'all_time') return { startDate: '', endDate: '' };
-  const start = new Date(now);
-  const end = new Date(now);
-  if (preset === 'last_7_days') start.setDate(start.getDate() - 6);
+  const start = new Date(`${orderBusinessDate(now)}T00:00:00Z`);
+  const end = new Date(start);
+  if (preset === 'last_7_days') start.setUTCDate(start.getUTCDate() - 6);
   if (preset === 'this_month') {
-    start.setDate(1);
-    end.setMonth(end.getMonth() + 1, 0);
+    start.setUTCDate(1);
+    end.setUTCMonth(end.getUTCMonth() + 1, 0);
   }
-  return { startDate: formatDate(start), endDate: formatDate(end) };
+  return { startDate: start.toISOString().slice(0, 10), endDate: end.toISOString().slice(0, 10) };
 }
 
 export function parseOrderQuery(search: string, mode: OrderPageMode, now = new Date()): OrderQueryState {
   const params = new URLSearchParams(search);
-  let datePreset = option(params.get('datepreset'), datePresets,
+  const datePreset = option(params.get('datepreset'), datePresets,
     params.has('start') || params.has('end') ? 'custom' : 'today') as OrderDatePreset;
   const defaultRange = datePreset === 'custom' ? { startDate: '', endDate: '' } : orderDateRange(datePreset, now);
-  // Explicit dates pin an applied preset across reloads, including after midnight.
-  // Invalid dates fall back safely; empty custom bounds mean an open range.
-  let startDate = validDate(params.get('start')) ? params.get('start')! : defaultRange.startDate;
-  let endDate = validDate(params.get('end')) ? params.get('end')! : defaultRange.endDate;
-  if (datePreset === 'all_time') { startDate = ''; endDate = ''; }
+  // Relative presets follow Guam's current business day, including old URLs
+  // that previously serialized concrete dates. Only Custom pins its bounds.
+  let startDate = datePreset === 'custom' && validDate(params.get('start')) ? params.get('start')! : defaultRange.startDate;
+  let endDate = datePreset === 'custom' && validDate(params.get('end')) ? params.get('end')! : defaultRange.endDate;
   if (startDate && endDate && startDate > endDate) [startDate, endDate] = [endDate, startDate];
-  // Retain the applied dates on reload, but never label a historical range
-  // Today/Last 7 days/This month after that relative period has moved on.
-  if (datePreset !== 'custom' && datePreset !== 'all_time' &&
-      (startDate !== defaultRange.startDate || endDate !== defaultRange.endDate)) datePreset = 'custom';
 
   return {
     search: (params.get('search') || '').trim(),
@@ -92,10 +89,12 @@ export function serializeOrderQuery(state: OrderQueryState) {
     fulfillment: state.fulfillment,
     location: state.location,
     datepreset: state.datePreset,
-    start: state.startDate,
-    end: state.endDate,
     page: String(state.page),
   });
+  if (state.datePreset === 'custom') {
+    params.set('start', state.startDate);
+    params.set('end', state.endDate);
+  }
   if (state.orderId !== null) params.set('id', String(state.orderId));
   return params.toString();
 }

@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { orderDateRange, orderListContext, parseOrderQuery, serializeOrderQuery, updateOrderQuery } from '../src/components/admin/orders/orderQueryState.ts';
 
-const today = new Date(2026, 9, 27, 12);
+const today = new Date('2026-10-27T12:00:00+10:00');
 const parse = (search, mode = 'default', now = today) => parseOrderQuery(search, mode, now);
 const reload = (state, mode = 'default') => parse(serializeOrderQuery(state), mode);
 
@@ -53,16 +53,25 @@ test('unsupported filter values fall back to the current mode instead of reachin
   assert.equal(state.datePreset, 'today');
 });
 
-test('pinned preset dates retain their request but become an honest custom range after expiry', () => {
-  const state = parse('?datepreset=last_7_days');
-  assert.equal(state.startDate, '2026-10-21');
-  assert.equal(state.endDate, '2026-10-27');
-  const later = parse(serializeOrderQuery(state), 'default', new Date(2026, 10, 2, 12));
-  assert.deepEqual(later, { ...state, datePreset: 'custom' });
-  assert.equal(orderListContext(later, 'default'), orderListContext(state, 'default'));
-  assert.equal(parse('?datepreset=today&start=2026-10-26&end=2026-10-26').datePreset, 'custom');
-  assert.deepEqual(orderDateRange('this_month', new Date(2024, 1, 17)), { startDate: '2024-02-01', endDate: '2024-02-29' });
-  assert.deepEqual(orderDateRange('last_7_days', new Date(2026, 0, 3)), { startDate: '2025-12-28', endDate: '2026-01-03' });
+test('relative periods follow Guam midnight and ignore obsolete concrete URL dates', () => {
+  const before = new Date('2026-10-27T23:59:59+10:00');
+  const after = new Date('2026-10-28T00:00:01+10:00');
+  for (const preset of ['today', 'last_7_days', 'this_month']) {
+    const state = parse(`?datepreset=${preset}&start=2000-01-01&end=2000-01-01`, 'pickup_queue', before);
+    const params = new URLSearchParams(serializeOrderQuery(state));
+    assert.equal(params.has('start'), false);
+    assert.equal(params.has('end'), false);
+    assert.equal(state.datePreset, preset);
+    const next = parse(params.toString(), 'pickup_queue', after);
+    assert.equal(next.endDate, preset === 'this_month' ? '2026-10-31' : '2026-10-28');
+    assert.equal(next.startDate, preset === 'today' ? '2026-10-28' : preset === 'last_7_days' ? '2026-10-22' : '2026-10-01');
+    if (preset !== 'this_month') assert.notEqual(orderListContext(next, 'pickup_queue'), orderListContext(state, 'pickup_queue'));
+  }
+  assert.deepEqual(orderDateRange('this_month', new Date('2024-02-17T12:00:00+10:00')), { startDate: '2024-02-01', endDate: '2024-02-29' });
+  assert.deepEqual(orderDateRange('last_7_days', new Date('2026-01-03T12:00:00+10:00')), { startDate: '2025-12-28', endDate: '2026-01-03' });
+  assert.equal(parse('?datepreset=today', 'default', new Date('2026-10-27T14:00:01Z')).startDate, '2026-10-28');
+  const custom = parse('?datepreset=custom&start=2026-10-01&end=2026-10-10', 'default', before);
+  assert.deepEqual(parse(serializeOrderQuery(custom), 'default', after), custom);
 });
 
 test('dates validate calendar days, normalize reversed ranges and allow open custom bounds', () => {
@@ -88,7 +97,7 @@ test('the complete applied context round-trips including Unicode and URL-special
   assert.equal(state.search, 'Ana + café & #123 / 日本語');
   assert.deepEqual(reload(state), state);
   const canonical = new URLSearchParams(serializeOrderQuery(state));
-  assert.deepEqual([...canonical.keys()], ['search', 'status', 'order_type', 'business_line', 'fulfillment', 'location', 'datepreset', 'start', 'end', 'page', 'id']);
+  assert.deepEqual([...canonical.keys()], ['search', 'status', 'order_type', 'business_line', 'fulfillment', 'location', 'datepreset', 'page', 'start', 'end', 'id']);
 });
 
 test('drilldown, close, Back, Forward and reload preserve the original filters and page', () => {

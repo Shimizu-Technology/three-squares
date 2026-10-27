@@ -15,7 +15,7 @@ import {
 } from '../../components/admin/orders';
 import PickupPackingList from '../../components/admin/orders/PickupPackingList';
 import ShippingPackingList from '../../components/admin/orders/ShippingPackingList';
-import { orderDateRange, orderListContext, parseOrderQuery, serializeOrderQuery, updateOrderQuery, type OrderDatePreset, type OrderPageMode, type OrderQueryState } from '../../components/admin/orders/orderQueryState';
+import { orderBusinessDate, orderDateRange, orderListContext, parseOrderQuery, serializeOrderQuery, updateOrderQuery, type OrderDatePreset, type OrderPageMode, type OrderQueryState } from '../../components/admin/orders/orderQueryState';
 import { SkeletonListPage } from '../../components/admin';
 
 import { configApi, locationsApi } from '../../services/api';
@@ -67,7 +67,9 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   const { getToken, userId } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  const queryState = useMemo(() => parseOrderQuery(location.search, mode), [location.search, mode]);
+  const [clock, setClock] = useState(Date.now);
+  const businessDay = orderBusinessDate(new Date(clock));
+  const queryState = useMemo(() => parseOrderQuery(location.search, mode, new Date(`${businessDay}T12:00:00+10:00`)), [location.search, mode, businessDay]);
   const canonicalSearch = serializeOrderQuery(queryState);
   const queryStateRef = useRef(queryState);
   useLayoutEffect(() => { queryStateRef.current = queryState; }, [queryState]);
@@ -140,7 +142,6 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   const [exporting, setExporting] = useState(false);
   const [summary, setSummary] = useState<OrdersSummaryResponse | null>(null);
 
-  const [clock, setClock] = useState(Date.now);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
@@ -217,14 +218,17 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   }, [fetchOrders, refreshVersion]);
 
   useEffect(() => {
-    if (mode === 'default') return;
-    const refreshVisible = () => { if (!document.hidden) { setClock(Date.now()); void fetchOrders(true); } };
+    const refreshVisible = () => {
+      if (document.hidden) return;
+      setClock(Date.now());
+      if (mode !== 'default') void fetchOrders(true);
+    };
     const interval = window.setInterval(refreshVisible, 10_000);
     document.addEventListener('visibilitychange', refreshVisible);
     return () => { window.clearInterval(interval); document.removeEventListener('visibilitychange', refreshVisible); };
   }, [fetchOrders, mode]);
 
-  const reconcileOrders = () => setRefreshVersion((version) => version + 1);
+  const reconcileOrders = () => { setClock(Date.now()); setRefreshVersion((version) => version + 1); };
 
   useEffect(() => {
     configApi.getConfig().then(setAppConfig).catch(console.error);
