@@ -6,8 +6,8 @@ import { configApi, locationsApi, shippingApi, formatPrice } from '../services/a
 import { checkoutApi, checkoutClientConfiguration, checkoutCapability, pendingCheckout, saveCheckout, clearPendingCheckout } from '../services/checkout';
 import { authGet } from '../services/authApi';
 import { checkoutContactReducer, emptyCheckoutContact } from '../lib/checkoutContact';
-import { hostedPageUrl } from '../lib/hostedPage';
-import { readPendingCreation, savePendingCreation, clearPendingCreation } from '../lib/checkoutCreation';
+import { hostedPageUrl, collectionAvailable } from '../lib/hostedPage';
+import { readPendingCreation, savePendingCreation, clearPendingCreation, creationRejected } from '../lib/checkoutCreation';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { CardPaymentHandle } from '../components/payment/PaymentForm';
 import PaymentForm, { type CollectionConfiguration } from '../components/payment/PaymentCollectionForm';
@@ -157,8 +157,11 @@ function CheckoutForm() {
         saveCheckout(state, saved.capability, saved.key, saved.owner === 'guest');
         clearPendingCreation(); setCreationPending(false);
         setSavedClientConfig(checkoutClientConfiguration(state)); setPendingPayment(pendingCheckout());
-      } catch {
-        if (!stopped) setError('We could not recover the checkout response yet. Check again before starting another payment.');
+      } catch (error) {
+        if (!stopped && creationRejected(error)) {
+          clearPendingCreation(); setCreationPending(false); setReviewed(false);
+          setError('The checkout was not created. Review your cart and availability before paying.');
+        } else if (!stopped) setError('We could not recover the checkout response yet. Check again before starting another payment.');
       }
     })();
     return () => { stopped = true; };
@@ -188,7 +191,7 @@ function CheckoutForm() {
         if (stopped || await finishCheckout(state)) return;
         setSavedClientConfig(checkoutClientConfiguration(state));
         setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
-        setCanRetryCollection(state.payment_state === 'collecting' && (!!state.collection_config.client_secret || !!hostedPageUrl(state)));
+        setCanRetryCollection((state.payment_state === 'collecting' && !!state.collection_config.client_secret) || !!hostedPageUrl(state));
         setError(['failed', 'cancelled', 'compensated'].includes(state.payment_state) ? `Payment closed for order ${state.order.order_number}. No payment is due on this saved attempt. Review your cart before starting again.` : `Payment status is being checked for order ${state.order.order_number}. Your order is saved. Keep this page or check your order before paying again.`);
         if (Date.now() - started < 90000) timer = setTimeout(poll, Date.now() - started < 10000 ? 2000 : 10000);
       } catch {
@@ -508,8 +511,7 @@ function CheckoutForm() {
       const axiosErr = err as { response?: { data?: { error?: string; issues?: Array<{ message: string }> } } };
       // A definite validation rejection has no saved financial intent. Network
       // loss and server failures retain the original key across back/reload.
-      const status = (err as { response?: { status?: number } }).response?.status;
-      if (status && [400, 401, 403, 404, 409, 422].includes(status)) clearPendingCreation();
+      if (creationRejected(err)) clearPendingCreation();
       else if (!saved && readPendingCreation()) setCreationPending(true);
       if (axiosErr.response?.data?.issues && axiosErr.response.data.issues.length > 0) {
         const issues = axiosErr.response.data.issues;
@@ -589,7 +591,7 @@ function CheckoutForm() {
                   if (!(await finishCheckout(state))) {
                     setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
                     setSavedClientConfig(checkoutClientConfiguration(state));
-                    setCanRetryCollection(state.payment_state === 'collecting' && (!!state.collection_config.client_secret || !!hostedPageUrl(state)));
+                    setCanRetryCollection((state.payment_state === 'collecting' && !!state.collection_config.client_secret) || !!hostedPageUrl(state));
                     setError(`Payment status: ${state.payment_state}. Order ${state.order.order_number} remains saved.`);
                   }
                 } catch { setError('We could not check payment status. Your order remains saved.'); }
@@ -985,7 +987,7 @@ function CheckoutForm() {
               <PaymentForm
                 ref={paymentForm}
                 configuration={savedClientConfig || locationClientConfig}
-                available={activeClientConfig?.payment_environment === 'simulated' || (!!activeClientConfig?.stripe_publishable_key && !!activeClientConfig?.stripe_account_id)}
+                available={collectionAvailable(activeClientConfig)}
                 onPaymentReady={handlePaymentReady}
               />
 

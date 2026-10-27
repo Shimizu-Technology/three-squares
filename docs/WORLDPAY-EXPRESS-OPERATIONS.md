@@ -67,7 +67,7 @@ remain in force.
    with a sale. The common finalizer owns fulfillment exactly once.
 5. Back/reload/no return uses the saved session and worker recovery. A lost
    creation response replays its original request key, without collecting again.
-   Switching accounts pauses that recovery until the original owner returns.
+   Switching accounts pauses that recovery until the original owner returns. Invalid supplied authentication is rejected before intent creation. An authoritative pre-intent rejection returns the browser to editable review; authentication, conflict and uncertain failures retain the original request.
 
 Legacy HPP setup lasts at most ten minutes. Expiry removes the collection URL;
 it does not prove cancellation. A lost setup response cannot safely create a
@@ -77,10 +77,10 @@ cannot release an unknown financial claim.
 
 ## Recovery limits and activation evidence
 
-Empty, capped, malformed or ambiguous queries remain unknown. Full paid proof
-requires the original setup query plus one matching reference, account, acceptor,
+Empty, capped, malformed or ambiguous queries remain unknown. An authenticated empty waiting-card query or definitive decline preserves the same hosted page until its ten-minute expiry; partial or ambiguous financial evidence blocks collection. Full paid proof
+requires the original setup query plus exactly one eligible captured sale and matching reference, account, acceptor,
 terminal, sale type, exact amount, approval and eligible transaction status.
-Partial/duplicate/communications outcomes remain quarantined. No-PAN reversal,
+Other rows must be definitively non-financial declines; partial/duplicate/communications outcomes remain quarantined. No-PAN reversal,
 refund/void sequencing, token usage, reporting lag and funding import formats
 need assigned-contract fixtures before enabling their real financial operations.
 Generic XML ports are not authority to send those operations.

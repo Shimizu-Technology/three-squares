@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readPendingCreation, savePendingCreation, clearPendingCreation } from '../src/lib/checkoutCreation.ts';
+import { readPendingCreation, savePendingCreation, clearPendingCreation, creationRejected } from '../src/lib/checkoutCreation.ts';
 test('keeps the original owner, payload and operation across a lost response and reload', () => {
   const data = new Map();
   const storage = { getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, value), removeItem: key => data.delete(key) };
@@ -13,4 +13,8 @@ test('keeps the original owner, payload and operation across a lost response and
   assert.equal(readPendingCreation(storage).key, original.key);
   clearPendingCreation(storage);
   assert.equal(readPendingCreation(storage), null);
+});
+test('only authoritative pre-intent rejection permits discarding a retained request', () => {
+  assert.equal(creationRejected({ response: { status: 422, data: { checkout_rejected_before_intent: true } } }), true);
+  for (const error of [{}, { response: { status: 401 } }, { response: { status: 409 } }, { response: { status: 422 } }, { response: { status: 422, data: { checkout_rejected_before_intent: false } } }]) assert.equal(creationRejected(error), false);
 });

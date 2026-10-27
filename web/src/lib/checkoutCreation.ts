@@ -21,3 +21,7 @@ export function savePendingCreation(value: Omit<PendingCreation, 'expires'>, sto
   storage.setItem(key, JSON.stringify({ ...value, expires: Date.now() + 30 * 60 * 1000 }));
 }
 export function clearPendingCreation(storage: Storage = sessionStorage) { storage.removeItem(key); }
+export function creationRejected(error: unknown): boolean {
+  const response = (error as { response?: { status?: number; data?: { checkout_rejected_before_intent?: boolean } } })?.response;
+  return response?.status === 422 && response.data?.checkout_rejected_before_intent === true;
+}

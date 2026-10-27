@@ -7,7 +7,7 @@ interface HostedState {
 
 // The backend validates this URL. Check the legacy host again before navigation.
 export function hostedPageUrl(state: HostedState): string | null {
-  if (state.flow !== 'worldpay_hosted_page' || state.payment_state !== 'collecting') return null;
+  if (state.flow !== 'worldpay_hosted_page' || !['collecting', 'unknown'].includes(state.payment_state)) return null;
   try {
     const url = new URL(state.collection_config.hosted_url || '');
     const host = state.environment === 'production' ? 'transaction.hostedpayments.com' : state.environment === 'sandbox' ? 'certtransaction.hostedpayments.com' : null;
@@ -16,4 +16,11 @@ export function hostedPageUrl(state: HostedState): string | null {
         keys.length !== 1 || keys[0] !== 'TransactionSetupID' || !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(url.searchParams.get(keys[0]) || '')) return null;
     return url.href;
   } catch { return null; }
+}
+
+export function collectionAvailable(config: { payment_environment?: string; payment_processor?: string; payment_presentation?: string | null; stripe_publishable_key?: string; stripe_account_id?: string } | null): boolean {
+  if (!config) return false;
+  if (config.payment_environment === 'simulated') return true;
+  if (config.payment_processor === 'worldpay') return config.payment_presentation === 'worldpay_hosted_page';
+  return !!config.stripe_publishable_key && !!config.stripe_account_id;
 }

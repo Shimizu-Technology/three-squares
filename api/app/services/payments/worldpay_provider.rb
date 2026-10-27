@@ -38,7 +38,13 @@ module Payments
       else
         { complete: false, rows: [], metadata: { reason: "setup_response_lost_manual_reconciliation_required" } }
       end
-      Worldpay::QueryResult.call(attempt: attempt, report: report, configuration: current.configuration, profile: current.profile)
+      result = Worldpay::QueryResult.call(attempt: attempt, report: report, configuration: current.configuration, profile: current.profile)
+      if result.status == "unknown"
+        attempt.with_lock do
+          attempt.update!(provider_metadata: attempt.provider_metadata.merge("worldpay_collection_blocked" => !result.metadata[:collection_available]))
+        end
+      end
+      result
     end
 
     # Closing the browser is not a processor cancellation. No-PAN System

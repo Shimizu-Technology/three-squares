@@ -1,6 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Worldpay hosted checkout contracts', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
   let(:capability) { SecureRandom.hex(32) }
   let(:key) { SecureRandom.uuid }
   let(:cart_id) { SecureRandom.uuid }
@@ -34,14 +35,17 @@ RSpec.describe 'Worldpay hosted checkout contracts', type: :request do
     end
   } }
   let(:query_changes) { {} }
+  let(:extra_rows) { [] }
+  let(:query_empty) { false }
 
   def query_response
     attempt = PaymentAttempt.last
     values = { 'TransactionID' => '000123', 'ReferenceNumber' => attempt.reference_number.to_s, 'AccountID' => 'fixture-account', 'AcceptorID' => 'fixture-acceptor',
       'TerminalID' => 'fixture-TerminalID', 'ApprovalNumber' => 'fixture-approval', 'ExpressResponseCode' => '0', 'TransactionType' => 'CreditCardSale',
       'TransactionStatusCode' => '1', 'TransactionAmount' => '25.00' }.merge(query_changes)
-    item = values.map { |name, value| "<#{name}>#{ERB::Util.html_escape(value)}</#{name}>" }.join
-    "<TransactionQueryResponse xmlns=\"https://reporting.elementexpress.com\"><Response><ExpressResponseCode>0</ExpressResponseCode><ReportingData><Items><Item>#{item}</Item></Items></ReportingData></Response></TransactionQueryResponse>"
+    rows = query_empty ? [] : [ values ] + extra_rows.map { |changes| values.merge(changes) }
+    items = rows.map { |row| '<Item>' + row.map { |name, value| "<#{name}>#{ERB::Util.html_escape(value)}</#{name}>" }.join + '</Item>' }.join
+    "<TransactionQueryResponse xmlns=\"https://reporting.elementexpress.com\"><Response><ExpressResponseCode>0</ExpressResponseCode><ReportingData><Items>#{items}</Items></ReportingData></Response></TransactionQueryResponse>"
   end
 
   def start_checkout
@@ -119,6 +123,59 @@ RSpec.describe 'Worldpay hosted checkout contracts', type: :request do
     expect { Payments::ReconcileAttempt.call(attempt: PaymentAttempt.last, force: true) }.to raise_error(Payments::BindingError)
     expect(PaymentTransaction.count).to eq(0)
     expect(PaymentOutbox.where(kind: 'compensate')).to be_empty
+  end
+
+  it 'keeps the original hosted page resumable after an empty waiting-card query until expiry' do
+    allow(self).to receive(:query_empty).and_return(true)
+    state = start_checkout
+    attempt = PaymentAttempt.last
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    get "/api/v1/checkout_sessions/#{state['id']}", headers: headers
+    expect(response.parsed_body['payment_state']).to eq('unknown')
+    expect(response.parsed_body.dig('collection_config', 'hosted_url')).to include(setup_id)
+    expect(calls.count { |call| call[:interface] == :transaction }).to eq(1)
+    travel 11.minutes do
+      get "/api/v1/checkout_sessions/#{state['id']}", headers: headers
+      expect(response.parsed_body['collection_config']).to eq({})
+    end
+  end
+
+  it 'fulfills one approved sale after a definitively declined card under the same setup' do
+    start_checkout
+    extra_rows << { 'TransactionID' => '000122', 'ExpressResponseCode' => '20', 'TransactionStatusCode' => '2', 'ApprovalNumber' => '' }
+    Payments::ReconcileAttempt.call(attempt: PaymentAttempt.last, force: true)
+    expect(Order.last.payment_status).to eq('paid')
+    expect(PaymentTransaction.pluck(:raw_provider_id)).to eq([ '000123' ])
+    expect(variant.reload.stock_quantity).to eq(8)
+  end
+
+  it 'quarantines multiple approvals and validates the binding of declined rows too' do
+    start_checkout
+    extra_rows << { 'TransactionID' => '000124' }
+    Payments::ReconcileAttempt.call(attempt: PaymentAttempt.last, force: true)
+    expect(Order.last.payment_status).to eq('pending')
+    expect(PaymentAttempt.last.provider_metadata['worldpay_collection_blocked']).to be(true)
+    extra_rows.replace([ { 'TransactionID' => '000122', 'AccountID' => 'foreign', 'ExpressResponseCode' => '20', 'TransactionStatusCode' => '2', 'ApprovalNumber' => '' } ])
+    expect { Payments::ReconcileAttempt.call(attempt: PaymentAttempt.last, force: true) }.to raise_error(Payments::BindingError)
+    expect(PaymentTransaction.count).to eq(0)
+  end
+
+  it 'rejects supplied failed authentication before it can create a guest setup' do
+    allow_any_instance_of(Api::V1::CheckoutSessionsController).to receive(:verify_token_with_clerk).and_raise(StandardError, 'fixture unavailable auth')
+    post '/api/v1/checkout_sessions', params: { order: { customer_name: 'Fixture', customer_email: 'fixture@example.test', customer_phone: '6715550100', fulfillment_type: 'pickup', location_id: location.id } }, headers: headers.merge('Authorization' => 'Bearer invalid-fixture')
+    expect(response).to have_http_status(:unauthorized)
+    expect(Order.count).to eq(0)
+    expect(CheckoutSession.count).to eq(0)
+    expect(calls).to be_empty
+  end
+
+  it 'marks only an authoritative pre-intent validation failure as safe to edit' do
+    variant.update!(stock_quantity: 0)
+    post '/api/v1/checkout_sessions', params: { order: { customer_name: 'Fixture', customer_email: 'fixture@example.test', customer_phone: '6715550100', fulfillment_type: 'pickup', location_id: location.id } }, headers: headers
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body['checkout_rejected_before_intent']).to be(true)
+    expect(Order.count).to eq(0)
+    expect(CheckoutSession.count).to eq(0)
   end
 
   it 'requires the assigned USD/fraud contract before dispatch and captures only allowed profile fields' do

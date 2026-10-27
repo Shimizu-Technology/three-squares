@@ -36,7 +36,7 @@ proof of merchant assignment, certification, or the exact Hosted Fields SDK.
   agree; requested page, page count, total and row counts must match.
 - `ExpressClient#transaction_query(setup_id:)`: non-paginated original-setup
   query, following the published HPP recovery procedure. An empty result or a
-  result at the 1,000-row cap is incomplete. Multiple matches cannot fulfill.
+  result at the 1,000-row cap is incomplete. Multiple financial or ambiguous matches cannot fulfill.
 
 Direct and bounded escaped/CDATA reporting XML accept only the configured
 ReportingData/Items roots. Reporting responses are limited to 8 MiB, depth 16,
@@ -49,7 +49,7 @@ not retained. Reporting account identifiers are compared server-side and never
 published through the checkout/config serializer.
 
 `QueryResult` is a separate application policy boundary. Only a complete query
-of the stored setup GUID, one original reference, matching account/acceptor/
+of the stored setup GUID, one eligible captured sale (allowing other definitively declined cards), matching original reference/account/acceptor/
 terminal/type, exact amount, approval and approved/settled sale state can become
 a typed captured result. It additionally requires the frozen assigned USD and
 processor-enforced fraud contracts. USD is a merchant/query-context guarantee,
