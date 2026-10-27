@@ -84,7 +84,7 @@ test('warm mounts share the snapshot and invalidation reaches every consumer', a
   secondUnmount();
 });
 
-test('a failed refresh retries on the next TTL instead of spinning or freezing', async (t) => {
+test('a failed refresh retries with a short backoff instead of waiting for the successful TTL', async (t) => {
   t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 0 });
   t.mock.method(console, 'error', () => {});
   let calls = 0;
@@ -96,11 +96,66 @@ test('a failed refresh retries on the next TTL instead of spinning or freezing',
   const unmount = cache.subscribe(() => {});
   await flush();
   assert.equal(cache.getSnapshot(), null);
-  t.mock.timers.tick(119_999);
+  t.mock.timers.tick(1_999);
   await flush();
   assert.equal(calls, 1);
   t.mock.timers.tick(1);
   await flush();
   assert.deepEqual(cache.getSnapshot(), { revision: 2 });
+  unmount();
+});
+
+test('ok → transient failure → recovered retains loaded config and resets backoff', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 0 });
+  let online = true, calls = 0;
+  const cache = createAppConfigCache(async () => { calls++; if (!online) throw Error('offline'); return { online_ordering_paused: false, version: calls }; }, 15_000);
+  const unmount = cache.subscribeConnection(() => {});
+  await flush();
+  assert.equal(cache.getConnectionSnapshot().status, 'available');
+  const initial = cache.getSnapshot();
+  online = false;
+  t.mock.timers.tick(15_000); await flush();
+  assert.equal(cache.getConnectionSnapshot().status, 'unavailable');
+  assert.equal(cache.getSnapshot(), initial);
+  t.mock.timers.tick(2_000); await flush();
+  assert.equal(cache.getConnectionSnapshot().failures, 2);
+  t.mock.timers.tick(3_999); await flush(); assert.equal(calls, 3);
+  online = true;
+  t.mock.timers.tick(1); await flush();
+  assert.equal(cache.getConnectionSnapshot().status, 'available');
+  assert.equal(cache.getConnectionSnapshot().failures, 0);
+  assert.equal(cache.getSnapshot().version, 4);
+  unmount();
+  t.mock.timers.tick(100_000); await flush(); assert.equal(calls, 4);
+});
+
+test('never-reached config stays unknown, backs off to a cap and manual retry can recover', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 0 });
+  let online = false, calls = 0;
+  const cache = createAppConfigCache(async () => { calls++; if (!online) throw Error('cold start'); return { online_ordering_paused: true }; });
+  const unmount = cache.subscribeConnection(() => {});
+  assert.equal(cache.getConnectionSnapshot().status, 'checking');
+  await flush();
+  assert.equal(cache.getConnectionSnapshot().config, null);
+  assert.equal(cache.getConnectionSnapshot().status, 'unavailable');
+  for (const delay of [2_000, 4_000, 8_000, 16_000, 30_000, 30_000]) { t.mock.timers.tick(delay - 1); await flush(); const before = calls; t.mock.timers.tick(1); await flush(); assert.equal(calls, before + 1); }
+  online = true;
+  cache.retry(); await flush();
+  assert.equal(cache.getConnectionSnapshot().status, 'available');
+  assert.equal(cache.getConnectionSnapshot().config.online_ordering_paused, true);
+  unmount();
+});
+
+test('server pause persists through a failed refresh and unpause only follows successful config', async t => {
+  t.mock.timers.enable({ apis: ['setTimeout', 'Date'], now: 0 });
+  let state = 'paused';
+  const cache = createAppConfigCache(async () => { if (state === 'offline') throw Error('offline'); return { online_ordering_paused: state === 'paused', online_ordering_pause_message: 'Back soon.' }; }, 15_000);
+  const unmount = cache.subscribeConnection(() => {});
+  await flush(); assert.equal(cache.getSnapshot().online_ordering_paused, true);
+  state = 'offline'; cache.retry(); await flush();
+  assert.equal(cache.getSnapshot().online_ordering_paused, true);
+  assert.equal(cache.getConnectionSnapshot().status, 'unavailable');
+  state = 'open'; cache.retry(); await flush();
+  assert.equal(cache.getSnapshot().online_ordering_paused, false);
   unmount();
 });

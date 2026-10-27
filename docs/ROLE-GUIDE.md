@@ -38,3 +38,5 @@ Existing legacy administrators migrate to owners. Allowlisted login bootstraps a
 Production remains paused during restart work. A deployed frontend does not mean production ordering or payment acceptance is enabled. Physical iPad/Safari/PWA rehearsal and operator acceptance remain required before launch.
 
 All-location managers open **Homepage** in the workspace navigation to edit banners and featured content. General **Settings** stays owner-only. Older homepage-tab links redirect to the dedicated editor.
+
+Owners use **Settings → Online ordering** to pause or resume new online orders. Confirm the consequences, then wait for the saved status. If saving is uncertain, choose **Check saved status** before another change. Recent changes show who changed the state and when in Guam time. A pause leaves menu browsing, staff POS, queues and already-dispatched payment recovery available. A connection failure is reported separately and never locks the staff workspace.

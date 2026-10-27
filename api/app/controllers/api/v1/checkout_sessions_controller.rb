@@ -121,13 +121,14 @@ module Api
         order = session.order.reload
         identity = session.payment_identity
         inquiry_required = !StorefrontEligibility.online_ordering_enabled_for_order?(order)
+        pause_refusal = attempt.error_classification == "online_ordering_paused"
         client_config = identity.provider == 'stripe' ? {
           'payment_identity_id' => identity.id, 'payment_environment' => identity.environment, 'stripe_account_id' => identity.external_account_id,
           'stripe_publishable_key' => ENV[identity.environment == 'production' ? 'STRIPE_PUBLISHABLE_KEY' : 'STRIPE_PUBLISHABLE_KEY_TEST']
         } : { 'payment_identity_id' => identity.id, 'payment_environment' => identity.environment }
         { id: session.id, attempt_id: attempt.id, state: session.state, payment_state: attempt.state, amount_cents: session.amount_cents, currency: session.currency,
           payment_identity_id: identity.id, provider: session.payment_identity.provider, environment: session.payment_identity.environment, simulated: order.simulated, expires_at: session.expires_at.iso8601,
-          flow: attempt.collection_config["flow"], collection_config: inquiry_required ? { available: false, reason: StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE } : (collection_active?(session, attempt) ? attempt.collection_config.except("flow").merge(client_config) : {}),
+          flow: attempt.collection_config["flow"], collection_config: pause_refusal ? { available: false, reason: attempt.last_error } : inquiry_required ? { available: false, reason: StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE } : (collection_active?(session, attempt) ? attempt.collection_config.except("flow").merge(client_config) : {}),
           order: { id: order.id, order_number: order.order_number, payment_status: order.payment_status, inventory_committed: order.inventory_committed_at.present? } }
       end
 

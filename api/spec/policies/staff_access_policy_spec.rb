@@ -21,7 +21,7 @@ RSpec.describe StaffAccessPolicy do
     manager_names + %w[stock.manage homepage.manage payments.terminals.manage payments.reconcile]
   end
   let(:owner_names) do
-    global_manager_names + %w[users.manage settings.manage payment_settings.manage locations.manage
+    global_manager_names + %w[users.manage settings.manage ordering.manage payment_settings.manage locations.manage
       payments.simulate payments.terminals.discover]
   end
 
