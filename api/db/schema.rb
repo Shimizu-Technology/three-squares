@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_03_13_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -646,6 +646,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
     t.boolean "enable_admin_sms", default: true, null: false
     t.boolean "enable_order_emails", default: true, null: false
     t.boolean "enable_order_sms", default: true, null: false
+    t.boolean "enable_storefront_catering", default: true, null: false
+    t.boolean "enable_storefront_latte_stone", default: true, null: false
+    t.boolean "enable_storefront_three_squares", default: true, null: false
     t.jsonb "fallback_shipping_rates", default: {"domestic"=>[{"rate_cents"=>800, "max_weight_oz"=>16}, {"rate_cents"=>1500, "max_weight_oz"=>48}, {"rate_cents"=>2000, "max_weight_oz"=>80}, {"rate_cents"=>3000, "max_weight_oz"=>160}, {"rate_cents"=>5000, "max_weight_oz"=>nil}], "international"=>[{"rate_cents"=>2500, "max_weight_oz"=>16}, {"rate_cents"=>4000, "max_weight_oz"=>48}, {"rate_cents"=>6000, "max_weight_oz"=>80}, {"rate_cents"=>9000, "max_weight_oz"=>160}, {"rate_cents"=>15000, "max_weight_oz"=>nil}]}, null: false
     t.text "order_notification_emails", default: [], array: true
     t.string "payment_processor", default: "stripe", null: false
