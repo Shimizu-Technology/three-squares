@@ -26,6 +26,8 @@ module Payments
           return stored.order
         end
         SetupAttempt.call(attempt: stored)
+        # A locally closed, never-dispatched intent has no provider to query.
+        return stored.order if stored.reload.state == "cancelled" && stored.error_classification == "catering_inquiry_required"
       end
       provider = ProviderResolver.for_attempt(stored)
       result = provider.query(attempt: stored)

@@ -77,7 +77,7 @@ RSpec.describe "Catering online ordering gate", type: :request do
     expect(response.parsed_body.fetch("items").first.fetch("pricing")).to include("purchasable" => false, "reason" => StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE)
     post "/api/v1/cart/validate", headers: payment_headers(cart_id)
     expect(response.parsed_body.fetch("issues").first.fetch("message")).to include(StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE)
-    post "/api/v1/checkout_sessions", headers: payment_headers(cart_id), params: { order: attributes }
+    post "/api/v1/checkout_sessions", headers: payment_headers(cart_id), params: { order: attributes }, as: :json
     expect(response).to have_http_status(:unprocessable_entity), response.body
     expect(response.parsed_body.fetch("error")).to include(StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE)
     expect(Order.count).to eq(0)
@@ -89,7 +89,7 @@ RSpec.describe "Catering online ordering gate", type: :request do
     configure_payment_fixture!
     SiteSetting.instance.update!(enable_catering_online_ordering: true)
     CartItem.create!(session_id: cart_id, product_variant: variant, quantity: 1)
-    post "/api/v1/checkout_sessions", headers: payment_headers(cart_id), params: { order: attributes }
+    post "/api/v1/checkout_sessions", headers: payment_headers(cart_id), params: { order: attributes }, as: :json
     expect(response).to have_http_status(:created), response.body
     state = response.parsed_body
     SiteSetting.instance.update!(enable_catering_online_ordering: false)
@@ -105,7 +105,7 @@ RSpec.describe "Catering online ordering gate", type: :request do
     configure_payment_fixture!
     SiteSetting.instance.update!(enable_catering_online_ordering: true)
     CartItem.create!(session_id: cart_id, product_variant: variant, quantity: 1)
-    post "/api/v1/checkout_sessions", headers: payment_headers(cart_id), params: { order: attributes }
+    post "/api/v1/checkout_sessions", headers: payment_headers(cart_id), params: { order: attributes }, as: :json
     expect(response).to have_http_status(:created), response.body
     state = response.parsed_body
     post "/api/v1/checkout_sessions/#{state.fetch('id')}/confirm", headers: payment_headers(cart_id)
@@ -120,6 +120,72 @@ RSpec.describe "Catering online ordering gate", type: :request do
     expect(response).to have_http_status(:created), response.body
     expect(CateringInquiry.last.status).to eq("pending")
     expect(SiteSetting.instance.enable_catering_online_ordering).to be(false)
+  end
+
+  def create_undispatched_checkout
+    configure_payment_fixture!
+    SiteSetting.instance.update!(enable_catering_online_ordering: true)
+    item = CartItem.create!(session_id: cart_id, product_variant: variant, quantity: 1)
+    Payments::CreateCheckout.call(user: nil, capability: @capability, idempotency_key: @request_key,
+      cart_items: [ item ], attributes: attributes)
+  end
+
+  it "withholds saved-order credentials and closes a gated undispatched retry without provider work" do
+    session = create_undispatched_checkout
+    attempt = session.payment_attempts.last
+    SiteSetting.instance.update!(enable_catering_online_ordering: false)
+    expect(Payments::ProviderResolver).not_to receive(:for_attempt)
+    get "/api/v1/checkout_sessions/#{session.id}", headers: payment_headers(cart_id)
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch("collection_config")).to eq("available" => false, "reason" => StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE)
+    post "/api/v1/checkout_sessions", headers: payment_headers(cart_id), params: { order: attributes }, as: :json
+    expect(response).to have_http_status(:created), response.body
+    expect(response.parsed_body.fetch("payment_state")).to eq("cancelled")
+    expect(attempt.reload).to have_attributes(state: "cancelled", error_classification: "catering_inquiry_required", next_recovery_at: nil, dispatched_at: nil, raw_provider_id: nil)
+    expect(session.reload.state).to eq("cancelled")
+    expect(session.order.reload.status).to eq("cancelled")
+    expect(InventoryReservation.where(order_id: session.order_id, state: "held")).to be_empty
+    expect(variant.reload.stock_quantity).to eq(6)
+    post "/api/v1/checkout_sessions/#{session.id}/cancel", headers: payment_headers(cart_id)
+    expect(response).to have_http_status(:accepted), response.body
+    expect(response.parsed_body.fetch("payment_state")).to eq("cancelled")
+  end
+
+  it "lets recovery close a never-dispatched gated intent once and never retries it" do
+    session = create_undispatched_checkout
+    attempt = session.payment_attempts.last
+    attempt.update!(next_recovery_at: 1.minute.ago)
+    SiteSetting.instance.update!(enable_catering_online_ordering: false)
+    expect(Payments::ProviderResolver).not_to receive(:for_attempt)
+    PaymentRecoveryJob.perform_now
+    expect(attempt.reload.state).to eq("cancelled")
+    retries = attempt.retry_count
+    attempt.update_columns(updated_at: 1.day.ago)
+    PaymentRecoveryJob.perform_now
+    expect(attempt.reload.retry_count).to eq(retries)
+    get "/api/v1/checkout_sessions/#{session.id}", headers: payment_headers(cart_id)
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch("collection_config").fetch("available")).to be(false)
+    post "/api/v1/checkout_sessions/#{session.id}/confirm", headers: payment_headers(cart_id)
+    expect(response).to have_http_status(:accepted), response.body
+    expect(attempt.reload.state).to eq("cancelled")
+  end
+
+  it "does not locally close a previously dispatched or ambiguous attempt" do
+    session = create_undispatched_checkout
+    attempt = session.payment_attempts.last
+    Payments::SetupAttempt.call(attempt: attempt)
+    before = attempt.reload.attributes
+    SiteSetting.instance.update!(enable_catering_online_ordering: false)
+    Payments::SetupAttempt.call(attempt: attempt)
+    expect(attempt.reload.attributes).to eq(before)
+    get "/api/v1/checkout_sessions/#{session.id}", headers: payment_headers(cart_id)
+    expect(response.parsed_body.fetch("collection_config")).to eq("available" => false, "reason" => StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE)
+    attempt.update!(state: "unknown", last_queried_at: nil)
+    post "/api/v1/checkout_sessions/#{session.id}/confirm", headers: payment_headers(cart_id)
+    expect(attempt.reload.captured_cents).to eq(1200)
+    expect(attempt.state).not_to eq("cancelled")
+    expect(PaymentOutbox.where(kind: "compensate")).to exist
   end
 
   it "keeps POS cash available and never overrides quote-only catalog prices" do

@@ -20,6 +20,14 @@ class StorefrontEligibility
     key_for(product) != "catering" || (settings || SiteSetting.instance).enable_catering_online_ordering == true
   end
 
+  def self.online_ordering_enabled_for_order?(order)
+    return true unless order.source == "online"
+    settings = SiteSetting.instance
+    order.order_items.includes(product: :collections).all? do |item|
+      item.product.nil? || online_ordering_enabled?(item.product, settings: settings)
+    end
+  end
+
   def self.enabled?(product, settings: SiteSetting.instance)
     settings.public_send(SETTINGS.fetch(key_for(product))) == true
   end

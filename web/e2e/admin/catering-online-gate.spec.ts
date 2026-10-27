@@ -32,6 +32,29 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await page.reload(); await expect(toggle).toBeChecked();
   });
 
+  test(`saved-order collection is blocked independently of an empty cart at ${width}x${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.addInitScript(() => sessionStorage.setItem('tsq-checkout-pending', JSON.stringify({ id: 'saved-gate', capability: 'a'.repeat(64), key: 'fixture-saved-key', orderId: 99002, orderNumber: 'SAVED-GATE', amountCents: 1200 })));
+    let cancelled = false;
+    const calls: string[] = [];
+    await page.route('**/api/v1/checkout_sessions/saved-gate**', route => {
+      calls.push(route.request().url());
+      if (route.request().url().endsWith('/cancel')) cancelled = true;
+      return route.fulfill({ json: { id: 'saved-gate', attempt_id: 'fixture-attempt', payment_identity_id: 'fixture-identity', state: cancelled ? 'cancelled' : 'collecting', payment_state: cancelled ? 'cancelled' : 'collecting', amount_cents: 1200, currency: 'USD', provider: 'stripe', environment: 'sandbox', flow: 'stripe_embedded', collection_config: { available: false, reason, client_secret: 'fixture-stale-secret' }, order: { id: 99002, order_number: 'SAVED-GATE', payment_status: 'pending', inventory_committed: false } } });
+    });
+    await page.route('**/api/v1/cart**', route => route.fulfill({ json: { items: [], item_count: 0, subtotal_cents: 0 } }));
+    await page.goto('/checkout');
+    await expect(page.getByRole('alert').filter({ hasText: reason })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Retry card payment for this saved order', exact: true })).toHaveCount(0);
+    await page.getByRole('button', { name: 'Check payment status', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Cancel saved payment', exact: true })).toBeVisible();
+    await page.getByRole('button', { name: 'Cancel saved payment', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Payment closed — review cart and start again', exact: true })).toBeVisible();
+    expect(calls.some(url => url.endsWith('/confirm'))).toBe(true);
+    expect(calls.some(url => url.endsWith('/cancel'))).toBe(true);
+    expect(calls.some(url => url.endsWith('/simulate'))).toBe(false);
+  });
+
   test(`stale catering cart explains inquiry-only recovery and blocks payment at ${width}x${height}`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     let removed = false;

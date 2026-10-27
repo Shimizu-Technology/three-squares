@@ -19,3 +19,7 @@ test('rejects injected hosts, protocols, credentials, duplicate parameters and m
     assert.equal(hostedPageUrl({ ...state, collection_config: { hosted_url } }), null);
   }
 });
+
+test('a saved checkout marked unavailable never resumes an old hosted collection URL', () => {
+  assert.equal(hostedPageUrl({ ...state, collection_config: { available: false, hosted_url: url } }), null);
+});
