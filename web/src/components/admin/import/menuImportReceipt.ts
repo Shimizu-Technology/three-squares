@@ -31,7 +31,7 @@ const memory = new Map<string, { receipts: MenuImportReceipt[]; unsaved: boolean
 const isRecord = (value: unknown): value is Record<string, unknown> => !!value && typeof value === 'object' && !Array.isArray(value);
 const count = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0 && value <= 2000;
 const positiveId = (value: unknown): value is number => typeof value === 'number' && Number.isSafeInteger(value) && value > 0;
-const rowNumber = (value: unknown): value is number => positiveId(value) && value <= 2001;
+const rowNumber = (value: unknown): value is number => positiveId(value) && value >= 2 && value <= 2001;
 const content = (value: unknown): value is string => typeof value === 'string' && value.length <= 100_000;
 const optionalName = (value: unknown) => value === undefined || content(value);
 const validUser = (userId: string) => typeof userId === 'string' && userId.length > 0 && userId.length <= 1000;

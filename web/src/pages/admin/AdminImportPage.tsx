@@ -90,7 +90,7 @@ function MenuCsvImport({ userId, getToken, returnTo, canMigrate }: {
           if (!mounted.current) throw new Error('Import page changed before upload.');
           return token;
         },
-        { headers: { 'Content-Type': 'multipart/form-data' } },
+        { headers: { 'Content-Type': 'multipart/form-data' }, timeout: 120000 },
       );
       if (!isMenuImportResult(response.data?.data)) throw new Error('Unconfirmed import response');
       const receipt = createMenuImportReceipt(file.name, response.data.data);
