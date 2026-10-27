@@ -42,7 +42,7 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
       fulfillment_type: 'pickup', location_id: 1, location_name: 'Main',
       system_cancellation: { actor: 'system', reason: 'catering_inquiry_required' },
     } } }));
-    await page.goto('/admin/orders?order=99003');
+    await page.goto('/admin/orders?id=99003');
     await expect(page.getByRole('status').filter({ hasText: 'Closed by system: catering items now require an inquiry.' })).toBeVisible();
     await expect(page.getByText('No payment was started. No cancellation email or SMS was sent.', { exact: false })).toBeVisible();
     await page.getByRole('button', { name: 'Close order details', exact: true }).click();
