@@ -27,6 +27,7 @@ import TerminalControls from '../../components/payment/TerminalControls';
 import ManualCardDialog from '../../components/payment/ManualCardDialog';
 import type { PaymentReceiptFacts } from '../../types/paymentReceipt';
 import AdminRequestState from '../../components/admin/AdminRequestState';
+import LocalAvailabilityToggle from '../../components/admin/LocalAvailabilityToggle';
 import { reconcilePOSCart, remainingPOSCapacity, type POSProduct, type POSVariant, type POSCategory, type CartItem } from '../../components/admin/posCart';
 import type { Reader } from '@stripe/terminal-js';
 
@@ -74,9 +75,10 @@ function savedPOSPayment(): SavedPOSPayment | null {
 }
 
 
-async function fetchPOSMenu(token: string, locationId?: number): Promise<{ categories: POSCategory[]; locations: POSLocation[] }> {
+async function fetchPOSMenu(token: string, locationId?: number, includeUnavailable = false): Promise<{ categories: POSCategory[]; locations: POSLocation[] }> {
   const params = new URLSearchParams();
   if (locationId) params.set('location_id', locationId.toString());
+  if (includeUnavailable) params.set('include_unavailable', 'true');
   const res = await fetch(`${API_BASE}/api/v1/admin/pos/menu?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
     signal: AbortSignal.timeout(20000),
@@ -382,6 +384,7 @@ function AdminPOSWorkspace() {
 
   const hasMenu = selectedLocation !== undefined && loadedLocation === selectedLocation;
   const canSelectMenu = hasMenu && !loading && !loadError;
+  const canManageAvailability = access.can('availability.manage');
 
   const loadMenu = useCallback(async () => {
     if (!menuActive.current) return;
@@ -392,7 +395,7 @@ function AdminPOSWorkspace() {
       const token = await getToken();
       if (generation !== menuRequest.current || selectedLocationRef.current !== selectedLocation) return;
       if (!token) throw new Error('Sign in to load the POS menu');
-      const data = await fetchPOSMenu(token, selectedLocation);
+      const data = await fetchPOSMenu(token, selectedLocation, canManageAvailability);
       if (generation !== menuRequest.current || selectedLocationRef.current !== selectedLocation) return;
       if (!Array.isArray(data.locations) || !Array.isArray(data.categories)) throw new Error('Invalid POS menu response');
       setLocations(data.locations);
@@ -413,7 +416,7 @@ function AdminPOSWorkspace() {
     } finally {
       if (generation === menuRequest.current) setLoading(false);
     }
-  }, [getToken, selectedLocation]);
+  }, [getToken, selectedLocation, canManageAvailability]);
 
   useEffect(() => {
     menuActive.current = true;
@@ -1117,11 +1120,12 @@ function AdminPOSWorkspace() {
                 const inCart = inCartQuantity > 0;
 
                 return (
+                  <article key={item.id} aria-label={item.name} className="min-w-0 space-y-2">
                   <button
-                    key={item.id}
+                    type="button"
                     onClick={() => handleProductClick(item)}
                     disabled={!canAdd || !canSelectMenu}
-                    className={`p-3.5 rounded-2xl text-left transition-all min-h-[112px] border ${
+                    className={`w-full p-3.5 rounded-2xl text-left transition-all min-h-[112px] border ${
                       inCart
                         ? 'border-tsPrimary/40 bg-tsPrimary/5 shadow-sm'
                         : hasStock
@@ -1144,6 +1148,8 @@ function AdminPOSWorkspace() {
                       </div>
                     )}
                   </button>
+                  {canManageAvailability && selectedLocation && <LocalAvailabilityToggle key={`${item.id}:${selectedLocation}`} productId={item.id} productName={item.name} locationId={selectedLocation} locationName={selectedLocationName} available={item.location_available !== false} disabled={!canSelectMenu || submitting || terminalCollecting || hasPendingTerminalSession} onSaved={(_productId, locationId) => { if (locationId === selectedLocationRef.current) void loadMenu(); }} />}
+                  </article>
                 );
               })}
             </div>

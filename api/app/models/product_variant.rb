@@ -8,7 +8,7 @@ class ProductVariant < ApplicationRecord
   validates :stock_quantity, numericality: { greater_than_or_equal_to: 0 }, if: -> { product&.inventory_level == "variant" }
   # Weight is required for new records (allows nil for legacy data, but validates > 0 if present)
   validates :weight_oz, numericality: { greater_than: 0, message: "must be greater than 0" }, if: -> { weight_oz.present? }
-  validates :weight_oz, presence: { message: "is required for shipping" }, on: :create, unless: -> { skip_weight_validation? }
+  validates :weight_oz, presence: { message: "is required for shipping" }, on: :create, if: -> { product&.allow_shipping? && !skip_weight_validation? }
 
   # Allow skipping weight validation during imports (set via attr_accessor)
   attr_accessor :skip_weight_validation
@@ -23,6 +23,7 @@ class ProductVariant < ApplicationRecord
   scope :default_variants, -> { where(is_default: true) }
 
   # Callbacks
+  before_validation :normalize_pickup_weight
   before_validation :generate_variant_key, if: -> { variant_key.blank? }
   before_validation :generate_variant_name, if: -> { variant_name.blank? }
   before_validation :generate_sku, if: -> { sku.blank? }
@@ -115,6 +116,10 @@ class ProductVariant < ApplicationRecord
   end
 
   private
+
+  def normalize_pickup_weight
+    self.weight_oz = nil if product && !product.allow_shipping? && weight_oz == 0
+  end
 
   # Generate variant key from options (or legacy columns as fallback)
   def generate_variant_key

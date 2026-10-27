@@ -12,7 +12,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('CSV Import - Admin Access', () => {
   test('import page is accessible to admin', async ({ page }) => {
-    await page.goto('/admin/import');
+    await page.goto('/admin/import?format=shopify');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
@@ -30,7 +30,7 @@ test.describe('CSV Import - Admin Access', () => {
   });
 
   test('import page has file upload interface', async ({ page }) => {
-    await page.goto('/admin/import');
+    await page.goto('/admin/import?format=shopify');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
@@ -58,7 +58,7 @@ test.describe('CSV Import - Admin Access', () => {
   });
 
   test('import page shows CSV format instructions', async ({ page }) => {
-    await page.goto('/admin/import');
+    await page.goto('/admin/import?format=shopify');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
@@ -79,7 +79,7 @@ test.describe('CSV Import - Admin Access', () => {
 
 test.describe('CSV Import - Import History', () => {
   test('import page shows previous imports', async ({ page }) => {
-    await page.goto('/admin/import');
+    await page.goto('/admin/import?format=shopify');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
@@ -101,7 +101,7 @@ test.describe('CSV Import - Import History', () => {
   });
 
   test('import history shows status', async ({ page }) => {
-    await page.goto('/admin/import');
+    await page.goto('/admin/import?format=shopify');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
@@ -122,7 +122,7 @@ test.describe('CSV Import - Import History', () => {
 
 test.describe('CSV Import - Validation', () => {
   test('import validates file type', async ({ page }) => {
-    await page.goto('/admin/import');
+    await page.goto('/admin/import?format=shopify');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
@@ -158,7 +158,7 @@ test.describe('CSV Import - Validation', () => {
 test.describe('CSV Import - Product Creation', () => {
   test('import creates products with variants', async ({ page }) => {
     // This is a documentation test
-    await page.goto('/admin/import');
+    await page.goto('/admin/import?format=shopify');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
@@ -220,7 +220,7 @@ test.describe('CSV Import - Product Creation', () => {
 
 test.describe('CSV Import - Inventory', () => {
   test('import can set initial inventory', async ({ page }) => {
-    await page.goto('/admin/import');
+    await page.goto('/admin/import?format=shopify');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 
@@ -253,7 +253,7 @@ test.describe('CSV Import - Inventory', () => {
 
 test.describe('CSV Import - Error Handling', () => {
   test('import shows errors for failed imports', async ({ page }) => {
-    await page.goto('/admin/import');
+    await page.goto('/admin/import?format=shopify');
     await page.waitForLoadState('networkidle');
     await page.waitForTimeout(2000);
 

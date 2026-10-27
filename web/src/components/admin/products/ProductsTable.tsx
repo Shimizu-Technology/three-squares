@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Eye, Edit, MoreVertical, Archive, ArchiveRestore, Copy, Globe, GlobeLock, ArrowUpDown, AlertTriangle } from 'lucide-react';
 import type { Product } from './productUtils';
 import { formatCurrency, getStockDisplay } from './productUtils';
@@ -20,6 +20,7 @@ interface ProductsTableProps {
   onArchive: (product: Product) => void;
   onUnarchive: (product: Product) => void;
   onDuplicate: (product: Product) => void;
+  renderAvailability?: (product: Product) => ReactNode;
 }
 
 export default function ProductsTable({
@@ -38,6 +39,7 @@ export default function ProductsTable({
   onArchive,
   onUnarchive,
   onDuplicate,
+  renderAvailability,
 }: ProductsTableProps) {
   const [actionMenuOpen, setActionMenuOpen] = useState<number | null>(null);
 
@@ -87,12 +89,15 @@ export default function ProductsTable({
   );
 
   const StatusBadge = ({ product }: { product: Product }) => (
-    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+    <div className="flex shrink-0 flex-col items-start gap-1">
+    <span className={`self-start shrink-0 px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
       product.archived ? 'bg-orange-100 text-orange-800' :
       product.published ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
     }`}>
       {product.archived ? 'Archived' : product.published ? 'Published' : 'Draft'}
     </span>
+    {product.needs_pickup_locations && <span className="max-w-36 text-sm font-semibold text-amber-900">Needs pickup locations</span>}
+    </div>
   );
 
   const ProductImage = ({ product, size = 'w-12 h-12' }: { product: Product; size?: string }) => (
@@ -122,7 +127,7 @@ export default function ProductsTable({
   return (
     <>
       {/* Desktop Table */}
-      <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="hidden xl:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50/80">
             <tr>
@@ -156,6 +161,7 @@ export default function ProductsTable({
                           </span>
                         )}
                       </div>
+                      {renderAvailability && <div className="mt-3">{renderAvailability(product)}</div>}
                       {product.featured && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Featured</span>
                       )}
@@ -184,7 +190,7 @@ export default function ProductsTable({
       </div>
 
       {/* Mobile Cards */}
-      <div className="lg:hidden space-y-4">
+      <div className="xl:hidden space-y-4">
         {products.map((product) => (
           <div key={product.id} className="bg-white rounded-lg shadow p-4">
             <div className="flex gap-3 mb-3">
@@ -213,6 +219,7 @@ export default function ProductsTable({
                 <span className="ml-1"><StockCell product={product} /></span>
               </div>
             </div>
+            {renderAvailability && <div className="mb-3">{renderAvailability(product)}</div>}
             <div className="flex gap-2">
               <button onClick={() => onView(product)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-center inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
                 <Eye className="w-4 h-4 mr-1" /> View

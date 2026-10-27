@@ -175,6 +175,7 @@ test('successful create clears the new draft and replaces New with Edit while re
   await h.change('base_price_cents', '12.00');
   await h.change('allow_pickup', false, 'checkbox');
   await h.change('allow_shipping', true, 'checkbox');
+  await h.change('weight_oz', '8');
   assert.ok(readProductDraft(h.userId, 'new'));
   await h.submit();
   assert.equal(readProductDraft(h.userId, 'new'), null);
