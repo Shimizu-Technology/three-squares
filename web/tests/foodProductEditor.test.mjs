@@ -189,4 +189,3 @@ test('scoped managers keep stock read only and main saves omit protected invento
   assert.equal(readProductDraft(h.userId, '42'), null);
   h.unmount();
 });
-

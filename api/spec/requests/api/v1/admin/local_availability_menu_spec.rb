@@ -41,6 +41,20 @@ RSpec.describe "Staff local availability recovery menu", type: :request do
     expect(row.reload).to have_attributes(available: false, price_override_cents: 1200)
   end
 
+  it "keeps a restore card when sold-out status removes the only payable location price" do
+    meal.update!(base_price_cents: 0)
+    meal.product_variants.update_all(price_cents: 0)
+    local = ProductLocation.create!(product: meal, location: main, available: true, price_override_cents: 1200)
+    expect(menu.find { |product| product.fetch("id") == meal.id }.fetch("variants").first.fetch("price_cents")).to eq(1200)
+    local.update!(available: false)
+    recovery = menu(include_unavailable: true).find { |product| product.fetch("id") == meal.id }
+    expect(recovery).to include("location_available" => false, "variants" => [])
+    patch "/api/v1/admin/products/#{meal.id}/availability", params: { availability: { location_id: main.id, available: true } }, as: :json
+    expect(response).to have_http_status(:ok)
+    restored = menu(include_unavailable: true).find { |product| product.fetch("id") == meal.id }
+    expect(restored.fetch("variants").first).to include("in_stock" => true, "price_cents" => 1200)
+  end
+
   it "does not offer archived or shipping-only products in a counter restore menu" do
     archived = create(:product, published: true, archived: true)
     shipping = create(:product, published: true, allow_pickup: false, allow_shipping: true, weight_oz: 8)

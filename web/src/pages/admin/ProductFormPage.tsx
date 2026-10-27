@@ -772,7 +772,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     placeholder="8.0"
                   />
-                  <p id="shipping-weight-help" className="text-xs text-gray-500 mt-1">{formData.allow_shipping ? 'Enter a weight greater than zero for shipping calculations.' : 'Pickup-only items do not need a shipping weight. Any saved weight is kept.'}</p>
+                  <p id="shipping-weight-help" className="text-xs text-gray-500 mt-1">{formData.allow_shipping ? 'Enter a weight greater than zero. Options without a saved weight inherit this weight; existing option weights are kept.' : 'Pickup-only items do not need a shipping weight. Any saved weight is kept.'}</p>
                 </div>
               </div>
             </details>

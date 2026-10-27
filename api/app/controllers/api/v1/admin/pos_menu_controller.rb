@@ -48,7 +48,9 @@ module Api
           categories = {}
           products.each do |product|
             serialized = pos_product_json(product, effective_location_id)
-            next if serialized[:variants].empty?
+            # A sold-out item can lose its only payable location override.
+            # Keep its recovery card; empty variants still cannot enter a sale.
+            next if serialized[:variants].empty? && !(include_unavailable && !serialized[:location_available])
             collection_names = product.collections.map(&:name)
             category = collection_names.first || "Uncategorized"
 

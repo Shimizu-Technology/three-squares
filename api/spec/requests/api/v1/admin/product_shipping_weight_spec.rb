@@ -24,10 +24,11 @@ RSpec.describe "Restaurant product shipping weight", type: :request do
     expect(product.reload.product_locations.available.pluck(:location_id)).to eq([ main.id ])
   end
 
-  it "requires positive shipping weight and copies it only to the default option" do
+  it "requires positive shipping weight, fills missing option weights and preserves explicit box weights" do
     product = create(:product, allow_pickup: true, allow_shipping: false, weight_oz: nil)
     ProductLocation.create!(product: product, location: main, available: true)
     custom = create(:product_variant, product: product, weight_oz: 16)
+    weightless = create(:product_variant, product: product, weight_oz: nil)
     [ nil, 0, -1 ].each do |weight|
       patch "/api/v1/admin/products/#{product.id}", params: { product: { allow_shipping: true, weight_oz: weight } }, as: :json
       expect(response).to have_http_status(:unprocessable_entity)
@@ -37,6 +38,7 @@ RSpec.describe "Restaurant product shipping weight", type: :request do
     expect(response).to have_http_status(:ok)
     expect(product.reload.product_variants.find_by!(is_default: true).weight_oz).to eq(8)
     expect(custom.reload.weight_oz).to eq(16)
+    expect(weightless.reload.weight_oz).to eq(8)
   end
 
   it "allows weightless pickup options while retaining shipping option validation" do

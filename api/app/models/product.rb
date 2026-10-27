@@ -43,7 +43,7 @@ class Product < ApplicationRecord
   before_validation :normalize_pickup_weight
   before_validation :generate_sku_prefix, if: -> { sku_prefix.blank? }
   after_save :ensure_default_variant, if: -> { saved_change_to_inventory_level? || ([ "product", "none" ].include?(inventory_level) && product_variants.none?) }
-  after_save :sync_default_variant_shipping_weight, if: -> { allow_shipping? && (saved_change_to_weight_oz? || saved_change_to_allow_shipping?) }
+  after_save :sync_variant_shipping_weight, if: -> { allow_shipping? && (saved_change_to_weight_oz? || saved_change_to_allow_shipping?) }
   # Fires on every product creation but short-circuits immediately when
   # no variants exist (the common case). Costs one EXISTS query for
   # products created without nested attributes; acceptable given how
@@ -145,8 +145,10 @@ class Product < ApplicationRecord
     self.weight_oz = nil if !allow_shipping? && weight_oz == 0
   end
 
-  def sync_default_variant_shipping_weight
-    product_variants.where(is_default: true).each do |variant|
+  def sync_variant_shipping_weight
+    # A newly shippable pickup item lends its entered weight to weightless
+    # options. Preserve explicit box/portion weights; defaults follow the item.
+    product_variants.where(is_default: true).or(product_variants.where(weight_oz: nil)).or(product_variants.where(weight_oz: 0)).each do |variant|
       variant.update!(weight_oz: weight_oz) unless variant.weight_oz == weight_oz
     end
   end
