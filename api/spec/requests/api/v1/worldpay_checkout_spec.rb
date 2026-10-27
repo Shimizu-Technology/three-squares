@@ -66,6 +66,27 @@ RSpec.describe 'Worldpay hosted checkout contracts', type: :request do
     allow(Payments::Worldpay::Runtime).to receive(:new).and_wrap_original { |original, **args| original.call(**args, env: env, transport: transport) }
   end
 
+  it 'checks the same assigned runtime and setup contract locally without creating an attempt or transport' do
+    saved = Payments::Worldpay::ProfileSnapshot.capture(profile)
+    expect(Payments::Worldpay::Runtime.preflight_profile!(identity: identity, profile: saved, env: env)).to be(true)
+    expect(calls).to be_empty
+    expect(PaymentAttempt.count).to eq(0)
+    [saved.deep_merge('capabilities' => { 'setup_fields' => nil }),
+      saved.deep_merge('capabilities' => { 'fraud_policy' => 'unassigned' }),
+      saved.deep_merge('capabilities' => { 'usd_query_contract' => false }),
+      saved.deep_merge('capabilities' => { 'application_version' => 'unassigned' }),
+      saved.deep_merge('capabilities' => { 'reporting_time_zone' => 'unassigned' })].each do |invalid|
+      expect { Payments::Worldpay::Runtime.preflight_profile!(identity: identity, profile: invalid, env: env) }
+        .to raise_error(Payments::Configuration::UnsafeConfiguration)
+    end
+    %w[?unexpected=1 #unexpected /other].each do |suffix|
+      expect { Payments::Worldpay::Runtime.preflight_profile!(identity: identity, profile: saved,
+        env: env.merge('WORLDPAY_RETURN_URL' => env.fetch('WORLDPAY_RETURN_URL') + suffix)) }
+        .to raise_error(Payments::Configuration::UnsafeConfiguration)
+    end
+    expect(calls).to be_empty
+  end
+
   it 'does not publish Worldpay credentials in the public Stripe configuration' do
     get '/api/v1/config'
     expect(response.parsed_body).to include('stripe_account_id' => nil, 'stripe_publishable_key' => nil, 'payment_presentation' => 'worldpay_hosted_page')

@@ -5,7 +5,7 @@ module Payments
   # authority to a payment; the original attempt's runtime still validates it.
   module Status
     def self.call
-      provider = SiteSetting.first&.payment_processor.presence || ENV.fetch('PAYMENTS_DEFAULT_PROVIDER', 'worldpay')
+      provider = ProviderResolver.selected_provider
       profiles = PaymentProfile.includes(:payment_identity).where(provider: provider, enabled: true).order(:id).to_a
       locations = Location.where(active: true).order(:name, :id).to_a
       rows = [[nil, 'online']] + locations.flat_map { |location| %w[online pos].map { |channel| [location, channel] } }
@@ -43,29 +43,11 @@ module Payments
             blockers << 'Worldpay credentials must match the original account and acceptor identity.'
           end
           if channel == 'pos'
-            begin
-              Worldpay::TriPosRuntime.new(identity: identity, profile: { 'presentation' => profile.presentation, 'capabilities' => profile.capabilities })
-            rescue Configuration::UnsafeConfiguration
-              blockers << 'Waiting on valid assigned Worldpay reader, query and timeout contracts and configuration.'
-            end
+            Worldpay::TriPosRuntime.new(identity: identity, profile: { 'presentation' => profile.presentation, 'capabilities' => profile.capabilities })
           elsif profile.presentation != 'worldpay_hosted_page' || profile.capabilities['hosted_page_variant'] != 'legacy'
             blockers << 'Worldpay Hosted Fields and Premium are waiting on their assigned integration guides; legacy hosted checkout needs its own profile.'
           else
-            caps = Worldpay::ProfileSnapshot.capture(profile).fetch('capabilities')
-            terminal = caps.fetch('terminal_profile')
-            begin
-              callback = URI.parse(ENV.fetch('WORLDPAY_RETURN_URL', ''))
-              unless callback.path == '/api/v1/payments/worldpay/return' && callback.query.nil? && callback.fragment.nil? &&
-                  caps['application_version'] == ENV['WORLDPAY_EXPRESS_APPLICATION_VERSION'] &&
-                  caps['usd_query_contract'] == true && caps['fraud_policy'] == 'processor_enforced' &&
-                  ActiveSupport::TimeZone[caps['reporting_time_zone']] && Worldpay::ProfileSnapshot::SETUP_FIELDS.all? { |key| caps.fetch('setup_fields', {})[key].present? }
-                raise Worldpay::Configuration::Invalid, 'assigned_profile_required'
-              end
-              Worldpay::Configuration.new(identity: identity, terminal_profile: { approved: terminal['approved'], key: terminal['key'], fields: terminal['fields'] },
-                namespaces: Worldpay::PublishedContract.namespaces, return_origins: caps.fetch('return_origins', []))
-            rescue Worldpay::Configuration::Invalid, URI::InvalidURIError, KeyError, TypeError
-              blockers << 'Waiting on valid assigned Worldpay hosted-page, terminal, fraud, currency and reporting configuration.'
-            end
+            Worldpay::Runtime.preflight_profile!(identity: identity, profile: Worldpay::ProfileSnapshot.capture(profile))
           end
         elsif provider == 'stripe'
           begin
@@ -79,11 +61,19 @@ module Payments
           blockers << 'Stripe reader location assignment is required.' if channel == 'pos' && profile.capabilities['stripe_terminal_location_id'].blank? && profile.capabilities['stripe_terminal_locations'].blank?
         end
       end
+      row(location, channel, provider, profile, identity, gate, blockers)
+    rescue Configuration::UnsafeConfiguration, Worldpay::Configuration::Invalid, KeyError, TypeError, NoMethodError, ArgumentError, UnsupportedCapability => error
+      Rails.logger.warn(error.class.name)
+      row(location, channel, provider, profile, identity, gate || false,
+        (blockers || []) + ["This profile's configuration could not be checked. An operator must review it."])
+    end
+
+    def self.row(location, channel, provider, profile, identity, gate, blockers)
       { location_id: location&.id, location_name: location&.name || 'Online orders without a pickup location', channel: channel,
         provider: provider, profile_id: profile&.id, identity_id: identity&.id, environment: identity&.environment,
         presentation: profile&.presentation, network_gate_enabled: gate,
         real_dispatch_enabled: gate && blockers.empty? && identity&.environment != 'simulated', blockers: blockers.uniq }
     end
-    private_class_method :describe
+    private_class_method :describe, :row
   end
 end

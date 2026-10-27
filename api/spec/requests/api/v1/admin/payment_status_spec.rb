@@ -76,6 +76,39 @@ RSpec.describe 'Read-only payment status', type: :request do
     expect(row(location)['real_dispatch_enabled']).to be(true)
     expect(response.body).not_to include('rk_test_private_fixture', 'sk_live_wrong_fixture', 'private-fixture-value', 'unexpected_secret')
   end
+  it 'isolates malformed online and POS profiles while keeping healthy rows available' do
+    healthy = profile('simulated')
+    bad_online = profile('sandbox', location: location, presentation: 'worldpay_hosted_page',
+      capabilities: { 'hosted_page_variant' => 'legacy', 'terminal_profile' => 'private-malformed-value' })
+    bad_pos = PaymentProfile.create!(payment_identity: bad_online.payment_identity, provider: 'worldpay', channel: 'pos',
+      location: location, presentation: 'worldpay_terminal', capabilities: { 'contract_approved' => true, 'contract_version' => '5.0.4',
+        'usd_query_contract' => true, 'query_completeness_approved' => true, 'reporting_time_zone' => ['private-invalid-zone'] }, enabled: true)
+    allow(Rails.logger).to receive(:warn)
+    get url
+    expect(response).to have_http_status(:ok), response.body
+    expect(row).to include('profile_id' => healthy.id, 'environment' => 'simulated', 'blockers' => [])
+    [row(location), row(location, 'pos')].zip([bad_online, bad_pos]).each do |result, saved|
+      expect(result).to include('profile_id' => saved.id, 'real_dispatch_enabled' => false)
+      expect(result.fetch('blockers')).to include("This profile's configuration could not be checked. An operator must review it.")
+    end
+    expect(Rails.logger).to have_received(:warn).with('Payments::Configuration::UnsafeConfiguration')
+    expect(Rails.logger).to have_received(:warn).with('ArgumentError')
+    expect(response.body).not_to include('private-malformed-value', 'private-invalid-zone')
+  end
+
+  it 'uses resolver selection and the runtime preflight instead of a parallel readiness predicate' do
+    saved = profile('sandbox', location: location, presentation: 'worldpay_hosted_page', capabilities: { 'hosted_page_variant' => 'legacy' })
+    allow(Payments::ProviderResolver).to receive(:selected_provider).and_return('worldpay')
+    allow(Payments::Worldpay::Runtime).to receive(:preflight_profile!).and_raise(Payments::Configuration::UnsafeConfiguration, 'private-contract-detail')
+    get url
+    expect(response).to have_http_status(:ok)
+    expect(Payments::ProviderResolver).to have_received(:selected_provider)
+    expect(Payments::Worldpay::Runtime).to have_received(:preflight_profile!).with(identity: saved.payment_identity,
+      profile: Payments::Worldpay::ProfileSnapshot.capture(saved))
+    expect(row(location)['real_dispatch_enabled']).to be(false)
+    expect(response.body).not_to include('private-contract-detail')
+  end
+
   it 'keeps the legacy server flag read-only and preserves unrelated owner changes' do
     SiteSetting.instance.update!(payment_test_mode: true)
     put '/api/v1/admin/site_settings', params: { site_setting: { payment_test_mode: false, store_name: 'Owner draft' } }, as: :json

@@ -283,3 +283,20 @@ test('payments panel discards late responses after refresh and after unmount', a
   h.unmount(); const writes = h.writes; late.resolve({ data: paymentStatus('worldpay') }); await Promise.resolve(); await Promise.resolve(); await Promise.resolve();
   assert.equal(h.writes, writes);
 });
+
+
+test('payments panel reloads after a token function change, ignores its old response and can refresh again', async t => {
+  const h = harness(t, PaymentsPanel); const old = deferred(); h.get = () => old.promise; await h.flush();
+  const originalToken = h.getToken;
+  h.getToken = async () => 'replacement-synthetic-token';
+  h.get = async (_, token) => { assert.equal(token, h.getToken); return { data: paymentStatus('stripe') }; };
+  await h.flush();
+  assert.match(text(h.tree), /Selected provider for new payments: Stripe/);
+  assert.equal(h.button('Refresh payments status').props.disabled, false);
+  old.resolve({ data: paymentStatus('worldpay') }); await h.flush();
+  assert.match(text(h.tree), /Selected provider for new payments: Stripe/);
+  assert.notEqual(originalToken, h.getToken);
+  h.click('Refresh payments status'); await h.flush();
+  assert.equal(h.button('Refresh payments status').props.disabled, false);
+  assert.doesNotMatch(text(h.tree), /Loading payments status/);
+});

@@ -2,9 +2,13 @@
 
 module Payments
   class ProviderResolver
+    def self.selected_provider
+      SiteSetting.first&.payment_processor.presence || ENV.fetch("PAYMENTS_DEFAULT_PROVIDER", "worldpay")
+    end
+
     def self.profile!(location_id:, channel:, collection_mode: nil)
       channel = 'online' if channel == 'pos' && collection_mode == 'hosted'
-      provider = SiteSetting.first&.payment_processor.presence || ENV.fetch("PAYMENTS_DEFAULT_PROVIDER", "worldpay")
+      provider = selected_provider
       profiles = PaymentProfile.where(enabled: true, channel: channel, provider: provider)
       profile = profiles.where(location_id: location_id).first
       profile ||= profiles.where(location_id: nil).first

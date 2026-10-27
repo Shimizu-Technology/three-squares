@@ -9,10 +9,7 @@ module Payments
 
     def preflight(attempt:)
       validate_attempt!(attempt)
-      caps = runtime(attempt).profile.fetch("capabilities")
-      unless caps["usd_query_contract"] == true && caps["fraud_policy"] == "processor_enforced" && ActiveSupport::TimeZone[caps["reporting_time_zone"]]
-        raise Configuration::UnsafeConfiguration, "Assigned USD, fraud and reporting contracts are required"
-      end
+      Worldpay::Runtime.validate_collection_contracts!(runtime(attempt).profile)
       Worldpay::HostedCheckout.new(runtime: runtime(attempt)).preflight(attempt: attempt)
       true
     end
