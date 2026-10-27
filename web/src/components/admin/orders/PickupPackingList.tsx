@@ -1,4 +1,5 @@
 import type { Order } from './orderUtils';
+import PaymentEnvironmentBadge from '../../payment/PaymentEnvironmentBadge';
 import { formatCurrency, formatDate, formatStatus, getNextStatusAction, getStatusBadge, pickupOrderAge } from './orderUtils';
 
 interface Props {
@@ -22,6 +23,7 @@ export default function PickupPackingList({ orders, saving, page, totalPages, on
             <p className="break-words text-lg font-bold text-gray-950 [overflow-wrap:anywhere]">{order.customer_name || 'Walk-in customer'}</p>
             <p className="mt-1 break-words text-sm font-semibold text-gray-800">{order.location_name || 'Pickup location unavailable'}</p>
             <p className="mt-1 text-sm text-gray-600 [overflow-wrap:anywhere]">{order.order_number} · <time dateTime={order.created_at} title={formatDate(order.created_at)}>{pickupOrderAge(order.created_at)}</time></p>
+            <PaymentEnvironmentBadge environment={order.payment_environment} inline />
           </div>
           <div className="flex shrink-0 gap-2">
             {action && <button type="button" disabled={saving} onClick={() => onQuickUpdateStatus(order.id, action.status)} className={`min-h-11 flex-1 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 sm:flex-none ${action.color}`}>{action.label}</button>}

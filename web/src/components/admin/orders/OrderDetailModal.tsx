@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import useLockBodyScroll from '../../../hooks/useLockBodyScroll';
 import type { Order } from './orderUtils';
+import PaymentEnvironmentBadge from '../../payment/PaymentEnvironmentBadge';
 import { formatCurrency, formatDate, getStatusBadge, formatStatus, getNextStatusAction } from './orderUtils';
 
 interface OrderDetailModalProps {
@@ -101,6 +102,7 @@ export default function OrderDetailModal({
               {order.order_number}
             </h2>
             <p className="text-sm text-gray-500 mt-1">{formatDate(order.created_at)}</p>
+            <PaymentEnvironmentBadge environment={order.payment_environment} inline />
             {order.inventory_restoration_status === 'manual_review_required' && <p role="status" className="mt-3 text-sm text-amber-800">Inventory restoration requires manual review. No stock was restored automatically.</p>}
           </div>
           <button

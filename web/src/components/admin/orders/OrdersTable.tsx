@@ -1,4 +1,5 @@
 import type { Order } from './orderUtils';
+import PaymentEnvironmentBadge from '../../payment/PaymentEnvironmentBadge';
 import { formatCurrency, formatDate, getStatusBadge, formatStatus, getNextStatusAction } from './orderUtils';
 
 interface OrdersTableProps {
@@ -51,6 +52,7 @@ export default function OrdersTable({
                 <tr key={order.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{order.order_number}</div>
+                    <PaymentEnvironmentBadge environment={order.payment_environment} inline />
                     <div className="mt-1"><OrderTypeBadge type={order.order_type} /></div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
@@ -116,6 +118,7 @@ export default function OrdersTable({
               <div className="flex justify-between items-start mb-3">
                 <div>
                   <p className="font-semibold text-gray-900">{order.order_number}</p>
+                  <PaymentEnvironmentBadge environment={order.payment_environment} inline />
                   <p className="text-sm text-gray-600">{order.customer_name}</p>
                   <div className="mt-1"><OrderTypeBadge type={order.order_type} /></div>
                 </div>

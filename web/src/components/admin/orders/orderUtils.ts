@@ -31,6 +31,8 @@ export interface Order {
   order_number: string;
   status: string;
   payment_status: string;
+  payment_environment?: string | null;
+  payment_provider?: string | null;
   inventory_restoration_status?: string;
   order_type: 'retail' | 'wholesale' | 'pickup' | 'dine_in';
   next_status_options: string[];

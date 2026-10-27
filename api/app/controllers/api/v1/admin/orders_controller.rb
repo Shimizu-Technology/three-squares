@@ -654,6 +654,8 @@ module Api
           order_number: order.order_number,
           status: order.status,
           payment_status: order.payment_status,
+          payment_environment: order.payment_environment,
+          payment_provider: order.payment_provider,
           inventory_restoration_status: order.metadata.dig('inventory_restoration', 'status'),
           order_type: order.order_type,
           business_line: infer_business_line(order),
