@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { Upload, X, AlertCircle, CheckCircle, Download } from 'lucide-react';
 import type { Product, DetailedProduct } from '../../components/admin/products';
@@ -11,6 +11,8 @@ import {
 } from '../../components/admin/products';
 import AdminRequestState from '../../components/admin/AdminRequestState';
 import { SkeletonListPage } from '../../components/admin';
+
+import { parseProductQuery, productListPath, clampProductPage, productScrollKey, readProductScroll, writeProductScroll } from '../../components/admin/products/productQueryState';
 
 import { authGet, authPatch, authPost } from '../../services/authApi';
 
@@ -53,7 +55,9 @@ function downloadTemplate() {
 }
 
 export default function AdminProductsPage() {
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
+  const location = useLocation();
+  const navigationType = useNavigationType();
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,15 +80,33 @@ export default function AdminProductsPage() {
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [importError, setImportError] = useState<string | null>(null);
 
-  // Pagination & Filters
-  const [currentPage, setCurrentPage] = useState(1);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [filterPublished, setFilterPublished] = useState<'all' | 'true' | 'false' | 'archived' | 'attention'>('all');
-  const [filterType, setFilterType] = useState('all');
+  // URL is the only source of list state; POP navigation never syncs from stale local state.
+  const query = parseProductQuery(location.search);
+  const { page: requestedPage, q: searchQuery, published: filterPublished, type: filterType, sort: sortBy, dir: sortDir } = query;
   const [productTypes, setProductTypes] = useState<string[]>([]);
-  const [sortBy, setSortBy] = useState<'name' | 'price' | 'stock' | 'created'>('name');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const itemsPerPage = 25;
+  const listPath = productListPath(query);
+  const returnEntry = location.state?.productScrollEntry;
+  const entryKey = typeof returnEntry === 'string' && returnEntry.length <= 100 ? returnEntry : location.key;
+  const scrollKey = productScrollKey(userId || '', entryKey, listPath);
+  const searchEditing = useRef(false);
+  useEffect(() => {
+    if (navigationType === 'POP') searchEditing.current = false;
+  }, [navigationType, location.key]);
+
+  const changeQuery = (patch: Partial<typeof query>, replace = false) => {
+    writeProductScroll(scrollKey, window.scrollY);
+    const path = productListPath(parseProductQuery(productListPath({ ...query, ...patch }).split('?')[1] || ''));
+    if (path !== listPath) navigate(path, { replace });
+  };
+
+  const openEditor = (product?: Product) => {
+    writeProductScroll(scrollKey, window.scrollY);
+    const path = product ? `/admin/products/${product.id}/edit` : '/admin/products/new';
+    navigate(`${path}?${new URLSearchParams({ returnTo: listPath })}`, {
+      state: { productListReturn: { path: listPath, entryKey, index: window.history.state?.idx } },
+    });
+  };
 
   // Lock body scroll when modal open
   useEffect(() => {
@@ -98,9 +120,6 @@ export default function AdminProductsPage() {
     importDialog.current?.focus();
     return () => { if (previous?.isConnected) previous.focus(); };
   }, [showImportModal]);
-
-  // Reset page on filter/sort change
-  useEffect(() => { setCurrentPage(1); }, [searchQuery, filterPublished, filterType, sortBy, sortDir]);
 
   // ── Fetch ──────────────────────────────────────────────
   const fetchProducts = useCallback(async () => {
@@ -221,12 +240,7 @@ export default function AdminProductsPage() {
   };
 
   const handleSort = (column: 'name' | 'price' | 'stock' | 'created') => {
-    if (sortBy === column) {
-      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortBy(column);
-      setSortDir('asc');
-    }
+    changeQuery({ sort: column, dir: sortBy === column && sortDir === 'asc' ? 'desc' : 'asc', page: 1 });
   };
 
   // ── Filter + Sort + Paginate ───────────────────────────
@@ -250,6 +264,11 @@ export default function AdminProductsPage() {
     let cmp = 0;
     switch (sortBy) {
       case 'name': cmp = a.name.localeCompare(b.name); break;
+      case 'created': {
+        const created = (product: Product) => Date.parse((product as Product & { created_at?: string }).created_at || '') || 0;
+        cmp = created(a) - created(b);
+        break;
+      }
       case 'price': cmp = a.base_price_cents - b.base_price_cents; break;
       case 'stock': {
         const sa = a.inventory_level === 'product' ? (a.product_stock_quantity || 0) : a.inventory_level === 'variant' ? (a.total_variant_stock || 0) : 0;
@@ -261,15 +280,43 @@ export default function AdminProductsPage() {
     return sortDir === 'asc' ? cmp : -cmp;
   });
 
-  const totalPages = Math.ceil(sortedProducts.length / itemsPerPage);
+  const totalPages = Math.max(1, Math.ceil(sortedProducts.length / itemsPerPage));
+  const currentPage = clampProductPage(requestedPage, sortedProducts.length, itemsPerPage);
   const paginatedProducts = sortedProducts.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage,
   );
 
+  // Canonicalize/clamp with replace only after authoritative data arrives. Never reset page on POP.
+  useEffect(() => {
+    if (loading || loadError || !hasLoaded) return;
+    const canonical = productListPath({ ...parseProductQuery(location.search), page: currentPage });
+    if (location.pathname + location.search !== canonical) navigate(canonical, { replace: true, state: location.state });
+  }, [loading, loadError, hasLoaded, currentPage, location.pathname, location.search, location.state, navigate]);
+
+  // Restore only once per rendered history entry, after rows exist (including a reload).
+  const restoredEntry = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    if (!hasLoaded || loading || restoredEntry.current === scrollKey) return;
+    restoredEntry.current = scrollKey;
+    const y = readProductScroll(scrollKey);
+    if (y !== null) window.scrollTo({ top: y, behavior: 'instant' });
+  }, [hasLoaded, loading, scrollKey]);
+
+  useEffect(() => {
+    if (!hasLoaded || loading) return;
+    const save = () => writeProductScroll(scrollKey, window.scrollY);
+    window.addEventListener('scroll', save, { passive: true });
+    window.addEventListener('pagehide', save);
+    return () => {
+      window.removeEventListener('scroll', save);
+      window.removeEventListener('pagehide', save);
+    };
+  }, [hasLoaded, loading, scrollKey]);
+
   // ── Render ─────────────────────────────────────────────
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" onBlurCapture={() => { searchEditing.current = false; }}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -292,7 +339,7 @@ export default function AdminProductsPage() {
             <Upload className="w-4 h-4" />
             Import CSV
           </button>
-          <button onClick={() => navigate('/admin/products/new')} className="btn-primary flex items-center gap-2">
+          <button onClick={() => openEditor()} className="btn-primary flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
@@ -304,13 +351,13 @@ export default function AdminProductsPage() {
       {/* Filters */}
       <ProductFilters
         searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
+        onSearchChange={q => { changeQuery({ q, page: 1 }, searchEditing.current); searchEditing.current = true; }}
         filterPublished={filterPublished}
-        onPublishedChange={setFilterPublished}
+        onPublishedChange={published => changeQuery({ published, page: 1 })}
         filterType={filterType}
-        onTypeChange={setFilterType}
-        productTypes={productTypes}
-        onClear={() => { setSearchQuery(''); setFilterPublished('all'); setFilterType('all'); }}
+        onTypeChange={type => changeQuery({ type, page: 1 })}
+        productTypes={filterType === 'all' || productTypes.includes(filterType) ? productTypes : [...productTypes, filterType]}
+        onClear={() => changeQuery({ q: '', published: 'all', type: 'all', page: 1 })}
       />
 
       <AdminRequestState resource="Products" loading={loading} error={loadError} hasData={hasLoaded} onRetry={fetchProducts} />
@@ -337,8 +384,9 @@ export default function AdminProductsPage() {
           sortBy={sortBy}
           sortDir={sortDir}
           onSort={handleSort}
-          onPageChange={setCurrentPage}
+          onPageChange={page => changeQuery({ page })}
           onView={fetchProductDetails}
+          onEdit={openEditor}
           onTogglePublished={handleTogglePublished}
           onArchive={handleArchive}
           onUnarchive={handleUnarchive}
@@ -352,6 +400,7 @@ export default function AdminProductsPage() {
           product={selectedProduct}
           loading={loadingDetails}
           onClose={closeProductDetails}
+          onEdit={openEditor}
         />
       )}
 

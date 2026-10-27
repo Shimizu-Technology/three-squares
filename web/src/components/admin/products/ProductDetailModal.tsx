@@ -1,6 +1,5 @@
 import { useRef, useState } from 'react';
 import useLockBodyScroll from '../../../hooks/useLockBodyScroll';
-import { useNavigate } from 'react-router-dom';
 import { X, Edit, AlertTriangle } from 'lucide-react';
 import type { DetailedProduct } from './productUtils';
 import { formatCurrency, getVariantStatus } from './productUtils';
@@ -10,12 +9,12 @@ interface ProductDetailModalProps {
   product: DetailedProduct;
   loading: boolean;
   onClose: () => void;
+  onEdit: (product: DetailedProduct) => void;
 }
 
-export default function ProductDetailModal({ product, loading, onClose }: ProductDetailModalProps) {
+export default function ProductDetailModal({ product, loading, onClose, onEdit }: ProductDetailModalProps) {
   useLockBodyScroll(true);
 
-  const navigate = useNavigate();
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const modalContentRef = useRef<HTMLDivElement | null>(null);
 
@@ -269,7 +268,7 @@ export default function ProductDetailModal({ product, loading, onClose }: Produc
             {/* Action Buttons */}
             <div className="flex gap-3 p-6 border-t border-gray-200 shrink-0">
               <button
-                onClick={() => { onClose(); navigate(`/admin/products/${product.id}/edit`); }}
+                onClick={() => { onEdit(product); }}
                 className="btn-primary flex-1 inline-flex items-center justify-center"
               >
                 <Edit className="w-5 h-5 mr-2" /> Edit Product

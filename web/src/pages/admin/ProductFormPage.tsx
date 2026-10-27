@@ -1,12 +1,15 @@
 import axios from 'axios';
 import { useRef, useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
 import { ArrowLeft, Save, X, Archive, AlertTriangle, History } from 'lucide-react';
 import ImageUpload from '../../components/ImageUpload';
 import VariantManager from '../../components/VariantManager';
 import useLockBodyScroll from '../../hooks/useLockBodyScroll';
+import { readProductDraft, writeProductDraft, discardProductDraft } from '../../components/admin/products/productDraft';
+import type { ProductDraft, ProductFormData } from '../../components/admin/products/productDraft';
+import { safeProductReturnTo, readProductListReturn } from '../../components/admin/products/productQueryState';
 import { authDelete, authGet, authPost, authPut } from '../../services/authApi';
 
 interface InventoryAudit {
@@ -49,28 +52,6 @@ interface LocationOption {
   active: boolean;
 }
 
-interface ProductFormData {
-  name: string;
-  description: string;
-  product_type: string;
-  vendor: string;
-  base_price_cents: number;
-  weight_oz: number;
-  published: boolean;
-  featured: boolean;
-  meta_title: string;
-  meta_description: string;
-  inventory_level: 'none' | 'product' | 'variant';
-  product_stock_quantity?: number;
-  product_low_stock_threshold?: number;
-  allow_pickup: boolean;
-  allow_shipping: boolean;
-  location_ids: number[];
-  collection_ids: number[];
-  needs_attention?: boolean;
-  import_notes?: string;
-}
-
 interface ProductDetailsResponse {
   data: {
     id: number;
@@ -79,13 +60,13 @@ interface ProductDetailsResponse {
     product_type?: string;
     vendor?: string;
     base_price_cents?: number;
-    weight_oz?: number;
+    weight_oz?: number | string | null;
     published?: boolean;
     featured?: boolean;
     meta_title?: string;
     meta_description?: string;
     inventory_level?: 'none' | 'product' | 'variant';
-    product_stock_quantity?: number;
+    product_stock_quantity?: number | null;
     product_low_stock_threshold?: number;
     allow_pickup?: boolean;
     allow_shipping?: boolean;
@@ -112,11 +93,32 @@ interface InventoryAuditsResponse {
 
 export default function ProductFormPage() {
   const { id } = useParams<{ id: string }>();
+  const { userId } = useAuth();
+  if (!userId) return <p role="status">Loading product editor…</p>;
+  // Remount on identity/product changes so neither form state nor draft offers leak between editors.
+  return <ProductFormEditor key={`${userId}:${id || 'new'}`} id={id} userId={userId} />;
+}
+
+function ProductFormEditor({ id, userId }: { id: string | undefined; userId: string }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { getToken } = useAuth();
   const isEditMode = !!id;
+  const draftId = id || 'new';
+  const returnTo = safeProductReturnTo(new URLSearchParams(location.search).get('returnTo'));
+  const listReturn = readProductListReturn(location.state?.productListReturn, returnTo);
+  const returnToProducts = () => {
+    if (listReturn && window.history.state?.idx === listReturn.index + 1) navigate(-1);
+    else navigate(returnTo, { replace: true, state: listReturn ? { productScrollEntry: listReturn.entryKey } : null });
+  };
+  const [draftOffer, setDraftOffer] = useState<ProductDraft | null>(null);
+  const [draftReady, setDraftReady] = useState(false);
+  const [draftMessage, setDraftMessage] = useState('');
+  const baseline = useRef('');
+  const alive = useRef(false);
+  const productRequest = useRef(0);
 
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -153,18 +155,43 @@ export default function ProductFormPage() {
   });
 
   useEffect(() => {
+    alive.current = true;
     fetchCollections();
     fetchLocations();
-    if (isEditMode) {
-      fetchProduct();
-    }
+    if (isEditMode) fetchProduct();
+    else prepareDraft(formData);
+    return () => { alive.current = false; productRequest.current += 1; };
   }, [id]);
+
+  const prepareDraft = (fresh: ProductFormData) => {
+    baseline.current = JSON.stringify(fresh);
+    setDraftOffer(readProductDraft(userId, draftId));
+    setDraftReady(true);
+  };
+
+  // Persist in the edit event, before a quick Back/navigation can unmount this editor.
+  const updateFormData = (update: (previous: ProductFormData) => ProductFormData) => {
+    const next = update(formData);
+    setFormData(next);
+    const stored = writeProductDraft(userId, draftId, next);
+    setDraftMessage(stored
+      ? 'Main form draft saved in this tab. Images and variants save separately.'
+      : 'Draft kept for page navigation only. Browser recovery is unavailable; copy changes before closing or reloading.');
+  };
+
+  const dirty = draftReady && JSON.stringify(formData) !== baseline.current;
+  useEffect(() => {
+    if (!dirty) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ''; };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [dirty]);
 
   const fetchCollections = async () => {
     try {
       // Fetch ALL collections (including unpublished) for admin use
       const response = await authGet<CollectionsResponse>('/admin/collections', getToken);
-      setAllCollections(response.data.data || []);
+      if (alive.current) setAllCollections(response.data.data || []);
     } catch (err) {
       console.error('Failed to fetch collections:', err);
     }
@@ -173,35 +200,38 @@ export default function ProductFormPage() {
   const fetchLocations = async () => {
     try {
       const response = await authGet<LocationsResponse>('/admin/locations', getToken);
-      setAllLocations(response.data.data || []);
+      if (alive.current) setAllLocations(response.data.data || []);
     } catch (err) {
       console.error('Failed to fetch locations:', err);
     }
   };
 
   const fetchProduct = async () => {
+    const request = ++productRequest.current;
     try {
       setLoading(true);
+      setDraftReady(false);
       const response = await authGet<ProductDetailsResponse>(`/admin/products/${id}`, getToken);
       
+      if (!alive.current || request !== productRequest.current) return;
       // Backend wraps response in { success: true, data: {...} }
       const product = response.data.data || response.data;
       
       setIsArchived(product.archived || false);
       
-      setFormData({
+      const fresh: ProductFormData = {
         name: product.name || '',
         description: product.description || '',
         product_type: product.product_type || 'apparel',
         vendor: product.vendor || 'Three Squares',
         base_price_cents: product.base_price_cents || 0,
-        weight_oz: product.weight_oz || 0,
+        weight_oz: Number(product.weight_oz) || 0,
         published: product.published || false,
         featured: product.featured || false,
         meta_title: product.meta_title || '',
         meta_description: product.meta_description || '',
         inventory_level: product.inventory_level || 'none',
-        product_stock_quantity: product.product_stock_quantity,
+        product_stock_quantity: product.product_stock_quantity ?? undefined,
         product_low_stock_threshold: product.product_low_stock_threshold || 5,
         allow_pickup: product.allow_pickup ?? true,
         allow_shipping: product.allow_shipping ?? false,
@@ -209,16 +239,19 @@ export default function ProductFormPage() {
         collection_ids: product.collection_ids || [],
         needs_attention: product.needs_attention || false,
         import_notes: product.import_notes || '',
-      });
+      };
+      setFormData(fresh);
+      prepareDraft(fresh);
       
       // Load images
       setImages(product.images || []);
     } catch (err) {
       console.error('Failed to fetch product:', err);
+      if (!alive.current || request !== productRequest.current) return;
       toast.error('Failed to load product');
-      navigate('/admin/products');
+      returnToProducts();
     } finally {
-      setLoading(false);
+      if (alive.current && request === productRequest.current) setLoading(false);
     }
   };
 
@@ -226,7 +259,7 @@ export default function ProductFormPage() {
     const { name, value, type } = e.target;
     
     if (type === 'checkbox') {
-      setFormData(prev => ({
+      updateFormData(prev => ({
         ...prev,
         [name]: (e.target as HTMLInputElement).checked,
       }));
@@ -235,19 +268,19 @@ export default function ProductFormPage() {
       const numValue = name === 'base_price_cents' 
         ? Math.round(parseFloat(value || '0') * 100)
         : parseFloat(value || '0');
-      setFormData(prev => ({
+      updateFormData(prev => ({
         ...prev,
         [name]: numValue,
       }));
     } else if (name === 'product_stock_quantity' || name === 'product_low_stock_threshold') {
       // Handle inventory numbers
       const numValue = parseInt(value || '0');
-      setFormData(prev => ({
+      updateFormData(prev => ({
         ...prev,
         [name]: isNaN(numValue) ? undefined : numValue,
       }));
     } else {
-      setFormData(prev => ({
+      updateFormData(prev => ({
         ...prev,
         [name]: value,
       }));
@@ -275,7 +308,7 @@ export default function ProductFormPage() {
   };
 
   const handleCollectionToggle = (collectionId: number) => {
-    setFormData(prev => {
+    updateFormData(prev => {
       const currentIds = prev.collection_ids || [];
       const newIds = currentIds.includes(collectionId)
         ? currentIds.filter(id => id !== collectionId)
@@ -285,7 +318,7 @@ export default function ProductFormPage() {
   };
 
   const handleLocationToggle = (locationId: number) => {
-    setFormData(prev => {
+    updateFormData(prev => {
       const currentIds = prev.location_ids || [];
       const newIds = currentIds.includes(locationId)
         ? currentIds.filter(id => id !== locationId)
@@ -296,7 +329,7 @@ export default function ProductFormPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    if (!draftReady || draftOffer || saving) return;
     // Validation
     if (!formData.name.trim()) {
       toast.error('Product name is required');
@@ -324,22 +357,24 @@ export default function ProductFormPage() {
 
       if (isEditMode) {
         const response = await authPut<ProductDetailsResponse>(`/admin/products/${id}`, payload, getToken);
+        discardProductDraft(userId, draftId);
+        if (!alive.current) return;
         
         // Update form data with latest from server (in case anything changed)
         const updatedProduct = response.data.data || response.data;
-        setFormData({
+        const saved: ProductFormData = {
           name: updatedProduct.name || '',
           description: updatedProduct.description || '',
           product_type: updatedProduct.product_type || 'apparel',
           vendor: updatedProduct.vendor || 'Three Squares',
           base_price_cents: updatedProduct.base_price_cents || 0,
-          weight_oz: updatedProduct.weight_oz || 0,
+          weight_oz: Number(updatedProduct.weight_oz) || 0,
           published: updatedProduct.published || false,
           featured: updatedProduct.featured || false,
           meta_title: updatedProduct.meta_title || '',
           meta_description: updatedProduct.meta_description || '',
           inventory_level: updatedProduct.inventory_level || 'none',
-          product_stock_quantity: updatedProduct.product_stock_quantity,
+          product_stock_quantity: updatedProduct.product_stock_quantity ?? undefined,
           product_low_stock_threshold: updatedProduct.product_low_stock_threshold || 5,
           allow_pickup: updatedProduct.allow_pickup ?? true,
           allow_shipping: updatedProduct.allow_shipping ?? false,
@@ -347,7 +382,10 @@ export default function ProductFormPage() {
           collection_ids: updatedProduct.collection_ids || [],
           needs_attention: updatedProduct.needs_attention || false,
           import_notes: updatedProduct.import_notes || '',
-        });
+        };
+        baseline.current = JSON.stringify(saved);
+        setFormData(saved);
+        setDraftMessage('');
         
         toast.success('Product updated successfully!', {
           duration: 3000,
@@ -355,6 +393,8 @@ export default function ProductFormPage() {
         });
       } else {
         const response = await authPost<ProductDetailsResponse>('/admin/products', payload, getToken);
+        discardProductDraft(userId, draftId);
+        if (!alive.current) return;
         
         toast.success('Product created successfully!', {
           duration: 3000,
@@ -363,10 +403,15 @@ export default function ProductFormPage() {
         
         // For new products, redirect to edit page so they can continue adding images/variants
         const newProduct = response.data.data || response.data;
-        navigate(`/admin/products/${newProduct.id}/edit`);
+        baseline.current = JSON.stringify(formData);
+        setDraftMessage('');
+        navigate(`/admin/products/${newProduct.id}/edit?${new URLSearchParams({ returnTo })}`, {
+          replace: true, state: location.state,
+        });
       }
     } catch (err) {
       console.error('Failed to save product:', err);
+      if (!alive.current) return;
       const details = axios.isAxiosError(err) ? err.response?.data?.errors : undefined;
       const errorMessage = Array.isArray(details) && details.length > 0
         ? details.join(' ')
@@ -376,7 +421,7 @@ export default function ProductFormPage() {
         position: 'top-right',
       });
     } finally {
-      setSaving(false);
+      if (alive.current) setSaving(false);
     }
   };
 
@@ -393,7 +438,7 @@ export default function ProductFormPage() {
       });
       
       // Redirect to products list
-      navigate('/admin/products');
+      returnToProducts();
     } catch (err) {
       console.error('Failed to archive product:', err);
       const errorMessage = axios.isAxiosError(err) ? err.response?.data?.error || err.response?.data?.message || 'Failed to archive product.' : 'Failed to archive product.';
@@ -449,7 +494,7 @@ export default function ProductFormPage() {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => navigate('/admin/products')}
+          onClick={returnToProducts}
           className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
@@ -470,6 +515,26 @@ export default function ProductFormPage() {
             </button>
           )}
         </div>
+      </div>
+
+      <div className="mb-4 space-y-2 text-sm text-gray-700" aria-live="polite">
+        {draftOffer ? (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+            <p>A draft from this tab is available. {isEditMode ? 'Fresh product data is loaded.' : 'The new product form is ready.'} Restore the main form fields or discard the draft. Images and variants save separately.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button type="button" className="btn-secondary min-h-[44px]" onClick={() => {
+                setFormData(draftOffer.data);
+                setDraftOffer(null);
+                setDraftMessage('Draft restored to the main form. Review it before saving. Images and variants were not restored.');
+              }}>Restore draft</button>
+              <button type="button" className="btn-secondary min-h-[44px]" onClick={() => {
+                discardProductDraft(userId, draftId);
+                setDraftOffer(null);
+                setDraftMessage('Draft discarded. Showing freshly loaded form fields.');
+              }}>Discard draft</button>
+            </div>
+          </div>
+        ) : <p className="rounded-lg border border-gray-200 bg-gray-50 p-3">{draftMessage || 'Main form drafts cover text and selections. Images and variants save separately.'}</p>}
       </div>
 
       {/* Archived Banner */}
@@ -518,7 +583,8 @@ export default function ProductFormPage() {
             )}
             <button
               type="button"
-              onClick={() => setFormData(prev => ({ ...prev, needs_attention: false, import_notes: '' }))}
+              disabled={!draftReady || !!draftOffer || saving}
+              onClick={() => updateFormData(prev => ({ ...prev, needs_attention: false, import_notes: '' }))}
               className="mt-2 text-sm font-medium text-amber-600 hover:text-amber-800 underline"
             >
               Mark as resolved
@@ -527,7 +593,8 @@ export default function ProductFormPage() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6 pb-24">
+      <form onSubmit={handleSubmit} className="pb-24">
+        <fieldset disabled={!draftReady || !!draftOffer || saving} className="space-y-6 min-w-0">
         {/* Basic Information */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
@@ -930,6 +997,8 @@ export default function ProductFormPage() {
           />
         )}
 
+        </fieldset>
+
         {/* Form Actions - Sticky Footer */}
         <div className="sticky bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-5 mt-6">
           <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 px-4 sm:px-6 py-3 sm:py-4">
@@ -954,7 +1023,7 @@ export default function ProductFormPage() {
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:ml-auto w-full sm:w-auto">
               <button
                 type="button"
-                onClick={() => navigate('/admin/products')}
+                onClick={returnToProducts}
                 className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition flex items-center justify-center"
                 disabled={saving || deleting}
               >
@@ -964,7 +1033,7 @@ export default function ProductFormPage() {
               <button
                 type="submit"
                 className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
-                disabled={saving || deleting}
+                disabled={saving || deleting || !draftReady || !!draftOffer}
               >
                 {saving ? (
                   <>
