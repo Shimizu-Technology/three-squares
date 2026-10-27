@@ -13,6 +13,10 @@ export function getStorePhone(configured?: string) {
 }
 
 export function getStorePhoneTel(phone: string) {
-  const digits = phone.replace(/\D/g, '');
-  return `tel:${digits.length === 10 ? '+1' + digits : '+' + digits}`;
+  const dial = phone.trim().replace(/[().\s-]/g, '');
+  if (/^\d{7}$/.test(dial)) return `tel:+1671${dial}`;
+  if (/^\d{10}$/.test(dial)) return `tel:+1${dial}`;
+  if (/^1\d{10}$/.test(dial)) return `tel:+${dial}`;
+  // Keep explicit international or other dial strings in their configured form.
+  return `tel:${dial}`;
 }
