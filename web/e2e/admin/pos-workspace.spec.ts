@@ -26,15 +26,15 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await page.goto('/admin/pos');
     const search = page.getByRole('searchbox', { name: 'Find a menu item' });
     await expect(search).toBeVisible();
-    await expect(page.getByRole('button', { name: new RegExp(sharedName) })).toBeEnabled();
+    await expect(page.getByRole('button', { name: new RegExp(`^${sharedName}`) })).toBeEnabled();
     await page.getByRole('heading', { name: 'POS', exact: true }).click();
     await page.keyboard.press('/');
     await expect(search).toBeFocused();
     await search.fill('Main-only');
-    await expect(page.getByRole('button', { name: new RegExp(sharedName) })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: new RegExp(`^${sharedName}`) })).toHaveCount(0);
     await search.fill('');
-    await page.getByRole('button', { name: new RegExp(sharedName) }).click();
-    await page.getByRole('button', { name: new RegExp(localName) }).click();
+    await page.getByRole('button', { name: new RegExp(`^${sharedName}`) }).click();
+    await page.getByRole('button', { name: new RegExp(`^${localName}`) }).click();
     await page.getByPlaceholder('Customer Name', { exact: true }).fill('Lunch team with a long customer name');
     const cash = page.getByRole('button', { name: 'Cash', exact: true });
     await page.getByRole('combobox', { name: 'Sale location', exact: true }).selectOption('92');
@@ -48,7 +48,7 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await expect(cash).toBeEnabled();
     await expect(page.getByText('$12.00', { exact: true }).first()).toBeVisible();
     await expect(page.getByPlaceholder('Customer Name', { exact: true })).toHaveValue('Lunch team with a long customer name');
-    const sharedTile = page.getByRole('button', { name: new RegExp(sharedName) }).filter({ has: page.locator('.line-clamp-2') });
+    const sharedTile = page.getByRole('button', { name: new RegExp(`^${sharedName}`) }).filter({ has: page.locator('.line-clamp-2') });
     await sharedTile.click(); await sharedTile.click();
     await expect(sharedTile).toBeDisabled();
     await page.getByRole('button', { name: `Decrease quantity for ${sharedName}`, exact: true }).click();
