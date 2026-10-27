@@ -343,7 +343,7 @@ module Api
 
       def filtered_orders_query
         orders_query = Order
-          .includes(order_items: { product_variant: { product: :collections } }, user: [], location: [])
+          .includes(order_items: [{ product: :collections }, { product_variant: { product: :collections } }], user: [], location: [])
           .order(created_at: :desc)
 
         orders_query = orders_query.where(status: params[:status]) if params[:status].present?
@@ -648,6 +648,8 @@ module Api
           payment_status: order.payment_status,
           inventory_restoration_status: order.metadata.dig('inventory_restoration', 'status'),
           order_type: order.order_type,
+          business_line: infer_business_line(order),
+          next_status_options: order.next_status_options,
           customer_name: order.name,
           customer_email: order.email,
           customer_phone: order.phone,
@@ -666,7 +668,9 @@ module Api
           location_id: order.location_id,
           location_name: order.location&.name,
           created_at: order.created_at.iso8601,
-          item_count: order.order_items.count,
+          item_count: order.order_items.sum(&:quantity),
+          line_count: order.order_items.size,
+          updated_at: order.updated_at.iso8601,
           notes: order.notes,
           order_items: order.order_items.map do |item|
             item_json = {
@@ -687,50 +691,11 @@ module Api
       end
 
       def detailed_order_json(order)
-        json = {
-          id: order.id,
-          order_number: order.order_number,
-          status: order.status,
-          payment_status: order.payment_status,
-          inventory_restoration_status: order.metadata.dig('inventory_restoration', 'status'),
-          order_type: order.order_type,
-          customer_name: order.name,
-          customer_email: order.email,
-          customer_phone: order.phone,
-          subtotal_cents: order.subtotal_cents,
-          shipping_cost_cents: order.shipping_cost_cents,
-          tax_cents: order.tax_cents,
-          total_cents: order.total_cents,
+        json = order_json(order).merge(
           total_formatted: "$#{'%.2f' % (order.total_cents / 100.0)}",
-          fulfillment_type: order.fulfillment_type,
-          location_id: order.location_id,
-          location_name: order.location&.name,
-          created_at: order.created_at.iso8601,
-          updated_at: order.updated_at.iso8601,
-          shipping_method: order.shipping_method,
-          shipping_address_line1: order.shipping_address_line1,
-          shipping_address_line2: order.shipping_address_line2,
-          shipping_city: order.shipping_city,
-          shipping_state: order.shipping_state,
-          shipping_zip: order.shipping_zip,
-          shipping_country: order.shipping_country,
           tracking_number: order.tracking_number,
-          admin_notes: order.admin_notes,
-          notes: order.notes,
-          order_items: order.order_items.map do |item|
-            item_json = {
-              id: item.id,
-              product_name: item.product_name,
-              variant_name: item.variant_name,
-              product_sku: item.product_sku,
-              quantity: item.quantity,
-              unit_price_cents: item.unit_price_cents,
-              total_price_cents: item.total_price_cents
-            }
-            item_json[:special_instructions] = item.special_instructions if item.special_instructions.present?
-            item_json
-          end
-        }
+          admin_notes: order.admin_notes
+        )
 
         json[:total_refunded_cents] = order.total_refunded_cents
         json[:refundable_amount_cents] = order.refundable_amount_cents

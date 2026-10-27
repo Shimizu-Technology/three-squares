@@ -28,7 +28,9 @@ export interface Order {
   status: string;
   payment_status: string;
   inventory_restoration_status?: string;
-  order_type: 'retail' | 'wholesale';
+  order_type: 'retail' | 'wholesale' | 'pickup' | 'dine_in';
+  next_status_options: string[];
+  line_count: number;
   business_line?: 'three_squares' | 'latte_stone' | 'catering';
   customer_name: string;
   customer_email: string;
@@ -104,28 +106,14 @@ export interface NextStatusAction {
 }
 
 export const getNextStatusAction = (order: Order): NextStatusAction | null => {
-  if (order.order_type === 'retail') {
-    switch (order.status) {
-      case 'pending':
-        return { label: 'Process', status: 'processing', color: 'bg-blue-600 hover:bg-blue-700' };
-      case 'processing':
-        return { label: 'Ship', status: 'shipped', color: 'bg-purple-600 hover:bg-purple-700' };
-      case 'shipped':
-        return { label: 'Delivered', status: 'delivered', color: 'bg-green-600 hover:bg-green-700' };
-      default:
-        return null;
-    }
-  } else {
-    switch (order.status) {
-      case 'pending':
-        return { label: 'Confirm', status: 'confirmed', color: 'bg-indigo-600 hover:bg-indigo-700' };
-      case 'confirmed':
-      case 'processing':
-        return { label: 'Ready', status: 'ready', color: 'bg-emerald-600 hover:bg-emerald-700' };
-      case 'ready':
-        return { label: 'Picked Up', status: 'picked_up', color: 'bg-green-600 hover:bg-green-700' };
-      default:
-        return null;
-    }
-  }
+  const actions: Record<string, NextStatusAction> = {
+    confirmed: { label: 'Acknowledge', status: 'confirmed', color: 'bg-indigo-600 hover:bg-indigo-700' },
+    processing: { label: 'Process', status: 'processing', color: 'bg-blue-600 hover:bg-blue-700' },
+    ready: { label: 'Ready', status: 'ready', color: 'bg-emerald-600 hover:bg-emerald-700' },
+    picked_up: { label: 'Picked up', status: 'picked_up', color: 'bg-green-600 hover:bg-green-700' },
+    shipped: { label: 'Ship', status: 'shipped', color: 'bg-purple-600 hover:bg-purple-700' },
+    delivered: { label: 'Delivered', status: 'delivered', color: 'bg-green-600 hover:bg-green-700' },
+  };
+  const status = order.next_status_options?.find((option) => option !== 'cancelled');
+  return status ? actions[status] ?? null : null;
 };

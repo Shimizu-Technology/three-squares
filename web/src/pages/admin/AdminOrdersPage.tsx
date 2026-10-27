@@ -122,7 +122,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       setLoading(true);
       const params: Record<string, unknown> = { page, per_page: 25, ...buildFilterParams() };
 
-      const response = await authGet<OrdersIndexResponse>('/orders', getToken, { params });
+      const response = await authGet<OrdersIndexResponse>('/admin/orders', getToken, { params });
 
       setOrders(response.data.orders);
       setTotalPages(response.data.pagination.total_pages);
@@ -192,15 +192,17 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
     tracking_number: string | null;
     admin_notes: string | null;
   }) => {
-    if (!selectedOrder) return;
+    if (!selectedOrder) return false;
     try {
       setSaving(true);
       const response = await authPatch<AdminOrderResponse>(`/admin/orders/${selectedOrder.id}`, { order: updates }, getToken);
       setOrders(orders.map((o) => (o.id === selectedOrder.id ? response.data.order : o)));
       setSelectedOrder(response.data.order);
       toast.success(response.data.message || 'Order updated successfully!');
+      return true;
     } catch (err) {
       toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update order' : 'Failed to update order');
+      return false;
     } finally {
       setSaving(false);
     }
@@ -208,6 +210,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
 
   // ── Quick status update ───────────────────────────────────────
   const quickUpdateStatus = async (orderId: number, newStatus: string) => {
+    if (saving) return;
     if (newStatus === 'shipped') {
       setShipOrderId(orderId);
       setShipTrackingNumber('');
@@ -217,12 +220,15 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
     }
 
     try {
+      setSaving(true);
       const response = await authPatch<AdminOrderResponse>(`/admin/orders/${orderId}`, { order: { status: newStatus } }, getToken);
       setOrders(orders.map((o) => (o.id === orderId ? response.data.order : o)));
       if (selectedOrder?.id === orderId) setSelectedOrder(response.data.order);
       toast.success(`Order marked as ${formatStatus(newStatus)}!`);
     } catch (err) {
       toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update status' : 'Failed to update status');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -477,6 +483,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       ) : (
         <OrdersTable
           orders={orders}
+          saving={saving}
           page={page}
           totalPages={totalPages}
           onPageChange={setPage}

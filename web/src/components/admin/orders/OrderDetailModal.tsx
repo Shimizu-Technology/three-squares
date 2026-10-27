@@ -7,7 +7,7 @@ interface OrderDetailModalProps {
   order: Order;
   saving: boolean;
   onClose: () => void;
-  onUpdateOrder: (updates: { status: string; tracking_number: string | null; admin_notes: string | null }) => void;
+  onUpdateOrder: (updates: { status: string; tracking_number: string | null; admin_notes: string | null }) => Promise<boolean>;
   onQuickUpdateStatus: (orderId: number, newStatus: string) => void;
   onResendNotification: (orderId: number) => void;
   onOpenRefundModal: () => void;
@@ -34,13 +34,20 @@ export default function OrderDetailModal({
 
   const nextAction = getNextStatusAction(order);
 
-  const handleSave = () => {
-    onUpdateOrder({
+  const handleEdit = () => {
+    setEditStatus(order.status);
+    setEditTracking(order.tracking_number || '');
+    setEditAdminNotes(order.admin_notes || '');
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    const saved = await onUpdateOrder({
       status: editStatus,
       tracking_number: editTracking || null,
       admin_notes: editAdminNotes || null,
     });
-    setIsEditing(false);
+    if (saved) setIsEditing(false);
   };
 
   const handleCancel = () => {
@@ -118,6 +125,7 @@ export default function OrderDetailModal({
                 {!isEditing && nextAction && (
                   <button
                     type="button"
+                    disabled={saving}
                     onClick={() => onQuickUpdateStatus(order.id, nextAction.status)}
                     className={`flex-1 sm:flex-none px-4 py-2 text-white rounded-lg transition text-sm font-medium ${nextAction.color}`}
                   >
@@ -127,7 +135,8 @@ export default function OrderDetailModal({
                 {!isEditing && (
                   <button
                     type="button"
-                    onClick={() => setIsEditing(true)}
+                    disabled={saving}
+                    onClick={handleEdit}
                     className="flex-1 sm:flex-none px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition text-sm font-medium"
                   >
                     Edit Details
@@ -145,24 +154,13 @@ export default function OrderDetailModal({
                     onChange={(e) => setEditStatus(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   >
-                    <option value="pending">Pending</option>
-                    {order.order_type === 'retail' ? (
-                      <>
-                        <option value="processing">Processing</option>
-                        <option value="shipped">Shipped</option>
-                        <option value="delivered">Delivered</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="confirmed">Confirmed</option>
-                        <option value="ready">Ready for Pickup</option>
-                        <option value="picked_up">Picked Up</option>
-                      </>
-                    )}
-                    <option value="cancelled">Cancelled</option>
+                    {[order.status, ...order.next_status_options].map((status) => (
+                      <option key={status} value={status}>{status === 'confirmed' && order.fulfillment_type === 'pickup' ? 'Acknowledged' : formatStatus(status)}</option>
+                    ))}
                   </select>
                 </div>
 
+                {order.fulfillment_type === 'shipping' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tracking Number</label>
                   <input
@@ -173,6 +171,7 @@ export default function OrderDetailModal({
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   />
                 </div>
+                )}
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Admin Notes (Internal)</label>
@@ -212,7 +211,7 @@ export default function OrderDetailModal({
                     {formatStatus(order.status)}
                   </span>
                 </div>
-                {order.order_type === 'retail' && (
+                {order.fulfillment_type === 'shipping' && (
                   <div>
                     <p className="text-gray-600 mb-1">Tracking Number</p>
                     <p className="font-medium">{order.tracking_number || 'Not added yet'}</p>
@@ -261,7 +260,7 @@ export default function OrderDetailModal({
           </div>
 
           {/* Shipping Address */}
-          {order.order_type === 'retail' && order.shipping_address_line1 && (
+          {order.fulfillment_type === 'shipping' && order.shipping_address_line1 && (
             <div>
               <h3 className="font-semibold text-gray-900 mb-3">Shipping Address</h3>
               <div className="text-sm text-gray-700 bg-gray-50 p-4 rounded-lg">
