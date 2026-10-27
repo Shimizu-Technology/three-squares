@@ -58,4 +58,12 @@ RSpec.describe LocationSchedule do
     expect(location.update(hours_json: { "Daily" => "8am - 99pm" })).to be(false)
     expect(location.errors[:hours_json]).not_to be_empty
   end
+
+  it "allows deactivation and unrelated changes when legacy hours are malformed" do
+    location = Location.create!(name: "Legacy", slug: "legacy")
+    location.update_columns(hours_json: { "Daily" => "bad legacy hours" })
+    expect(location.update(active: false, phone: "671-646-2652")).to be(true)
+    expect(location.normalized_hours.values.uniq).to eq(["Closed"])
+    expect(location.accepting_orders_now?).to be(false)
+  end
 end
