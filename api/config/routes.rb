@@ -34,6 +34,14 @@ Rails.application.routes.draw do
 
         # Users (admin management)
         resources :users, only: [ :index, :show, :update ]
+        resources :devices, only: [ :index, :update ] do
+          collection do
+            get :current
+            put :current, action: :update_current
+            post "current/push_subscription", action: :subscribe_current
+            delete "current/push_subscription", action: :unsubscribe_current
+          end
+        end
 
         # Catering inquiries (admin management)
         resources :catering, only: [ :index, :show, :update, :destroy ] do

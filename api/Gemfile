@@ -42,6 +42,7 @@ gem "easypost"                     # Shipping rates & labels
 gem "resend"                       # Transactional emails
 gem "httparty"                     # HTTP requests (for image downloads, ClickSend)
 gem "rack-attack"                  # Rate limiting for API endpoints
+gem "web-push", "~> 3.0"             # Browser push notifications for admin devices
 
 # Background jobs (using Solid Queue - already included in Rails 8)
 

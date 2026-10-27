@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_061000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -101,6 +101,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_061000) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "admin_devices", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.string "browser"
+    t.datetime "created_at", null: false
+    t.string "device_uuid", null: false
+    t.datetime "last_seen_at"
+    t.bigint "location_id"
+    t.string "name", null: false
+    t.string "platform"
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.bigint "user_id"
+    t.index ["active"], name: "index_admin_devices_on_active"
+    t.index ["device_uuid"], name: "index_admin_devices_on_device_uuid", unique: true
+    t.index ["location_id"], name: "index_admin_devices_on_location_id"
+    t.index ["user_id"], name: "index_admin_devices_on_user_id"
+  end
+
+  create_table "admin_push_subscriptions", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.bigint "admin_device_id", null: false
+    t.text "auth_key", null: false
+    t.datetime "created_at", null: false
+    t.text "endpoint", null: false
+    t.datetime "last_sent_at"
+    t.text "p256dh_key", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_admin_push_subscriptions_on_active"
+    t.index ["admin_device_id"], name: "index_admin_push_subscriptions_on_admin_device_id"
+    t.index ["endpoint"], name: "index_admin_push_subscriptions_on_endpoint", unique: true
   end
 
   create_table "cart_items", force: :cascade do |t|
@@ -818,6 +850,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_061000) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "admin_devices", "locations"
+  add_foreign_key "admin_devices", "users"
+  add_foreign_key "admin_push_subscriptions", "admin_devices"
   add_foreign_key "cart_items", "product_variants"
   add_foreign_key "cart_items", "users"
   add_foreign_key "catering_inquiries", "users", column: "responded_by_id"
