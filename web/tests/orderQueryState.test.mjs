@@ -102,8 +102,8 @@ test('the complete applied context round-trips including Unicode and URL-special
 
 test('drilldown, close, Back, Forward and reload preserve the original filters and page', () => {
   const listing = Object.freeze(parse('?search=Ana&status=pending&location=2&datepreset=all_time&page=4'));
-  const detail = updateOrderQuery(listing, { orderId: 123 }, 'default');
-  const closed = updateOrderQuery(detail, { orderId: null }, 'default');
+  const detail = updateOrderQuery(listing, { orderId: 123 }, 'default', today);
+  const closed = updateOrderQuery(detail, { orderId: null }, 'default', today);
   assert.deepEqual(closed, listing);
   assert.equal(new URLSearchParams(serializeOrderQuery(closed)).has('id'), false);
   // History entries are complete URLs; revisiting one reconstructs the whole state.
@@ -115,23 +115,23 @@ test('drilldown, close, Back, Forward and reload preserve the original filters a
 
 test('applying filters/search resets page atomically while clamping retains current detail intent', () => {
   const state = parse('?search=Ana&status=ready&datepreset=all_time&page=8&id=123', 'pickup_queue');
-  const filtered = updateOrderQuery(state, { status: 'all_active', page: 1 }, 'pickup_queue');
+  const filtered = updateOrderQuery(state, { status: 'all_active', page: 1 }, 'pickup_queue', today);
   assert.equal(filtered.page, 1);
   assert.equal(filtered.orderId, 123);
   assert.equal(filtered.search, 'Ana');
-  const searched = updateOrderQuery(state, { search: '  New customer  ', page: 1 }, 'pickup_queue');
+  const searched = updateOrderQuery(state, { search: '  New customer  ', page: 1 }, 'pickup_queue', today);
   assert.equal(searched.search, 'New customer');
   assert.equal(searched.status, 'ready');
-  const clamped = updateOrderQuery(state, { page: 2 }, 'pickup_queue');
+  const clamped = updateOrderQuery(state, { page: 2 }, 'pickup_queue', today);
   assert.deepEqual(clamped, { ...state, page: 2 });
 });
 
 test('detail navigation leaves the list context unchanged, while applied filters and pagination invalidate it', () => {
   const listing = parse('?search=Ana&status=ready&location=2&page=4');
   const context = orderListContext(listing, 'default');
-  const detail = updateOrderQuery(listing, { orderId: 123 }, 'default');
+  const detail = updateOrderQuery(listing, { orderId: 123 }, 'default', today);
   assert.equal(orderListContext(detail, 'default'), context);
-  assert.equal(orderListContext(updateOrderQuery(detail, { orderId: null }, 'default'), 'default'), context);
+  assert.equal(orderListContext(updateOrderQuery(detail, { orderId: null }, 'default', today), 'default'), context);
   assert.equal(orderListContext({ ...listing, datePreset: 'custom' }, 'default'), context);
   for (const change of [{ search: 'Other' }, { status: 'pending' }, { page: 3 }, { location: '1' }, { startDate: '2026-10-20' }]) {
     assert.notEqual(orderListContext({ ...listing, ...change }, 'default'), context);
@@ -144,6 +144,22 @@ test('canonicalization is idempotent for defaults, bad queries and every mode', 
       const first = serializeOrderQuery(parse(search, mode));
       assert.equal(serializeOrderQuery(parse(first, mode)), first, `${mode}: ${search}`);
       assert.equal(new URLSearchParams(first).has('unknown'), false);
+    }
+  }
+});
+
+// The injected business day must win even when the system clock is a different day.
+test('query changes use the injected day on both sides of Guam midnight', (t) => {
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-10-27T23:59:59+10:00') });
+  for (const systemNow of ['2026-10-27T23:59:59+10:00', '2026-10-28T00:00:01+10:00']) {
+    t.mock.timers.setTime(new Date(systemNow).getTime());
+    for (const preset of ['today', 'last_7_days', 'this_month']) {
+      const listing = parse(`?datepreset=${preset}&page=4`);
+      const detail = updateOrderQuery(listing, { orderId: 123 }, 'default', today);
+      assert.equal(orderListContext(detail, 'default'), orderListContext(listing, 'default'));
+      assert.deepEqual(updateOrderQuery(detail, { orderId: null }, 'default', today), listing);
+      // The optional default still follows the current clock for callers without a snapshot.
+      assert.equal(updateOrderQuery(listing, {}, 'default').startDate, parseOrderQuery(`?datepreset=${preset}`, 'default').startDate);
     }
   }
 });

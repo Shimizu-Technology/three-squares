@@ -99,8 +99,8 @@ export function serializeOrderQuery(state: OrderQueryState) {
   return params.toString();
 }
 
-export function updateOrderQuery(state: OrderQueryState, changes: Partial<OrderQueryState>, mode: OrderPageMode) {
-  return parseOrderQuery(serializeOrderQuery({ ...state, ...changes }), mode);
+export function updateOrderQuery(state: OrderQueryState, changes: Partial<OrderQueryState>, mode: OrderPageMode, now = new Date()) {
+  return parseOrderQuery(serializeOrderQuery({ ...state, ...changes }), mode, now);
 }
 
 // Selection and the preset label do not change a list request. Concrete dates do.
