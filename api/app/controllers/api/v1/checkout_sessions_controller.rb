@@ -30,7 +30,8 @@ module Api
         attempt = session.payment_attempts.order(:created_at).last
         # Client references/hints never select which charge is queried or consumed.
         Payments::ReconcileAttempt.call(attempt: attempt)
-        Payments::SetupAttempt.call(attempt: attempt.reload) if attempt.state == "collecting" && attempt.raw_provider_id.present? && attempt.collection_config.blank?
+        attempt.reload
+        Payments::SetupAttempt.call(attempt: attempt) if attempt.state == "collecting" && attempt.raw_provider_id.present? && attempt.collection_config.blank?
         render json: session_json(session.reload, attempt.reload), status: attempt.order.reload.payment_status == "paid" ? :ok : :accepted
       end
 
@@ -76,9 +77,14 @@ module Api
 
       def session_json(session, attempt)
         order = session.order.reload
+        identity = session.payment_identity
+        client_config = identity.provider == 'stripe' ? {
+          'payment_identity_id' => identity.id, 'stripe_account_id' => identity.external_account_id,
+          'stripe_publishable_key' => ENV[identity.environment == 'production' ? 'STRIPE_PUBLISHABLE_KEY' : 'STRIPE_PUBLISHABLE_KEY_TEST']
+        } : {}
         { id: session.id, attempt_id: attempt.id, state: session.state, payment_state: attempt.state, amount_cents: session.amount_cents, currency: session.currency,
           provider: session.payment_identity.provider, environment: session.payment_identity.environment, simulated: order.simulated, expires_at: session.expires_at.iso8601,
-          flow: attempt.collection_config["flow"], collection_config: session.expires_at.future? ? attempt.collection_config.except("flow") : {},
+          flow: attempt.collection_config["flow"], collection_config: session.expires_at.future? && attempt.state == "collecting" ? attempt.collection_config.except("flow").merge(client_config) : {},
           order: { id: order.id, order_number: order.order_number, payment_status: order.payment_status, inventory_committed: order.inventory_committed_at.present? } }
       end
 

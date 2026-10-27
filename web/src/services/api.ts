@@ -258,8 +258,8 @@ export const homepageApi = {
 // Config API
 export const configApi = {
   // Get app configuration
-  getConfig: async (): Promise<AppConfig> => {
-    const response = await api.get('/config');
+  getConfig: async (locationId?: number | null): Promise<AppConfig> => {
+    const response = await api.get('/config', { params: { location_id: locationId || undefined } });
     return response.data;
   },
 };

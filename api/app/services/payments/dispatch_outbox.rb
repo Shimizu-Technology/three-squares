@@ -10,25 +10,22 @@ module Payments
     NOTIFICATION_JOBS = (JOBS.values + %w[SendOrderStatusEmailJob SendOrderSmsJob SendRefundNotificationJob]).freeze
 
     def self.call(outbox:)
-      if outbox.kind == 'notification'
-        payload = outbox.payload
-        raise BindingError, 'Unknown notification consumer' unless NOTIFICATION_JOBS.include?(payload['job'])
-        # Notification jobs own the delivery lease and acknowledgement themselves.
-        result = payload['job'].constantize.new.perform(*payload.fetch('args'))
-        # Status intents and consumer delivery rows have separate identities.
-        # Acknowledge the originating intent as well as the consumer's lease.
-        outbox.update!(state: result.is_a?(Hash) && result[:skipped] ? 'skipped' : 'delivered',
-          delivered_at: result.is_a?(Hash) && result[:skipped] ? nil : Time.current, lease_until: nil, lease_token: nil, last_error: nil)
-        return result
-      end
+      return if %w[delivered skipped manual_review_required].include?(outbox.state)
+      # Consumer delivery rows acquire their own record/channel lease. All other
+      # intents acquire an outbox lease before dispatch, including status intents.
+      consumer = outbox.kind == 'notification' && outbox.effect_key.start_with?('notification:')
       token = SecureRandom.uuid
-      claimed = outbox.with_lock do
-        next false if outbox.state == 'delivered' || outbox.lease_until&.future? || outbox.next_attempt_at.future?
+      claimed = !consumer && outbox.with_lock do
+        next false unless %w[pending dispatching].include?(outbox.state) && !outbox.lease_until&.future? && !outbox.next_attempt_at.future?
         outbox.update!(state: 'dispatching', lease_token: token, lease_until: 5.minutes.from_now, retry_count: outbox.retry_count + 1)
         true
       end
-      return unless claimed
+      return unless claimed || consumer
       case outbox.kind
+      when 'notification'
+        payload = outbox.payload
+        raise BindingError, 'Unknown notification consumer' unless NOTIFICATION_JOBS.include?(payload['job'])
+        result = payload['job'].constantize.new.perform(*payload.fetch('args'))
       when 'cart_cleanup' then CartCleanup.call(session: CheckoutSession.find(outbox.payload.fetch('session_id')))
       when 'admin_push'
         order = Order.find(outbox.payload.fetch('order_id'))
@@ -45,12 +42,10 @@ module Payments
         # ActiveJob.perform_now may swallow them into a separate queue retry.
         result = job.constantize.new.perform(outbox.payload.fetch(outbox.kind == 'refund_notification' ? 'refund_id' : 'order_id'))
       end
+      return result if consumer
       PaymentOutbox.where(id: outbox.id, lease_token: token).update_all(state: result.is_a?(Hash) && result[:skipped] ? 'skipped' : 'delivered', delivered_at: result.is_a?(Hash) && result[:skipped] ? nil : Time.current, lease_until: nil, lease_token: nil, last_error: nil)
     rescue StandardError => error
-      if claimed
-        PaymentOutbox.where(id: outbox.id, lease_token: token).update_all(state: 'pending', lease_until: nil, lease_token: nil,
-          next_attempt_at: 1.minute.from_now, last_error: error.class.name)
-      end
+      outbox.retry_delivery!(error, token: token) if claimed
       raise
     end
   end

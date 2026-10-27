@@ -6,10 +6,9 @@ import { configApi, locationsApi, shippingApi, formatPrice } from '../services/a
 import { checkoutApi, checkoutCapability, pendingCheckout, saveCheckout, clearPendingCheckout } from '../services/checkout';
 import { authGet } from '../services/authApi';
 import { checkoutContactReducer, emptyCheckoutContact } from '../lib/checkoutContact';
-import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { motion, AnimatePresence } from 'framer-motion';
-import StripeProvider from '../components/payment/StripeProvider';
-import PaymentForm from '../components/payment/PaymentForm';
+import type { StripeClientConfiguration } from '../components/payment/StripeProvider';
+import PaymentForm, { type CardPaymentHandle } from '../components/payment/PaymentForm';
 import type { ShippingAddress, ShippingMethod, AppConfig } from '../types/order';
 import type { Location } from '../services/api';
 import PlaceholderImage from '../components/ui/PlaceholderImage';
@@ -21,8 +20,9 @@ function CheckoutForm() {
   const { getToken, isSignedIn, isLoaded: authLoaded, userId } = useAuth();
   const { cart, sessionId, fetchCart, validateCart, removeItem, isLoading: cartLoading } = useCartStore();
   const { selectedLocation: storedLocation } = useLocationStore();
-  const stripe = useStripe();
-  const elements = useElements();
+  const paymentForm = useRef<CardPaymentHandle>(null);
+  const [savedClientConfig, setSavedClientConfig] = useState<StripeClientConfiguration | null>(null);
+  const [locationClientConfig, setLocationClientConfig] = useState<StripeClientConfiguration | null>(null);
 
   // Get items from cart (with fallback to empty array)
   const items = cart?.items || [];
@@ -40,6 +40,14 @@ function CheckoutForm() {
   const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'shipping'>('shipping');
   const [pickupLocations, setPickupLocations] = useState<Location[]>([]);
   const [pickupLocationId, setPickupLocationId] = useState<number | null>(null);
+  useEffect(() => {
+    let active = true;
+    setLocationClientConfig(null);
+    void configApi.getConfig(deliveryMethod === 'pickup' ? pickupLocationId : null).then(config => {
+      if (active) setLocationClientConfig(config);
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [deliveryMethod, pickupLocationId]);
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     name: '',
     street1: '',
@@ -124,12 +132,16 @@ function CheckoutForm() {
         const token = isSignedIn ? await getToken() : null;
         const state = await checkoutApi.confirm(pendingPayment.id, token, pendingPayment.capability);
         if (stopped || await finishCheckout(state)) return;
+        setSavedClientConfig(state.collection_config);
         setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
         setCanRetryCollection(state.payment_state === 'collecting' && !!state.collection_config.client_secret);
         setError(`Payment status is being checked for order ${state.order.order_number}. Your order is saved. Keep this page or check your order before paying again.`);
         if (Date.now() - started < 90000) timer = setTimeout(poll, Date.now() - started < 10000 ? 2000 : 10000);
       } catch {
-        if (!stopped) setError('Your order is saved. We could not check payment status yet. Use Check payment status before paying again.');
+        if (!stopped) {
+          setError('Your order is saved. We could not check payment status yet. Use Check payment status before paying again.');
+          if (Date.now() - started < 90000) timer = setTimeout(poll, 10000);
+        }
       }
     };
     void poll();
@@ -394,9 +406,6 @@ function CheckoutForm() {
         }
       }
 
-      if (!stripe || !elements) throw new Error('Payment system is not ready. Please wait and try again.');
-      const cardElement = elements.getElement(CardElement);
-      if (!cardElement) throw new Error('Card input is unavailable. Please refresh before starting payment.');
       const orderData = {
         customer_name: name, email, phone, fulfillment_type: deliveryMethod,
         location_id: deliveryMethod === 'pickup' ? pickupLocationId || undefined : undefined,
@@ -406,12 +415,12 @@ function CheckoutForm() {
       };
       const state = await checkoutApi.create(orderData, token, capability.current, creationKey.current, sessionId);
       saveCheckout(state, capability.current, creationKey.current);
+      setSavedClientConfig(state.collection_config);
       if (state.flow !== 'stripe_embedded' || !state.collection_config.client_secret) {
         setPendingPayment(pendingCheckout());
         throw new Error('Your order is saved. Payment collection is being prepared; check its status before starting again.');
       }
-      const { error: stripeError } = await stripe.confirmCardPayment(state.collection_config.client_secret,
-        { payment_method: { card: cardElement, billing_details: { name, email, phone } } });
+      const { error: stripeError } = await paymentForm.current!.confirm(state.collection_config.client_secret, state.collection_config.payment_identity_id, { name, email, phone });
       // Even an SDK/network error can have a late approval. Resume the saved
       // session rather than creating a second payment against a mutable cart.
       if (stripeError) setError(stripeError.message || 'Payment status is being checked.');
@@ -496,16 +505,15 @@ function CheckoutForm() {
                 } catch { setError('We could not check payment status. Your order remains saved.'); }
               }}>Check payment status</button>
               {canRetryCollection && <button type="button" className="ml-4 mt-3 underline" disabled={loading || !paymentReady} onClick={async () => {
-                if (!stripe || !elements || submitting.current) return;
-                const card = elements.getElement(CardElement);
-                if (!card) return;
+                if (!paymentForm.current || submitting.current) return;
                 submitting.current = true;
                 setLoading(true);
                 try {
                   const token = isSignedIn ? await getToken() : null;
                   const state = await checkoutApi.show(pendingPayment.id, token, pendingPayment.capability);
                   if (!state.collection_config.client_secret || state.payment_state !== 'collecting') throw new Error('Payment status changed. Check the saved order.');
-                  const result = await stripe.confirmCardPayment(state.collection_config.client_secret, { payment_method: { card, billing_details: { name, email, phone } } });
+                  setSavedClientConfig(state.collection_config);
+                  const result = await paymentForm.current.confirm(state.collection_config.client_secret, state.collection_config.payment_identity_id, { name, email, phone });
                   if (result.error) setError(result.error.message || 'Card payment could not complete.');
                   const confirmed = await checkoutApi.confirm(state.id, token, pendingPayment.capability);
                   if (!(await finishCheckout(confirmed))) setPendingPayment(pendingCheckout());
@@ -524,7 +532,7 @@ function CheckoutForm() {
                 } catch { setError('Cancellation is not confirmed. Check the saved payment before starting another.'); }
               }}>Cancel saved payment</button>}
               {resolvedWithoutPayment && <button type="button" className="mt-3 block underline" onClick={() => {
-                clearPendingCheckout(); setPendingPayment(null); setResolvedWithoutPayment(false); setCanRetryCollection(false);
+                clearPendingCheckout(); setSavedClientConfig(null); setPendingPayment(null); setResolvedWithoutPayment(false); setCanRetryCollection(false);
                 creationKey.current = crypto.randomUUID(); capability.current = checkoutCapability(); setError(null);
               }}>Payment closed — review cart and start again</button>}
               <button type="button" className="ml-4 mt-3 underline" onClick={() => navigate(`/orders/${pendingPayment.orderId}`)}>View saved order</button>
@@ -872,6 +880,8 @@ function CheckoutForm() {
 
               {/* Payment Section */}
               <PaymentForm
+                ref={paymentForm}
+                configuration={savedClientConfig || locationClientConfig}
                 available={appConfig?.features.payments === true}
                 onPaymentReady={handlePaymentReady}
               />
@@ -1090,14 +1100,6 @@ function CheckoutForm() {
   );
 }
 
-/**
- * CheckoutPage wraps CheckoutForm in StripeProvider
- * so Stripe hooks are available throughout the form.
- */
 export default function CheckoutPage() {
-  return (
-    <StripeProvider>
-      <CheckoutForm />
-    </StripeProvider>
-  );
+  return <CheckoutForm />;
 }

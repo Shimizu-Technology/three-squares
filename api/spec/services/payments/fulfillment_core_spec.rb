@@ -47,9 +47,10 @@ RSpec.describe 'Durable payment fulfillment core' do
   end
 
   before do
-    configured_name = URI.parse(ENV.fetch('DATABASE_URL')).path.delete_prefix('/')
+    configured_name = ActiveRecord::Base.connection_db_config.database
     actual_name = ActiveRecord::Base.connection.select_value('SELECT current_database()')
-    abort 'Dedicated test database required' unless Rails.env.test? && actual_name == configured_name && actual_name.end_with?('_test')
+    raise 'Dedicated test database required' unless Rails.env.test? && actual_name == configured_name && actual_name.end_with?('_test')
+    @dedicated_database_verified = true
     SiteSetting.instance.update!(enable_order_emails: true, enable_order_sms: true, enable_admin_sms: true)
     stub_const('Payments::Eligibility', Class.new do
       def self.validate_order!(_order); true; end
@@ -57,6 +58,7 @@ RSpec.describe 'Durable payment fulfillment core' do
   end
 
   after do
+    next unless @dedicated_database_verified
     connection = ActiveRecord::Base.connection
     tables = connection.tables - %w[schema_migrations ar_internal_metadata]
     connection.execute("TRUNCATE #{tables.map { |name| connection.quote_table_name(name) }.join(', ')} RESTART IDENTITY CASCADE")
@@ -377,6 +379,7 @@ RSpec.describe 'Durable payment fulfillment core' do
     expect(row.reload.state).to eq('pending')
     expect(EmailService).not_to receive(:send_refund_notification)
     allow(SmsService).to receive(:send_refund_notification).and_return(success: true)
+    PaymentOutbox.where(state: 'pending').update_all(next_attempt_at: 1.second.ago)
     row.update!(next_attempt_at: 1.second.ago)
     Payments::DispatchOutbox.call(outbox: row)
     expect(refund.reload.sms_sent).to be true
@@ -515,6 +518,69 @@ RSpec.describe 'Durable payment fulfillment core' do
     Payments::UpdateOrder.call(order: order, attributes: { status: 'cancelled' }, user: nil)
     expect(order.reload.metadata.dig('inventory_restoration', 'status')).to eq('manual_review_required')
     expect(product.reload.product_stock_quantity).to eq(5)
+  end
+
+  it 'releases held stock when cancellation wins and compensates any late capture' do
+    attempt, order, product = fixture
+    Payments::ReserveInventory.call(order: order, expires_at: 1.hour.from_now)
+    Payments::UpdateOrder.call(order: order, attributes: { status: 'cancelled' }, user: nil)
+    expect(InventoryReservation.where(order_id: order.id, state: 'held')).to be_empty
+    Payments::FinalizeOrder.call(attempt: attempt, result: result(attempt))
+    expect(attempt.reload.state).to eq('compensation_required')
+    expect(product.reload.product_stock_quantity).to eq(5)
+    expect(InventoryCommitment.where(order_id: order.id)).to be_empty
+  end
+
+  it 'cancels expired dispatched collection only from authenticated cancellable proof' do
+    attempt, order = fixture
+    attempt.update!(state: 'collecting', dispatched_at: 1.hour.ago)
+    attempt.checkout_session.update!(expires_at: 1.minute.ago)
+    Payments::ReserveInventory.call(order: order, expires_at: 1.hour.from_now)
+    provider = double('provider')
+    allow(Payments::ProviderResolver).to receive(:for_identity).and_return(provider)
+    allow(provider).to receive(:query).and_return(result(attempt, status: 'collecting', approved_cents: 0, captured_cents: 0, metadata: { cancellable: true }))
+    expect(provider).to receive(:cancel) do
+      expect(ActiveRecord::Base.connection.transaction_open?).to be false
+      result(attempt, status: 'cancelled', approved_cents: 0, captured_cents: 0)
+    end
+    Payments::ReconcileAttempt.call(attempt: attempt)
+    expect(attempt.reload.state).to eq('cancelled')
+    expect(InventoryReservation.where(order_id: order.id, state: 'held')).to be_empty
+    expect(order.reload.payment_status).not_to eq('paid')
+  end
+
+  it 'backs off unknown money after its recovery deadline without cancelling or releasing it' do
+    attempt, order = fixture
+    attempt.update!(dispatched_at: 2.days.ago, recovery_deadline_at: 1.day.ago)
+    provider = double('provider')
+    allow(Payments::ProviderResolver).to receive(:for_identity).and_return(provider)
+    allow(provider).to receive(:query).and_return(result(attempt, status: 'unknown', approved_cents: 0, captured_cents: 0))
+    expect(provider).not_to receive(:cancel)
+    Payments::ReconcileAttempt.call(attempt: attempt)
+    expect(attempt.reload.error_classification).to eq('manual_reconciliation_required')
+    expect(attempt.next_recovery_at).to be > 59.minutes.from_now
+    expect(order.reload.payment_status).not_to eq('paid')
+  end
+
+  it 'persists notification failure backoff and stops automatic retries after ten attempts' do
+    _, order = fixture
+    row = PaymentOutbox.record!(effect_key: 'status:failure', kind: 'notification', payload: { 'job' => 'SendOrderStatusEmailJob', 'args' => [order.id, 'confirmed', 1] })
+    allow_any_instance_of(SendOrderStatusEmailJob).to receive(:perform).and_raise(Payments::DeliverNotification::Retryable)
+    expect { Payments::DispatchOutbox.call(outbox: row) }.to raise_error(Payments::DeliverNotification::Retryable)
+    expect(row.reload.retry_count).to eq(1)
+    expect(row.next_attempt_at).to be > 50.seconds.from_now
+    row.update!(retry_count: 9, next_attempt_at: 1.second.ago)
+    expect { Payments::DispatchOutbox.call(outbox: row) }.to raise_error(Payments::DeliverNotification::Retryable)
+    expect(row.reload.state).to eq('manual_review_required')
+    expect(PaymentOutbox.due).not_to include(row)
+    expect { Payments::DispatchOutbox.call(outbox: row) }.not_to raise_error
+  end
+
+  it 'skips disabled admin SMS even when its transport is unconfigured' do
+    _, order = fixture
+    SiteSetting.instance.update!(enable_admin_sms: false)
+    expect(SmsService).not_to receive(:sms_configured?)
+    expect(Payments::AdminOrderSms.call(order)).to include(skipped: true)
   end
 
 end

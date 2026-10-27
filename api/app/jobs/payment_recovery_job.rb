@@ -5,10 +5,10 @@ class PaymentRecoveryJob < ApplicationJob
 
   def perform
     # Includes newly persisted intent and stale dispatches even without a callback.
-    PaymentAttempt.where.not(state: %w[failed cancelled compensated]).where(
+    PaymentAttempt.where.not(state: %w[failed cancelled compensated])
+      .where.not(state: 'captured', order_id: InventoryCommitment.select(:order_id)).where(
       'next_recovery_at <= :now OR (next_recovery_at IS NULL AND updated_at < :stale)', now: Time.current, stale: 2.minutes.ago
     ).find_each do |attempt|
-      next if attempt.state == 'captured' && InventoryCommitment.exists?(order_id: attempt.order_id)
       begin
         Payments::ReconcileAttempt.call(attempt: attempt)
       rescue StandardError => error

@@ -1,17 +1,33 @@
-import { useState } from 'react';
+import { useState, useEffect, useImperativeHandle, forwardRef } from 'react';
+import StripeProvider, { type StripeClientConfiguration } from './StripeProvider';
 import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import type { StripeCardElementChangeEvent } from '@stripe/stripe-js';
 
 interface PaymentFormProps {
   available: boolean;
+  configuration: StripeClientConfiguration | null;
   onPaymentReady: (ready: boolean) => void;
 }
 
-export default function PaymentForm({ available, onPaymentReady }: PaymentFormProps) {
+export interface CardPaymentHandle {
+  confirm: (secret: string, identityId: string | undefined, billing: { name: string; email: string; phone: string }) => Promise<{ error?: { message?: string } }>;
+}
+
+const CardPaymentForm = forwardRef<CardPaymentHandle, PaymentFormProps>(function CardPaymentForm({ available, onPaymentReady, configuration }, ref) {
   const stripe = useStripe();
   const elements = useElements();
   const [cardError, setCardError] = useState<string | null>(null);
   const [cardComplete, setCardComplete] = useState(false);
+
+  useEffect(() => { onPaymentReady(false); }, [onPaymentReady]);
+  useImperativeHandle(ref, () => ({
+    async confirm(secret, identityId, billing) {
+      if (!stripe || !elements || !identityId || identityId !== configuration?.payment_identity_id) throw new Error('The payment form changed for this saved order. Enter the card again and retry its payment.');
+      const card = elements.getElement(CardElement);
+      if (!card) throw new Error('Card input is unavailable. Check your saved payment.');
+      return stripe.confirmCardPayment(secret, { payment_method: { card, billing_details: billing } });
+    },
+  }), [stripe, elements, configuration?.payment_identity_id]);
 
   const handleCardChange = (event: StripeCardElementChangeEvent) => {
     setCardError(event.error ? event.error.message : null);
@@ -124,4 +140,8 @@ export default function PaymentForm({ available, onPaymentReady }: PaymentFormPr
       </div>
     </div>
   );
-}
+});
+
+export default forwardRef<CardPaymentHandle, PaymentFormProps>(function PaymentForm(props, ref) {
+  return <StripeProvider configuration={props.configuration}><CardPaymentForm {...props} ref={ref} /></StripeProvider>;
+});

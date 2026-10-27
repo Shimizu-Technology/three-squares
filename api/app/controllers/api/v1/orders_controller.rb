@@ -143,6 +143,8 @@ module Api
         render json: { success: order.payment_status == "paid", order: order_json(order) }, status: order.payment_status == "paid" ? :created : :accepted
       rescue ActiveRecord::RecordNotFound
         render json: { error: "Checkout session not found" }, status: :not_found
+      rescue Payments::Configuration::UnsafeConfiguration, Stripe::StripeError
+        render json: { error: "Payment is unavailable. Your order remains saved; check its status before paying again." }, status: :service_unavailable
       rescue Payments::Error => e
         render json: { error: e.message }, status: :unprocessable_entity
       end

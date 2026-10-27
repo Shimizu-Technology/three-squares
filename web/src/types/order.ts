@@ -78,6 +78,8 @@ export interface AppConfig {
   app_mode: 'test' | 'production';
   stripe_enabled: boolean;
   stripe_publishable_key?: string;
+  stripe_account_id?: string;
+  payment_identity_id?: string;
   placeholder_image_url?: string | null;
   features: {
     payments: boolean;

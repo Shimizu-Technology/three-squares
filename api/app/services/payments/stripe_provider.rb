@@ -55,7 +55,7 @@ module Payments
       else "collecting"
       end
       Result.new(status: status, identity_id: identity.id, raw_id: intent.id, requested_cents: intent.amount,
-        approved_cents: captured, captured_cents: captured, currency: intent.currency.upcase, metadata: {})
+        approved_cents: captured, captured_cents: captured, currency: intent.currency.upcase, metadata: { cancellable: %w[requires_payment_method requires_confirmation requires_action requires_capture].include?(intent.status) })
     end
 
     def validate_attempt_identity!(attempt)
@@ -104,7 +104,7 @@ module Payments
 
     def query_reversal(attempt:, operation_key:)
       validate_attempt_identity!(attempt)
-      result = query_refund(reference: attempt.compensation_provider_id, operation_key: operation_key)
+      result = query_refund(reference: attempt.compensation_provider_id, operation_key: operation_key, original_reference: attempt.raw_provider_id)
       result[:amount_cents] = [attempt.captured_cents, attempt.approved_cents].max if result[:status] == "unknown" && result[:raw_id].nil?
       result
     end
@@ -120,7 +120,7 @@ module Payments
       normalize_refund(response, operation_key: operation_key, original_reference: reference)
     end
 
-    def query_refund(reference:, operation_key:)
+    def query_refund(reference:, operation_key:, original_reference: nil)
       response = if reference.present?
         client.v1.refunds.retrieve(reference)
       else
@@ -138,7 +138,7 @@ module Payments
         matches.first
       end
       return { raw_id: nil, status: "unknown", amount_cents: 0 } unless response
-      normalize_refund(response, operation_key: operation_key)
+      normalize_refund(response, operation_key: operation_key, original_reference: original_reference)
     end
 
     def query_original_charge(reference:)

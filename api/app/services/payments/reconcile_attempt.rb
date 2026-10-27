@@ -36,7 +36,16 @@ module Payments
         SetupAttempt.call(attempt: stored)
         result = provider.query(attempt: stored.reload) if stored.raw_provider_id.present?
       end
+      # Expiry forbids further collection, but only authenticated provider proof
+      # permits cancellation; an unknown outcome retains its financial claim.
+      if stored.checkout_session.expires_at.past? && result.captured_cents.zero? && result.metadata[:cancellable] && result.raw_id.present?
+        stored.update!(raw_provider_id: result.raw_id) if stored.raw_provider_id.blank?
+        result = provider.cancel(attempt: stored)
+      end
       order = FinalizeOrder.call(attempt: stored, result: result)
+      if stored.reload.recovery_deadline_at&.past? && !%w[captured compensated failed cancelled].include?(stored.state)
+        stored.update!(error_classification: 'manual_reconciliation_required', next_recovery_at: 1.hour.from_now)
+      end
       # Fast, local after-commit consumption keeps the browser cart current;
       # the durable sweeper owns retries if the request disappears here.
       if order.payment_status == 'paid'
@@ -49,7 +58,7 @@ module Payments
         AttemptLock.call(stored) do |_, current, _, _|
           unless %w[captured compensated].include?(current.state) || current.compensation_claimed_at
             current.update!(state: 'unknown', last_error: error.class.name,
-              error_classification: current.recovery_deadline_at&.past? ? 'manual_reconciliation_required' : 'query_retry', next_recovery_at: 1.minute.from_now)
+              error_classification: current.recovery_deadline_at&.past? ? 'manual_reconciliation_required' : 'query_retry', next_recovery_at: current.recovery_deadline_at&.past? ? 1.hour.from_now : 1.minute.from_now)
           end
         end
       end

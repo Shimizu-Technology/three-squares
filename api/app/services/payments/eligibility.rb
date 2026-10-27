@@ -5,6 +5,7 @@ module Payments
     def self.validate_product!(variant:, location_id: nil, online: true, at: Time.current)
       product = variant.product
       raise FulfillmentError, "#{product.name} is not available" unless product.published? && !product.archived? && variant.available?
+      raise FulfillmentError, "This menu is not accepting orders" unless MenuEligibility.enabled?(product, at: at)
       if online
         enabled = StorefrontEligibility.enabled?(product, settings: SiteSetting.instance)
         raise FulfillmentError, "This storefront is not accepting orders" unless enabled

@@ -1,4 +1,3 @@
-import { useLocationStore } from '../store/locationStore';
 /**
  * Stripe Terminal SDK service for S700 reader integration.
  * Handles reader discovery, connection, and payment collection.
@@ -10,6 +9,19 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 let terminal: Terminal | null = null;
 let connectedReader: Reader | null = null;
+let terminalLocationId: number | undefined;
+let locationChange = Promise.resolve();
+
+// POS chooses its own location. Storefront browsing state never supplies account authority.
+export async function setTerminalLocation(locationId: number | undefined): Promise<void> {
+  locationChange = locationChange.then(async () => {
+    if (terminalLocationId === locationId) return;
+    terminalLocationId = undefined;
+    if (terminal) await resetTerminalSession();
+    terminalLocationId = locationId;
+  });
+  return locationChange;
+}
 
 // Auth token provider — set via setTokenProvider before initializing
 type TokenProvider = () => Promise<string | null>;
@@ -50,6 +62,7 @@ export function onStatusChange(callback: StatusCallback) {
 }
 
 async function fetchConnectionToken(): Promise<string> {
+  if (!terminalLocationId) throw new Error('Select a POS location before connecting a reader.');
   if (!tokenProvider) {
     throw new Error('Token provider not set. Call setTokenProvider() before initializing terminal.');
   }
@@ -62,7 +75,7 @@ async function fetchConnectionToken(): Promise<string> {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
-      'X-Location-ID': useLocationStore.getState().selectedLocation?.id?.toString() || '',
+      'X-Location-ID': terminalLocationId.toString(),
     },
   });
 

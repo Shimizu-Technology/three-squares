@@ -50,4 +50,13 @@ RSpec.describe Payments::StripeProvider do
     intent.status = "requires_capture"
     expect(provider.query(attempt: attempt).captured?).to be false
   end
+  it 'rejects a recovered reversal that belongs to another original intent' do
+    attempt.update!(raw_provider_id: 'pi_fixture', compensation_provider_id: 're_fixture')
+    refunds = double('refunds')
+    allow(stripe_client.v1).to receive(:refunds).and_return(refunds)
+    allow(refunds).to receive(:retrieve).with('re_fixture').and_return(Stripe::StripeObject.construct_from(
+      id: 're_fixture', amount: 1500, currency: 'usd', status: 'succeeded', payment_intent: 'pi_other', metadata: { operation_key: 'same_key' }))
+    expect { provider.query_reversal(attempt: attempt, operation_key: 'same_key') }.to raise_error(Payments::BindingError)
+  end
+
 end

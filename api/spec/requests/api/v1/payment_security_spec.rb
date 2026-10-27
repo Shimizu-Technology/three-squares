@@ -3,6 +3,7 @@ require_relative '../../../support/payment_foundation_helpers'
 
 RSpec.describe 'Payment ownership and recovery', type: :request do
   include PaymentFoundationHelpers
+  include ActiveSupport::Testing::TimeHelpers
   let(:cart_id) { SecureRandom.hex(24) }
   let(:location) { Location.create!(name: 'Foundation fixture', slug: SecureRandom.hex(6), active: true, hours_json: { 'Daily' => '00:00-23:59' }) }
   let(:product) { create(:product, published: true, inventory_level: 'variant', allow_pickup: true, allow_shipping: false) }
@@ -17,6 +18,52 @@ RSpec.describe 'Payment ownership and recovery', type: :request do
     post '/api/v1/checkout_sessions', params: { order: attrs }, headers: payment_headers(cart_id)
     expect(response).to have_http_status(:created), response.body
     JSON.parse(response.body)
+  end
+
+  it 'uses one sale price in the cart, pending items and provider amount' do
+    product.update!(sale_price_cents: 900)
+    get '/api/v1/cart', headers: payment_headers(cart_id)
+    expect(response.parsed_body['subtotal_cents']).to eq(1800)
+    expect(response.parsed_body.dig('items', 0, 'product_variant', 'price_cents')).to eq(900)
+    state = start_checkout
+    expect(state['amount_cents']).to eq(1800)
+    expect(Order.find(state.dig('order', 'id')).order_items.first.unit_price_cents).to eq(900)
+  end
+
+  it 'returns location-selected and original saved Stripe account configuration across settings changes' do
+    other = PaymentIdentity.create!(provider: 'stripe', environment: 'sandbox', external_account_id: 'acct_location', profile_key: SecureRandom.uuid, credential_reference: 'stripe_default')
+    PaymentProfile.create!(provider: 'stripe', payment_identity: other, channel: 'online', location: location, presentation: 'stripe_embedded', enabled: true)
+    get '/api/v1/config', params: { location_id: location.id }
+    expect(response.parsed_body['stripe_account_id']).to eq('acct_location')
+    state = start_checkout
+    expect(state.dig('collection_config', 'payment_identity_id')).to eq(other.id)
+    expect(state.dig('collection_config', 'stripe_account_id')).to eq('acct_location')
+    PaymentProfile.where(payment_identity: other).update_all(enabled: false)
+    get "/api/v1/checkout_sessions/#{state['id']}", headers: payment_headers(cart_id)
+    expect(response.parsed_body.dig('collection_config', 'stripe_account_id')).to eq('acct_location')
+  end
+
+  it 'does not let browsing pickup context block a shippable cart but enforces an explicit pickup choice' do
+    product.update!(allow_shipping: true)
+    location.update!(hours_json: {})
+    post '/api/v1/cart/items', params: { product_variant_id: variant.id, quantity: 1 }, headers: payment_headers(cart_id).merge('X-Location-ID' => location.id.to_s)
+    expect(response).to have_http_status(:created)
+    put "/api/v1/cart/items/#{CartItem.find_by!(session_id: cart_id).id}", params: { quantity: 2, fulfillment_type: 'pickup' }, headers: payment_headers(cart_id).merge('X-Location-ID' => location.id.to_s)
+    expect(response).to have_http_status(:unprocessable_entity)
+  end
+
+  it 'blocks future menu checkout and evaluates an accepted menu at order creation during recovery' do
+    menu = create(:collection, published: true, starts_at: 1.hour.from_now, ends_at: 2.hours.from_now, collection_type: 'seasonal')
+    product.collections << menu
+    post '/api/v1/checkout_sessions', params: { order: attrs }, headers: payment_headers(cart_id)
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(Order.count).to eq(0)
+    menu.update!(starts_at: 1.hour.ago, ends_at: 1.hour.from_now)
+    state = start_checkout
+    travel 2.hours do
+      post "/api/v1/checkout_sessions/#{state['id']}/confirm", headers: payment_headers(cart_id)
+      expect(response.parsed_body.dig('order', 'payment_status')).to eq('paid')
+    end
   end
 
   it 'persists complete intent before the collection call and returns the same session on retry' do

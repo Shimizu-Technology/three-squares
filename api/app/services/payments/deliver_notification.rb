@@ -14,7 +14,9 @@ module Payments
       token = SecureRandom.uuid
       claimed = record.with_lock do
         row.lock!
+        return { skipped: true, reason: row.state } if %w[skipped manual_review_required].include?(row.state)
         next false if row.state == 'delivered' && flag.nil?
+        raise Retryable, 'Notification retry is deferred' if row.next_attempt_at.future?
         if flag && (seq ? record.public_send(flag) >= seq : record.public_send(flag))
           row.update!(state: 'delivered', delivered_at: Time.current)
           next false
@@ -44,8 +46,7 @@ module Payments
       result
     rescue StandardError => error
       if claimed
-        PaymentOutbox.where(id: row.id, lease_token: token).update_all(state: 'pending', lease_token: nil, lease_until: nil,
-          next_attempt_at: 1.minute.from_now, last_error: error.class.name)
+        row.retry_delivery!(error, token: token)
       end
       raise
     end

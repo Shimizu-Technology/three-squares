@@ -76,7 +76,7 @@ module Payments
       cart_items.each do |item|
         variant = item.product_variant
         order.order_items.build(product_variant: variant, product_id: variant.product_id, quantity: item.quantity,
-          unit_price_cents: variant.price_cents, total_price_cents: variant.price_cents * item.quantity,
+          unit_price_cents: variant.effective_unit_price_cents, total_price_cents: variant.effective_unit_price_cents * item.quantity,
           special_instructions: attrs.fetch("item_special_instructions", {})[item.id.to_s])
       end
       order

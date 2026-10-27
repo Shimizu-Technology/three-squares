@@ -7,6 +7,7 @@ module Payments
       AttemptLock.call(attempt, raw_id: result.raw_id) do |session, stored, charge, order, charges|
         identity = AttemptLock.validate!(session, stored, order)
         validate_result!(stored, result)
+        collection_closed = %w[failed cancelled].include?(stored.state) || session.state == 'cancelled'
         if Configuration.production? && result.raw_id.to_s.start_with?('sim_', 'test_pi_', 'fake_')
           raise BindingError, 'Synthetic transaction cannot fulfill production'
         end
@@ -45,6 +46,14 @@ module Payments
           end
           stored.update!(state: state, raw_provider_id: stored.raw_provider_id || result.raw_id,
             next_recovery_at: %w[failed cancelled].include?(state) ? nil : 30.seconds.from_now)
+          if %w[failed cancelled].include?(state)
+            session.update!(state: 'cancelled')
+            InventoryReservation.where(order_id: order.id, state: 'held').update_all(state: 'released', updated_at: Time.current)
+          end
+          next order
+        end
+        if collection_closed
+          mark_compensation!(session, stored, 'capture_after_collection_closed')
           next order
         end
         if charge.order_id == order.id && (commitment = InventoryCommitment.find_by(order_id: order.id))

@@ -17,6 +17,7 @@ import {
   onStatusChange,
   destroyTerminal,
   setTokenProvider,
+  setTerminalLocation,
   type TerminalStatus,
 } from '../../services/stripeTerminal';
 import type { Reader } from '@stripe/terminal-js';
@@ -99,6 +100,8 @@ async function createPOSOrder(token: string, orderData: Record<string, unknown>,
   if (posRequest && posRequest.digest !== digest) throw new Error('Resolve the saved payment before starting another order.');
   if (!posRequest) posRequest = { digest, key: crypto.randomUUID(), owner };
   localStorage.setItem(POS_REQUEST_KEY, JSON.stringify(posRequest));
+  // Freeze a recoverable request only after owner/payload validation succeeds.
+  localStorage.setItem(POS_PENDING_TERMINAL_KEY, JSON.stringify({ user_id: owner, order_data: orderData, created_at: new Date().toISOString() }));
   const res = await fetch(`${API_BASE}/api/v1/admin/pos/orders`, {
     method: 'POST',
     headers: {
@@ -315,6 +318,7 @@ export default function AdminPOSPage() {
   const [lastOrder, setLastOrder] = useState<{ order_number: string; total_formatted: string; change_due_formatted?: string } | null>(null);
 
   // Terminal
+  const [terminalLocationReady, setTerminalLocationReady] = useState(false);
   const [terminalStatus, setTerminalStatus] = useState<TerminalStatus>('not_initialized');
   const [terminalReader, setTerminalReader] = useState<Reader | null>(null);
   const [terminalError, setTerminalError] = useState<string | null>(null);
@@ -346,6 +350,17 @@ export default function AdminPOSPage() {
   useEffect(() => {
     loadMenu();
   }, [loadMenu]);
+
+  useEffect(() => {
+    let active = true;
+    setTerminalLocationReady(false);
+    setTerminalReader(null);
+    setAvailableReaders([]);
+    void setTerminalLocation(selectedLocation).then(() => {
+      if (active) setTerminalLocationReady(!!selectedLocation);
+    });
+    return () => { active = false; };
+  }, [selectedLocation]);
 
   // ─── Filtered items ─────────────────────────────────────────────────────
 
@@ -481,7 +496,7 @@ export default function AdminPOSPage() {
   }, [terminalCollecting]);
 
   const handleConnectReader = useCallback(async (reader: Reader) => {
-    if (terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
+    if (!terminalLocationReady || terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
     try {
       setTerminalError(null);
       const connected = await connectToReader(reader);
@@ -490,10 +505,10 @@ export default function AdminPOSPage() {
     } catch (err) {
       setTerminalError(err instanceof Error ? err.message : 'Connection failed');
     }
-  }, [terminalStatus]);
+  }, [terminalStatus, terminalLocationReady]);
 
   const handleDiscoverReaders = useCallback(async () => {
-    if (terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
+    if (!terminalLocationReady || terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
     try {
       setTerminalError(null);
       await initializeTerminal();
@@ -509,10 +524,10 @@ export default function AdminPOSPage() {
     } catch (err) {
       setTerminalError(err instanceof Error ? err.message : 'Discovery failed');
     }
-  }, [handleConnectReader, terminalStatus]);
+  }, [handleConnectReader, terminalStatus, terminalLocationReady]);
 
   const handleReaderButtonClick = useCallback(async () => {
-    if (terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
+    if (!terminalLocationReady || terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
 
     if (!terminalReader) {
       await handleDiscoverReaders();
@@ -528,7 +543,7 @@ export default function AdminPOSPage() {
     } catch (err) {
       setTerminalError(err instanceof Error ? err.message : 'Reader refresh failed');
     }
-  }, [terminalReader, terminalStatus, handleDiscoverReaders]);
+  }, [terminalReader, terminalStatus, handleDiscoverReaders, terminalLocationReady]);
 
   const handleDisconnectReader = useCallback(async () => {
     try {
@@ -566,7 +581,8 @@ export default function AdminPOSPage() {
       if (!token) return;
       // Replaying creation uses the saved payload and original request key.
       const order = pending.order_data ? await createPOSOrder(token, pending.order_data, userId) : pending;
-      const confirmed = await confirmTerminalPayment(token, order.id || order.order_id, true);
+      const confirmed = order.payment_method === 'cash' && order.payment_status === 'paid' && order.inventory_committed
+        ? order : await confirmTerminalPayment(token, order.id || order.order_id, true);
       if (['failed', 'cancelled', 'compensated'].includes(confirmed.payment_state)) {
         clearPendingTerminalSession();
         setTerminalError('Saved payment is closed. Review the cart before taking payment.');
@@ -588,6 +604,9 @@ export default function AdminPOSPage() {
       if (!pending || !token) return;
       if (pending.user_id !== userId) throw new Error('Saved payment belongs to another staff session; administrator reconciliation required.');
       const order = pending.order_data ? await createPOSOrder(token, pending.order_data, userId) : pending;
+      if (order.payment_method === 'cash' && order.payment_status === 'paid' && order.inventory_committed) {
+        setLastOrder(order); clearCart(); clearPendingTerminalSession(); return;
+      }
       if (!order.checkout_session_id) throw new Error('Saved payment needs administrator reconciliation.');
       const response = await fetch(`${API_BASE}/api/v1/checkout_sessions/${order.checkout_session_id}/cancel`, {
         method: 'POST', headers: { Authorization: `Bearer ${token}` },
@@ -642,8 +661,6 @@ export default function AdminPOSPage() {
         })),
       };
 
-      localStorage.setItem(POS_PENDING_TERMINAL_KEY, JSON.stringify({ user_id: userId, order_data: orderData, created_at: new Date().toISOString() }));
-      setHasPendingTerminalSession(true);
       const orderResult = await createPOSOrder(token, orderData, userId);
 
       if (!orderResult.client_secret) {
@@ -725,7 +742,7 @@ export default function AdminPOSPage() {
 
         const result = await createPOSOrder(token, orderData, userId);
         setLastOrder(result);
-        clearPOSRequest();
+        clearPendingTerminalSession();
         setShowCashModal(false);
         clearCart();
 
@@ -735,21 +752,23 @@ export default function AdminPOSPage() {
         const message = err instanceof Error ? err.message : 'Order failed';
         alert(message);
       } finally {
+        setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
+        setShowCashModal(false);
         setSubmitting(false);
       }
     },
-    [cart, customerName, orderType, selectedLocation, getToken, userId, clearCart, hasPendingTerminalSession]
+    [cart, customerName, orderType, selectedLocation, getToken, userId, clearCart, hasPendingTerminalSession, clearPendingTerminalSession]
   );
 
   const handleCardAction = useCallback(() => {
-    if (!canSubmitPayment) return;
+    if (!canSubmitPayment || !terminalLocationReady) return;
     if (!terminalReader) {
       setTerminalError('Connect a Stripe reader before taking card payments.');
       void handleDiscoverReaders();
       return;
     }
     void handleTerminalPayment();
-  }, [canSubmitPayment, terminalReader, handleTerminalPayment, handleDiscoverReaders]);
+  }, [canSubmitPayment, terminalReader, handleTerminalPayment, handleDiscoverReaders, terminalLocationReady]);
 
   useEffect(() => {
     if (cart.length === 0) {
@@ -895,6 +914,7 @@ export default function AdminPOSPage() {
             <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
               <MapPin className="w-4 h-4 text-slate-500" />
               <select
+                disabled={hasPendingTerminalSession || submitting || terminalCollecting}
                 value={selectedLocation || ''}
                 onChange={(e) => setSelectedLocation(Number(e.target.value))}
                 className="bg-transparent text-slate-700 text-sm outline-none cursor-pointer"
@@ -961,6 +981,7 @@ export default function AdminPOSPage() {
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
               <MapPin className="w-4 h-4 text-slate-500" />
               <select
+                disabled={hasPendingTerminalSession || submitting || terminalCollecting}
                 value={selectedLocation || ''}
                 onChange={(e) => setSelectedLocation(Number(e.target.value))}
                 className="w-full bg-transparent text-slate-700 text-sm outline-none cursor-pointer"

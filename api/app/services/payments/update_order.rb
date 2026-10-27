@@ -11,6 +11,7 @@ module Payments
         current.update!(attrs)
         if current.saved_change_to_status?
           if current.status == 'cancelled'
+            InventoryReservation.where(order_id: current.id, state: 'held').update_all(state: 'released', updated_at: Time.current)
             restoration = RestoreInventory.call(order: current, user: user)
             current.update!(metadata: current.metadata.merge('inventory_restoration' => restoration.stringify_keys))
             # No commitment means no deduction to restore. A late capture is

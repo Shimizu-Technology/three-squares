@@ -8,7 +8,8 @@ module Api
       def show
         settings = SiteSetting.instance
 
-        profile = PaymentProfile.includes(:payment_identity).find_by(enabled: true, provider: settings.payment_processor, channel: "online", location_id: nil)
+        profiles = PaymentProfile.includes(:payment_identity).where(enabled: true, provider: settings.payment_processor, channel: "online")
+        profile = profiles.find_by(location_id: params[:location_id].presence) || profiles.find_by(location_id: nil)
         identity = profile&.payment_identity
         environment = identity&.environment
         key = if identity&.provider == "stripe"
@@ -20,6 +21,8 @@ module Api
           payment_environment: environment,
           payment_processor: settings.payment_processor,
           stripe_publishable_key: key,
+          stripe_account_id: identity&.external_account_id,
+          payment_identity_id: identity&.id,
           placeholder_image_url: settings.placeholder_image_url,
           features: {
             payments: identity.present?,
