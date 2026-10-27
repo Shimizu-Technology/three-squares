@@ -77,3 +77,22 @@ test('location Active is locked until its post-save refresh finishes', async ({ 
   await expect(region.getByRole('button', { name: 'Save', exact: true })).toBeEnabled();
   await expect(region.getByRole('checkbox', { name: 'Active', exact: true })).toBeEnabled();
 });
+
+test('POS cart controls remain reachable after an item reveals Quick Qty', async ({ page }) => {
+  const product = { id: 91003, name: 'Phone packing meal', variants: [{ id: 91004, name: 'Default', price_cents: 1000, price_formatted: '$10.00', in_stock: true }] };
+  await page.route('**/api/v1/admin/pos/menu**', route => route.fulfill({ json: { locations: [{ id: 1, name: 'Main' }], categories: [{ name: 'Lunch', items: [product] }], total_products: 1 } }));
+  await page.goto('/admin/pos');
+  await page.getByRole('button').filter({ hasText: product.name }).first().click();
+  await expect(page.getByText('Quick Qty', { exact: true })).toBeVisible();
+  const cash = page.getByRole('button', { name: 'Cash', exact: true });
+  await cash.scrollIntoViewIfNeeded();
+  const box = (await cash.boundingBox())!;
+  const viewport = page.viewportSize()!;
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.y).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+  expect(box.y + box.height).toBeLessThanOrEqual(viewport.height);
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  await expect(page.getByRole('heading', { name: 'Cash Payment', exact: true })).toBeVisible();
+  // Opening the cash form creates no order and performs no payment.
+});
