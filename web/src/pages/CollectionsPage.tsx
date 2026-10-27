@@ -1,3 +1,5 @@
+import CollectionScheduleNotice from '../components/CollectionScheduleNotice';
+import useCollectionBoundary from '../hooks/useCollectionBoundary';
 import axios from 'axios';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
@@ -45,6 +47,8 @@ export default function CollectionsPage() {
       setLoading(false);
     }
   }, [currentPage, searchQuery]);
+
+  useCollectionBoundary(collections, fetchCollections);
 
   useEffect(() => {
     void fetchCollections();
@@ -104,7 +108,7 @@ export default function CollectionsPage() {
           <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24">
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-gray-900 mb-4">Collections</h1>
             <p className="text-lg text-warm-500 max-w-2xl">
-              Browse our curated collections of Chamorro pride apparel and merchandise
+              Browse our meals, catering menus and seasonal specials
             </p>
           </div>
         </div>
@@ -112,10 +116,9 @@ export default function CollectionsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
           <div className="max-w-md mx-auto">
             <div className="mb-6"><svg className="w-16 h-16 mx-auto text-warm-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 7.125C2.25 6.504 2.754 6 3.375 6h6c.621 0 1.125.504 1.125 1.125v3.75c0 .621-.504 1.125-1.125 1.125h-6a1.125 1.125 0 01-1.125-1.125v-3.75zM14.25 8.625c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v8.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 01-1.125-1.125v-8.25zM3.75 16.125c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125v2.25c0 .621-.504 1.125-1.125 1.125h-5.25a1.125 1.125 0 01-1.125-1.125v-2.25z" /></svg></div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">Collections Coming Soon!</h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">{error ? 'Unable to load menus' : 'Menus coming soon'}</h2>
             <p className="text-gray-600 mb-8">
-              We're organizing our products into beautiful collections. 
-              Check back soon to browse by category!
+              {error ? 'Please try again, or browse the available meals.' : 'Check back soon for our latest menus and specials.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <button
@@ -154,7 +157,7 @@ export default function CollectionsPage() {
               Collections
             </h1>
             <p className="text-lg sm:text-xl text-warm-500 max-w-2xl">
-              Browse our curated collections of Chamorro pride apparel and merchandise
+              Browse our meals, catering menus and seasonal specials
             </p>
           </FadeIn>
         </div>
@@ -198,11 +201,12 @@ export default function CollectionsPage() {
                   {featuredCollection.description && (
                     <p className="text-warm-500 mb-4 line-clamp-3">{featuredCollection.description}</p>
                   )}
-                  <p className="text-sm text-warm-400">
+                  <CollectionScheduleNotice collection={featuredCollection} />
+                  <p className="text-sm text-warm-400 mt-3">
                     {featuredCollection.product_count} {featuredCollection.product_count === 1 ? 'product' : 'products'}
                   </p>
                   <span className="mt-6 inline-flex items-center gap-2 text-tsPrimary font-semibold group-hover:gap-3 transition-all">
-                    Shop Collection
+                    {featuredCollection.available === false ? 'View ended menu' : 'Browse menu'}
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                     </svg>
@@ -344,6 +348,7 @@ export default function CollectionsPage() {
                         {collection.description}
                       </p>
                     )}
+                    <div className="mb-3"><CollectionScheduleNotice collection={collection} /></div>
                     <div className="flex items-center justify-between">
                       <p className="text-sm text-warm-400">
                         {collection.product_count} {collection.product_count === 1 ? 'product' : 'products'}

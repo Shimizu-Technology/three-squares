@@ -3,6 +3,8 @@ import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { collectionsApi } from '../services/api';
 import type { Collection as ApiCollection, Product } from '../services/api';
+import CollectionScheduleNotice from '../components/CollectionScheduleNotice';
+import useCollectionBoundary from '../hooks/useCollectionBoundary';
 import ProductCard from '../components/ProductCard';
 import { ProductGridSkeleton, PageHeaderSkeleton } from '../components/Skeleton';
 import FadeIn from '../components/animations/FadeIn';
@@ -16,6 +18,7 @@ interface Meta {
   page: number;
   per_page: number;
   total: number;
+  product_types?: string[];
 }
 
 export default function CollectionDetailPage() {
@@ -34,14 +37,9 @@ export default function CollectionDetailPage() {
   const didScrollRef = useRef(false);
   const { selectedLocation } = useLocationStore();
 
-  // Derive product type filter options from actual products
-  const productTypes = useMemo(() => {
-    const types = new Set<string>();
-    products.forEach((p) => {
-      if (p.product_type) types.add(p.product_type);
-    });
-    return Array.from(types).sort();
-  }, [products]);
+  const productTypes = meta?.product_types ?? [];
+  const schedules = useMemo(() => collection ? [collection] : [], [collection]);
+  const requestVersion = useRef(0);
 
   // Single effect for data fetching. Resets page to 1 on location change
   // to avoid requesting a page that doesn't exist at the new location.
@@ -49,6 +47,7 @@ export default function CollectionDetailPage() {
   const fetchCollectionData = useCallback(async () => {
     if (!slug) return;
 
+    const version = ++requestVersion.current;
     try {
       setLoading(true);
       setError(null);
@@ -59,16 +58,21 @@ export default function CollectionDetailPage() {
         product_type: productType || undefined,
         location_id: selectedLocation?.id,
       });
+      if (version !== requestVersion.current) return;
       setCollection(data.collection);
       setProducts(data.products);
       setMeta(data.meta);
     } catch (err) {
+      if (version !== requestVersion.current) return;
       console.error('Failed to fetch collection:', err);
-      setError(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to load collection' : 'Failed to load collection');
+      setError(axios.isAxiosError(err) && err.response?.status === 404 ? 'This menu is unavailable or has ended.' : 'Unable to load this menu. Please try again.');
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
   }, [currentPage, productType, searchQuery, selectedLocation?.id, slug]);
+
+  useCollectionBoundary(schedules, fetchCollectionData);
+  useEffect(() => () => { requestVersion.current += 1; }, []);
 
   useEffect(() => {
     if (selectedLocation?.id !== prevLocationRef.current) {
@@ -124,7 +128,8 @@ export default function CollectionDetailPage() {
     return (
       <div className="min-h-screen bg-warm-50 flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-600 mb-4">{error || 'Collection not found'}</p>
+          <p role="alert" className="text-red-600 mb-4">{error || 'This menu is unavailable or has ended.'}</p>
+          <button onClick={() => void fetchCollectionData()} className="btn-secondary mb-4 mr-3">Try again</button>
           <Link
             to="/collections"
             className="px-6 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition inline-block"
@@ -171,15 +176,17 @@ export default function CollectionDetailPage() {
         </div>
       </div>
 
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6"><CollectionScheduleNotice collection={collection} /></div>
+
       {/* Filters */}
-      <div className="border-b border-warm-200">
+      {collection.available !== false && <div className="border-b border-warm-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
             <form onSubmit={handleSearch} className="flex-1">
               <input
                 type="text"
-                placeholder="Search products..."
+                aria-label="Search this menu" placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full px-4 py-2.5 bg-white border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent transition"
@@ -188,7 +195,7 @@ export default function CollectionDetailPage() {
 
             {/* Product Type Filter — derived from actual products */}
             {productTypes.length > 1 && (
-              <select
+              <select aria-label="Product type"
                 value={productType}
                 onChange={(e) => {
                   setProductType(e.target.value);
@@ -216,12 +223,16 @@ export default function CollectionDetailPage() {
         </div>
       </div>
 
+      }
+
       {/* Products Grid */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         {loading ? (
           <div className="py-6">
             <ProductGridSkeleton count={8} />
           </div>
+        ) : collection.available === false ? (
+          <div className="text-center py-12"><p className="text-gray-700 mb-6">These specials are no longer available to order.</p><Link to="/products" className="btn-primary">Browse available meals</Link></div>
         ) : products.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-600 mb-4">No products found in this collection.</p>

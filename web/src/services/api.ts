@@ -1,3 +1,4 @@
+import type { CollectionSchedule } from '../utils/collectionSchedule';
 import axios from 'axios';
 import type { CreateOrderRequest, CreateOrderResponse, AppConfig } from '../types/order';
 import { API_BASE_URL } from '../config';
@@ -100,7 +101,7 @@ export interface ProductImage {
   primary: boolean;
 }
 
-export interface Collection {
+export interface Collection extends CollectionSchedule {
   business_line?: 'three_squares' | 'latte_stone' | 'catering';
   id: number;
   name: string;
@@ -148,6 +149,7 @@ export interface CollectionDetailResponse {
     page: number;
     per_page: number;
     total: number;
+    product_types?: string[];
   };
 }
 
