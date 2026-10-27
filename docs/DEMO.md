@@ -29,15 +29,15 @@ Wait for the launcher to print the customer/workspace URLs. Keep that terminal o
 
 ## Present the flow
 
-**0:00–2:00 — Customer pickup order.** Open the customer menu in the phone-sized window. Choose **Simulation North**, open **Grilled chicken bowl**, add two bowls, then open the cart and checkout. Enter fictional contact details (for example `customer@example.test`, a fictional name, and a demo phone number). Choose pickup, review the total and continue to the simulated card form. Use its approval scenario and submit. Show the receipt, pickup location and saved order number.
+**0:00–2:00 — Customer pickup order.** Open the customer menu in the phone-sized window. Choose **Simulation North**, open **Grilled chicken bowl**, add two bowls, then open the cart and checkout. Enter fictional contact details (for example `customer@example.test`, a fictional name, and a demo phone number). Choose pickup and leave the fictional card outcome set to **approve**. Review the total, tick the review checkbox and press **Pay**. Show the receipt, pickup location and saved order number.
 
 Say: “This is the customer's pickup experience. The card approval is simulated, so we can show the whole order without charging anyone.” Use only the form's fictional card instructions; do not enter a real card.
 
-**2:00–3:00 — Kitchen handoff.** In the owner workspace, open **Orders → Pickup queue** at `/admin/orders/pickup-queue`. Select the same location and find the receipt's order number. Open it and mark it **Ready**. Refresh the customer's receipt to show that pickup status follows the same saved order.
+**2:00–3:00 — Kitchen handoff.** In the owner workspace, open **Orders → Pickup queue** at `/admin/orders/pickup-queue`. Select the same location and find the receipt's order number. Press **Acknowledge**, open the **Acknowledged** tab, then press **Ready**. Refresh the customer's receipt to show that pickup status follows the same saved order.
 
 Say: “The kitchen sees the order at the right location and tells the customer when it is ready.” Notifications remain disabled in this demo.
 
-**3:00–5:00 — Walk-up sale and a decline.** Open **POS** at `/admin/pos`, choose Simulation North and its simulated reader. Add a bowl, choose **Card (simulated)** and take the card payment. Wait for dispatch, then use the reader panel's tap/approve controls. Show the paid receipt. Start another basket and choose the decline scenario. Show the declined result, then follow the screen's saved-payment/retry instructions and approve the retry. Keep the original saved payment open until its result is definitive.
+**3:00–5:00 — Walk-up sale and a decline.** Open **POS** at `/admin/pos`, choose Simulation North and its simulated reader. Add a bowl, choose **Card (simulated)** and take the card payment. Wait for dispatch, then use the reader panel's tap/approve controls. Show the paid receipt. Start another basket, choose **Card (simulated)**, then use the reader panel to take the payment and **Decline** it. Show the declined result, then follow the screen's saved-payment/retry instructions and approve the retry. Keep the original saved payment open until its result is definitive.
 
 Say: “Staff can take walk-up orders here. This panel stands in for a card reader; it lets us rehearse approval and decline recovery before hardware is connected.” A disconnected reader or browser refresh does not prove cancellation. Use **Check saved payment** after uncertainty.
 
