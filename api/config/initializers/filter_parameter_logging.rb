@@ -10,3 +10,4 @@ Rails.application.config.filter_parameters += [
 
 # Push endpoints and subscription keys grant delivery capability.
 Rails.application.config.filter_parameters += %i[endpoint p256dh auth]
+Rails.application.config.filter_parameters += %i[ValidationCode TransactionSetupID state AccountToken AcceptorID AccountID]

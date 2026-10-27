@@ -13,30 +13,58 @@ module Payments
       end
       owner_key = user ? "user:#{user.id}" : "guest:#{CheckoutSession.digest(capability)}"
       request_digest = Snapshot.digest(attrs)
-      existing = CheckoutSession.find_by(owner_key: owner_key, caller_idempotency_key: idempotency_key)
-      if existing
-        raise Conflict, "Idempotency key was already used for different checkout details" unless existing.snapshot["request_digest"] == request_digest
-        return existing
-      end
-      fulfillment = attrs["fulfillment_type"]
-      location_id = attrs["location_id"].presence
-      Eligibility.validate!(items: cart_items, fulfillment_type: fulfillment, location_id: location_id, online: channel == "online")
-      pricing = CheckoutPricingService.resolve!(cart_items: cart_items, fulfillment_type: fulfillment,
-        shipping_address: attrs["shipping_address"], shipping_method: attrs["shipping_method"], location_id: location_id)
-      raise Error, "Order total must be greater than zero" unless pricing.total_cents.positive?
-      profile = ProviderResolver.profile!(location_id: location_id, channel: channel)
-      identity = profile.payment_identity
-      Configuration.validate_identity!(identity)
-      session = nil
-      ActiveRecord::Base.transaction do
-        # Serialize idempotent creates before pending-order and inventory writes.
-        lock_number = Digest::SHA256.hexdigest("#{owner_key}:#{idempotency_key}")[0,15].to_i(16)
+      rejected = nil
+      session = ActiveRecord::Base.transaction do
+        # The decision, eligibility and reservation share one owner/key lock.
+        # A rejected decision survives the savepoint rollback and fences every
+        # earlier/later request from creating an intent with the abandoned key.
+        lock_number = Digest::SHA256.hexdigest("#{owner_key}:#{idempotency_key}")[0, 15].to_i(16)
         ActiveRecord::Base.connection.execute("SELECT pg_advisory_xact_lock(#{lock_number})")
+        decision = CheckoutRequest.find_by(owner_key: owner_key, caller_idempotency_key: idempotency_key)
+        if decision
+          raise Conflict, "Idempotency key was already used for different checkout details" unless decision.request_digest == request_digest
+          if decision.outcome == "rejected"
+            rejected = CheckoutRejected.new(decision.rejection_message)
+            next nil
+          end
+          next decision.checkout_session if decision.outcome == "accepted"
+          raise Conflict, "Checkout decision is incomplete; check the original request"
+        end
         existing = CheckoutSession.find_by(owner_key: owner_key, caller_idempotency_key: idempotency_key)
         if existing
           raise Conflict, "Idempotency key was already used for different checkout details" unless existing.snapshot["request_digest"] == request_digest
-          return existing
+          CheckoutRequest.create!(owner_key: owner_key, caller_idempotency_key: idempotency_key, request_digest: request_digest,
+            outcome: "accepted", checkout_session: existing)
+          next existing
         end
+        decision = CheckoutRequest.create!(owner_key: owner_key, caller_idempotency_key: idempotency_key,
+          request_digest: request_digest, outcome: "resolving")
+        begin
+          created = build_session(user: user, capability: capability, idempotency_key: idempotency_key, cart_items: cart_items,
+            attrs: attrs, owner_key: owner_key, request_digest: request_digest, channel: channel, existing_order: existing_order)
+          decision.update!(outcome: "accepted", checkout_session: created)
+          created
+        rescue Error, FulfillmentError, ReserveInventory::Unavailable, CheckoutPricingService::PricingError, ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => error
+          decision.update!(outcome: "rejected", rejection_message: error.message.to_s[0, 500])
+          rejected = CheckoutRejected.new(decision.rejection_message)
+          nil
+        end
+      end
+      raise rejected if rejected
+      session
+    end
+
+    def self.build_session(user:, capability:, idempotency_key:, cart_items:, attrs:, owner_key:, request_digest:, channel:, existing_order:)
+      ActiveRecord::Base.transaction(requires_new: true) do
+        fulfillment = attrs["fulfillment_type"]
+        location_id = attrs["location_id"].presence
+        Eligibility.validate!(items: cart_items, fulfillment_type: fulfillment, location_id: location_id, online: channel == "online")
+        pricing = CheckoutPricingService.resolve!(cart_items: cart_items, fulfillment_type: fulfillment,
+          shipping_address: attrs["shipping_address"], shipping_method: attrs["shipping_method"], location_id: location_id)
+        raise Error, "Order total must be greater than zero" unless pricing.total_cents.positive?
+        profile = ProviderResolver.profile!(location_id: location_id, channel: channel)
+        identity = profile.payment_identity
+        Configuration.validate_identity!(identity)
         cart_items.each do |item|
           next unless item.is_a?(CartItem)
           fresh = CartItem.lock.find(item.id)
@@ -52,6 +80,9 @@ module Payments
         order.save!
         snapshot = { "order" => order.attributes.slice(*ORDER_FIELDS), "items" => order.order_items.order(:id).map { |item| item.attributes.slice(*ITEM_FIELDS) },
           "cart_items" => cart_items.select { |item| item.is_a?(CartItem) }.map { |item| { "id" => item.id, "quantity" => item.quantity, "updated_at" => item.updated_at.iso8601(6) } }, "request_digest" => request_digest }
+        if identity.provider == "worldpay" && identity.environment != "simulated"
+          snapshot["payment_profile"] = Worldpay::ProfileSnapshot.capture(profile)
+        end
         session = CheckoutSession.create!(order: order, user: user, location_id: location_id, channel: channel, payment_identity: identity,
           owner_key: owner_key, guest_capability_digest: user ? "" : CheckoutSession.digest(capability), caller_idempotency_key: idempotency_key,
           snapshot: snapshot, snapshot_digest: Snapshot.digest(snapshot), amount_cents: pricing.total_cents, currency: identity.currency, expires_at: 30.minutes.from_now)
@@ -60,8 +91,8 @@ module Payments
         order.update!(checkout_session_id: session.id, payment_attempt_id: attempt.id)
         Snapshot.persist!(session: session, attempt: attempt, order: order)
         ReserveInventory.call(order: order, expires_at: session.expires_at)
+        session
       end
-      session
     end
 
     def self.build_order(user:, attrs:, pricing:, cart_items:)

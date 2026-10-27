@@ -17,6 +17,13 @@ module Payments
           raise BindingError, 'Charge belongs to another payment'
         end
         raise BindingError, 'Attempt charge changed' if charge && result.raw_id.present? && charge.raw_provider_id != result.raw_id
+        if identity.provider == 'worldpay' && identity.environment != 'simulated' && stored.provider_metadata['worldpay_financial_quarantine'].present? &&
+            !(charge&.order_id == order.id && InventoryCommitment.exists?(order_id: order.id))
+          # A query can finish before an overlapping ambiguous observation. Read
+          # the durable quarantine under the same lock that consumes payment.
+          stored.update!(state: 'reconciliation_required', error_classification: 'manual_reconciliation_required', next_recovery_at: 1.hour.from_now)
+          next order
+        end
         if stored.state == 'compensated' || stored.compensation_claimed_at
           # Keep new money evidence without changing a dispatched reversal's
           # payload under the same key. Changed amounts require manual review.

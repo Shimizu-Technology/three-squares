@@ -59,6 +59,9 @@ RSpec.describe 'Payment ownership and recovery', type: :request do
     expect(response).to have_http_status(:unprocessable_entity)
     expect(Order.count).to eq(0)
     menu.update!(starts_at: 1.hour.ago, ends_at: 1.hour.from_now)
+    # A definitive rejection permanently fences that operation. An explicit
+    # fresh review starts a new key after availability changes.
+    @request_key = SecureRandom.uuid
     state = start_checkout
     travel 2.hours do
       post "/api/v1/checkout_sessions/#{state['id']}/confirm", headers: payment_headers(cart_id)
