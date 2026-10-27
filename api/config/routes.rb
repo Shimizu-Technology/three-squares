@@ -29,6 +29,7 @@ Rails.application.routes.draw do
           member do
             post :notify  # Resend notification email
             post :refund  # Process refund
+            post "refund_operations/:operation_id/reconcile", action: :reconcile_refund
           end
         end
 

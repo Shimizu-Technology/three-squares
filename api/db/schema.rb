@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -463,6 +463,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
     t.check_constraint "quantity > 0 AND (pool_type::text = ANY (ARRAY['Product'::character varying, 'ProductVariant'::character varying]::text[])) AND (state::text = ANY (ARRAY['held'::character varying, 'committed'::character varying, 'released'::character varying]::text[]))", name: "valid_inventory_reservation"
   end
 
+  create_table "legacy_capture_bindings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.integer "amount_cents", null: false
+    t.string "consumption_reference", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.string "environment", null: false
+    t.string "external_account_id", null: false
+    t.bigint "order_id", null: false
+    t.string "original_reference", null: false
+    t.uuid "payment_identity_id", null: false
+    t.string "provider", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "verified_at", null: false
+    t.index ["order_id"], name: "index_legacy_capture_bindings_on_order_id"
+    t.index ["payment_identity_id"], name: "index_legacy_capture_bindings_on_payment_identity_id"
+    t.index ["provider", "environment", "external_account_id", "consumption_reference"], name: "unique_legacy_capture_owner", unique: true
+    t.check_constraint "amount_cents > 0 AND currency::text = 'USD'::text", name: "legacy_capture_positive_usd"
+  end
+
   create_table "locations", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.string "address"
@@ -836,6 +855,73 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
     t.index ["slug"], name: "index_products_on_slug", unique: true
   end
 
+  create_table "refund_effects", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "delivered_at"
+    t.string "kind", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.uuid "refund_operation_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["refund_operation_id", "kind"], name: "index_refund_effects_on_refund_operation_id_and_kind", unique: true
+    t.index ["refund_operation_id"], name: "index_refund_effects_on_refund_operation_id"
+  end
+
+  create_table "refund_observations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "event_key", null: false
+    t.string "observed_state", null: false
+    t.string "payload_digest", null: false
+    t.uuid "refund_operation_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["refund_operation_id", "event_key"], name: "unique_refund_observation", unique: true
+    t.index ["refund_operation_id"], name: "index_refund_observations_on_refund_operation_id"
+  end
+
+  create_table "refund_operations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.integer "amount_cents", null: false
+    t.string "caller_idempotency_key", null: false
+    t.integer "captured_cents", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.datetime "dispatched_at"
+    t.string "environment", null: false
+    t.string "kind", default: "return", null: false
+    t.string "last_error"
+    t.datetime "last_queried_at"
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "next_recovery_at"
+    t.uuid "operation_key", default: -> { "gen_random_uuid()" }, null: false
+    t.bigint "order_id", null: false
+    t.uuid "original_charge_id"
+    t.string "original_reference", null: false
+    t.string "payload_digest", null: false
+    t.uuid "payment_attempt_id"
+    t.uuid "payment_identity_id"
+    t.string "provider", null: false
+    t.string "raw_provider_id"
+    t.string "reason"
+    t.datetime "recovery_deadline_at"
+    t.bigint "reference_number", null: false
+    t.jsonb "restoration_request", default: {}, null: false
+    t.integer "retry_count", default: 0, null: false
+    t.string "state", default: "reserved", null: false
+    t.datetime "succeeded_at"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["operation_key"], name: "index_refund_operations_on_operation_key", unique: true
+    t.index ["order_id", "caller_idempotency_key"], name: "unique_refund_request", unique: true
+    t.index ["order_id"], name: "index_refund_operations_on_order_id"
+    t.index ["original_charge_id"], name: "index_refund_operations_on_original_charge_id"
+    t.index ["payment_attempt_id"], name: "index_refund_operations_on_payment_attempt_id"
+    t.index ["payment_identity_id", "raw_provider_id"], name: "unique_identity_refund", unique: true
+    t.index ["payment_identity_id"], name: "index_refund_operations_on_payment_identity_id"
+    t.index ["state", "next_recovery_at"], name: "index_refund_operations_on_state_and_next_recovery_at"
+    t.index ["user_id"], name: "index_refund_operations_on_user_id"
+    t.check_constraint "(kind::text = ANY (ARRAY['return'::character varying, 'void'::character varying, 'reversal'::character varying]::text[])) AND (state::text = ANY (ARRAY['reserved'::character varying, 'dispatching'::character varying, 'pending'::character varying, 'unknown'::character varying, 'succeeded'::character varying, 'failed'::character varying]::text[]))", name: "refund_valid_state_kind"
+    t.check_constraint "amount_cents > 0 AND captured_cents >= amount_cents", name: "refund_positive_bounded_amount"
+    t.check_constraint "currency::text = 'USD'::text AND (environment::text = ANY (ARRAY['simulated'::character varying, 'sandbox'::character varying, 'production'::character varying]::text[])) AND (provider::text = 'cash'::text AND payment_identity_id IS NULL AND payment_attempt_id IS NULL AND original_charge_id IS NULL OR (provider::text = ANY (ARRAY['stripe'::character varying, 'worldpay'::character varying]::text[])) AND payment_identity_id IS NOT NULL)", name: "refund_identity_authority"
+  end
+
   create_table "refunds", force: :cascade do |t|
     t.integer "amount_cents", null: false
     t.datetime "created_at", null: false
@@ -844,14 +930,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
     t.text "notes"
     t.bigint "order_id", null: false
     t.string "reason"
+    t.uuid "refund_operation_id"
     t.boolean "sms_sent", default: false, null: false
     t.string "status", default: "pending"
     t.string "stripe_refund_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
     t.index ["order_id"], name: "index_refunds_on_order_id"
+    t.index ["refund_operation_id"], name: "index_refunds_on_refund_operation_id", unique: true
     t.index ["status"], name: "index_refunds_on_status"
-    t.index ["stripe_refund_id"], name: "index_refunds_on_stripe_refund_id", unique: true
+    t.index ["stripe_refund_id"], name: "index_refunds_on_stripe_refund_id"
     t.index ["user_id"], name: "index_refunds_on_user_id"
   end
 
@@ -953,6 +1041,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
   add_foreign_key "inventory_audits", "users"
   add_foreign_key "inventory_commitments", "orders"
   add_foreign_key "inventory_reservations", "orders"
+  add_foreign_key "legacy_capture_bindings", "orders"
+  add_foreign_key "legacy_capture_bindings", "payment_identities"
   add_foreign_key "order_items", "orders"
   add_foreign_key "order_items", "product_variants"
   add_foreign_key "order_items", "products"
@@ -980,7 +1070,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
   add_foreign_key "product_locations", "locations"
   add_foreign_key "product_locations", "products"
   add_foreign_key "product_variants", "products"
+  add_foreign_key "refund_effects", "refund_operations"
+  add_foreign_key "refund_observations", "refund_operations"
+  add_foreign_key "refund_operations", "orders"
+  add_foreign_key "refund_operations", "payment_attempts"
+  add_foreign_key "refund_operations", "payment_identities"
+  add_foreign_key "refund_operations", "payment_transactions", column: "original_charge_id"
+  add_foreign_key "refund_operations", "users"
   add_foreign_key "refunds", "orders"
+  add_foreign_key "refunds", "refund_operations"
   add_foreign_key "refunds", "users"
   add_foreign_key "users", "locations", column: "assigned_location_id"
 end

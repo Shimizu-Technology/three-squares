@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { savedRefundRequest, prepareRefundRequest, clearRefundRequest, rememberRefundOperation, type SavedRefundRequest } from '../../lib/refundRequest';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
@@ -32,6 +33,11 @@ interface AdminOrderResponse {
 }
 
 interface RefundResponse {
+  status: string;
+  operation_uuid?: string;
+  success: boolean;
+  inventory_restoration_required?: boolean;
+  restoration_status?: string;
   order: Order;
   message?: string;
 }
@@ -54,7 +60,7 @@ interface AdminOrdersPageContentProps {
 }
 
 export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -101,6 +107,10 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
 
   // Refund modal
   const [showRefundModal, setShowRefundModal] = useState(false);
+  const [pendingRefundRequest, setPendingRefundRequest] = useState<SavedRefundRequest | null>(null);
+  useEffect(() => {
+    setPendingRefundRequest(selectedOrder ? savedRefundRequest(selectedOrder.id) : null);
+  }, [selectedOrder?.id, userId]);
   const [processingRefund, setProcessingRefund] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [summary, setSummary] = useState<OrdersSummaryResponse | null>(null);
@@ -299,28 +309,61 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   };
 
   // ── Process refund ────────────────────────────────────────────
-  const processRefund = async (amountCents: number, reason: string) => {
-    if (!selectedOrder || amountCents <= 0) {
-      toast.error('Invalid refund amount');
+  const processRefund = async (amountCents: number, reason: string, restockItems: boolean) => {
+    if (!selectedOrder || !Number.isInteger(amountCents) || amountCents <= 0 || processingRefund) {
+      toast.error('Enter a valid refund amount.');
       return;
     }
+    let requestKey: string | undefined;
     try {
       setProcessingRefund(true);
-      const response = await authPost<RefundResponse>(
-        `/admin/orders/${selectedOrder.id}/refund`,
-        { amount_cents: amountCents, reason: reason || undefined },
-        getToken
-      );
-      toast.success(response.data.message || 'Refund processed successfully');
-      const updatedOrder = response.data.order;
-      setSelectedOrder(updatedOrder);
+      const pending = prepareRefundRequest(selectedOrder.id, userId, { amount_cents: amountCents, reason, restock_items: restockItems });
+      requestKey = pending.key;
+      setPendingRefundRequest(pending);
+      const response = await authPost<RefundResponse>(`/admin/orders/${selectedOrder.id}/refund`, pending.payload, getToken,
+        { headers: { 'Idempotency-Key': pending.key } });
+      const data = response.data;
+      if (data.operation_uuid) rememberRefundOperation(pending, data.operation_uuid);
+      setPendingRefundRequest(savedRefundRequest(selectedOrder.id));
+      setSelectedOrder(data.order);
       reconcileOrders();
-      setShowRefundModal(false);
-    } catch (err) {
-      toast.error(axios.isAxiosError(err) ? err.response?.data?.error || err.response?.data?.details || 'Failed to process refund' : 'Failed to process refund');
-    } finally {
-      setProcessingRefund(false);
-    }
+      if (['succeeded', 'failed'].includes(data.status)) {
+        clearRefundRequest(selectedOrder.id, pending.key);
+        setPendingRefundRequest(savedRefundRequest(selectedOrder.id));
+        setShowRefundModal(false);
+        if (data.status === 'failed') toast.error('Refund failed. Its reservation has been released.');
+        else if (data.inventory_restoration_required) toast(data.message || 'Refund confirmed. Inventory requires manual review.');
+        else toast.success(data.message || 'Refund confirmed.');
+      } else toast('Refund status is being checked. Its amount remains reserved. Check this saved refund before submitting another.');
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.data?.no_operation === true) {
+        if (requestKey) clearRefundRequest(selectedOrder.id, requestKey);
+        setPendingRefundRequest(savedRefundRequest(selectedOrder.id));
+        if (error.response.data.order) {
+          setSelectedOrder(error.response.data.order);
+          reconcileOrders();
+        }
+        toast.error(error.response.data.error || 'Refund request was rejected before dispatch. Review and correct it.');
+      } else {
+        toast.error(axios.isAxiosError(error) ? error.response?.data?.error || 'Refund outcome is not confirmed. Check the saved refund before submitting another.' : error instanceof Error ? error.message : 'Check the saved refund.');
+      }
+    } finally { setProcessingRefund(false); }
+  };
+
+  const checkRefund = async (operationId: string) => {
+    if (!selectedOrder || processingRefund) return;
+    setProcessingRefund(true);
+    try {
+      const response = await authPost<RefundResponse>(`/admin/orders/${selectedOrder.id}/refund_operations/${operationId}/reconcile`, {}, getToken);
+      setSelectedOrder(response.data.order);
+      reconcileOrders();
+      if (pendingRefundRequest?.operationId === operationId && ['succeeded', 'failed'].includes(response.data.status)) {
+        clearRefundRequest(selectedOrder.id, pendingRefundRequest.key);
+        setPendingRefundRequest(savedRefundRequest(selectedOrder.id));
+      }
+      toast(response.data.message || `Refund ${response.data.status}`);
+    } catch (error) { toast.error(axios.isAxiosError(error) ? error.response?.data?.error || 'Refund remains unresolved.' : 'Refund remains unresolved.'); }
+    finally { setProcessingRefund(false); }
   };
 
   // ── Resend notification ───────────────────────────────────────
@@ -554,6 +597,9 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
           onQuickUpdateStatus={quickUpdateStatus}
           onResendNotification={resendNotification}
           onOpenRefundModal={() => setShowRefundModal(true)}
+          hasSavedRefund={pendingRefundRequest?.orderId === selectedOrder.id}
+          checkingRefund={processingRefund}
+          onCheckRefund={checkRefund}
           storeEmail={storeEmail}
         />
       )}
@@ -576,6 +622,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
         <RefundModal
           order={selectedOrder}
           processing={processingRefund}
+          savedRequest={pendingRefundRequest}
           onProcess={processRefund}
           onClose={() => setShowRefundModal(false)}
         />

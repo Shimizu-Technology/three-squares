@@ -9,7 +9,7 @@ module Payments
         order = Order.lock.find(order.id)
         unless InventoryCommitment.exists?(order_id: order.id)
           foundation = order.checkout_session_id || order.payment_attempt_id || order.metadata['cash_request_key']
-          return { restored: false, status: foundation ? 'not_committed' : 'manual_review_required' }
+          return { restored: false, status: foundation && !%w[paid refunded].include?(order.payment_status) ? 'not_committed' : 'manual_review_required' }
         end
         rows = InventoryReservation.where(order_id: order.id, state: 'committed').order(:id).to_a
         return { restored: false, status: 'manual_review_required' } if rows.any? { |row| row.item_quantities.blank? }

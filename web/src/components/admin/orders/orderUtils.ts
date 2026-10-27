@@ -18,6 +18,10 @@ export interface Refund {
   status: string;
   reason: string | null;
   stripe_refund_id: string | null;
+  operation_uuid?: string;
+  operation_status?: string;
+  environment?: string;
+  restoration_status?: string;
   created_at: string;
   admin_user: string | null;
 }
@@ -58,6 +62,7 @@ export interface Order {
   item_count: number;
   refunds?: Refund[];
   total_refunded_cents?: number;
+  refundable_amount_cents?: number;
 }
 
 export const STATUS_BADGES: Record<string, string> = {

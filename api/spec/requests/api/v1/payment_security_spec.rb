@@ -312,12 +312,13 @@ RSpec.describe 'Payment ingress controls', type: :request do
     controller = Api::V1::Admin::OrdersController
     allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
     allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
-    order = create(:order, payment_status: 'paid', payment_method: 'stripe', payment_intent_id: 'pi_legacyfixture')
-    allow(PaymentService).to receive(:refund_payment) do |**args|
-      refund = Refund.create!(order: args[:order], amount_cents: args[:amount_cents], status: 'succeeded', user: admin)
-      { success: true, refund: refund }
-    end
-    post "/api/v1/admin/orders/#{order.id}/refund", params: { amount_cents: order.total_cents }
+    configure_payment_fixture!
+    order = create(:order, payment_status: 'paid', payment_method: 'stripe', payment_identity_id: @payment_identity.id, payment_intent_id: 'pi_legacyfixture')
+    provider = double('verified legacy provider')
+    allow(Payments::ProviderResolver).to receive(:for_identity).and_return(provider)
+    allow(provider).to receive(:query_original_charge).and_return(identity_id: @payment_identity.id, raw_id: 'pi_legacyfixture', status: 'captured', amount_cents: order.total_cents, currency: 'USD')
+    allow(provider).to receive(:refund).and_return(raw_id: 're_legacyfixture', status: 'succeeded', amount_cents: order.total_cents)
+    post "/api/v1/admin/orders/#{order.id}/refund", params: { amount_cents: order.total_cents, restock_items: true }, headers: { 'Idempotency-Key' => SecureRandom.uuid }
     expect(response).to have_http_status(:ok), response.body
     expect(response.parsed_body).to include('inventory_restored' => false, 'inventory_restoration_required' => true, 'inventory_restoration_status' => 'manual_review_required')
     expect(order.reload.metadata.dig('inventory_restoration', 'status')).to eq('manual_review_required')

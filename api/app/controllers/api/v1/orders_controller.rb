@@ -4,16 +4,6 @@ module Api
   module V1
     class OrdersController < ApplicationController
       before_action { Payments::Configuration.validate_database! }
-      class CheckoutValidationError < StandardError
-        attr_reader :captured
-
-        def initialize(msg, captured: false)
-          super(msg)
-          @captured = captured
-        end
-      end
-      class InventoryCommitError < StandardError; end
-
       COOKIE_COLLECTION_SLUGS = %w[cookies cookie-boxes mini-cookies].freeze
 
       rescue_from ActionController::ParameterMissing do |e|
@@ -185,40 +175,7 @@ module Api
 
       private
 
-      def get_cart_items
-        session_id = request.headers["X-Session-ID"] || request.cookies["session_id"]
-        if session_id.present?
-          return CartItem.where(session_id: session_id).includes(product_variant: { product: [ :product_images, :product_locations ] })
-        end
 
-        return [] unless current_user
-
-        current_user.cart_items.includes(product_variant: { product: [ :product_images, :product_locations ] })
-      end
-
-      # Merge session-based cart items to the logged-in user
-      # This handles the case where user added items before logging in
-      def merge_session_cart_to_user
-        session_id = request.headers["X-Session-ID"] || request.cookies["session_id"]
-        return unless current_user && session_id.present?
-
-        session_items = CartItem.where(session_id: session_id)
-        return if session_items.empty?
-
-        session_items.each do |session_item|
-          # Check if user already has this variant in their cart
-          existing_item = current_user.cart_items.find_by(product_variant_id: session_item.product_variant_id)
-
-          if existing_item
-            # Merge quantities
-            existing_item.update(quantity: existing_item.quantity + session_item.quantity)
-            session_item.destroy
-          else
-            # Transfer the session item to the user
-            session_item.update(user_id: current_user.id, session_id: nil)
-          end
-        end
-      end
 
       def parse_datetime_param(value, end_of_day: false)
         return nil if value.blank?
@@ -344,19 +301,6 @@ module Api
         json
       end
 
-      def order_params
-        params.require(:order).permit(
-          :email, :phone, :payment_intent_id,
-          :customer_name, :customer_email, :customer_phone,
-          :fulfillment_type, :location_id, :notes,
-          :shipping_address_line1, :shipping_address_line2,
-          :shipping_city, :shipping_state, :shipping_zip, :shipping_country,
-          shipping_address: [ :name, :street1, :street2, :city, :state, :zip, :country ],
-          shipping_method: [ :carrier, :service, :rate_cents, :rate_id ],
-          payment_method: [ :token, :type ],
-          item_special_instructions: {}
-        )
-      end
 
       def order_update_params
         # Non-admin endpoint: customers can only update their own notes.
@@ -444,19 +388,7 @@ module Api
         }
       end
 
-      def normalized_fulfillment_type
-        raw = order_params[:fulfillment_type].to_s
-        return "pickup" if raw == "pickup"
 
-        "shipping"
-      end
-
-      def pickup_location_id
-        value = order_params[:location_id]
-        return nil if value.blank?
-
-        value.to_i
-      end
 
       def apply_business_line_filter(relation, business_line)
         case business_line
