@@ -73,4 +73,31 @@ RSpec.describe "Catalog price contract", type: :request do
     expect(order.order_items.first.unit_price_cents).to eq(1050)
   end
 
+  it "keeps payable POS sizes when a sibling has an unresolved zero price" do
+    product.update!(sale_price_cents: nil)
+    variant.update!(price_cents: 0)
+    paid = create(:product_variant, product: product, price_cents: 1800, variant_key: "paid-size")
+    admin = create(:user, role: "admin")
+    controller = Api::V1::Admin::PosMenuController
+    allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
+    allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
+    get "/api/v1/admin/pos/menu", params: { location_id: location.id }
+    row = response.parsed_body.fetch("categories").flat_map { |category| category.fetch("items") }.find { |item| item.fetch("id") == product.id }
+    expect(row.fetch("variants").map { |size| size.fetch("id") }).to eq([paid.id])
+    expect(row.fetch("variants").first.fetch("price_cents")).to eq(1800)
+  end
+
+  it "returns the location validation explanation through the admin save path and rolls back the edit" do
+    create(:product_variant, product: product, price_cents: 1800, variant_key: "large")
+    admin = create(:user, role: "admin")
+    controller = Api::V1::Admin::ProductsController
+    allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
+    allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
+    original_name = product.name
+    patch "/api/v1/admin/products/#{product.id}", params: { product: { name: "Rejected edit", location_ids: [location.id] } }
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body.fetch("errors").join).to include("single #{location.name} price can't be set. Edit each size's price instead.")
+    expect(product.reload.name).to eq(original_name)
+  end
+
 end

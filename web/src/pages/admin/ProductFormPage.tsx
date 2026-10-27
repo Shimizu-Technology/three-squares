@@ -367,7 +367,10 @@ export default function ProductFormPage() {
       }
     } catch (err) {
       console.error('Failed to save product:', err);
-      const errorMessage = axios.isAxiosError(err) ? err.response?.data?.error || err.response?.data?.message || 'Failed to save product' : 'Failed to save product';
+      const details = axios.isAxiosError(err) ? err.response?.data?.errors : undefined;
+      const errorMessage = Array.isArray(details) && details.length > 0
+        ? details.join(' ')
+        : axios.isAxiosError(err) ? err.response?.data?.error || err.response?.data?.message || 'Failed to save product' : 'Failed to save product';
       toast.error(errorMessage, {
         duration: 4000,
         position: 'top-right',

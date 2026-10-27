@@ -35,12 +35,13 @@ module Api
           # Group by collection (category)
           categories = {}
           products.order(:name).each do |product|
-            next unless CatalogPrice.resolve(product: product, location_id: effective_location_id).purchasable
+            serialized = pos_product_json(product, effective_location_id)
+            next if serialized[:variants].empty?
             collection_names = product.collections.map(&:name)
             category = collection_names.first || "Uncategorized"
 
             categories[category] ||= []
-            categories[category] << pos_product_json(product, effective_location_id)
+            categories[category] << serialized
           end
 
           # Also return locations for the location picker
