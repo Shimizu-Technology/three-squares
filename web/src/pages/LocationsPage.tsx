@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { MapPin, Clock, Phone, MessageCircle, ChevronRight } from 'lucide-react';
 import FadeIn from '../components/animations/FadeIn';
@@ -16,8 +15,8 @@ interface Location {
   phone?: string;
   whatsapp?: string;
   image: string;
+  imageAlt: string;
   featured?: boolean;
-  note?: string;
 }
 
 const locations: Location[] = [
@@ -33,7 +32,8 @@ const locations: Location[] = [
     ],
     phone: '(671) 646-2652',
     whatsapp: '(671) 864-6656',
-    image: '/images/plated1.jpg',
+    image: '/images/Loco_Moco.JPG',
+    imageAlt: 'Loco moco from the Three Squares menu',
     featured: true,
   },
   {
@@ -45,65 +45,21 @@ const locations: Location[] = [
       { days: 'Daily', time: '10:00 AM - 10:00 PM' },
     ],
     image: '/images/three-squares-donki.png',
-    note: 'Open until sold out',
+    imageAlt: 'Three Squares @ Donki',
   },
 ];
 
 export default function LocationsPage() {
   return (
     <div className="min-h-screen bg-warm-50">
-      {/* Hero Section */}
-      <section className="relative bg-gray-900 text-white py-20 sm:py-28 overflow-hidden">
-        {/* Background image */}
-        <div className="absolute inset-0">
-          <img
-            src="/images/catering4.jpg"
-            alt=""
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-black/72" />
-          <div
-            className="absolute inset-0"
-            style={{
-              background: 'linear-gradient(135deg, rgba(139,69,19,0.28) 0%, rgba(0,0,0,0.45) 55%, rgba(0,0,0,0.62) 100%)'
-            }}
-          />
-        </div>
-
-        {/* Content */}
-        <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <FadeIn>
-            <span
-              className="inline-block px-5 py-2 bg-black/35 backdrop-blur-sm border border-white/30 text-sm font-semibold rounded-full mb-6 text-white shadow-lg"
-              style={{ color: '#ffffff', textShadow: '0 1px 6px rgba(0,0,0,0.85)' }}
-            >
-              Visit Us Today
-            </span>
-          </FadeIn>
-          
-          <FadeIn delay={0.1}>
-            <h1
-              className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6 tracking-tight text-white"
-              style={{ color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.9), 0 4px 25px rgba(0,0,0,0.5), 0 0 40px rgba(0,0,0,0.3)' }}
-            >
-              Our Locations
-            </h1>
-          </FadeIn>
-          
-          <FadeIn delay={0.2}>
-            <p
-              className="text-lg sm:text-xl text-white max-w-2xl mx-auto leading-relaxed"
-              style={{ color: '#ffffff', textShadow: '0 1px 6px rgba(0,0,0,0.9), 0 2px 15px rgba(0,0,0,0.5)' }}
-            >
-              Find us at two convenient locations on Guam. Stop by for delicious 
-              island-style comfort food, or contact us for catering orders.
-            </p>
-          </FadeIn>
-        </div>
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16">
+        <p className="text-sm font-semibold uppercase tracking-widest text-tsPrimary mb-4">Find Three Squares</p>
+        <h1 className="text-4xl sm:text-5xl font-bold text-warm-900 tracking-tight">Main or Donki?</h1>
+        <p className="mt-4 text-lg text-warm-700 max-w-2xl leading-relaxed">Find the menu and directions for each Three Squares location in Tamuning. Main is on Chalan San Antonio; Donki is inside Don Quijote.</p>
       </section>
 
       {/* Locations Grid */}
-      <section className="py-16 sm:py-24">
+      <section className="py-10 sm:py-14">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <StaggerContainer className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
             {locations.map((location) => (
@@ -126,8 +82,7 @@ export default function LocationsPage() {
           
           <FadeIn delay={0.1}>
             <p className="text-warm-600 text-lg mb-8 max-w-2xl mx-auto leading-relaxed">
-              Planning an event? B&G Pacific provides professional catering services 
-              for corporate events, weddings, parties, and more. We&apos;re HUBZone certified.
+              Planning a gathering? Send Three Squares an inquiry with your event details so the team can discuss a quote.
             </p>
           </FadeIn>
           
@@ -163,21 +118,14 @@ interface LocationCardProps {
 
 function LocationCard({ location }: LocationCardProps) {
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${location.mapAddress}`;
-  // Use maps.google.com/maps with &output=embed — no API key required.
-  // mapAddress already uses + for spaces (URL-friendly), so pass through directly.
-  const mapEmbedUrl = `https://maps.google.com/maps?q=${location.mapAddress}&z=15&ie=UTF8&iwloc=&output=embed`;
   
   return (
-    <motion.div
-      className="bg-white rounded-2xl shadow-lg overflow-hidden border border-warm-100 h-full flex flex-col"
-      whileHover={{ y: -4, boxShadow: '0 20px 40px -12px rgba(0, 0, 0, 0.1)' }}
-      transition={{ duration: 0.2 }}
-    >
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-warm-100 h-full flex flex-col">
       {/* Image */}
       <div className="relative h-56 sm:h-64 overflow-hidden">
         <img
           src={location.image}
-          alt={location.name}
+          alt={location.imageAlt}
           className="w-full h-full object-cover"
         />
         {location.featured && (
@@ -220,9 +168,6 @@ function LocationCard({ location }: LocationCardProps) {
                 </span>
               </p>
             ))}
-            {location.note && (
-              <p className="text-warm-500 text-sm italic">{location.note}</p>
-            )}
           </div>
         </div>
 
@@ -258,27 +203,7 @@ function LocationCard({ location }: LocationCardProps) {
         </Link>
       </div>
 
-      {/* Map Preview */}
-      <div className="px-6 pb-6 sm:px-8 sm:pb-8 space-y-3">
-        <div className="w-full h-44 rounded-xl overflow-hidden border border-warm-200">
-          <iframe
-            src={mapEmbedUrl}
-            title={`Map of ${location.name}`}
-            className="w-full h-full"
-            loading="lazy"
-            allowFullScreen
-          />
-        </div>
-        <a
-          href={mapUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-tsPrimary hover:text-primary-dark text-sm font-medium transition-colors"
-        >
-          Open in Google Maps
-          <ChevronRight className="w-4 h-4" />
-        </a>
-      </div>
-    </motion.div>
+
+    </div>
   );
 }

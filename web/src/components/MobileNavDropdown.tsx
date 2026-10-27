@@ -121,7 +121,7 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
             {storefrontCount > 1 && (
               <>
                 <p className={`text-xs uppercase tracking-wider font-semibold py-2 ${darkMode ? 'text-white/40' : 'text-warm-400'}`}>
-                  Shop by Business
+                  Browse by menu
                 </p>
                 {showThreeSquares && (
                   <Link

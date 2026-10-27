@@ -7,8 +7,6 @@ import { Toaster } from 'react-hot-toast';
 import CartIcon from './components/CartIcon'; // Import CartIcon
 import CartDrawer from './components/CartDrawer'; // Import CartDrawer
 import ScrollToTop from './components/ScrollToTop'; // Import ScrollToTop
-import SmoothScroll from './components/SmoothScroll'; // Import SmoothScroll
-import { AnimatePresence } from 'framer-motion'; // Page transitions
 import NavDropdown from './components/NavDropdown'; // Import NavDropdown
 import MobileNavDropdown from './components/MobileNavDropdown'; // Import MobileNavDropdown
 import LocationContextBar from './components/LocationContextBar';
@@ -199,8 +197,6 @@ function AppContent() {
   // Check if we're on admin pages
   const isAdminPage = location.pathname.startsWith('/admin');
   const routeTransitionKey = isAdminPage ? '/admin' : location.pathname;
-  // C-23 / A-28: counter workflows use native scrolling. Public motion is
-  // retained here until Track C's motion slice; never instantiate Lenis in admin.
 
   // LocationPicker is only relevant on pages tied to ordering/menu browsing
   const ORDERING_PATHS = ['/products', '/shop', '/collections', '/cart', '/checkout', '/menu', '/pos'];
@@ -210,7 +206,6 @@ function AppContent() {
 
   return (
     <>
-      {!isAdminPage && <SmoothScroll>{null}</SmoothScroll>}
       <ScrollToTop />
       <Toaster 
         position="top-right"
@@ -245,7 +240,7 @@ function AppContent() {
           },
         }}
       />
-      <div className="min-h-screen bg-warm-50">
+      <div className={`min-h-screen bg-warm-50 ${isAdminPage ? '' : 'public-site'}`}>
         {/* Cart Drawer */}
         <CartDrawer />
 
@@ -254,7 +249,7 @@ function AppContent() {
 
         {/* Navigation - Hidden when printing and on admin pages */}
         {!isAdminPage && (
-        <nav className="bg-warm-50 border-b border-warm-200 sticky top-0 z-40 print:hidden">
+        <nav className="bg-warm-50 border-b border-warm-200 sticky top-0 z-40 print:hidden public-nav">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-wrap justify-between items-center gap-2 min-h-18 py-3.5">
               {/* Logo */}
@@ -495,10 +490,9 @@ function AppContent() {
           <LocationPicker />
         </>}
 
-        {/* Routes with page transitions */}
+        {/* Routes */}
         <RouteErrorBoundary key={routeTransitionKey}>
         <Suspense fallback={<RouteFallback />}>
-        <AnimatePresence mode="wait">
         <Routes location={location} key={routeTransitionKey}>
           <Route path="/" element={<HomePage />} />
           <Route path="/products" element={<ProductsPage />} />
@@ -549,7 +543,6 @@ function AppContent() {
           
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
-        </AnimatePresence>
         </Suspense>
         </RouteErrorBoundary>
 
@@ -567,7 +560,7 @@ function AppContent() {
                 />
                 <p className="text-[11px] uppercase tracking-wide text-warm-500 mt-2">by B&amp;G Pacific</p>
                 <p className="text-warm-500 text-sm mt-4 leading-relaxed">
-                  Good Food. Great Vibes. Quality Service.<br />
+                  Good Food, Good Mood, Good Service<br />
                   Guam-style comfort food & catering
                 </p>
                 <div className="flex space-x-4 mt-4">

@@ -1,13 +1,13 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useReducedMotion } from 'framer-motion';
 import { UtensilsCrossed, MapPin, Phone, Clock, ChevronRight } from 'lucide-react';
 import FeaturedProducts from '../components/FeaturedProducts';
+import OptimizedImage from '../components/ui/OptimizedImage';
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 import { homepageApi, type HomepageSection } from '../services/api';
 import useAppConfig from '../hooks/useAppConfig';
-import { getStorefrontEnabledMap } from '../utils/storefronts';
+import { getStorefrontEnabledMap, inferStorefrontFromLink } from '../utils/storefronts';
 
 // Strip emoji characters from text (replace with empty string)
 const stripEmoji = (text: string): string =>
@@ -15,17 +15,17 @@ const stripEmoji = (text: string): string =>
 
 // Default fallback content - Three Squares focused
 const defaultHero = {
-  title: "Good Food. Good Mood.",
-  subtitle: "Guam-style comfort food made with love since 2016. Dine in, take out, or let us cater your next event.",
+  title: "Good Food, Good Mood, Good Service",
+  subtitle: "Guam comfort food from Three Squares. Browse the menu or ask about catering.",
   badge_text: "Three Squares",
   button_text: "View Our Menu",
   button_link: "/products",
-  secondary_button_text: "Order Catering",
+  secondary_button_text: "Ask About Catering",
   secondary_button_link: "/catering",
-  background_image_url: "/images/plated1.jpg" as string | null,
+  background_image_url: "/images/Loco_Moco.JPG" as string | null,
   settings: {
     badge_text: "Three Squares",
-    secondary_button_text: "Order Catering",
+    secondary_button_text: "Ask About Catering",
     secondary_button_link: "/catering",
   },
 };
@@ -40,68 +40,27 @@ const defaultCategoryCards: Array<{
 }> = [
   {
     title: "Daily Menu",
-    subtitle: "Fresh island-style plates served daily",
+    subtitle: "Browse the Three Squares menu",
     button_text: "View Menu",
     button_link: "/products",
     image_url: "/images/Cheeseburger.jpg"
   },
   {
     title: "Catering",
-    subtitle: "Let us handle your next event",
+    subtitle: "Tell us about your gathering and request a quote",
     button_text: "Learn More",
     button_link: "/catering",
     image_url: "/images/catering4.jpg"
-  },
-  {
-    title: "Locations",
-    subtitle: "Two convenient spots on Guam",
-    button_text: "Find Us",
-    button_link: "/locations",
-    image_url: "/images/three-squares-donki.png"
   }
 ];
 
-const allStorefrontCards = [
-  {
-    key: 'three_squares' as const,
-    title: 'Three Squares',
-    subtitle: 'Daily comfort food plates and local favorites for pickup.',
-    cta: 'Shop Three Squares',
-    to: '/shop/three-squares',
-    image_url: '/images/Cheeseburger.jpg',
-  },
-  {
-    key: 'latte_stone' as const,
-    title: 'Latte Stone Cookies',
-    subtitle: 'Artisan shortbread cookies baked in small batches, cut in the iconic shape of the latte stone. Shipped nationwide.',
-    cta: 'Shop Cookies',
-    to: '/shop/latte-stone-cookies',
-    image_url: '/images/IMG-4158.jpg',
-  },
-  {
-    key: 'catering' as const,
-    title: 'Catering',
-    subtitle: 'Party trays and catering packages for events and gatherings.',
-    cta: 'Shop Catering',
-    to: '/shop/catering',
-    image_url: '/images/Cocktail_Stations_-_Assorted_Poppers.jpg',
-  },
-];
 
-const heroEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
 
 export default function HomePage() {
   const [hero, setHero] = useState<HomepageSection | null>(null);
   const [categoryCards, setCategoryCards] = useState<HomepageSection[]>([]);
   const [loading, setLoading] = useState(true);
-  const prefersReducedMotion = useReducedMotion();
   const config = useAppConfig();
-
-  const storefrontCards = useMemo(() => {
-    if (!config) return [];
-    const enableMap: Record<string, boolean> = getStorefrontEnabledMap(config);
-    return allStorefrontCards.filter((card) => enableMap[card.key] !== false);
-  }, [config]);
 
   useEffect(() => {
     const fetchSections = async () => {
@@ -128,7 +87,13 @@ export default function HomePage() {
   // Use dynamic or fallback content
   const isHeroReady = !loading;
   const heroContent = isHeroReady ? (hero || defaultHero) : null;
-  const cardsContent = categoryCards.length > 0 ? categoryCards : defaultCategoryCards;
+  const enabledStorefronts = getStorefrontEnabledMap(config);
+  const cardsContent = (categoryCards.length > 0 ? categoryCards : defaultCategoryCards)
+    .filter((card) => {
+      const storefront = inferStorefrontFromLink(card.button_link);
+      return (!storefront || enabledStorefronts[storefront]) &&
+        (enabledStorefronts.latte_stone || !/cookie/i.test(`${card.title} ${card.button_link}`));
+    });
   const heroImageUrl = isHeroReady
     ? heroContent?.background_image_url || defaultHero.background_image_url
     : null;
@@ -146,23 +111,13 @@ export default function HomePage() {
       ? heroSettings.secondary_button_link
       : defaultHero.settings.secondary_button_link;
 
-  // Animation helper — skip motion when user prefers reduced motion
-  const heroMotion = (delay: number) =>
-    prefersReducedMotion
-      ? {}
-      : {
-          initial: { opacity: 0, y: 30 } as const,
-          animate: { opacity: 1, y: 0 } as const,
-          transition: { duration: 0.8, delay, ease: heroEase },
-        };
-
   return (
     <div className="min-h-screen">
       {/* ============================================================ */}
       {/* HERO SECTION                                                 */}
       {/* Food photo + warm overlay for Three Squares branding         */}
       {/* ============================================================ */}
-      <section className="relative bg-warm-900 text-white min-h-[85vh] flex items-center overflow-hidden">
+      <section className="relative bg-warm-900 text-white min-h-[75svh] flex items-center overflow-hidden">
         {/* Background photo */}
         {heroImageUrl && (
           <img
@@ -195,7 +150,7 @@ export default function HomePage() {
             <>
               {/* Badge */}
               {heroBadgeText && (
-                <motion.div {...heroMotion(0)}>
+                <div>
                   <span
                     className="inline-flex items-center gap-2 px-5 py-2 bg-black/40 backdrop-blur-md border border-white/20 text-sm font-semibold rounded-full mb-8 text-white"
                     style={{ textShadow: '0 1px 4px rgba(0,0,0,0.8)' }}
@@ -203,32 +158,29 @@ export default function HomePage() {
                     <UtensilsCrossed className="w-4 h-4" />
                     {stripEmoji(heroBadgeText)}
                   </span>
-                </motion.div>
+                </div>
               )}
 
               {/* Heading */}
-              <motion.h1
-                {...heroMotion(0.15)}
+              <h1
                 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold mb-6 leading-[1.1] tracking-tight"
                 style={{ color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.9), 0 4px 25px rgba(0,0,0,0.5), 0 0 40px rgba(0,0,0,0.3)' }}
               >
                 {stripEmoji(heroContent.title || defaultHero.title)}
-              </motion.h1>
+              </h1>
 
               {/* Subtitle */}
               {heroContent.subtitle && (
-                <motion.p
-                  {...heroMotion(0.3)}
+                <p
                   className="text-lg sm:text-xl mb-12 max-w-2xl mx-auto leading-relaxed font-medium"
                   style={{ color: '#ffffff', textShadow: '0 1px 6px rgba(0,0,0,0.9), 0 2px 15px rgba(0,0,0,0.5)' }}
                 >
                   {stripEmoji(heroContent.subtitle)}
-                </motion.p>
+                </p>
               )}
 
               {/* CTA Buttons */}
-              <motion.div
-                {...heroMotion(0.45)}
+              <div
                 className="flex flex-col sm:flex-row gap-4 justify-center"
               >
                 <Link
@@ -247,7 +199,7 @@ export default function HomePage() {
                     {secondaryButtonText}
                   </Link>
                 )}
-              </motion.div>
+              </div>
             </>
           )}
         </div>
@@ -261,7 +213,7 @@ export default function HomePage() {
           <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-10 text-sm sm:text-base">
             <div className="flex items-center gap-2">
               <MapPin className="w-4 h-4 text-warm-500" />
-              <span>2 Locations on Guam</span>
+              <span>Main &amp; Donki in Tamuning</span>
             </div>
             <div className="flex items-center gap-2">
               <Phone className="w-4 h-4 text-warm-500" />
@@ -269,60 +221,11 @@ export default function HomePage() {
             </div>
             <div className="flex items-center gap-2">
               <Clock className="w-4 h-4 text-warm-500" />
-              <span>Tue-Sat 8am-8pm</span>
+              <span>Main: Tue–Sat 8am–8pm</span>
             </div>
           </div>
         </div>
       </section>
-
-      {/* ============================================================ */}
-      {/* SHOP BY BUSINESS — hidden when only 1 storefront enabled     */}
-      {/* ============================================================ */}
-      {storefrontCards.length > 1 && (
-      <section className="py-16 sm:py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <FadeIn>
-            <div className="text-center mb-10 sm:mb-12">
-              <h2 className="text-2xl sm:text-3xl font-bold text-warm-900 tracking-tight">
-                Shop by Business
-              </h2>
-              <p className="mt-3 text-warm-600 max-w-2xl mx-auto">
-                Enter the storefront that matches what you want to order.
-              </p>
-            </div>
-          </FadeIn>
-
-          <StaggerContainer className={`grid grid-cols-1 gap-6 ${storefrontCards.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-3'}`}>
-            {storefrontCards.map((card) => (
-              <StaggerItem key={card.title}>
-                <Link
-                  to={card.to}
-                  className="group block overflow-hidden rounded-2xl border border-warm-100 bg-white shadow-sm hover:shadow-md transition"
-                >
-                  <div className="relative h-44 sm:h-48">
-                    <img
-                      src={card.image_url}
-                      alt={card.title}
-                      className="absolute inset-0 h-full w-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      loading="lazy"
-                    />
-                    <div className="absolute inset-0 bg-black/35" />
-                  </div>
-                  <div className="p-5 sm:p-6">
-                    <h3 className="text-xl font-bold text-warm-900 mb-2">{card.title}</h3>
-                    <p className="text-warm-600 text-sm leading-relaxed mb-4">{card.subtitle}</p>
-                    <span className="inline-flex items-center gap-1.5 text-tsPrimary font-semibold text-sm">
-                      {card.cta}
-                      <ChevronRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                    </span>
-                  </div>
-                </Link>
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
-        </div>
-      </section>
-      )}
 
       {/* ============================================================ */}
       {/* SHOP BY CATEGORY — bento grid                                */}
@@ -333,10 +236,10 @@ export default function HomePage() {
             <FadeIn>
               <div className="text-center mb-12 sm:mb-16">
                 <h2 className="text-3xl sm:text-4xl font-bold text-warm-900 tracking-tight">
-                  What We Offer
+                  Meals and catering
                 </h2>
                 <p className="mt-4 text-warm-600 text-lg max-w-2xl mx-auto">
-                  From daily plates to full-service catering, we&apos;ve got you covered
+                  Choose the menu, ask about an event, or plan a visit.
                 </p>
                 <div className="w-12 h-1 bg-tsGold rounded-full mx-auto mt-6" />
               </div>
@@ -400,7 +303,7 @@ export default function HomePage() {
               <div className="relative">
                 <img
                   src="/images/staff1.jpeg"
-                  alt="Three Squares team at work"
+                  alt="Three Squares team member holding a tray of food"
                   className="w-full rounded-2xl relative z-10"
                   loading="lazy"
                 />
@@ -419,16 +322,12 @@ export default function HomePage() {
                   Good Food, Good Mood, Good Service
                 </h2>
                 <p className="text-warm-600 mb-6 leading-relaxed">
-                  Locally owned and operated since 2016, Three Squares is your home 
-                  for authentic Guam-style comfort food. From local favorites like 
-                  Loco Moco and Tinaktak to our famous fried chicken, every dish is 
-                  made fresh with quality ingredients.
+                  Three Squares serves Guam comfort food for meals and gatherings.
+                  Browse the menu and find the right pickup location for today.
                 </p>
                 <p className="text-warm-600 mb-8 leading-relaxed">
-                  As part of B&G Pacific, we also provide full-service catering 
-                  for corporate events, weddings, fiestas, and private gatherings. 
-                  We&apos;re proud to be HUBZone certified and rated by over 140 
-                  reviewers on Yelp.
+                  Three Squares is part of B&amp;G Pacific LLC. Planning a gathering?
+                  Send an inquiry with your event details so the team can discuss a quote.
                 </p>
                 <Link
                   to="/about"
@@ -501,7 +400,6 @@ export default function HomePage() {
                     <Clock className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" />
                     <div>
                       <p>Daily: 10am - 10pm</p>
-                      <p className="text-warm-400 text-sm">or until sold out</p>
                     </div>
                   </div>
                 </div>
@@ -548,12 +446,10 @@ function CategoryCard({ card, className = '' }: CategoryCardProps) {
       to={card.button_link || "/products"}
       className={`group relative overflow-hidden rounded-2xl block ${className}`}
     >
-      <img
-        src={card.image_url || "/images/Cheeseburger.jpg"}
-        alt={card.title || "Category"}
-        className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-        loading="lazy"
-      />
+      <span className="absolute inset-0" aria-hidden="true">
+        <OptimizedImage src={card.image_url} alt="" context="card"
+          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+      </span>
       {/* Balanced overlay: keeps photos visible while preserving text readability */}
       <div className="absolute inset-0 bg-black/32" />
       <div className="absolute inset-0 bg-linear-to-t from-black/72 via-black/28 to-transparent" />
