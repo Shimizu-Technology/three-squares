@@ -8,6 +8,7 @@ import type { Collection as ApiCollection } from '../services/api';
 import { CollectionCardSkeleton, PageHeaderSkeleton } from '../components/Skeleton';
 import FadeIn from '../components/animations/FadeIn';
 import OptimizedImage from '../components/ui/OptimizedImage';
+import PlaceholderImage from '../components/ui/PlaceholderImage';
 import useAppConfig from '../hooks/useAppConfig';
 
 type Collection = ApiCollection;
@@ -186,11 +187,7 @@ export default function CollectionsPage() {
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center min-h-[240px]">
-                      <svg className="w-24 h-24 text-warm-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                      </svg>
-                    </div>
+                    <PlaceholderImage variant="detail" className="min-h-[240px]" />
                   )}
                 </div>
                 <div className="p-8 sm:p-10 lg:p-12 flex flex-col justify-center">
@@ -317,21 +314,7 @@ export default function CollectionsPage() {
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center">
-                        <svg
-                          className="w-20 h-20 text-warm-300"
-                          fill="none"
-                          stroke="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={1.5}
-                            d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-                          />
-                        </svg>
-                      </div>
+                      <PlaceholderImage variant="card" />
                     )}
                     {collection.featured && (
                       <div className="absolute top-3 right-3 inline-flex items-center gap-1 bg-tsGold text-gray-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
