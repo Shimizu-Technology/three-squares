@@ -122,7 +122,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       setLoading(true);
       const params: Record<string, unknown> = { page, per_page: 25, ...buildFilterParams() };
 
-      const response = await authGet<OrdersIndexResponse>('/orders', getToken, { params });
+      const response = await authGet<OrdersIndexResponse>('/admin/orders', getToken, { params });
 
       setOrders(response.data.orders);
       setTotalPages(response.data.pagination.total_pages);

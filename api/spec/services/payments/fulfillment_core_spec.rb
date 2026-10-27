@@ -353,7 +353,7 @@ RSpec.describe 'Durable payment fulfillment core' do
 
   it 'commits cash POS stock/outbox once with no provider identity' do
     product = create(:product, inventory_level: 'product', product_stock_quantity: 2)
-    order = create(:order, source: 'pos', staff_created: true, payment_method: 'cash', payment_environment: 'sandbox')
+    order = create(:order, source: 'pos', staff_created: true, fulfillment_type: 'pickup', location: create(:location), payment_method: 'cash', payment_environment: 'sandbox')
     order.order_items.create!(product: product, product_variant: product.product_variants.first, quantity: 1, unit_price_cents: 1000)
     Payments::ReserveInventory.call(order: order, expires_at: 10.minutes.from_now)
     race(*2.times.map { -> { Payments::FinalizeOrder.call_cash(order: order) } })
@@ -482,6 +482,7 @@ RSpec.describe 'Durable payment fulfillment core' do
 
   it 'acknowledges the status intent and consumer delivery without starving later outbox work' do
     _, order = fixture
+    order.update!(fulfillment_type: 'pickup', location: create(:location), payment_status: 'paid')
     allow(EmailService).to receive(:send_order_confirmed_email).and_return(success: true)
     Payments::UpdateOrder.call(order: order, attributes: { status: 'confirmed' }, user: nil)
     intent = PaymentOutbox.find_by!(kind: 'notification', effect_key: PaymentOutbox.where("effect_key LIKE ?", "status:#{order.id}:%:SendOrderStatusEmailJob").pick(:effect_key))
