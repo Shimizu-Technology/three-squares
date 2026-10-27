@@ -79,6 +79,7 @@ test('location Active is locked until its post-save refresh finishes', async ({ 
 });
 
 test('POS cart controls remain reachable after an item reveals Quick Qty', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
   const product = { id: 91003, name: 'Phone packing meal', variants: [{ id: 91004, name: 'Default', price_cents: 1000, price_formatted: '$10.00', in_stock: true }] };
   await page.route('**/api/v1/admin/pos/menu**', route => route.fulfill({ json: { locations: [{ id: 1, name: 'Main' }], categories: [{ name: 'Lunch', items: [product] }], total_products: 1 } }));
   await page.goto('/admin/pos');
