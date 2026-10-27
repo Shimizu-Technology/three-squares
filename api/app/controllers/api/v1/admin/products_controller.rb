@@ -156,6 +156,7 @@ module Api
           end
 
           imported = 0
+          created = []
           errors = []
           notices = []
           # An exact slug wins; otherwise a case-insensitive slug or name only
@@ -196,16 +197,19 @@ module Api
             begin
               pickup_location_ids = resolved_locations.map(&:id).uniq
               wants_published = !%w[false 0 no].include?(active)
+              product = nil
               Product.transaction(requires_new: true) do
                 # A pickup product with no location rows counts as available everywhere,
                 # so rows without locations are imported as unpublished drafts.
                 product = Product.create!(
-                  name: name, description: row["description"]&.strip.presence,
+                  name: name, description: row["description"]&.strip.presence, product_type: "local",
                   base_price_cents: (BigDecimal(price) * 100).to_i,
                   published: wants_published && pickup_location_ids.any?,
                   allow_pickup: true, allow_shipping: false, inventory_level: "none"
                 )
-                sync_product_locations(product, pickup_location_ids, new_product: true) if pickup_location_ids.any?
+                # Explicit unavailable rows distinguish a new unassigned draft
+                # from legacy products whose zero rows mean all locations.
+                sync_product_locations(product, pickup_location_ids, new_product: true)
                 unless product.product_variants.exists?
                   product.errors.add(:base, "Default variant could not be created")
                   raise ActiveRecord::RecordInvalid, product
@@ -217,8 +221,10 @@ module Api
                 end
               end
               imported += 1
-              if wants_published && pickup_location_ids.empty?
-                notices << { row: index + 2, name: name,
+              created << { row: index + 2, product_id: product.id, name: product.name,
+                           published: product.published?, needs_pickup_locations: pickup_location_ids.empty? }
+              if pickup_location_ids.empty?
+                notices << { row: index + 2, product_id: product.id, name: name,
                              message: "Imported as a draft. Assign pickup locations, then publish it." }
               end
             rescue ActiveRecord::RecordInvalid => e
@@ -228,7 +234,7 @@ module Api
             end
           end
 
-          render_success({ imported: imported, skipped: errors.size, total: rows.size, errors: errors, notices: notices })
+          render_success({ imported: imported, skipped: errors.size, total: rows.size, created: created, errors: errors, notices: notices })
         rescue CSV::MalformedCSVError
           render json: { error: "Invalid CSV format" }, status: :unprocessable_entity
         end
@@ -347,6 +353,9 @@ module Api
         end
 
         def serialize_product_summary(product)
+          local_rows = product.product_locations.to_a
+          location_ids = local_rows.empty? ? Location.ids : local_rows.select(&:available?).map(&:location_id)
+          needs_pickup_locations = product.allow_pickup? && !product.published? && !product.archived? && location_ids.empty?
           total_variant_stock = if product.inventory_level == "variant"
             product.product_variants.sum(:stock_quantity)
           end
@@ -367,7 +376,8 @@ module Api
             inventory_level: product.inventory_level,
             allow_pickup: product.allow_pickup,
             allow_shipping: product.allow_shipping,
-            location_ids: product.product_locations.exists? ? product.product_locations.available.pluck(:location_id) : Location.ids,
+            location_ids: location_ids,
+            needs_pickup_locations: needs_pickup_locations,
             product_stock_quantity: product.product_stock_quantity,
             product_low_stock_threshold: product.product_low_stock_threshold,
             product_stock_status: product.product_stock_status,

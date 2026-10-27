@@ -33,7 +33,7 @@ const ROUTE_META: Record<string, RouteMeta> = {
   '/admin/catering':                 { title: 'Catering',         parent: '/admin' },
   '/admin/devices':                  { title: 'Devices',          parent: '/admin' },
   '/admin/users':                    { title: 'Users',            parent: '/admin' },
-  '/admin/import':                   { title: 'CSV Import',       parent: '/admin' },
+  '/admin/import':                   { title: 'Menu CSV',       parent: '/admin' },
   '/admin/homepage':                 { title: 'Homepage',         parent: '/admin' },
   '/admin/settings':                 { title: 'Settings',         parent: '/admin' },
   '/admin/settings/variant-presets': { title: 'Variant Presets',   parent: '/admin/settings' },
@@ -96,7 +96,7 @@ const NAVIGATION: { title: string; items: NavItem[] }[] = [
   { title: 'System', items: [
     { name: 'Devices', path: '/admin/devices', icon: 'devices' },
     { name: 'Users', path: '/admin/users', icon: 'users' },
-    { name: 'Import', path: '/admin/import', icon: 'import' },
+    { name: 'Menu CSV', path: '/admin/import', icon: 'import' },
     { name: 'Homepage', path: '/admin/homepage', icon: 'settings' },
     { name: 'Settings', path: '/admin/settings', icon: 'settings' },
     { name: 'Variant Presets', path: '/admin/settings/variant-presets', icon: 'presets' },

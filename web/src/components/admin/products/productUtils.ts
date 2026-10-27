@@ -20,6 +20,7 @@ export interface Product {
   in_stock: boolean;
   actually_available: boolean;
   needs_attention?: boolean;
+  needs_pickup_locations?: boolean;
   import_notes?: string | null;
 }
 
