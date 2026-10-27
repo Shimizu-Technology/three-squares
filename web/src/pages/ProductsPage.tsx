@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import type { Collection, Product, Location } from '../services/api';
 import { productsApi, collectionsApi, locationsApi } from '../services/api';
 import { useLocationStore } from '../store/locationStore';
@@ -63,6 +63,7 @@ const storefrontThemes: Partial<Record<StorefrontKey, {
 
 export default function ProductsPage({ pickupLocation }: { pickupLocation?: Location } = {}) {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [locations, setLocations] = useState<PickupLocation[]>([]);
@@ -70,6 +71,8 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
   const [error, setError] = useState<string | null>(null);
   const [meta, setMeta] = useState({ page: 1, per_page: 12, total: 0 });
   const didScrollRef = useRef(false);
+  const productRequest = useRef(0);
+  const [resultContext, setResultContext] = useState<string | null>(null);
   const locationNameById = locations.reduce<Record<number, string>>((acc, location) => {
     acc[location.id] = location.name;
     return acc;
@@ -82,7 +85,8 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
   const sort = searchParams.get('sort') || '';
   const config = useAppConfig();
   const { selectedLocation } = useLocationStore();
-  const locationId = pickupLocation ? String(pickupLocation.id) : searchParams.get('location_id') || (selectedLocation?.id ? String(selectedLocation.id) : '');
+  const locationId = pickupLocation ? String(pickupLocation.id) : (selectedLocation?.id ? String(selectedLocation.id) : '');
+  const requestedLocationId = searchParams.get('location_id');
   const userLocationId = pickupLocation ? '' : locationId;
   const businessLine = searchParams.get('business_line') || '';
   const requestedBusinessLine = STOREFRONTS.some((storefront) => storefront.key === businessLine)
@@ -190,9 +194,12 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
     }
   }, []);
 
+  const requestContext = JSON.stringify([locationId, activeBusinessLine, page, search, collection, productType, sort]);
   const fetchProducts = useCallback(async () => {
+    const version = ++productRequest.current;
     try {
       setLoading(true);
+      setError(null);
       const response = await productsApi.getProducts({
         page,
         per_page: 12,
@@ -203,17 +210,19 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
         location_id: locationId ? Number(locationId) : undefined,
         business_line: activeBusinessLine || undefined,
       });
+      if (version !== productRequest.current) return;
       setProducts(response.products);
+      setResultContext(requestContext);
       setMeta(response.meta);
       setAvailableProductTypes(response.meta.product_types || []);
       setError(null);
     } catch (err) {
-      setError('Failed to load products');
+      if (version === productRequest.current) setError('Failed to load products');
       console.error(err);
     } finally {
-      setLoading(false);
+      if (version === productRequest.current) setLoading(false);
     }
-  }, [activeBusinessLine, collection, locationId, page, productType, search, sort]);
+  }, [activeBusinessLine, collection, locationId, page, productType, requestContext, search, sort]);
 
   useEffect(() => {
     void fetchCollections();
@@ -222,6 +231,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
 
   useEffect(() => {
     void fetchProducts();
+    return () => { productRequest.current += 1; };
   }, [config, fetchProducts]);
 
   const handleSearch = (value: string) => {
@@ -230,47 +240,53 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
     if (collection) params.collection = collection;
     if (productType) params.type = productType;
     if (sort) params.sort = sort;
-    if (locationId && !pickupLocation) params.location_id = locationId;
     if (activeBusinessLine) params.business_line = activeBusinessLine;
     setSearchParams(params);
   };
 
   const handleFilterChange = (filterType: 'collection' | 'type' | 'sort' | 'location_id' | 'business_line', value: string) => {
+    if (filterType === 'location_id') {
+      const location = locations.find((item) => String(item.id) === value);
+      if (location) {
+        const next = new URLSearchParams(searchParams); next.delete('location_id');
+        navigate(`/menu/${encodeURIComponent(location.slug)}?${next}`);
+      }
+      return;
+    }
     const params: Record<string, string> = {};
     if (search) params.search = search;
     if (filterType === 'collection') {
       if (value) params.collection = value;
       if (productType) params.type = productType;
       if (sort) params.sort = sort;
-      if (locationId && !pickupLocation) params.location_id = locationId;
       if (activeBusinessLine) params.business_line = activeBusinessLine;
     } else if (filterType === 'type') {
       if (collection) params.collection = collection;
       if (value) params.type = value;
       if (sort) params.sort = sort;
-      if (locationId && !pickupLocation) params.location_id = locationId;
       if (activeBusinessLine) params.business_line = activeBusinessLine;
     } else if (filterType === 'sort') {
       if (collection) params.collection = collection;
       if (productType) params.type = productType;
       if (value) params.sort = value;
-      if (locationId && !pickupLocation) params.location_id = locationId;
-      if (activeBusinessLine) params.business_line = activeBusinessLine;
-    } else if (filterType === 'location_id') {
-      if (collection) params.collection = collection;
-      if (productType) params.type = productType;
-      if (sort) params.sort = sort;
-      if (value) params.location_id = value;
       if (activeBusinessLine) params.business_line = activeBusinessLine;
     } else if (filterType === 'business_line') {
       if (collection) params.collection = collection;
       if (productType) params.type = productType;
       if (sort) params.sort = sort;
-      if (locationId && !pickupLocation) params.location_id = locationId;
       if (value) params.business_line = value;
     }
     setSearchParams(params);
   };
+
+  useEffect(() => {
+    if (pickupLocation || !requestedLocationId || locations.length === 0) return;
+    const location = locations.find((item) => String(item.id) === requestedLocationId);
+    if (!location) { navigate('/locations', { replace: true }); return; }
+    const params = new URLSearchParams(searchParams);
+    params.delete('location_id');
+    navigate(`/menu/${encodeURIComponent(location.slug)}?${params}`, { replace: true });
+  }, [pickupLocation, requestedLocationId, locations, searchParams, navigate]);
 
   const clearFilters = () => {
     setSearchParams({});
@@ -282,12 +298,11 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
     if (collection) params.collection = collection;
     if (productType) params.type = productType;
     if (sort) params.sort = sort;
-    if (locationId && !pickupLocation) params.location_id = locationId;
     if (activeBusinessLine) params.business_line = activeBusinessLine;
     setSearchParams(params);
   };
 
-  if (loading && products.length === 0) {
+  if (!error && (loading || resultContext !== requestContext)) {
     return (
       <div className="min-h-screen bg-warm-50">
         <div className="bg-warm">
@@ -303,7 +318,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
   }
 
   // Show a retryable error when the menu request fails
-  if (error && products.length === 0) {
+  if (error) {
     return (
       <div className="min-h-screen bg-warm-50">
         {/* Header */}
@@ -558,7 +573,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                 onChange={(e) => handleFilterChange('location_id', e.target.value)}
                 className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
               >
-                <option value="">All Locations</option>
+                <option value="" disabled>Choose pickup location</option>
                 {locations.map((location) => (
                   <option key={location.id} value={location.id.toString()}>
                     {location.name}

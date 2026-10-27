@@ -203,7 +203,7 @@ function AppContent() {
   // retained here until Track C's motion slice; never instantiate Lenis in admin.
 
   // LocationPicker is only relevant on pages tied to ordering/menu browsing
-  const ORDERING_PATHS = ['/', '/products', '/shop', '/collections', '/cart', '/checkout', '/menu', '/pos'];
+  const ORDERING_PATHS = ['/products', '/shop', '/collections', '/cart', '/checkout', '/menu', '/pos'];
   const isOrderingPage = ORDERING_PATHS.some(
     (p) => location.pathname === p || location.pathname.startsWith(p + '/')
   );

@@ -48,7 +48,13 @@ export interface CartItem {
   availability: CartItemAvailability;
 }
 
+export interface CartPricingContext {
+  fulfillment_type: 'pickup' | 'shipping';
+  location_id?: number | null;
+}
+
 export interface Cart {
+  pricing_context?: CartPricingContext;
   items: CartItem[];
   subtotal_cents: number;
   item_count: number;

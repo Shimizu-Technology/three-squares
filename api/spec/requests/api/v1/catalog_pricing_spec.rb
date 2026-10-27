@@ -100,4 +100,21 @@ RSpec.describe "Catalog price contract", type: :request do
     expect(product.reload.name).to eq(original_name)
   end
 
+  it "reprices the same cart for explicit pickup destinations and ignores pickup overrides for shipping" do
+    second = create(:location, hours_json: { "Daily" => "00:00-23:59" })
+    ProductLocation.create!(product: product, location: second, available: true, price_override_cents: 1500)
+    CartItem.create!(product_variant: variant, quantity: 1, session_id: "catalog-price-spec")
+    get "/api/v1/cart", params: { fulfillment_type: "pickup", location_id: location.id }, headers: headers
+    expect(response.parsed_body.fetch("subtotal_cents")).to eq(1050)
+    expect(response.parsed_body.fetch("pricing_context")).to eq("fulfillment_type" => "pickup", "location_id" => location.id)
+    get "/api/v1/cart", params: { fulfillment_type: "pickup", location_id: second.id }, headers: headers
+    expect(response.parsed_body.fetch("subtotal_cents")).to eq(1500)
+    expect(response.parsed_body.fetch("pricing_context")).to eq("fulfillment_type" => "pickup", "location_id" => second.id)
+    expect(CheckoutPricingService.resolve!(cart_items: CartItem.for_session("catalog-price-spec").to_a,
+      fulfillment_type: "pickup", location_id: second.id).subtotal_cents).to eq(1500)
+    get "/api/v1/cart", params: { fulfillment_type: "shipping", location_id: second.id }, headers: headers
+    expect(response.parsed_body.fetch("subtotal_cents")).to eq(900)
+    expect(response.parsed_body.fetch("pricing_context")).to eq("fulfillment_type" => "shipping", "location_id" => nil)
+  end
+
 end

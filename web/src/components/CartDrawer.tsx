@@ -1,3 +1,5 @@
+import { useLocationStore } from '../store/locationStore';
+import useAppConfig from '../hooks/useAppConfig';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
@@ -8,6 +10,8 @@ import OptimizedImage from './ui/OptimizedImage';
 
 export default function CartDrawer() {
   const navigate = useNavigate();
+  const location = useLocationStore((state) => state.selectedLocation);
+  const config = useAppConfig();
   const {
     cart,
     isOpen,
@@ -69,8 +73,8 @@ export default function CartDrawer() {
 
       {/* Drawer */}
       <div className="fixed inset-y-0 right-0 w-full sm:w-[420px] bg-white shadow-2xl z-50 flex flex-col animate-slide-in-right">
-        {/* Header with gradient */}
-        <div className="bg-linear-to-r from-tsPrimary to-tsPrimary/90 px-5 py-4">
+        {/* Header */}
+        <div className="bg-tsPrimary px-5 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -85,7 +89,7 @@ export default function CartDrawer() {
             </div>
             <button
               onClick={closeCart}
-              className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition"
+              className="w-11 h-11 flex items-center justify-center text-white hover:bg-white/10 rounded-lg transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
               aria-label="Close cart"
             >
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -229,7 +233,7 @@ export default function CartDrawer() {
                     {/* Remove Button */}
                     <button
                       onClick={() => handleRemoveItem(item.id)}
-                      className="text-xs font-medium text-warm-400 hover:text-red-600 transition flex items-center gap-1"
+                      className="min-h-11 px-2 text-sm font-medium text-warm-500 hover:text-red-600 transition flex items-center gap-1"
                       disabled={isLoading}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -271,7 +275,7 @@ export default function CartDrawer() {
 
             {/* Shipping note */}
             <p className="text-xs text-warm-500 text-center bg-warm-50 py-2 px-3 rounded-lg">
-              Shipping calculated at checkout
+              {config?.enable_storefront_latte_stone === true && cart.items.every((item) => item.product.allow_shipping) ? 'Choose pickup or shipping at checkout' : `Pickup at ${location?.name || 'your selected location'}`}
             </p>
 
             {cart.items.some((item) => item.pricing?.purchasable === false) && <p role="alert" className="text-sm text-warm-700">Remove items priced by request before checking out. Contact us to confirm their price.</p>}
