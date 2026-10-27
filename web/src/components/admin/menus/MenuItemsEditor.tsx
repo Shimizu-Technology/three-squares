@@ -1,0 +1,36 @@
+import { useState } from 'react';
+import { moveMenuItem, menuProductPrice, type MenuProduct } from './menuItems';
+
+export default function MenuItemsEditor({ products, selectedIds, onChange, disabled }: {
+  products: MenuProduct[]; selectedIds: number[]; onChange: (ids: number[]) => void; disabled: boolean;
+}) {
+  const [search, setSearch] = useState('');
+  const selected = new Set(selectedIds);
+  const choices = products.filter(product => !product.archived && product.name.toLocaleLowerCase().includes(search.trim().toLocaleLowerCase()));
+  const byId = new Map(products.map(product => [product.id, product]));
+  return <section aria-labelledby="menu-items-title" className="space-y-4">
+    <h3 id="menu-items-title" className="text-xl font-semibold text-gray-900">Menu items</h3>
+    <p className="text-sm text-gray-700">Choose items, then set their order. Saving this menu does not publish a draft item or change its pickup locations. Prices below are base prices; location prices still apply.</p>
+    <label className="block space-y-1"><span className="font-medium text-gray-800">Find menu items</span>
+      <input type="search" onKeyDown={event => { if (event.key === 'Enter') event.preventDefault(); }} value={search} onChange={event => setSearch(event.target.value)} disabled={disabled} className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" placeholder="Search meals, boxes or flavors" /></label>
+    <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200 overscroll-contain">
+      {choices.length === 0 && <p className="p-4 text-gray-700">No matching items. Try another name.</p>}
+      {choices.map(product => <label key={product.id} className="flex min-h-12 cursor-pointer items-start gap-3 border-b border-gray-100 p-3 last:border-b-0">
+        <input type="checkbox" checked={selected.has(product.id)} disabled={disabled} onChange={event => onChange(event.target.checked ? [...selectedIds, product.id] : selectedIds.filter(id => id !== product.id))} aria-label={`Include ${product.name}`} className="mt-1 h-5 w-5 shrink-0" />
+        <span className="min-w-0 break-words text-gray-900">{product.name}<span className="block text-sm text-gray-700">{menuProductPrice(product)}{!product.published && ' · Unpublished item'}</span></span>
+      </label>)}
+    </div>
+    <h4 className="font-semibold text-gray-900">Selected items ({selectedIds.length}) — saved menu order</h4>
+    {selectedIds.length === 0 ? <p className="text-gray-700">No items selected yet.</p> : <ol className="space-y-3">
+      {selectedIds.map((id, index) => { const product = byId.get(id); return <li key={id} className="rounded-lg border border-gray-200 p-3">
+        <p className="break-words font-medium text-gray-900">{index + 1}. {product?.name || `Unavailable item ${id}`}</p>
+        {product?.archived && <p className="text-sm text-amber-900">Archived item — unavailable to customers. Remove it or restore it in Products.</p>}
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button type="button" disabled={disabled || index === 0} onClick={() => onChange(moveMenuItem(selectedIds, id, -1))} aria-label={`Move ${product?.name || id} up`} className="btn-secondary min-h-11 disabled:opacity-50">Move up</button>
+          <button type="button" disabled={disabled || index === selectedIds.length - 1} onClick={() => onChange(moveMenuItem(selectedIds, id, 1))} aria-label={`Move ${product?.name || id} down`} className="btn-secondary min-h-11 disabled:opacity-50">Move down</button>
+          <button type="button" disabled={disabled} onClick={() => onChange(selectedIds.filter(value => value !== id))} aria-label={`Remove ${product?.name || id} from menu`} className="min-h-11 rounded-lg px-3 text-red-800 underline disabled:opacity-50">Remove</button>
+        </div>
+      </li>; })}
+    </ol>}
+  </section>;
+}

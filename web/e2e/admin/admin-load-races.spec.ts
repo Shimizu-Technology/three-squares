@@ -71,6 +71,7 @@ test('location Active is locked until its post-save refresh finishes', async ({ 
   await page.goto('/admin/locations');
   const region = page.getByRole('region').first();
   await expect(region).toBeVisible();
+  await region.locator('summary', { hasText: 'Edit location settings' }).click();
   await region.getByRole('button', { name: 'Save', exact: true }).click();
   await expect.poll(() => followup).toBe(true);
   await expect(region.getByRole('checkbox', { name: 'Active', exact: true })).toBeDisabled();

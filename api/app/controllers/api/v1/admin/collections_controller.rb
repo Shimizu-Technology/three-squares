@@ -22,20 +22,21 @@ module Api
         def create
           @collection = Collection.new(collection_params)
 
-          if @collection.save
-            render_created(serialize_collection(@collection))
-          else
-            render_error("Failed to create collection", errors: @collection.errors.full_messages)
-          end
+          persist_collection!
+          render_created(serialize_collection_with_products(@collection))
+        rescue ActiveRecord::RecordInvalid => e
+          render_error("Failed to create menu", errors: e.record.errors.full_messages)
         end
 
         # PATCH/PUT /api/v1/admin/collections/:id
         def update
-          if @collection.update(collection_params)
-            render_success(serialize_collection(@collection), message: "Collection updated successfully")
-          else
-            render_error("Failed to update collection", errors: @collection.errors.full_messages)
+          @collection.with_lock do
+            @collection.assign_attributes(collection_params)
+            persist_collection!
           end
+          render_success(serialize_collection_with_products(@collection), message: "Menu updated successfully")
+        rescue ActiveRecord::RecordInvalid => e
+          render_error("Failed to update menu", errors: e.record.errors.full_messages)
         end
 
         # DELETE /api/v1/admin/collections/:id
@@ -52,6 +53,52 @@ module Api
         def set_collection
           @collection = Collection.find_by(id: params[:id]) || Collection.find_by(slug: params[:id])
           render_not_found("Collection not found") unless @collection
+        end
+
+        # Save schedule and ordered membership together. Membership is optional:
+        # clients editing only metadata must never clear the existing menu.
+        def persist_collection!
+          Collection.transaction do
+            ids = requested_product_ids
+            @collection.save!
+            unless ids.nil?
+              # ProductCollection has no destroy/save callbacks. Batch membership
+              # changes under the parent lock; leave unchanged links untouched.
+              existing = @collection.product_collections.index_by(&:product_id)
+              @collection.product_collections.where.not(product_id: ids).delete_all
+              changed = []
+              added = []
+              now = Time.current
+              ids.each_with_index do |id, position|
+                link = existing[id]
+                if link && link.position != position
+                  changed << { id: link.id, collection_id: @collection.id, product_id: id,
+                               position: position, created_at: link.created_at, updated_at: now }
+                elsif !link
+                  added << { collection_id: @collection.id, product_id: id, position: position,
+                             created_at: now, updated_at: now }
+                end
+              end
+              ProductCollection.upsert_all(changed, unique_by: :id, update_only: [ :position, :updated_at ], record_timestamps: false) if changed.any?
+              ProductCollection.insert_all!(added, record_timestamps: false) if added.any?
+            end
+          end
+          @collection.reload
+        end
+
+        def requested_product_ids
+          attrs = params.require(:collection)
+          return nil unless attrs.key?(:product_ids)
+
+          raw = attrs[:product_ids]
+          valid = raw.is_a?(Array) && raw.size <= 2000 && raw.all? { |id| id.to_s.match?(/\A[1-9]\d*\z/) }
+          ids = valid ? raw.map(&:to_i) : []
+          valid &&= ids.uniq.size == ids.size && Product.where(id: ids).count == ids.size
+          unless valid
+            @collection.errors.add(:product_ids, "must be a unique list of existing menu items (up to 2000)")
+            raise ActiveRecord::RecordInvalid, @collection
+          end
+          ids
         end
 
         def collection_params
@@ -107,7 +154,9 @@ module Api
 
         def serialize_collection_with_products(collection)
           serialize_collection(collection).merge(
-            products: collection.products.published.map { |p| serialize_product_summary(p) }
+            products: collection.products.includes(:product_images)
+              .order(Arel.sql("product_collections.position ASC NULLS LAST"), :id)
+              .map { |p| serialize_product_summary(p) }
           )
         end
 
@@ -118,6 +167,7 @@ module Api
             slug: product.slug,
             base_price_cents: product.base_price_cents,
             published: product.published,
+            archived: product.archived,
             image_url: product.primary_image&.url
           }
         end
