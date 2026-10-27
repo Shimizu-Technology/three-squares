@@ -308,6 +308,7 @@ function AppContent() {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      aria-label="Search menu"
                       placeholder="Search menu..."
                       className="pl-10 pr-4 py-2.5 bg-white border border-warm-200 rounded-full focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary w-56 transition-all text-sm text-warm-900 placeholder-warm-400"
                     />
@@ -363,6 +364,8 @@ function AppContent() {
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                   className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-warm-600 hover:text-tsPrimary transition rounded-lg"
                   aria-label="Toggle menu"
+                  aria-expanded={mobileMenuOpen}
+                  aria-controls="mobile-navigation"
                 >
                   {mobileMenuOpen ? (
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -382,9 +385,9 @@ function AppContent() {
             <form onSubmit={handleSearch} className="hidden lg:block xl:hidden px-6 pb-4">
               <input
                 autoFocus
-                aria-label="Search menu"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
+                aria-label="Search menu"
                 placeholder="Search menu..."
                 className="w-full rounded-lg border border-warm-200 px-4 py-3 text-warm-900"
               />
@@ -393,7 +396,7 @@ function AppContent() {
 
           {/* Mobile Menu */}
           {mobileMenuOpen && (
-            <div className="lg:hidden border-t border-warm-100 bg-white animate-slide-down">
+            <div id="mobile-navigation" className="lg:hidden border-t border-warm-100 bg-white animate-slide-down">
               <div className="px-4 py-4 space-y-4">
                 {/* Mobile Search */}
                 <form onSubmit={handleSearch}>
@@ -402,6 +405,7 @@ function AppContent() {
                       type="text"
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
+                      aria-label="Search menu"
                       placeholder="Search menu..."
                       className="w-full pl-10 pr-4 py-3 bg-warm-50 border border-warm-200 rounded-full focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary text-warm-900 placeholder-warm-400 transition text-sm"
                     />

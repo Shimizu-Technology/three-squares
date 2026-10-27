@@ -452,6 +452,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                   key={option.label}
                   type="button"
                   onClick={() => handleFilterChange('business_line', option.value)}
+                  aria-pressed={activeBusinessLine === option.value}
                   className={`shrink-0 px-3 py-1.5 rounded-full text-sm border transition ${
                     activeBusinessLine === option.value
                       ? 'bg-tsPrimary text-white border-tsPrimary'
@@ -470,6 +471,8 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
             <div className="relative max-w-2xl mx-auto">
               <input
                 type="text"
+                id="menu-search"
+                aria-label="Search products"
                 placeholder="Search products..."
                 value={search}
                 onChange={(e) => handleSearch(e.target.value)}
@@ -495,8 +498,9 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 sm:gap-4">
             {/* Business Line Filter */}
             <div>
-              <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Business</label>
+              <label htmlFor="menu-filter-business" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Business</label>
               <select
+                id="menu-filter-business"
                 value={activeBusinessLine}
                 onChange={(e) => handleFilterChange('business_line', e.target.value)}
                 className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
@@ -513,8 +517,9 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
             {/* Collection Filter */}
             {visibleCollections.length > 0 && (
               <div>
-                <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Collection</label>
+                <label htmlFor="menu-filter-collection" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Collection</label>
                 <select
+                  id="menu-filter-collection"
                   value={collection}
                   onChange={(e) => handleFilterChange('collection', e.target.value)}
                   className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
@@ -532,8 +537,9 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
             {/* Product Type Filter */}
             {availableProductTypes.length > 0 && (
               <div>
-                <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Product Type</label>
+                <label htmlFor="menu-filter-type" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Product Type</label>
                 <select
+                  id="menu-filter-type"
                   value={productType}
                   onChange={(e) => handleFilterChange('type', e.target.value)}
                   className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
@@ -550,8 +556,9 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
 
             {/* Sort Options */}
             <div>
-              <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Sort By</label>
+              <label htmlFor="menu-filter-sort" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Sort By</label>
               <select
+                id="menu-filter-sort"
                 value={sort}
                 onChange={(e) => handleFilterChange('sort', e.target.value)}
                 className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
@@ -567,8 +574,9 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
 
             {/* Pickup Location Filter */}
             {!pickupLocation && <div>
-              <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Pickup Location</label>
+              <label htmlFor="menu-filter-pickup" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Pickup Location</label>
               <select
+                id="menu-filter-pickup"
                 value={locationId}
                 onChange={(e) => handleFilterChange('location_id', e.target.value)}
                 className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
@@ -606,6 +614,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                   <span className="truncate max-w-[220px] sm:max-w-[280px]">Search: "{search}"</span>
                   <button
                     onClick={() => handleSearch('')}
+                    aria-label="Remove search filter"
                     className="hover:bg-warm-700 rounded-full p-0.5"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -619,6 +628,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                   <span className="truncate max-w-[220px] sm:max-w-[280px]">{visibleCollections.find(c => c.slug === collection)?.name || collections.find(c => c.slug === collection)?.name}</span>
                   <button
                     onClick={() => handleFilterChange('collection', '')}
+                    aria-label="Remove collection filter"
                     className="hover:bg-warm-700 rounded-full p-0.5"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -634,6 +644,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                   </span>
                   <button
                     onClick={() => handleFilterChange('business_line', '')}
+                    aria-label="Remove business filter"
                     className="hover:bg-warm-700 rounded-full p-0.5"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -647,6 +658,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                   <span className="truncate max-w-[220px] sm:max-w-[280px]">{productType}</span>
                   <button
                     onClick={() => handleFilterChange('type', '')}
+                    aria-label="Remove product type filter"
                     className="hover:bg-warm-700 rounded-full p-0.5"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -660,6 +672,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                   <span className="truncate max-w-[220px] sm:max-w-[280px]">Sort: {sort === 'price_asc' ? 'Price ↑' : sort === 'price_desc' ? 'Price ↓' : sort === 'newest' ? 'Newest' : sort === 'name_asc' ? 'A-Z' : 'Z-A'}</span>
                   <button
                     onClick={() => handleFilterChange('sort', '')}
+                    aria-label="Remove sort filter"
                     className="hover:bg-warm-700 rounded-full p-0.5"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -673,6 +686,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                   <span className="truncate max-w-[220px] sm:max-w-[280px]">Pickup: {locations.find((location) => location.id.toString() === userLocationId)?.name || 'Location'}</span>
                   <button
                     onClick={() => handleFilterChange('location_id', '')}
+                    aria-label="Remove pickup location filter"
                     className="hover:bg-warm-700 rounded-full p-0.5"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
