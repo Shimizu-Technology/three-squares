@@ -10,6 +10,10 @@ RSpec.describe "Dashboard Guam dates", type: :request do
     allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
     order = create(:order, created_at: Time.utc(2026, 10, 26, 14, 30), total_cents: 1800, payment_environment: "production")
     order.update_columns(payment_status: "paid")
+    identity = PaymentIdentity.create!(provider: 'stripe', environment: 'production', external_account_id: 'chart-fixture', credential_reference: 'fixture', profile_key: SecureRandom.uuid)
+    order.update!(payment_identity_id: identity.id)
+    LegacyCaptureBinding.create!(order: order, payment_identity: identity, provider: 'stripe', environment: 'production', external_account_id: identity.external_account_id,
+      consumption_reference: 'chart-charge', original_reference: 'chart-charge', amount_cents: 1800, currency: 'USD', verified_at: Time.current)
     ['sandbox', 'simulated', nil].each do |environment|
       excluded = create(:order, created_at: order.created_at, total_cents: 9900,
         payment_environment: environment, simulated: environment == 'simulated')

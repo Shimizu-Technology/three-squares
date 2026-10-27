@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
-require "rspec/autorun"
+require "rspec/core"
+require "rspec/autorun" if File.expand_path($PROGRAM_NAME) == File.expand_path(__FILE__)
+require "open3"
+require "rbconfig"
 require_relative "../../../../app/services/payments/reconciliation/canonical_csv"
 
 RSpec.describe Payments::Reconciliation::CanonicalCSV do
@@ -38,8 +41,9 @@ RSpec.describe Payments::Reconciliation::CanonicalCSV do
   end
 
   it "is a standalone standard-library port without Rails or ActiveRecord" do
-    expect(defined?(Rails)).to be_nil
-    expect(defined?(ActiveRecord)).to be_nil
+    source = File.expand_path("../../../../app/services/payments/reconciliation/canonical_csv", __dir__)
+    output, status = Open3.capture2e(RbConfig.ruby, "-e", "require #{source.inspect}; abort('unexpected framework') if defined?(Rails) || defined?(ActiveRecord)")
+    expect(status.success?).to be(true), output
   end
 
   it "returns deeply frozen typed records with string keys and exact input checksum" do
@@ -131,10 +135,10 @@ RSpec.describe Payments::Reconciliation::CanonicalCSV do
   end
 
   it "preserves bounded opaque identifiers including leading zeros" do
-    %w[0 0000123 A_b.c:d-e 123456789012345678901234567890].push("a" * 128).each do |id|
+    %w[0 0000123 A_b.c:d-e a/b 123456789012345678901234567890].push("a" * 128).each do |id|
       expect(read_record(item.merge("external_id" => id))["external_id"]).to eq(id)
     end
-    [ "a" * 129, "-1", "+1", "=1", "@x", "_id", " a", "a ", "a/b", "é", "a,b", "a\"b" ].each do |id|
+    [ "a" * 129, "-1", "+1", "=1", "@x", "_id", " a", "a ", "é", "a,b", "a\"b" ].each do |id|
       reject_record(item.merge("external_id" => id), "external_id")
     end
     %w[batch_id transaction_id original_reference terminal_id].each do |field|

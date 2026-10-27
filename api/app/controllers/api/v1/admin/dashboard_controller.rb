@@ -17,7 +17,7 @@ module Api
 
           base_scope = base_scope.where(simulated: false, payment_environment: 'production')
           total_orders = base_scope.count
-          total_revenue_cents = base_scope.where(payment_status: "paid").sum(:total_cents)
+          total_revenue_cents = Payments::Revenue.total(base_scope)
           pending_orders = base_scope.where(status: "pending").count
           total_products = Product.where(published: true).count
           business_line_breakdown = business_line_breakdown_data(base_scope)
@@ -50,12 +50,7 @@ module Api
             .group("DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Pacific/Guam')")
             .count
 
-          # Revenue per day (paid orders only)
-          revenue_by_day = base_scope
-            .where("created_at >= ?", start_date)
-            .where(payment_status: "paid")
-            .group("DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Pacific/Guam')")
-            .sum(:total_cents)
+          revenue_by_day = Payments::Revenue.by_day(base_scope.where("created_at >= ?", start_date))
 
           # Build complete series (fill in zero days)
           series = (0...days).map do |i|
@@ -74,10 +69,8 @@ module Api
           last_week_start = 1.week.ago.beginning_of_week
           last_week_end = this_week_start
 
-          this_week_revenue = base_scope.where(payment_status: "paid")
-            .where("created_at >= ?", this_week_start).sum(:total_cents)
-          last_week_revenue = base_scope.where(payment_status: "paid")
-            .where("created_at >= ? AND created_at < ?", last_week_start, last_week_end).sum(:total_cents)
+          this_week_revenue = Payments::Revenue.total(base_scope.where("created_at >= ?", this_week_start))
+          last_week_revenue = Payments::Revenue.total(base_scope.where("created_at >= ? AND created_at < ?", last_week_start, last_week_end))
 
           this_week_orders = base_scope.where("created_at >= ?", this_week_start).count
           last_week_orders = base_scope.where("created_at >= ? AND created_at < ?", last_week_start, last_week_end).count
@@ -104,22 +97,22 @@ module Api
           {
             "three_squares" => {
               orders: three_squares_orders.count,
-              revenue_cents: three_squares_orders.where(payment_status: "paid").sum(:total_cents)
+              revenue_cents: Payments::Revenue.total(three_squares_orders)
             },
             "latte_stone" => {
               orders: latte_stone_orders.count,
-              revenue_cents: latte_stone_orders.where(payment_status: "paid").sum(:total_cents)
+              revenue_cents: Payments::Revenue.total(latte_stone_orders)
             },
             "catering" => {
               orders: scope.where(order_type: "wholesale").count,
-              revenue_cents: scope.where(order_type: "wholesale", payment_status: "paid").sum(:total_cents)
+              revenue_cents: Payments::Revenue.total(scope.where(order_type: "wholesale"))
             }
           }
         end
 
         def location_breakdown_data(scope)
           grouped_orders = scope.left_joins(:location).group("locations.name").count
-          grouped_revenue = scope.left_joins(:location).where(payment_status: "paid").group("locations.name").sum(:total_cents)
+          grouped_revenue = Payments::Revenue.by_location(scope)
 
           grouped_orders.map do |location_name, count|
             label = location_name.presence || "Shipping / No Pickup Location"

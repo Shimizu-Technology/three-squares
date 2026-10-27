@@ -16,6 +16,19 @@ Rails.application.routes.draw do
 
       # Admin routes (require admin authentication)
       namespace :admin do
+        get 'payment_reconciliation', to: 'payment_reconciliation#index'
+        get 'payment_reconciliation/batches/:id', to: 'payment_reconciliation#show'
+        post 'payment_reconciliation/import', to: 'payment_reconciliation#import'
+        get 'payment_reconciliation/import_status', to: 'payment_reconciliation#import_status'
+        get 'payment_reconciliation/export', to: 'payment_reconciliation#export'
+        post 'payment_reconciliation/allocate', to: 'payment_reconciliation#allocate'
+        post 'payment_reconciliation/exceptions/:id/review', to: 'payment_reconciliation#review'
+        unless Rails.env.production? || ENV['APP_DEPLOYMENT_ENV'] == 'production'
+          post 'payment_reconciliation/simulate_close', to: 'payment_reconciliation#simulate_close'
+          post 'payment_reconciliation/advance_simulation', to: 'payment_reconciliation#advance_simulation'
+          get 'payment_reconciliation/simulated_funding', to: 'payment_reconciliation#simulated_funding'
+          post 'payment_reconciliation/simulate_void', to: 'payment_reconciliation#simulate_void'
+        end
         resources :payment_terminals, only: [:index, :create, :show, :update, :destroy] do
           member do
             get :status

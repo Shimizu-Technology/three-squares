@@ -1,0 +1,155 @@
+require 'rails_helper'
+
+RSpec.describe 'Payment reconciliation observations', type: :request do
+  let(:owner) { create(:user, :owner) }
+  let(:location) { create(:location, hours_json: { 'Daily' => '00:00-23:59' }) }
+  let(:identity) { PaymentIdentity.create!(provider: 'worldpay', environment: 'simulated', external_account_id: 'funding-fixture', credential_reference: 'simulation', profile_key: SecureRandom.uuid) }
+  let(:product) { create(:product, product_type: 'local', allow_pickup: true, allow_shipping: false, inventory_level: 'product', product_stock_quantity: 20) }
+  let(:variant) { create(:product_variant, product: product, price_cents: 1250) }
+  let(:base) { '/api/v1/admin/payment_reconciliation' }
+  let(:scope) { { identity_id: identity.id, environment: 'simulated' } }
+  before do
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with('PAYMENTS_SIMULATION_ENABLED').and_return('true')
+    allow_any_instance_of(Net::HTTP).to receive(:request) { raise 'All provider traffic forbidden' }
+    SiteSetting.instance.update!(payment_processor: 'worldpay', enable_storefront_three_squares: true)
+    PaymentProfile.create!(payment_identity: identity, provider: 'worldpay', channel: 'online', presentation: 'worldpay_hosted_fields', enabled: true)
+    ProductLocation.create!(product: product, location: location)
+    acting(owner)
+  end
+  def acting(user)
+    allow_any_instance_of(Api::V1::Admin::PaymentReconciliationController).to receive(:authenticate_request).and_return(true)
+    allow_any_instance_of(Api::V1::Admin::PaymentReconciliationController).to receive(:current_user).and_return(user)
+  end
+  def capture
+    cart = CartItem.create!(session_id: SecureRandom.hex(20), product_variant: variant, quantity: 1)
+    session = Payments::CreateCheckout.call(user: nil, capability: SecureRandom.hex(32), idempotency_key: SecureRandom.uuid,
+      cart_items: [ cart ], attributes: { fulfillment_type: 'pickup', location_id: location.id, customer_name: 'Fixture', email: 'fixture@example.test' })
+    attempt = session.payment_attempts.first
+    Payments::SetupAttempt.call(attempt: attempt)
+    result = Payments::ProviderResolver.for_attempt(attempt).collect(attempt: attempt, scenario: 'approve', handle: attempt.reload.collection_config.fetch('client_secret'))
+    Payments::FinalizeOrder.call(attempt: attempt, result: result)
+    attempt.reload
+  end
+  def close(scenario: 'ordinary', key: SecureRandom.uuid, fee: 0)
+    post "#{base}/simulate_close", params: scope.merge(scenario: scenario, lag_days: 2, fee_cents: fee), headers: { 'Idempotency-Key' => key }, as: :json
+    expect(response).to have_http_status(:ok), response.body
+    ReconciliationImport.find(response.parsed_body.fetch('id'))
+  end
+  def csv_import(text)
+    post "#{base}/import", params: scope.merge(csv: text), headers: { 'Idempotency-Key' => SecureRandom.uuid }, as: :json
+    expect(response).to have_http_status(:ok), response.body
+  end
+  def advance
+    Payments::Reconciliation::SimulateClose.advance(identity: identity, user: owner, seconds: 3.days.to_i, operation_key: SecureRandom.uuid)
+  end
+  it 'recovers a combined close/import and advances accounting without changing either payment clock' do
+    first, second = capture, capture
+    key = SecureRandom.uuid
+    saved = close(scenario: 'combined', key: key, fee: 25)
+    expect(close(scenario: 'combined', key: key, fee: 25).id).to eq(saved.id)
+    expect(SettlementBatch.count).to eq(2)
+    expect(SettlementBatch.sum(:amount_cents)).to eq(2450)
+    get "#{base}/simulated_funding", params: scope.merge(import_id: saved.id)
+    expect(response).to have_http_status(:unprocessable_entity)
+    identity_time = SimulationClock.for(identity).now
+    times = [ first, second ].map { |a| [ a.simulation_offset_seconds, a.checkout_session.expires_at, a.next_recovery_at ] }
+    advance_key = SecureRandom.uuid
+    2.times do
+      post "#{base}/advance_simulation", params: scope.merge(seconds: 3.days.to_i), headers: { 'Idempotency-Key' => advance_key }, as: :json
+      expect(response).to have_http_status(:ok), response.body
+    end
+    expect(ReconciliationAudit.where(event: 'accounting_clock_advanced').count).to eq(1)
+    expect(SimulationClock.for(identity).now).to eq(identity_time)
+    expect([ first, second ].map { |a| [ a.reload.simulation_offset_seconds, a.checkout_session.expires_at, a.next_recovery_at ] }).to eq(times)
+    get "#{base}/simulated_funding", params: scope.merge(import_id: saved.id)
+    expect(response).to have_http_status(:ok), response.body
+    csv = response.body
+    2.times { csv_import(csv) }
+    expect(FundingDeposit.count).to eq(1)
+    expect(FundingAllocation.count).to eq(2)
+    expect(FundingAllocation.sum(:amount_cents)).to eq(2450)
+    get "#{base}/import_status", params: scope.merge(operation_key: key)
+    expect(response.parsed_body.fetch('id')).to eq(saved.id)
+    get base, params: scope
+    expect(response.parsed_body.dig('report', 'totals', 'batch_net_cents')).to eq(2450)
+    expect(Order.where(payment_status: 'paid').count).to eq(2)
+    expect(InventoryCommitment.count).to eq(2)
+    expect(product.reload.product_stock_quantity).to eq(18)
+  end
+  it 'puts later returns in a new batch and deduplicates split and duplicate funding exports' do
+    attempt = capture
+    first = close(scenario: 'split')
+    expect(Payments::RefundPayment.call(order: attempt.order, amount_cents: 250, request_key: SecureRandom.uuid, admin_user: owner)[:success]).to be(true)
+    second = close(scenario: 'duplicate')
+    expect(SettlementBatch.order(:created_at).pluck(:amount_cents)).to eq([ 1250, -250 ])
+    advance
+    [ first, second ].each { |i| csv_import(Payments::Reconciliation::SimulateClose.funding_export(identity: identity, user: owner, import: i)) }
+    expect(FundingDeposit.count).to eq(3)
+    expect(FundingAllocation.sum(:amount_cents)).to eq(1000)
+    expect(SettlementItem.where(entry_type: 'sale').count).to eq(1)
+    capture
+    missing = close(scenario: 'missing')
+    get "#{base}/simulated_funding", params: scope.merge(import_id: missing.id)
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body.fetch('error')).to include('Missing funding')
+  end
+  it 'voids the selected unbatched simulated capture once through common refund effects and rejects a closed sale' do
+    attempt = capture
+    key = SecureRandom.uuid
+    2.times do
+      post "#{base}/simulate_void", params: scope.merge(attempt_id: attempt.id), headers: { 'Idempotency-Key' => key }, as: :json
+      expect(response).to have_http_status(:ok), response.body
+      expect(response.parsed_body.fetch('success')).to be(true)
+    end
+    expect(RefundOperation.where(kind: 'void', state: 'succeeded').count).to eq(1)
+    expect(Refund.count).to eq(1)
+    expect(product.reload.product_stock_quantity).to eq(19)
+    close
+    expect(SettlementBatch.sum(:amount_cents)).to eq(0)
+    expect(SettlementItem.pluck(:entry_type)).to contain_exactly('sale', 'void')
+    expect(ReconciliationException.count).to eq(0)
+    other = capture
+    close
+    post "#{base}/simulate_void", params: scope.merge(attempt_id: other.id), headers: { 'Idempotency-Key' => SecureRandom.uuid }, as: :json
+    expect(response.parsed_body.fetch('success')).to be(false)
+    expect(RefundOperation.where(kind: 'void', state: 'failed').count).to eq(1)
+    expect(other.order.reload.payment_status).to eq('paid')
+  end
+  it 'keeps an out-of-band refund observational and reviews it once without changing payment or stock' do
+    attempt = capture
+    close(scenario: 'external_refund')
+    exception = ReconciliationException.find_by!(category: 'external_refund')
+    2.times do
+      post "#{base}/exceptions/#{exception.id}/review", params: scope.merge(reason: 'Compared with synthetic source'), as: :json
+      expect(response).to have_http_status(:ok), response.body
+    end
+    expect(ReconciliationAudit.where(event: 'exception_reviewed').count).to eq(1)
+    expect(RefundOperation.count).to eq(0)
+    expect(attempt.order.reload.payment_status).to eq('paid')
+    expect(product.reload.product_stock_quantity).to eq(19)
+  end
+  it 'defaults to production and denies scoped roles and non-owner simulation' do
+    capture
+    close
+    production = PaymentIdentity.create!(provider: 'worldpay', environment: 'production', external_account_id: 'account-production', external_acceptor_id: 'fixture-acceptor', credential_reference: 'fixture', profile_key: SecureRandom.uuid)
+    get base
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch('accounts').map { |a| a.fetch('id') }).to eq([ production.id ])
+    expect(response.parsed_body.dig('report', 'batches')).to be_empty
+    get "#{base}/export", params: { identity_id: production.id }
+    expect(response).to have_http_status(:unprocessable_entity)
+    [ create(:user, :staff, assigned_location: location), create(:user, :manager, assigned_location: location), create(:user) ].each do |user|
+      acting(user)
+      get base
+      expect(response).to have_http_status(:forbidden)
+    end
+    acting(create(:user, :manager))
+    get base
+    expect(response).to have_http_status(:ok)
+    get base, params: scope
+    expect(response).to have_http_status(:not_found)
+    post "#{base}/advance_simulation", params: scope.merge(seconds: 60), headers: { 'Idempotency-Key' => SecureRandom.uuid }, as: :json
+    expect(response).to have_http_status(:forbidden)
+  end
+end

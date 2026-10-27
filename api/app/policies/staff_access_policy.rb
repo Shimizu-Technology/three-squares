@@ -14,7 +14,7 @@ class StaffAccessPolicy
     catalog.manage catalog.import stock.read seasonal.manage catering.manage
   ].freeze
   MANAGER_ALL_LOCATIONS_CAPABILITIES = %w[
-    stock.manage homepage.manage payments.terminals.manage
+    stock.manage homepage.manage payments.terminals.manage payments.reconcile
   ].freeze
   OWNER_CAPABILITIES = %w[
     users.manage settings.manage payment_settings.manage locations.manage

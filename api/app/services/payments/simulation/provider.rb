@@ -76,7 +76,8 @@ module Payments
         engine.validate_attempt!(attempt) if attempt
         raise BindingError, 'Refund reference changed' if attempt && attempt.raw_provider_id != reference
         original = SimulatedPaymentRecord.find_by!(payment_identity: identity, raw_id: reference, kind: 'collection')
-        row = engine.mutate(original: original, amount_cents: amount_cents, operation_key: operation_key)
+        kind = metadata[:operation_kind] == 'void' ? 'void' : 'refund'
+        row = engine.mutate(original: original, amount_cents: amount_cents, operation_key: operation_key, kind: kind)
         raise Error, 'Simulated refund response lost' if original.scenario == 'refund_timeout'
         normalize(row)
       end
@@ -85,7 +86,7 @@ module Payments
         Guard.validate!(identity)
         row = SimulatedPaymentRecord.find_by(payment_identity: identity, operation_key: operation_key)
         return { raw_id: nil, status: 'unknown', amount_cents: 0 } unless row
-        unless %w[refund reversal].include?(row.kind) && row.original_reference == original_reference && (reference.blank? || row.raw_id == reference)
+        unless %w[refund reversal void].include?(row.kind) && row.original_reference == original_reference && (reference.blank? || row.raw_id == reference)
           raise BindingError, 'Simulation refund binding mismatch'
         end
         normalize(row)

@@ -44,6 +44,12 @@ RSpec.describe 'Admin orders reporting', type: :request do
       total_price_cents: total_cents
     )
 
+    identity = PaymentIdentity.create!(provider: 'stripe', environment: 'production', external_account_id: 'report-fixture',
+      credential_reference: 'fixture', profile_key: SecureRandom.uuid)
+    order.update!(payment_identity_id: identity.id)
+    LegacyCaptureBinding.create!(order: order, payment_identity: identity, provider: 'stripe', environment: 'production',
+      external_account_id: identity.external_account_id, consumption_reference: "fixture-#{order.id}", original_reference: "fixture-#{order.id}",
+      amount_cents: total_cents, currency: 'USD', verified_at: Time.current)
     order
   end
 

@@ -3,6 +3,8 @@
 class StaffRouteCapabilities
   ADMIN = {
     "dashboard" => { "stats" => "analytics.read", "chart_data" => "analytics.read" },
+    "payment_reconciliation" => %w[index show import import_status export allocate review].index_with { "payments.reconcile" }
+      .merge(%w[simulate_close advance_simulation simulated_funding simulate_void].index_with { "payments.simulate" }),
     "orders" => {
       "index" => "orders.read", "show" => "orders.read", "summary" => "orders.counts",
       "update" => "orders.status", "notify" => "orders.notify", "export" => "orders.export",

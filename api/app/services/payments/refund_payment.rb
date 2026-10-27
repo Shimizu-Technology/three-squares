@@ -7,7 +7,7 @@ module Payments
     end
 
     def call(order:, amount_cents:, request_key:, reason: nil, admin_user: nil, metadata: {}, restoration_request: {}, kind: "return")
-      unless kind == "return"
+      unless kind == "return" || (kind == "void" && order.payment_environment == 'simulated' && order.simulated?)
         existing = RefundOperation.find_by(order_id: order.id, caller_idempotency_key: request_key)
         raise Conflict, "Idempotency-Key was already used with a different payload" if existing && existing.kind != kind
         raise UnsupportedCapability, "Only linked returns are enabled for admin refunds"

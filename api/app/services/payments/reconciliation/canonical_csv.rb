@@ -47,7 +47,7 @@ module Payments
       MAX_ROWS = 1000
       MAX_CELL_BYTES = 512
       MAX_INTEGER = 2_147_483_647
-      ID_PATTERN = /\A[A-Za-z0-9][A-Za-z0-9_.:-]*\z/
+      ID_PATTERN = /\A[A-Za-z0-9][A-Za-z0-9_.:\/-]*\z/
       DATE_PATTERN = /\A\d{4}-\d{2}-\d{2}\z/
       OFFSET_PATTERN = /\A[+-](?:[01]\d|2[0-3]):[0-5]\d\z/
       LOCAL_PATTERN = /\A\d{4}-\d{2}-\d{2} (?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d\z/

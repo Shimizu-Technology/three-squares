@@ -88,10 +88,16 @@ module Payments
         Guard.validate!(@identity)
         raise BindingError, 'Original simulation money not found' unless original.payment_identity_id == @identity.id && %w[captured partial].include?(original.state)
         digest = Snapshot.digest(original: original.raw_id, amount: amount_cents, kind: kind)
-        record = SimulatedPaymentRecord.create_or_find_by!(payment_identity: @identity, operation_key: operation_key) do |row|
-          row.assign_attributes(kind: kind, payload_digest: digest, original_reference: original.raw_id, amount_cents: amount_cents,
-            raw_id: "sim_#{SecureRandom.hex(16)}", state: original.scenario == 'refund_decline' ? 'failed' : 'succeeded', scenario: original.scenario,
-            facts: { 'dispatched_at' => SimulationClock.for_attempt(original.payment_attempt).now.iso8601 })
+        record = SimulatedPaymentRecord.transaction do
+          # This local ledger claim serializes simulated void vs batch close.
+          # It runs after refund reservation, without any financial locks or I/O.
+          Reconciliation::Access.lock!(@identity)
+          SimulatedPaymentRecord.create_or_find_by!(payment_identity: @identity, operation_key: operation_key) do |row|
+            closed = kind == 'void' && SettlementItem.where(payment_identity: @identity, entry_type: 'sale', transaction_id: original.raw_id).exists?
+            row.assign_attributes(kind: kind, payload_digest: digest, original_reference: original.raw_id, amount_cents: amount_cents,
+              raw_id: "sim_#{SecureRandom.hex(16)}", state: original.scenario == 'refund_decline' || closed ? 'failed' : 'succeeded', scenario: original.scenario,
+              facts: { 'dispatched_at' => SimulationClock.for_attempt(original.payment_attempt).now.iso8601, 'batch_closed' => closed })
+          end
         end
         raise Conflict, 'Simulation operation payload changed' unless record.payload_digest == digest
         record

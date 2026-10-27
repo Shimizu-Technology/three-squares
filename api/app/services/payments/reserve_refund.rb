@@ -80,6 +80,13 @@ module Payments
             used = RefundOperation.where(order_id: locked.id).holding.sum(:amount_cents)
             # Historical refunds retain their financial effect when the new ledger starts.
             used += Refund.where(order_id: locked.id, refund_operation_id: nil, status: %w[pending unknown succeeded]).sum(:amount_cents)
+            if kind != 'return'
+              unless kind == 'void' && locked.simulated? && locked.payment_environment == 'simulated' &&
+                  attempt && facts[:environment] == 'simulated' && amount_cents == facts[:captured_cents] && used.zero?
+                raise UnsupportedCapability, 'Only full, unrefunded simulated captures support simulated voids'
+              end
+              Simulation::Guard.validate!(attempt.payment_identity)
+            end
             raise Conflict, "Refund exceeds captured amount less succeeded and reserved refunds" if amount_cents > facts[:captured_cents] - used
             operation = RefundOperation.create!(**facts, order: locked, amount_cents: amount_cents,
               caller_idempotency_key: request_key, payload_digest: digest, kind: kind, reason: reason,
