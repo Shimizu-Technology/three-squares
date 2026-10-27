@@ -1191,20 +1191,6 @@ function AdminPOSWorkspace() {
           <h2 className="text-lg font-semibold">Current sale</h2>
           <button type="button" onClick={() => { menuRef.current?.scrollIntoView(); searchRef.current?.focus({ preventScroll: true }); }} className="min-h-11 rounded-lg border border-slate-300 px-3 text-sm font-semibold">Back to menu</button>
         </div>
-        {/* Sale confirmation stays clear of the menu and location controls. */}
-        {lastOrder && (
-          <div className="m-4 mb-0 shrink-0 rounded-xl bg-emerald-600 p-4 text-white flex items-center gap-3 [overflow-wrap:anywhere]">
-            <Check className="w-6 h-6 shrink-0" />
-            <div className="min-w-0">
-              <div className="font-semibold">Order {lastOrder.order_number} Created!</div>
-              <div className="text-sm opacity-90">
-                {lastOrder.total_formatted}
-                {lastOrder.change_due_formatted && ` — Change: ${lastOrder.change_due_formatted}`}
-              </div>
-            </div>
-          </div>
-        )}
-
         {/* Customer + order type */}
         <div className="p-4 border-b border-slate-200 shrink-0">
           <div className="flex items-center gap-2 mb-3">
@@ -1413,6 +1399,20 @@ function AdminPOSWorkspace() {
             >
               Reset Reader Session
             </button>
+          )}
+
+          {/* Keep the completed sale and change due beside the payment actions. */}
+          {lastOrder && (
+            <div role="status" aria-atomic="true" className="mb-3 rounded-xl bg-emerald-600 p-4 text-white flex items-center gap-3 [overflow-wrap:anywhere]">
+              <Check className="w-6 h-6 shrink-0" />
+              <div className="min-w-0">
+                <div className="font-semibold">Order {lastOrder.order_number} Created!</div>
+                <div className="text-sm opacity-90">
+                  {lastOrder.total_formatted}
+                  {lastOrder.change_due_formatted && ` — Change: ${lastOrder.change_due_formatted}`}
+                </div>
+              </div>
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-2 mb-2">
