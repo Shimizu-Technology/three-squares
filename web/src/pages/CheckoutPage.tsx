@@ -8,7 +8,6 @@ import { authGet } from '../services/authApi';
 import { checkoutContactReducer, emptyCheckoutContact } from '../lib/checkoutContact';
 import { hostedPageUrl, collectionAvailable } from '../lib/hostedPage';
 import { readPendingCreation, savePendingCreation, clearPendingCreation, creationRejected } from '../lib/checkoutCreation';
-import { motion, AnimatePresence } from 'framer-motion';
 import type { CardPaymentHandle } from '../components/payment/PaymentForm';
 import PaymentForm, { type CollectionConfiguration } from '../components/payment/PaymentCollectionForm';
 import type { ShippingAddress, ShippingMethod, AppConfig } from '../types/order';
@@ -544,7 +543,7 @@ function CheckoutForm() {
 
   if (configLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-dvh bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary mx-auto mb-4"></div>
           <p className="text-gray-600">Loading checkout...</p>
@@ -554,7 +553,7 @@ function CheckoutForm() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 sm:py-8">
+    <div className="min-h-dvh bg-gray-50 py-6 sm:py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="mb-8 text-center sm:text-left">
@@ -778,16 +777,8 @@ function CheckoutForm() {
                   </p>
                 )}
 
-                <AnimatePresence mode="wait">
                   {deliveryMethod === 'pickup' && cartSupportsPickup && (
-                    <motion.div
-                      key="pickup-info"
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      transition={{ duration: 0.25, ease: 'easeInOut' }}
-                      className="overflow-hidden"
-                    >
+                    <section aria-label="Pickup details">
                       <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
                         <label htmlFor="pickupLocation" className="block text-sm font-semibold text-blue-900 mb-2">
                           Pickup Location *
@@ -822,21 +813,13 @@ function CheckoutForm() {
                           You'll receive an email when your order is ready for pickup.
                         </p>
                       </div>
-                    </motion.div>
+                    </section>
                   )}
-                </AnimatePresence>
               </div>
 
               {/* Shipping Address - Only show if shipping selected */}
-              <AnimatePresence mode="wait">
               {deliveryMethod === 'shipping' && cartSupportsShipping && (
-                <motion.div
-                  key="shipping-form"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ duration: 0.25, ease: 'easeInOut' }}
-                >
+                <section aria-label="Shipping details">
                 <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 bg-tsSurface rounded-full flex items-center justify-center">
@@ -983,9 +966,8 @@ function CheckoutForm() {
                   </div>
                 )}
               </div>
-              </motion.div>
+              </section>
               )}
-              </AnimatePresence>
 
               {/* Payment Section */}
               <PaymentForm
