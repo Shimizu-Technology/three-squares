@@ -80,7 +80,7 @@ export const getWidthsForContext = (context?: ImageContext): number[] => {
 export const getSizesForContext = (context?: ImageContext): string => {
   switch (context) {
     case 'card':
-      return '(max-width: 640px) 45vw, (max-width: 1024px) 30vw, 240px';
+      return '(max-width: 1023px) 48vw, (max-width: 1279px) 31vw, 300px';
     case 'featured':
       return '(max-width: 640px) 45vw, (max-width: 1024px) 25vw, 220px';
     case 'detail':

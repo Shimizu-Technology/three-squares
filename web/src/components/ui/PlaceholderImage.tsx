@@ -8,8 +8,8 @@ import useAppConfig from '../../hooks/useAppConfig';
 const PLACEHOLDER_DEFAULTS = {
   bgClass: 'bg-warm-100',
   logoSrc: '/images/three-squares-placeholder.svg',
-  textColor: 'text-warm-400',
-  text: '',
+  textColor: 'text-warm-500',
+  text: 'Photo unavailable',
 };
 
 // ── Variant presets ──────────────────────────────────────────────────────────
@@ -70,8 +70,8 @@ export default function PlaceholderImage({
   /* eslint-enable react-hooks/set-state-in-effect */
 
   return (
-    <div
-      className={`w-full h-full flex flex-col items-center justify-center ${PLACEHOLDER_DEFAULTS.bgClass} ${className}`}
+    <span
+      className={`w-full h-full flex flex-col items-center justify-center text-center p-2 ${styles.gap} ${PLACEHOLDER_DEFAULTS.bgClass} ${className}`}
     >
       {IconOverride ? (
         <IconOverride
@@ -89,8 +89,8 @@ export default function PlaceholderImage({
         ) : (
           <img
             src={currentLogoSrc}
-            alt="Three Squares"
-            className={`w-full h-full object-cover ${iconClassName}`}
+            alt=""
+            className={`${styles.iconSize} max-w-full object-contain ${iconClassName}`}
             onError={() => {
               if (currentLogoSrc !== PLACEHOLDER_DEFAULTS.logoSrc) {
                 setCurrentLogoSrc(PLACEHOLDER_DEFAULTS.logoSrc);
@@ -108,7 +108,7 @@ export default function PlaceholderImage({
           {label}
         </span>
       )}
-    </div>
+    </span>
   );
 }
 
