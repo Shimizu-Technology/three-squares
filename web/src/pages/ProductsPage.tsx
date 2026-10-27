@@ -72,6 +72,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
   const [meta, setMeta] = useState({ page: 1, per_page: 12, total: 0 });
   const didScrollRef = useRef(false);
   const productRequest = useRef(0);
+  const [resultContext, setResultContext] = useState<string | null>(null);
   const locationNameById = locations.reduce<Record<number, string>>((acc, location) => {
     acc[location.id] = location.name;
     return acc;
@@ -193,10 +194,12 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
     }
   }, []);
 
+  const requestContext = JSON.stringify([locationId, activeBusinessLine, page, search, collection, productType, sort]);
   const fetchProducts = useCallback(async () => {
     const version = ++productRequest.current;
     try {
       setLoading(true);
+      setError(null);
       const response = await productsApi.getProducts({
         page,
         per_page: 12,
@@ -209,6 +212,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
       });
       if (version !== productRequest.current) return;
       setProducts(response.products);
+      setResultContext(requestContext);
       setMeta(response.meta);
       setAvailableProductTypes(response.meta.product_types || []);
       setError(null);
@@ -218,7 +222,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
     } finally {
       if (version === productRequest.current) setLoading(false);
     }
-  }, [activeBusinessLine, collection, locationId, page, productType, search, sort]);
+  }, [activeBusinessLine, collection, locationId, page, productType, requestContext, search, sort]);
 
   useEffect(() => {
     void fetchCollections();
@@ -298,7 +302,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
     setSearchParams(params);
   };
 
-  if (loading && products.length === 0) {
+  if (!error && (loading || resultContext !== requestContext)) {
     return (
       <div className="min-h-screen bg-warm-50">
         <div className="bg-warm">
@@ -314,7 +318,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
   }
 
   // Show a retryable error when the menu request fails
-  if (error && products.length === 0) {
+  if (error) {
     return (
       <div className="min-h-screen bg-warm-50">
         {/* Header */}

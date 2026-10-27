@@ -192,27 +192,31 @@ function CheckoutForm() {
 
   // Load app config
   useEffect(() => {
+    let active = true;
+    const initialLocationId = useLocationStore.getState().selectedLocation?.id;
     const loadConfig = async () => {
       try {
         const config = await configApi.getConfig();
+        if (!active) return;
         setAppConfig(config);
         const locations = await locationsApi.getLocations();
+        if (!active) return;
         const locs = locations.locations || [];
         setPickupLocations(locs);
-        // Pre-fill from location store, fall back to first location
-        if (storedLocation && locs.some((l: Location) => l.id === storedLocation.id)) {
-          setSelectedLocation(locs.find((location) => location.id === storedLocation.id)!);
-        } else if (locs.length > 0) {
-          setSelectedLocation(locs[0]);
-        }
+        const current = useLocationStore.getState().selectedLocation;
+        // A newer user choice wins over this mount-time initialization.
+        if (current?.id !== initialLocationId) return;
+        const location = locs.find((item) => item.id === current?.id) || locs[0];
+        if (location) setSelectedLocation(location);
       } catch (err) {
-        console.error('Failed to load config:', err);
+        if (active) console.error('Failed to load config:', err);
       } finally {
-        setConfigLoading(false);
+        if (active) setConfigLoading(false);
       }
     };
-    loadConfig();
-  }, []);
+    void loadConfig();
+    return () => { active = false; };
+  }, [setSelectedLocation]);
 
   // Every summary refresh uses the same explicit fulfillment/destination context.
   // The store discards stale responses; payment stays blocked until it matches.
