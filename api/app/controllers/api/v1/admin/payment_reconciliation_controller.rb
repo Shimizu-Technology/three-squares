@@ -67,15 +67,16 @@ module Api
         def review
           selected = identity
           key = request.headers["Idempotency-Key"]
+          exception_id = ReconciliationException.type_for_attribute("id").cast(params.require(:id))
           prior_audits = ReconciliationAudit.where(payment_identity: selected, user: current_user, event: "exception_reviewed").where("facts ->> 'operation_key' = ?", key)
           exception = Payments::Reconciliation::RequestDecision.call(identity: selected, user: current_user, kind: "review", operation_key: key,
-            payload: { exception_id: params[:id], reason: params[:reason] }, accepted: -> { prior_audits.exists? }) do
+            payload: { exception_id: exception_id, reason: params[:reason] }, accepted: -> { prior_audits.exists? }) do
+            reason = Payments::Reconciliation::Access.reason!(params[:reason])
             prior = prior_audits.first
-            if prior && (prior.subject_id != params[:id] || prior.reason != params[:reason])
+            if prior && (prior.subject_id != exception_id || prior.reason != reason)
               raise Payments::Conflict, "Review key belongs to a different saved decision"
             end
-            row = ReconciliationException.lock.find_by!(payment_identity: selected, id: params.require(:id))
-            reason = Payments::Reconciliation::Access.reason!(params[:reason])
+            row = ReconciliationException.lock.find_by!(payment_identity: selected, id: exception_id)
             if row.state == "reviewed"
               raise Payments::Conflict, "Exception was already reviewed with another reason" unless row.reviewed_by_id == current_user.id && row.review_reason == reason
             else

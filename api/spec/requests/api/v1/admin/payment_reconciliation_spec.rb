@@ -150,6 +150,27 @@ RSpec.describe 'Payment reconciliation observations', type: :request do
     expect(second.reload.state).to eq('open')
     expect(ReconciliationAudit.where(event: 'exception_reviewed').count).to eq(2)
   end
+  it 'replays acknowledgement reasons and UUID representations using their stored normalization' do
+    capture
+    close(scenario: 'external_refund')
+    exception = ReconciliationException.find_by!(category: 'external_refund')
+    key = SecureRandom.uuid
+    [ [ exception.id, '  Compared with synthetic source  ' ],
+      [ exception.id, '  Compared with synthetic source  ' ],
+      [ exception.id.upcase, 'Compared with synthetic source' ],
+      [ exception.id.delete('-'), ' Compared with synthetic source ' ] ].each do |id, reason|
+      post "#{base}/exceptions/#{id}/review", params: scope.merge(reason: reason), headers: { 'Idempotency-Key' => key }, as: :json
+      expect(response).to have_http_status(:ok), response.body
+      expect(response.parsed_body.values_at('id', 'review_reason')).to eq([ exception.id, 'Compared with synthetic source' ])
+    end
+    expect(ReconciliationAudit.where(event: 'exception_reviewed', subject_id: exception.id).count).to eq(1)
+    post "#{base}/exceptions/#{exception.id}/review", params: scope.merge(reason: 'A genuinely different decision'), headers: { 'Idempotency-Key' => key }, as: :json
+    expect(response).to have_http_status(:conflict)
+    expect(response.parsed_body).not_to have_key('rejected_before_operation')
+    post "#{base}/exceptions/123/review", params: scope.merge(reason: 'Compared with synthetic source'), headers: { 'Idempotency-Key' => key }, as: :json
+    expect(response).to have_http_status(:conflict)
+    expect(ReconciliationAudit.where(event: 'exception_reviewed').count).to eq(1)
+  end
   it 'retains a mismatched deposit balance and binds manual decisions to the original actor, amount and reason' do
     capture
     saved = close(scenario: 'mismatch')
