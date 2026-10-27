@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -9,6 +9,7 @@ import {
   ProductsTable,
   ProductDetailModal,
 } from '../../components/admin/products';
+import AdminRequestState from '../../components/admin/AdminRequestState';
 import { SkeletonListPage } from '../../components/admin';
 
 import { authGet, authPatch, authPost } from '../../services/authApi';
@@ -56,8 +57,15 @@ export default function AdminProductsPage() {
   const navigate = useNavigate();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const requestId = useRef(0);
+  const active = useRef(false);
   const [selectedProduct, setSelectedProduct] = useState<DetailedProduct | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [detailError, setDetailError] = useState(false);
+  const [detailTarget, setDetailTarget] = useState<Product | null>(null);
+  const detailRequestId = useRef(0);
 
   const importDialog = useRef<HTMLDivElement>(null);
 
@@ -91,38 +99,65 @@ export default function AdminProductsPage() {
     return () => { if (previous?.isConnected) previous.focus(); };
   }, [showImportModal]);
 
-  useEffect(() => { fetchProducts(); }, []);
-
   // Reset page on filter/sort change
   useEffect(() => { setCurrentPage(1); }, [searchQuery, filterPublished, filterType, sortBy, sortDir]);
 
   // ── Fetch ──────────────────────────────────────────────
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
+    if (!active.current) return;
+    const id = ++requestId.current;
+    setLoading(true);
     try {
-      setLoading(true);
       const response = await authGet<ProductListResponse>('/admin/products', getToken, {
         params: { show_archived: true },
       });
+      if (id !== requestId.current) return;
       const all = response.data.data;
       setProducts(all);
       setProductTypes([...new Set(all.map((p: Product) => p.product_type).filter(Boolean))] as string[]);
+      setHasLoaded(true);
+      setLoadError(false);
     } catch (err) {
+      if (id !== requestId.current) return;
       console.error('Failed to fetch products:', err);
+      setLoadError(true);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
+    }
+  }, [getToken]);
+
+  useEffect(() => {
+    active.current = true;
+    void fetchProducts();
+    return () => { active.current = false; requestId.current += 1; detailRequestId.current += 1; };
+  }, [fetchProducts]);
+
+  const fetchProductDetails = async (product: Product) => {
+    const id = ++detailRequestId.current;
+    if (detailTarget?.slug !== product.slug) setDetailError(false);
+    setDetailTarget(product);
+    setSelectedProduct(null);
+    setLoadingDetails(true);
+    try {
+      const response = await authGet<ProductDetailResponse>(`/admin/products/${product.slug}`, getToken);
+      if (id !== detailRequestId.current) return;
+      setSelectedProduct(response.data.data);
+      setDetailError(false);
+    } catch (err) {
+      if (id !== detailRequestId.current) return;
+      console.error('Failed to fetch product details:', err);
+      setDetailError(true);
+    } finally {
+      if (id === detailRequestId.current) setLoadingDetails(false);
     }
   };
 
-  const fetchProductDetails = async (slug: string) => {
-    try {
-      setLoadingDetails(true);
-      const response = await authGet<ProductDetailResponse>(`/admin/products/${slug}`, getToken);
-      setSelectedProduct(response.data.data);
-    } catch (err) {
-      console.error('Failed to fetch product details:', err);
-    } finally {
-      setLoadingDetails(false);
-    }
+  const closeProductDetails = () => {
+    detailRequestId.current += 1;
+    setSelectedProduct(null);
+    setDetailTarget(null);
+    setLoadingDetails(false);
+    setDetailError(false);
   };
 
   // ── Actions ────────────────────────────────────────────
@@ -240,10 +275,11 @@ export default function AdminProductsPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Products</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Showing <span className="font-semibold text-gray-700">{filteredProducts.length}</span> of {products.length} products
+            {hasLoaded ? <>Showing <span className="font-semibold text-gray-700">{filteredProducts.length}</span> of {products.length} products{(loading || loadError) && ' (last loaded)'}</> : 'Browse and manage your products'}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <button type="button" onClick={fetchProducts} disabled={loading} className="btn-secondary min-h-[44px] disabled:opacity-60">Refresh products</button>
           <button
             onClick={() => {
               setShowImportModal(true);
@@ -277,13 +313,19 @@ export default function AdminProductsPage() {
         onClear={() => { setSearchQuery(''); setFilterPublished('all'); setFilterType('all'); }}
       />
 
+      <AdminRequestState resource="Products" loading={loading} error={loadError} hasData={hasLoaded} onRetry={fetchProducts} />
+      {detailTarget && (loadingDetails || detailError) && <div className="space-y-2">
+        <AdminRequestState resource={`Details for ${detailTarget.name}`} loading={loadingDetails} error={detailError} hasData={false} onRetry={() => fetchProductDetails(detailTarget)} />
+        <button type="button" onClick={closeProductDetails} className="btn-secondary min-h-[44px]">Dismiss product details</button>
+      </div>}
+
       {/* Content */}
-      {loading ? (
+      {loading && !hasLoaded ? (
         <SkeletonListPage />
-      ) : filteredProducts.length === 0 ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
-          <h3 className="text-lg font-bold text-gray-900 mb-2">No products found</h3>
-          <p className="text-gray-500">Try adjusting your filters or search query.</p>
+      ) : !hasLoaded ? null : filteredProducts.length === 0 ? (
+        !loading && !loadError && <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
+          <h3 className="text-lg font-bold text-gray-900 mb-2">{searchQuery || filterPublished !== 'all' || filterType !== 'all' ? 'No products match your filters' : 'No products found'}</h3>
+          <p className="text-gray-500">{searchQuery || filterPublished !== 'all' || filterType !== 'all' ? 'Try adjusting your filters or search query.' : 'Add a product to get started.'}</p>
         </div>
       ) : (
         <ProductsTable
@@ -296,7 +338,7 @@ export default function AdminProductsPage() {
           sortDir={sortDir}
           onSort={handleSort}
           onPageChange={setCurrentPage}
-          onView={(p) => fetchProductDetails(p.slug)}
+          onView={fetchProductDetails}
           onTogglePublished={handleTogglePublished}
           onArchive={handleArchive}
           onUnarchive={handleUnarchive}
@@ -309,7 +351,7 @@ export default function AdminProductsPage() {
         <ProductDetailModal
           product={selectedProduct}
           loading={loadingDetails}
-          onClose={() => setSelectedProduct(null)}
+          onClose={closeProductDetails}
         />
       )}
 

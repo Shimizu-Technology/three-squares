@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -7,6 +7,7 @@ import { Plus, Edit, Trash2, Eye, Package } from 'lucide-react';
 import { formatGuamDate, fromGuamDateInput, toGuamDateInput } from '../../utils/collectionSchedule';
 import type { CollectionSchedule, CollectionType } from '../../utils/collectionSchedule';
 import useLockBodyScroll from '../../hooks/useLockBodyScroll';
+import AdminRequestState from '../../components/admin/AdminRequestState';
 import { authDelete, authGet, authPatch, authPost } from '../../services/authApi';
 
 interface Collection extends CollectionSchedule {
@@ -31,6 +32,10 @@ export default function AdminCollectionsPage() {
   const { getToken } = useAuth();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const requestId = useRef(0);
+  const active = useRef(false);
   const [selectedCollection, setSelectedCollection] = useState<Collection | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -54,22 +59,30 @@ export default function AdminCollectionsPage() {
     banner_text: '',
   });
 
-  useEffect(() => {
-    fetchCollections();
-  }, []);
-
-  const fetchCollections = async () => {
+  const fetchCollections = useCallback(async () => {
+    if (!active.current) return;
+    const id = ++requestId.current;
+    setLoading(true);
     try {
-      setLoading(true);
       const response = await authGet<CollectionsResponse>('/admin/collections', getToken);
-      setCollections(response.data.data || []);
+      if (id !== requestId.current) return;
+      setCollections(response.data.data);
+      setHasLoaded(true);
+      setLoadError(false);
     } catch (err) {
+      if (id !== requestId.current) return;
       console.error('Failed to fetch collections:', err);
-      toast.error('Failed to load collections');
+      setLoadError(true);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
-  };
+  }, [getToken]);
+
+  useEffect(() => {
+    active.current = true;
+    void fetchCollections();
+    return () => { active.current = false; requestId.current += 1; };
+  }, [fetchCollections]);
 
   const handleEdit = (collection: Collection) => {
     setSelectedCollection(collection);
@@ -181,13 +194,6 @@ export default function AdminCollectionsPage() {
     }
   }, [formError, saving, showEditModal]);
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary"></div>
-      </div>
-    );
-  }
 
   return (
     <div>
@@ -197,6 +203,8 @@ export default function AdminCollectionsPage() {
           <h1 className="text-2xl font-bold text-gray-900">Collections</h1>
           <p className="text-gray-600 mt-1">Manage menus, specials and their Guam schedules</p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <button type="button" onClick={fetchCollections} disabled={loading} className="btn-secondary min-h-[44px] disabled:opacity-60">Refresh collections</button>
         <button
           onClick={handleCreate}
           className="btn-primary flex items-center"
@@ -204,9 +212,15 @@ export default function AdminCollectionsPage() {
           <Plus className="w-5 h-5 mr-2" />
           Add Collection
         </button>
+        </div>
+      </div>
+
+      <div className="mb-6">
+        <AdminRequestState resource="Collections" loading={loading} error={loadError} hasData={hasLoaded} onRetry={fetchCollections} />
       </div>
 
       {/* Collections Table */}
+      {hasLoaded && (collections.length > 0 || (!loading && !loadError)) && (
       <div className="bg-white rounded-lg shadow overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
@@ -310,6 +324,8 @@ export default function AdminCollectionsPage() {
           </tbody>
         </table>
       </div>
+
+      )}
 
       {/* Edit/Create Modal */}
       {showEditModal && (
