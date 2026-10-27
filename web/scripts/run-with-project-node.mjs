@@ -38,7 +38,8 @@ if (needsVersionSwitch) {
     env.NODENV_VERSION = desiredVersion;
   } catch {
     const [major, minor] = currentVersion.split('.').map(Number);
-    if (major < 22 || (major === 22 && minor < 12)) {
+    const supported = (major === 20 && minor >= 19) || major > 22 || (major === 22 && minor >= 12);
+    if (!supported) {
       console.error(`Node ${desiredVersion} is required. Install it with nodenv or nvm; current Node is ${currentVersion}.`);
       process.exit(1);
     }
