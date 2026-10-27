@@ -44,7 +44,7 @@ module Payments
         metadata = stored.provider_metadata.deep_dup
         if result.metadata[:financial_ambiguity] && !metadata["worldpay_financial_quarantine"]
           metadata["worldpay_financial_quarantine"] = { "observed_at" => Time.current.iso8601(6),
-            "reason" => result.metadata[:reason], "report_digest" => Snapshot.digest(report.fetch(:rows)),
+            "reason" => result.metadata[:reason], "parse_error" => report.dig(:metadata, :parse_error), "report_digest" => Snapshot.digest(report.fetch(:rows)),
             "raw_ids" => report.fetch(:rows).filter_map { |row| row[:raw_id] }.take(20) }
         end
         quarantined = metadata["worldpay_financial_quarantine"].present?

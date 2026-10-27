@@ -160,6 +160,7 @@ function CheckoutForm() {
       } catch (error) {
         if (!stopped && creationRejected(error)) {
           clearPendingCreation(); setCreationPending(false); setReviewed(false);
+          creationKey.current = crypto.randomUUID(); capability.current = checkoutCapability();
           setError('The checkout was not created. Review your cart and availability before paying.');
         } else if (!stopped) setError('We could not recover the checkout response yet. Check again before starting another payment.');
       }
@@ -511,7 +512,10 @@ function CheckoutForm() {
       const axiosErr = err as { response?: { data?: { error?: string; issues?: Array<{ message: string }> } } };
       // A definite validation rejection has no saved financial intent. Network
       // loss and server failures retain the original key across back/reload.
-      if (creationRejected(err)) clearPendingCreation();
+      if (creationRejected(err)) {
+        clearPendingCreation(); setReviewed(false);
+        creationKey.current = crypto.randomUUID(); capability.current = checkoutCapability();
+      }
       else if (!saved && readPendingCreation()) setCreationPending(true);
       if (axiosErr.response?.data?.issues && axiosErr.response.data.issues.length > 0) {
         const issues = axiosErr.response.data.issues;

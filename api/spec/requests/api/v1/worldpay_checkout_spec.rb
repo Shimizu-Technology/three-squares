@@ -120,7 +120,8 @@ RSpec.describe 'Worldpay hosted checkout contracts', type: :request do
   it 'rejects a foreign account and does not consume or reverse it' do
     start_checkout
     query_changes['AccountID'] = 'foreign-account'
-    expect { Payments::ReconcileAttempt.call(attempt: PaymentAttempt.last, force: true) }.to raise_error(Payments::BindingError)
+    Payments::ReconcileAttempt.call(attempt: PaymentAttempt.last, force: true)
+    expect(PaymentAttempt.last.provider_metadata['worldpay_financial_quarantine']).to be_present
     expect(PaymentTransaction.count).to eq(0)
     expect(PaymentOutbox.where(kind: 'compensate')).to be_empty
   end
@@ -156,7 +157,8 @@ RSpec.describe 'Worldpay hosted checkout contracts', type: :request do
     expect(Order.last.payment_status).to eq('pending')
     expect(PaymentAttempt.last.provider_metadata['worldpay_collection_blocked']).to be(true)
     extra_rows.replace([ { 'TransactionID' => '000122', 'AccountID' => 'foreign', 'ExpressResponseCode' => '20', 'TransactionStatusCode' => '2', 'ApprovalNumber' => '' } ])
-    expect { Payments::ReconcileAttempt.call(attempt: PaymentAttempt.last, force: true) }.to raise_error(Payments::BindingError)
+    Payments::ReconcileAttempt.call(attempt: PaymentAttempt.last, force: true)
+    expect(PaymentAttempt.last.provider_metadata['worldpay_financial_quarantine']).to be_present
     expect(PaymentTransaction.count).to eq(0)
   end
 
@@ -245,6 +247,44 @@ RSpec.describe 'Worldpay hosted checkout contracts', type: :request do
     env['WORLDPAY_EXPRESS_ACCEPTOR_ID'] = 'replacement'
     expect { Payments::ReconcileAttempt.call(attempt: PaymentAttempt.last, force: true) }.to raise_error(Payments::Configuration::UnsafeConfiguration)
     expect(calls.size).to eq(1)
+    expect(Order.last.payment_status).to eq('pending')
+  end
+
+  it 'retains ambiguity when valid approvals are followed by a foreign bound row' do
+    start_checkout
+    attempt = PaymentAttempt.last
+    earlier = Payments::ProviderResolver.for_identity(identity).query(attempt: attempt)
+    extra_rows.concat([ { 'TransactionID' => '000124' }, { 'TransactionID' => '000125', 'AccountID' => 'foreign' } ])
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    expect(attempt.reload.provider_metadata['worldpay_financial_quarantine']).to be_present
+    extra_rows.clear
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    Payments::FinalizeOrder.call(attempt: attempt, result: earlier)
+    expect(Order.last.payment_status).to eq('pending')
+    expect(PaymentTransaction.count).to eq(0)
+  end
+
+  it 'retains scrubbed earlier financial observations when a later query row cannot be parsed' do
+    start_checkout
+    attempt = PaymentAttempt.last
+    extra_rows.concat([ { 'TransactionID' => '000124' }, { 'TransactionID' => '' } ])
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    quarantine = attempt.reload.provider_metadata.fetch('worldpay_financial_quarantine')
+    expect(quarantine['raw_ids']).to include('000123', '000124')
+    expect(quarantine['parse_error']).to be_present
+    extra_rows.clear
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    expect(Order.last.payment_status).to eq('pending')
+    expect(variant.reload.stock_quantity).to eq(10)
+  end
+
+  it 'never retains a credential echo while preserving non-authorizing ambiguity from a bad query' do
+    start_checkout
+    extra_rows << { 'TransactionID' => env.fetch('WORLDPAY_EXPRESS_ACCOUNT_TOKEN') }
+    Payments::ReconcileAttempt.call(attempt: PaymentAttempt.last, force: true)
+    quarantine = PaymentAttempt.last.provider_metadata.fetch('worldpay_financial_quarantine')
+    expect(quarantine['raw_ids']).to include('000123')
+    expect(quarantine.to_json).not_to include(env.fetch('WORLDPAY_EXPRESS_ACCOUNT_TOKEN'))
     expect(Order.last.payment_status).to eq('pending')
   end
 

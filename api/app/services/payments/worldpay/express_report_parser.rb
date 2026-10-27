@@ -51,7 +51,8 @@ module Payments
         end
         nodes = rows_at(data, path, strict: true)
         raise Xml::Invalid, "report_row_limit" if nodes.length > MAX_ROWS
-        rows = nodes.map { |node| row(node, contract[:fields], allow_empty: true) }
+        rows = []
+        nodes.each { |node| rows << row(node, contract[:fields], allow_empty: true) }
         unless rows.all? { |entry| entry[:raw_id] } && rows.map { |entry| entry[:raw_id] }.uniq.size == rows.size
           raise Xml::Invalid, "report_transaction_id_required"
         end
@@ -60,7 +61,10 @@ module Payments
         raise Xml::Invalid, "sensitive_response" if configuration.secrets_in?(result, allow_report_identifiers: true)
         result
       rescue Xml::Invalid, Money::Invalid => error
-        { status: "unknown", complete: false, rows: [], metadata: { contract_verified: false, parse_error: error.message } }
+        # Retain only already-scrubbed observations, never raw XML. Even a
+        # malformed later row cannot erase earlier possible financial evidence.
+        safe_rows = (rows || []).reject { |entry| configuration.secrets_in?(entry, allow_report_identifiers: true) }
+        { status: "unknown", complete: false, rows: safe_rows, metadata: { contract_verified: false, parse_error: error.message, financial_ambiguity: true } }
       end
 
       # Generic counts are relative to Response. Published counts are relative

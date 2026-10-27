@@ -15,7 +15,6 @@ module Api
       def create
         session = Payments::CreateCheckout.call(user: current_user, capability: capability, idempotency_key: request.headers["Idempotency-Key"],
           cart_items: cart_items, attributes: checkout_params.to_h)
-        @checkout_intent = session
         attempt = session.payment_attempts.order(:created_at).last
         begin
           Payments::SetupAttempt.call(attempt: attempt)
@@ -140,7 +139,7 @@ module Api
       end
 
       def invalid(error)
-        render json: { error: error.message, checkout_rejected_before_intent: action_name == 'create' && @checkout_intent.nil? }, status: :unprocessable_entity
+        render json: { error: error.message, checkout_rejected_before_intent: error.is_a?(Payments::CheckoutRejected) }, status: :unprocessable_entity
       end
 
       def unavailable(*)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_080000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_080100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -172,6 +172,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_080000) do
     t.index ["event_date"], name: "index_catering_inquiries_on_event_date"
     t.index ["responded_by_id"], name: "index_catering_inquiries_on_responded_by_id"
     t.index ["status"], name: "index_catering_inquiries_on_status"
+  end
+
+  create_table "checkout_requests", force: :cascade do |t|
+    t.string "caller_idempotency_key", null: false
+    t.uuid "checkout_session_id"
+    t.datetime "created_at", null: false
+    t.string "outcome", null: false
+    t.string "owner_key", null: false
+    t.string "rejection_message"
+    t.string "request_digest", null: false
+    t.datetime "updated_at", null: false
+    t.index ["checkout_session_id"], name: "index_checkout_requests_on_checkout_session_id"
+    t.index ["owner_key", "caller_idempotency_key"], name: "unique_checkout_decision", unique: true
+    t.check_constraint "outcome::text = 'resolving'::text AND checkout_session_id IS NULL AND rejection_message IS NULL OR outcome::text = 'accepted'::text AND checkout_session_id IS NOT NULL AND rejection_message IS NULL OR outcome::text = 'rejected'::text AND checkout_session_id IS NULL AND rejection_message IS NOT NULL", name: "checkout_decision_shape"
   end
 
   create_table "checkout_sessions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1074,6 +1088,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_080000) do
   add_foreign_key "cart_items", "product_variants"
   add_foreign_key "cart_items", "users"
   add_foreign_key "catering_inquiries", "users", column: "responded_by_id"
+  add_foreign_key "checkout_requests", "checkout_sessions"
   add_foreign_key "checkout_sessions", "locations"
   add_foreign_key "checkout_sessions", "orders"
   add_foreign_key "checkout_sessions", "payment_identities"

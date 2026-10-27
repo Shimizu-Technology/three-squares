@@ -18,14 +18,14 @@ module Payments
         if rows.empty? && !report.dig(:metadata, :parse_error) && /\A0+\z/.match?(report.dig(:metadata, :express_response_code).to_s)
           return unknown.call("awaiting_card", collection_available: true)
         end
-        return unknown.call("incomplete_query", financial_ambiguity: rows.any?) unless report[:complete] && !report.dig(:metadata, :parse_error)
+        return unknown.call("incomplete_query", financial_ambiguity: rows.any? || report.dig(:metadata, :financial_ambiguity)) unless report[:complete] && !report.dig(:metadata, :parse_error)
         captures = []
         rows.each do |row|
           facts = row.fetch(:metadata, {})
           credentials = configuration.credentials
           unless row[:reference_number] == attempt.reference_number.to_s && facts[:account_id] == credentials["AccountID"] && facts[:acceptor_id] == credentials["AcceptorID"] &&
               facts[:terminal_id] == configuration.terminal_profile.dig("Terminal", "TerminalID") && facts[:transaction_type] == "CreditCardSale" && row[:raw_id].present?
-            raise Payments::BindingError, "Worldpay query does not match the original intent"
+            return unknown.call("query_binding_mismatch", financial_ambiguity: true)
           end
           # A definitive declined/expired row has no financial approval. HPP
           # permits another card entry under the SAME setup; inspect every row.
@@ -43,7 +43,7 @@ module Payments
         return unknown.call("multiple_financial_transactions", financial_ambiguity: true) unless captures.one?
         row = captures.first
         if attempt.raw_provider_id.present? && attempt.raw_provider_id != row[:raw_id]
-          raise Payments::BindingError, "Worldpay original charge changed"
+          return unknown.call("query_original_charge_changed", financial_ambiguity: true)
         end
         Result.new(status: "captured", identity_id: attempt.payment_identity_id, raw_id: row[:raw_id],
           requested_cents: attempt.requested_cents, approved_cents: attempt.requested_cents, captured_cents: attempt.requested_cents,

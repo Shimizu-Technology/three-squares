@@ -67,7 +67,7 @@ remain in force.
    with a sale. The common finalizer owns fulfillment exactly once.
 5. Back/reload/no return uses the saved session and worker recovery. A lost
    creation response replays its original request key, without collecting again.
-   Switching accounts pauses that recovery until the original owner returns. Invalid supplied authentication is rejected before intent creation. An authoritative pre-intent rejection returns the browser to editable review; authentication, conflict and uncertain failures retain the original request.
+   Switching accounts pauses that recovery until the original owner returns. Invalid supplied authentication is rejected before intent creation. A durable CheckoutRequest decision serializes owner/key lookup, eligibility and intent creation. Rejected decisions survive the order savepoint rollback and permanently fence the abandoned key, including earlier overlapping requests. Only that committed rejection permits editable review and a fresh key; authentication, conflict and uncertain failures retain the original request. No contact/cart payload is stored in the decision ledger, only its digest and outcome.
 
 Legacy HPP setup lasts at most ten minutes. Expiry removes the collection URL;
 it does not prove cancellation. A lost setup response cannot safely create a
@@ -80,7 +80,7 @@ cannot release an unknown financial claim.
 Empty, capped, malformed or ambiguous queries remain unknown. An authenticated empty waiting-card query or definitive decline preserves the same hosted page until its ten-minute expiry; partial or ambiguous financial evidence blocks collection. Full paid proof
 requires the original setup query plus exactly one eligible captured sale and matching reference, account, acceptor,
 terminal, sale type, exact amount, approval and eligible transaction status.
-Other rows must be definitively non-financial declines. Observed financial ambiguity is recorded durably and cannot be cleared by later empty, declined or single-approval queries; the finalizer rechecks that quarantine under its consumption lock. Explicit investigated resolution is required. Communications failures without financial evidence still permit query recovery; they never prove cancellation. No-PAN reversal,
+Other rows must be definitively non-financial declines. Observed financial ambiguity is recorded durably and cannot be cleared by later empty, declined or single-approval queries; the finalizer rechecks that quarantine under its consumption lock. Binding failures and malformed later rows retain bounded scrubbed ambiguity observations too; credential echoes are discarded. Explicit investigated resolution is required. Communications failures without financial evidence still permit query recovery; they never prove cancellation. No-PAN reversal,
 refund/void sequencing, token usage, reporting lag and funding import formats
 need assigned-contract fixtures before enabling their real financial operations.
 Generic XML ports are not authority to send those operations.
