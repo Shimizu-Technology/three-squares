@@ -159,6 +159,7 @@ export default function AdminProductsPage() {
 
   const handleImport = async () => {
     if (!importFile) return;
+    importDialog.current?.focus();
     setIsImporting(true);
     setImportResult(null);
     setImportError(null);
