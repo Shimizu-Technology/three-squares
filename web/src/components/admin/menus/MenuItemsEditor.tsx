@@ -12,7 +12,7 @@ export default function MenuItemsEditor({ products, selectedIds, onChange, disab
     <h3 id="menu-items-title" className="text-xl font-semibold text-gray-900">Menu items</h3>
     <p className="text-sm text-gray-700">Choose items, then set their order. Saving this menu does not publish a draft item or change its pickup locations. Prices below are base prices; location prices still apply.</p>
     <label className="block space-y-1"><span className="font-medium text-gray-800">Find menu items</span>
-      <input type="search" value={search} onChange={event => setSearch(event.target.value)} disabled={disabled} className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" placeholder="Search meals, boxes or flavors" /></label>
+      <input type="search" onKeyDown={event => { if (event.key === 'Enter') event.preventDefault(); }} value={search} onChange={event => setSearch(event.target.value)} disabled={disabled} className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" placeholder="Search meals, boxes or flavors" /></label>
     <div className="max-h-64 overflow-y-auto rounded-lg border border-gray-200 overscroll-contain">
       {choices.length === 0 && <p className="p-4 text-gray-700">No matching items. Try another name.</p>}
       {choices.map(product => <label key={product.id} className="flex min-h-12 cursor-pointer items-start gap-3 border-b border-gray-100 p-3 last:border-b-0">

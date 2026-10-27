@@ -32,7 +32,11 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await dialog.getByRole('button', { name: 'Menu items', exact: true }).click();
     await expect(dialog.getByText('Archived item — unavailable to customers. Remove it or restore it in Products.', { exact: true })).toBeVisible();
     await dialog.getByRole('button', { name: 'Remove Archived lunch from menu', exact: true }).click();
-    await dialog.getByRole('searchbox', { name: 'Find menu items', exact: true }).fill('coconut');
+    const search = dialog.getByRole('searchbox', { name: 'Find menu items', exact: true });
+    await search.fill('coconut');
+    await search.press('Enter');
+    await expect(dialog).toBeVisible();
+    expect(payloads).toEqual([]);
     await dialog.getByRole('checkbox', { name: `Include ${second.name}`, exact: true }).check();
     await dialog.getByRole('button', { name: `Move ${second.name} up`, exact: true }).click();
     await dialog.getByRole('button', { name: 'Staff preview', exact: true }).click();

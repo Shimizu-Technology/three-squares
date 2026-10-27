@@ -65,3 +65,12 @@ test('saving disables every mutation and search while preserving visible selecti
   const { nodes } = render({ disabled: true });
   assert.ok(nodes.filter(node => node.type === 'input' || node.type === 'button').every(node => node.props.disabled));
 });
+
+
+test('Enter in item search never implicitly submits the enclosing menu form', () => {
+  const input = render().nodes.find(node => node.type === 'input' && node.props.type === 'search');
+  let prevented = false;
+  input.props.onKeyDown({ key: 'Enter', preventDefault() { prevented = true; } });
+  assert.equal(prevented, true);
+  input.props.onKeyDown({ key: 'a', preventDefault() { assert.fail('normal typing must remain native'); } });
+});
