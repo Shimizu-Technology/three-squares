@@ -1,11 +1,12 @@
 module Api
   module V1
     class CollectionsController < ApplicationController
+      before_action :set_menu_time
       before_action :set_collection, only: [ :show ]
 
       # GET /api/v1/collections
       def index
-        @collections = Collection.published.for_enabled_storefronts
+        @collections = Collection.visible_at(@menu_time).for_enabled_storefronts
                                  .includes(:products)
 
         # Search by name or description
@@ -42,7 +43,7 @@ module Api
         page = params[:page]&.to_i || 1
         per_page = [ params[:per_page]&.to_i || 12, 50 ].min
 
-        products = StorefrontEligibility.scope(@collection.products.published.active)
+        products = orderable_products(@collection)
                              .includes(:product_variants, :product_images)
                              .order(featured: :desc, created_at: :desc)
 
@@ -52,6 +53,9 @@ module Api
             .where(product_locations: { location_id: params[:location_id].to_i, available: true })
             .distinct
         end
+
+        product_types = products.except(:includes, :order).distinct.pluck(:product_type)
+                                .compact.reject(&:blank?).sort
 
         # Apply filters if provided
         products = products.where(product_type: params[:product_type]) if params[:product_type].present?
@@ -72,18 +76,29 @@ module Api
           meta: {
             page: page,
             per_page: per_page,
-            total: total_count
+            total: total_count,
+            product_types: product_types
           }
         }
       end
 
       private
 
+      def set_menu_time
+        @menu_time = Time.current
+      end
+
+      def orderable_products(collection)
+        return collection.products.none unless collection.ordering_available?(at: @menu_time)
+
+        MenuEligibility.scope(StorefrontEligibility.scope(collection.products.published.active), at: @menu_time)
+      end
+
       def set_collection
-        @collection = Collection.published.for_enabled_storefronts
+        @collection = Collection.visible_at(@menu_time).for_enabled_storefronts
                                 .includes(:products)
                                 .find_by(id: params[:id]) ||
-                      Collection.published.for_enabled_storefronts
+                      Collection.visible_at(@menu_time).for_enabled_storefronts
                                 .includes(:products)
                                 .find_by(slug: params[:id])
 
@@ -92,7 +107,7 @@ module Api
 
       def serialize_collection(collection)
         # Get first product's primary image as thumbnail
-        visible_products = StorefrontEligibility.scope(collection.products.published.active)
+        visible_products = orderable_products(collection)
         first_product = visible_products.includes(:product_images).first
         thumbnail_url = first_product&.primary_image&.signed_url
 
@@ -104,6 +119,14 @@ module Api
           description: collection.description,
           image_url: collection.image_url,
           featured: collection.featured,
+          is_featured: collection.featured,
+          collection_type: collection.collection_type,
+          starts_at: collection.starts_at&.in_time_zone&.iso8601,
+          ends_at: collection.ends_at&.in_time_zone&.iso8601,
+          auto_hide: collection.auto_hide,
+          banner_text: collection.banner_text,
+          available: collection.ordering_available?(at: @menu_time),
+          availability_status: collection.availability_status(at: @menu_time),
           product_count: visible_products.count,
           thumbnail_url: thumbnail_url
         }

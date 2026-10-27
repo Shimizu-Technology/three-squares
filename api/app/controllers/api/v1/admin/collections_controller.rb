@@ -55,20 +55,31 @@ module Api
         end
 
         def collection_params
-          params.require(:collection).permit(
+          attributes = params.require(:collection).permit(
             :name,
             :slug,
             :description,
             :image_url,
             :published,
             :featured,
+            :is_featured,
+            :collection_type,
+            :starts_at,
+            :ends_at,
+            :auto_hide,
+            :banner_text,
             :sort_order,
             :meta_title,
             :meta_description
           )
+          # Both API names control the existing featured flag, never two controls.
+          attributes[:featured] = attributes[:is_featured] if !attributes.key?(:featured) && attributes.key?(:is_featured)
+          attributes.delete(:is_featured)
+          attributes
         end
 
         def serialize_collection(collection)
+          at = Time.current
           {
             id: collection.id,
             name: collection.name,
@@ -77,6 +88,14 @@ module Api
             image_url: collection.image_url,
             published: collection.published,
             featured: collection.featured,
+            is_featured: collection.featured,
+            collection_type: collection.collection_type,
+            starts_at: collection.starts_at&.in_time_zone&.iso8601,
+            ends_at: collection.ends_at&.in_time_zone&.iso8601,
+            auto_hide: collection.auto_hide,
+            banner_text: collection.banner_text,
+            available: collection.ordering_available?(at: at),
+            availability_status: collection.availability_status(at: at),
             sort_order: collection.sort_order,
             product_count: collection.products.count,
             meta_title: collection.meta_title,
