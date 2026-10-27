@@ -12,7 +12,8 @@ module Api
               slug: location.slug,
               address: location.address,
               phone: location.phone,
-              hours_json: location.hours_json
+              hours_json: location.normalized_hours,
+              accepting_orders_now: location.accepting_orders_now?
             }
           end
         }

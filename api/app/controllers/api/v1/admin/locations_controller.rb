@@ -56,7 +56,7 @@ module Api
             address: location.address,
             phone: location.phone,
             active: location.active,
-            hours_json: location.hours_json,
+            hours_json: location.normalized_hours,
             admin_sms_phones: location.admin_sms_phones,
             admin_email: location.admin_email
           }

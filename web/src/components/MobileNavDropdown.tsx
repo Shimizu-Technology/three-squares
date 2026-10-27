@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { collectionsApi, type Collection } from '../services/api';
 import { useCartStore } from '../store/cartStore';
 import useAppConfig from '../hooks/useAppConfig';
+import { isStorefrontEnabled } from '../utils/storefronts';
 
 interface MobileNavDropdownProps {
   onItemClick: () => void;
@@ -16,9 +17,9 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
   const cart = useCartStore((state) => state.cart);
   const config = useAppConfig();
 
-  const showThreeSquares = config ? config.enable_storefront_three_squares !== false : false;
-  const showLatteStone = config ? config.enable_storefront_latte_stone !== false : false;
-  const showCatering = config ? config.enable_storefront_catering !== false : false;
+  const showThreeSquares = isStorefrontEnabled(config, 'three_squares');
+  const showLatteStone = isStorefrontEnabled(config, 'latte_stone');
+  const showCatering = isStorefrontEnabled(config, 'catering');
   const storefrontCount = [showThreeSquares, showLatteStone, showCatering].filter(Boolean).length;
 
   // Fetch collections on mount

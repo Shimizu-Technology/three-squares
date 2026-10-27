@@ -881,7 +881,7 @@ function GeneralSettingsTab({
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">Storefront navigation</h2>
-          <p className="text-sm text-gray-500 mt-1">Show storefronts in the homepage chooser and Shop menus. Existing menu URLs and information pages remain available.</p>
+          <p className="text-sm text-gray-500 mt-1">Enable a storefront to show its menu and allow customers to browse its products. Disabled storefront links redirect to the available menu. Cookies stay off for launch.</p>
         </div>
         <div className="p-6 space-y-1">
           {([
@@ -896,7 +896,7 @@ function GeneralSettingsTab({
               </div>
               <button
                 type="button"
-                aria-label={`Show ${label} in storefront navigation`}
+                aria-label={`Enable ${label} storefront`}
                 aria-pressed={settings[field]}
                 onClick={() => onToggleStorefront(field)}
                 disabled={saving}

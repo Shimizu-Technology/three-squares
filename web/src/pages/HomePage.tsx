@@ -7,6 +7,7 @@ import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 import { homepageApi, type HomepageSection } from '../services/api';
 import useAppConfig from '../hooks/useAppConfig';
+import { getStorefrontEnabledMap } from '../utils/storefronts';
 
 // Strip emoji characters from text (replace with empty string)
 const stripEmoji = (text: string): string =>
@@ -98,11 +99,7 @@ export default function HomePage() {
 
   const storefrontCards = useMemo(() => {
     if (!config) return [];
-    const enableMap: Record<string, boolean | undefined> = {
-      three_squares: config.enable_storefront_three_squares,
-      latte_stone: config.enable_storefront_latte_stone,
-      catering: config.enable_storefront_catering,
-    };
+    const enableMap: Record<string, boolean> = getStorefrontEnabledMap(config);
     return allStorefrontCards.filter((card) => enableMap[card.key] !== false);
   }, [config]);
 

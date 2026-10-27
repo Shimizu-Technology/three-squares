@@ -1,23 +1,65 @@
-import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import type { Product } from '../services/api';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import type { Collection, Product } from '../services/api';
 import { productsApi, collectionsApi, locationsApi } from '../services/api';
 import { useLocationStore } from '../store/locationStore';
 import ProductCard from '../components/ProductCard';
 import FadeIn from '../components/animations/FadeIn';
 import { PageHeaderSkeleton, ProductGridSkeleton } from '../components/Skeleton';
-
-interface Collection {
-  id: number;
-  name: string;
-  slug: string;
-}
+import useAppConfig from '../hooks/useAppConfig';
+import { STOREFRONTS, isStorefrontEnabled, type StorefrontKey } from '../utils/storefronts';
 
 interface PickupLocation {
   id: number;
   name: string;
   slug: string;
 }
+
+const storefrontThemes: Partial<Record<StorefrontKey, {
+  image: string;
+  surfaceClass: string;
+  badgeClass: string;
+  accentClass: string;
+  eyebrow: string;
+  title: string;
+  subtitle: string;
+  primaryAction?: { label: string; to: string };
+  secondaryAction?: { label: string; to: string };
+}>> = {
+  three_squares: {
+    image: '/images/plated1.jpg',
+    surfaceClass: 'bg-white',
+    badgeClass: 'bg-warm-100 text-warm-700 border border-warm-200',
+    accentClass: 'text-tsPrimary',
+    eyebrow: 'Three Squares',
+    title: 'Three Squares Menu',
+    subtitle: 'Island comfort food, local favorites, and daily essentials for pickup.',
+    primaryAction: { label: 'Find a Location', to: '/locations' },
+    secondaryAction: { label: 'About Three Squares', to: '/about' },
+  },
+  latte_stone: {
+    image: '/images/IMG-4158.jpg',
+    surfaceClass: 'bg-white',
+    badgeClass: 'bg-tsPrimary/8 text-tsPrimary border border-tsPrimary/15',
+    accentClass: 'text-tsPrimary',
+    eyebrow: 'Latte Stone Cookies',
+    title: 'Latte Stone Cookie Shop',
+    subtitle: 'Cookie boxes, gifting assortments, and small-batch favorites for pickup or shipping.',
+    primaryAction: { label: 'Browse Gift Boxes', to: '/products?business_line=latte_stone&collection=cookie-boxes' },
+    secondaryAction: { label: 'Shipping Info', to: '/shipping' },
+  },
+  catering: {
+    image: '/images/Cocktail_Stations_-_Assorted_Poppers.jpg',
+    surfaceClass: 'bg-white',
+    badgeClass: 'bg-tsGold/15 text-warm-800 border border-tsGold/30',
+    accentClass: 'text-tsPrimary',
+    eyebrow: 'Catering',
+    title: 'Catering Menu',
+    subtitle: 'Party trays, bentos, and event-ready packages for office lunches, fiestas, and large events.',
+    primaryAction: { label: 'Request a Quote', to: '/catering?inquiry=true' },
+    secondaryAction: { label: 'Back to Catering Overview', to: '/catering' },
+  },
+};
 
 export default function ProductsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -38,25 +80,48 @@ export default function ProductsPage() {
   const collection = searchParams.get('collection') || '';
   const productType = searchParams.get('type') || '';
   const sort = searchParams.get('sort') || '';
+  const config = useAppConfig();
   const { selectedLocation } = useLocationStore();
   const locationId = searchParams.get('location_id') || (selectedLocation?.id ? String(selectedLocation.id) : '');
   const businessLine = searchParams.get('business_line') || '';
+  const requestedBusinessLine = STOREFRONTS.some((storefront) => storefront.key === businessLine)
+    ? businessLine as StorefrontKey
+    : '';
+  const enabledStorefronts = STOREFRONTS.filter((storefront) => isStorefrontEnabled(config, storefront.key));
+  const enabledStorefrontValues = new Set(enabledStorefronts.map((storefront) => storefront.key));
+  const activeBusinessLine =
+    config === undefined
+      ? requestedBusinessLine
+      : requestedBusinessLine && enabledStorefrontValues.has(requestedBusinessLine)
+        ? requestedBusinessLine
+        : '';
+  const storefrontTheme = activeBusinessLine
+    ? storefrontThemes[activeBusinessLine as StorefrontKey] ?? null
+    : null;
   const businessLineContent = (() => {
-    if (businessLine === 'three_squares') {
+    if (storefrontTheme) {
+      return {
+        eyebrow: storefrontTheme.eyebrow,
+        title: storefrontTheme.title,
+        subtitle: storefrontTheme.subtitle,
+      };
+    }
+
+    if (activeBusinessLine === 'three_squares') {
       return {
         eyebrow: 'Three Squares',
         title: 'Three Squares Menu',
         subtitle: 'Island comfort food, local favorites, and daily essentials for pickup.',
       };
     }
-    if (businessLine === 'latte_stone') {
+    if (activeBusinessLine === 'latte_stone') {
       return {
         eyebrow: 'Latte Stone Cookies',
         title: 'Latte Stone Cookie Shop',
         subtitle: 'Cookie boxes and gifting picks with shipping and pickup availability.',
       };
     }
-    if (businessLine === 'catering') {
+    if (activeBusinessLine === 'catering') {
       return {
         eyebrow: 'Catering',
         title: 'Catering Menu',
@@ -67,18 +132,61 @@ export default function ProductsPage() {
     return {
       eyebrow: 'All Businesses',
       title: 'Browse Menu',
-      subtitle: 'Guam comfort food favorites, catering trays, and island-made specialties.',
+      subtitle: 'Guam comfort food favorites and island-made specialties.',
     };
   })();
+  const visibleCollections = useMemo(() => {
+    if (!activeBusinessLine) {
+      return collections;
+    }
+
+    return collections.filter((item) => item.business_line === activeBusinessLine);
+  }, [activeBusinessLine, collections]);
+  const availableProductTypes = useMemo(() => {
+    const optionSet = new Set(
+      products
+        .map((product) => product.product_type)
+        .filter((value): value is string => Boolean(value) && value !== 'market_price')
+    );
+
+    if (productType) {
+      optionSet.add(productType);
+    }
+
+    return Array.from(optionSet).sort((a, b) => a.localeCompare(b));
+  }, [productType, products]);
+  const businessLineOptions = [
+    { label: 'All', value: '' },
+    ...enabledStorefronts.map((storefront) => ({
+      label: storefront.label,
+      value: storefront.key,
+    })),
+  ];
 
   useEffect(() => {
-    fetchCollections();
-    fetchLocations();
-  }, []);
+    if (config === undefined || !businessLine || activeBusinessLine) {
+      return;
+    }
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.delete('business_line');
+    setSearchParams(nextSearchParams, { replace: true });
+  }, [activeBusinessLine, businessLine, config, searchParams, setSearchParams]);
 
   useEffect(() => {
-    fetchProducts();
-  }, [page, search, collection, productType, sort, locationId, businessLine]);
+    if (!collection || collections.length === 0) {
+      return;
+    }
+
+    const collectionIsVisible = visibleCollections.some((item) => item.slug === collection);
+    if (collectionIsVisible) {
+      return;
+    }
+
+    const nextSearchParams = new URLSearchParams(searchParams);
+    nextSearchParams.delete('collection');
+    setSearchParams(nextSearchParams, { replace: true });
+  }, [collection, collections.length, searchParams, setSearchParams, visibleCollections]);
 
   useEffect(() => {
     if (!didScrollRef.current) {
@@ -88,7 +196,7 @@ export default function ProductsPage() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [page]);
 
-  const fetchCollections = async () => {
+  const fetchCollections = useCallback(async () => {
     try {
       const response = await collectionsApi.getCollections();
       // Only show collections with 5+ products
@@ -97,18 +205,18 @@ export default function ProductsPage() {
     } catch (err) {
       console.error('Failed to load collections:', err);
     }
-  };
+  }, []);
 
-  const fetchLocations = async () => {
+  const fetchLocations = useCallback(async () => {
     try {
       const response = await locationsApi.getLocations();
       setLocations(response.locations || []);
     } catch (err) {
       console.error('Failed to load locations:', err);
     }
-  };
+  }, []);
 
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       const response = await productsApi.getProducts({
@@ -119,7 +227,7 @@ export default function ProductsPage() {
         product_type: productType || undefined,
         sort: sort || undefined,
         location_id: locationId ? Number(locationId) : undefined,
-        business_line: businessLine || undefined,
+        business_line: activeBusinessLine || undefined,
       });
       setProducts(response.products);
       setMeta(response.meta);
@@ -130,7 +238,16 @@ export default function ProductsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeBusinessLine, collection, locationId, page, productType, search, sort]);
+
+  useEffect(() => {
+    void fetchCollections();
+    void fetchLocations();
+  }, [config, fetchCollections, fetchLocations]);
+
+  useEffect(() => {
+    void fetchProducts();
+  }, [fetchProducts]);
 
   const handleSearch = (value: string) => {
     const params: Record<string, string> = {};
@@ -139,7 +256,7 @@ export default function ProductsPage() {
     if (productType) params.type = productType;
     if (sort) params.sort = sort;
     if (locationId) params.location_id = locationId;
-    if (businessLine) params.business_line = businessLine;
+    if (activeBusinessLine) params.business_line = activeBusinessLine;
     setSearchParams(params);
   };
 
@@ -151,25 +268,25 @@ export default function ProductsPage() {
       if (productType) params.type = productType;
       if (sort) params.sort = sort;
       if (locationId) params.location_id = locationId;
-      if (businessLine) params.business_line = businessLine;
+      if (activeBusinessLine) params.business_line = activeBusinessLine;
     } else if (filterType === 'type') {
       if (collection) params.collection = collection;
       if (value) params.type = value;
       if (sort) params.sort = sort;
       if (locationId) params.location_id = locationId;
-      if (businessLine) params.business_line = businessLine;
+      if (activeBusinessLine) params.business_line = activeBusinessLine;
     } else if (filterType === 'sort') {
       if (collection) params.collection = collection;
       if (productType) params.type = productType;
       if (value) params.sort = value;
       if (locationId) params.location_id = locationId;
-      if (businessLine) params.business_line = businessLine;
+      if (activeBusinessLine) params.business_line = activeBusinessLine;
     } else if (filterType === 'location_id') {
       if (collection) params.collection = collection;
       if (productType) params.type = productType;
       if (sort) params.sort = sort;
       if (value) params.location_id = value;
-      if (businessLine) params.business_line = businessLine;
+      if (activeBusinessLine) params.business_line = activeBusinessLine;
     } else if (filterType === 'business_line') {
       if (collection) params.collection = collection;
       if (productType) params.type = productType;
@@ -191,7 +308,7 @@ export default function ProductsPage() {
     if (productType) params.type = productType;
     if (sort) params.sort = sort;
     if (locationId) params.location_id = locationId;
-    if (businessLine) params.business_line = businessLine;
+    if (activeBusinessLine) params.business_line = activeBusinessLine;
     setSearchParams(params);
   };
 
@@ -251,23 +368,88 @@ export default function ProductsPage() {
   return (
     <div className="min-h-screen bg-warm-50">
       {/* Header */}
-      <div className="bg-warm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
-          <FadeIn>
-            <div className="text-center">
-              <p className="text-xs font-semibold uppercase tracking-widest text-warm-500 mb-2">
-                {businessLineContent.eyebrow}
-              </p>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-warm-900 mb-3 tracking-tight">
-                {businessLineContent.title}
-              </h1>
-              <p className="text-warm-500 text-base sm:text-lg max-w-2xl mx-auto">
-                {businessLineContent.subtitle}
-              </p>
-            </div>
-          </FadeIn>
+      {storefrontTheme ? (
+        <section className={`border-b border-warm-200 ${storefrontTheme.surfaceClass}`}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 lg:py-12">
+            <FadeIn>
+              <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
+                <div>
+                  <p className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold uppercase tracking-[0.22em] ${storefrontTheme.badgeClass}`}>
+                    {businessLineContent.eyebrow}
+                  </p>
+                  <h1 className="mt-4 text-3xl sm:text-4xl lg:text-[2.7rem] font-bold tracking-tight text-warm-900">
+                    {businessLineContent.title}
+                  </h1>
+                  <p className="mt-3 text-base sm:text-lg max-w-2xl text-warm-600 leading-relaxed">
+                    {businessLineContent.subtitle}
+                  </p>
+
+                  <div className="mt-6 flex flex-col sm:flex-row gap-3">
+                    {storefrontTheme.primaryAction && (
+                      <Link
+                        to={storefrontTheme.primaryAction.to}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl bg-tsPrimary px-6 py-3 font-semibold text-white hover:bg-primary-dark transition"
+                      >
+                        {storefrontTheme.primaryAction.label}
+                      </Link>
+                    )}
+                    {storefrontTheme.secondaryAction && (
+                      <Link
+                        to={storefrontTheme.secondaryAction.to}
+                        className="inline-flex items-center justify-center gap-2 rounded-xl border border-warm-200 bg-white px-6 py-3 font-semibold text-warm-700 hover:bg-warm-50 transition"
+                      >
+                        {storefrontTheme.secondaryAction.label}
+                      </Link>
+                    )}
+                  </div>
+
+                  <div className="mt-5 flex flex-wrap items-center gap-3 text-sm text-warm-500">
+                    <span className="inline-flex items-center gap-2 rounded-full bg-warm-100 px-3 py-1.5">
+                      <span className={`font-semibold ${storefrontTheme.accentClass}`}>{meta.total}</span>
+                      items available
+                    </span>
+                    {visibleCollections.length > 0 && (
+                      <span className="inline-flex items-center gap-2 rounded-full bg-warm-100 px-3 py-1.5">
+                        <span className={`font-semibold ${storefrontTheme.accentClass}`}>{visibleCollections.length}</span>
+                        collections
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="hidden lg:block">
+                  <div className="overflow-hidden rounded-2xl border border-warm-200 shadow-sm bg-warm-100">
+                    <img
+                      src={storefrontTheme.image}
+                      alt=""
+                      className="h-52 w-full object-cover"
+                      aria-hidden="true"
+                    />
+                  </div>
+                </div>
+              </div>
+            </FadeIn>
+          </div>
+        </section>
+      ) : (
+        <div className="bg-warm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-14">
+            <FadeIn>
+              <div className="text-center">
+                <p className="text-xs font-semibold uppercase tracking-widest text-warm-500 mb-2">
+                  {businessLineContent.eyebrow}
+                </p>
+                <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-warm-900 mb-3 tracking-tight">
+                  {businessLineContent.title}
+                </h1>
+                <p className="text-warm-500 text-base sm:text-lg max-w-2xl mx-auto">
+                  {businessLineContent.subtitle}
+                </p>
+              </div>
+            </FadeIn>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
         {/* Search and Filter Bar */}
@@ -276,18 +458,13 @@ export default function ProductsPage() {
             <p className="text-xs font-semibold text-warm-500 uppercase tracking-wider mb-2">Shop by Business</p>
             <div className="overflow-x-auto pb-1 -mx-1 px-1 sm:overflow-visible sm:pb-0 sm:mx-0 sm:px-0">
               <div className="flex w-max gap-2 sm:w-auto sm:flex-wrap">
-              {[
-                { label: 'All', value: '' },
-                { label: 'Three Squares', value: 'three_squares' },
-                { label: 'Latte Stone Cookies', value: 'latte_stone' },
-                { label: 'Catering', value: 'catering' },
-              ].map((option) => (
+              {businessLineOptions.map((option) => (
                 <button
                   key={option.label}
                   type="button"
                   onClick={() => handleFilterChange('business_line', option.value)}
                   className={`shrink-0 px-3 py-1.5 rounded-full text-sm border transition ${
-                    (businessLine || '') === option.value
+                    activeBusinessLine === option.value
                       ? 'bg-tsPrimary text-white border-tsPrimary'
                       : 'bg-warm-50 text-warm-700 border-warm-200 hover:border-warm-300'
                   }`}
@@ -331,54 +508,56 @@ export default function ProductsPage() {
             <div>
               <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Business</label>
               <select
-                value={businessLine}
+                value={activeBusinessLine}
                 onChange={(e) => handleFilterChange('business_line', e.target.value)}
                 className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
               >
                 <option value="">All Businesses</option>
-                <option value="three_squares">Three Squares</option>
-                <option value="latte_stone">Latte Stone Cookies</option>
-                <option value="catering">Catering</option>
-              </select>
-            </div>
-
-            {/* Collection Filter */}
-            <div>
-              <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Collection</label>
-              <select
-                value={collection}
-                onChange={(e) => handleFilterChange('collection', e.target.value)}
-                className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
-              >
-                <option value="">All Collections</option>
-                {collections.map((c) => (
-                  <option key={c.id} value={c.slug}>
-                    {c.name}
+                {enabledStorefronts.map((storefront) => (
+                  <option key={storefront.key} value={storefront.key}>
+                    {storefront.label}
                   </option>
                 ))}
               </select>
             </div>
 
+            {/* Collection Filter */}
+            {visibleCollections.length > 0 && (
+              <div>
+                <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Collection</label>
+                <select
+                  value={collection}
+                  onChange={(e) => handleFilterChange('collection', e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
+                >
+                  <option value="">All Collections</option>
+                  {visibleCollections.map((c) => (
+                    <option key={c.id} value={c.slug}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Product Type Filter */}
-            <div>
-              <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Product Type</label>
-              <select
-                value={productType}
-                onChange={(e) => handleFilterChange('type', e.target.value)}
-                className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
-              >
-                <option value="">All Types</option>
-                <option value="T-Shirt">T-Shirt</option>
-                <option value="Long Sleeve">Long Sleeve</option>
-                <option value="Polo">Polo</option>
-                <option value="Button Up">Button Up</option>
-                <option value="Shorts">Shorts</option>
-                <option value="Tank Top">Tank Top</option>
-                <option value="Baseball Cap">Baseball Cap</option>
-                <option value="Snapback">Snapback</option>
-                <option value="Sticker">Sticker</option>
-              </select>
-            </div>
+            {availableProductTypes.length > 0 && (
+              <div>
+                <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Product Type</label>
+                <select
+                  value={productType}
+                  onChange={(e) => handleFilterChange('type', e.target.value)}
+                  className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
+                >
+                  <option value="">All Types</option>
+                  {availableProductTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Sort Options */}
             <div>
@@ -448,7 +627,7 @@ export default function ProductsPage() {
               )}
               {collection && (
                 <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
-                  <span className="truncate max-w-[220px] sm:max-w-[280px]">{collections.find(c => c.slug === collection)?.name}</span>
+                  <span className="truncate max-w-[220px] sm:max-w-[280px]">{visibleCollections.find(c => c.slug === collection)?.name || collections.find(c => c.slug === collection)?.name}</span>
                   <button
                     onClick={() => handleFilterChange('collection', '')}
                     className="hover:bg-warm-700 rounded-full p-0.5"
@@ -461,7 +640,9 @@ export default function ProductsPage() {
               )}
               {businessLine && (
                 <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
-                  <span className="truncate max-w-[220px] sm:max-w-[280px]">Business: {businessLine === 'three_squares' ? 'Three Squares' : businessLine === 'latte_stone' ? 'Latte Stone Cookies' : 'Catering'}</span>
+                  <span className="truncate max-w-[220px] sm:max-w-[280px]">
+                    Business: {activeBusinessLine === 'three_squares' ? 'Three Squares' : activeBusinessLine === 'latte_stone' ? 'Latte Stone Cookies' : 'Catering'}
+                  </span>
                   <button
                     onClick={() => handleFilterChange('business_line', '')}
                     className="hover:bg-warm-700 rounded-full p-0.5"
@@ -616,4 +797,3 @@ export default function ProductsPage() {
     </div>
   );
 }
-

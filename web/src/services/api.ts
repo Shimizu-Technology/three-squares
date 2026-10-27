@@ -101,6 +101,7 @@ export interface ProductImage {
 }
 
 export interface Collection {
+  business_line?: 'three_squares' | 'latte_stone' | 'catering';
   id: number;
   name: string;
   slug: string;
@@ -112,6 +113,7 @@ export interface Collection {
 }
 
 export interface Location {
+  accepting_orders_now?: boolean;
   id: number;
   name: string;
   slug: string;
