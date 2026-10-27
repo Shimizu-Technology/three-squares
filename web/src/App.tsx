@@ -1,4 +1,4 @@
-import { Fragment, Suspense, lazy, useState, useEffect } from 'react';
+import { Suspense, lazy, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser, useAuth } from '@clerk/clerk-react';
 import LocationPicker from './components/LocationPicker';
@@ -201,7 +201,6 @@ function AppContent() {
   const routeTransitionKey = isAdminPage ? '/admin' : location.pathname;
   // C-23 / A-28: counter workflows use native scrolling. Public motion is
   // retained here until Track C's motion slice; never instantiate Lenis in admin.
-  const ScrollContainer = isAdminPage ? Fragment : SmoothScroll;
 
   // LocationPicker is only relevant on pages tied to ordering/menu browsing
   const ORDERING_PATHS = ['/', '/products', '/shop', '/collections', '/cart', '/checkout', '/menu', '/pos'];
@@ -211,7 +210,7 @@ function AppContent() {
 
   return (
     <>
-      <ScrollContainer>
+      {!isAdminPage && <SmoothScroll>{null}</SmoothScroll>}
       <ScrollToTop />
       <Toaster 
         position="top-right"
@@ -696,7 +695,7 @@ function AppContent() {
         </footer>
         )}
       </div>
-      </ScrollContainer>
+
     </>
   );
 }
