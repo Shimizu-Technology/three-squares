@@ -1,4 +1,5 @@
 require 'spec_helper'
+require 'tmpdir'
 load File.expand_path('../../bin/demo', __dir__)
 
 RSpec.describe Demo do
@@ -12,6 +13,7 @@ RSpec.describe Demo do
 
   before do
     # Keep checkout discovery independent of the host worktree's .git pointer.
+    allow(Open3).to receive(:capture2).and_call_original
     allow(Open3).to receive(:capture2).with('git', '-C', described_class::ROOT, 'rev-parse', '--path-format=absolute', '--git-common-dir')
       .and_return(["/fictional/.git\n", instance_double(Process::Status, success?: true)])
     # Never read developer keys in specs.
@@ -75,4 +77,45 @@ RSpec.describe Demo do
       'ADMIN_EMAILS' => 'presenter@example.test')
     expect(env.keys).not_to include('STRIPE_SECRET_KEY', 'RESEND_API_KEY')
   end
+  it 'treats an exited but unreaped supervisor as stopped' do
+    Dir.mktmpdir('demo-stop-spec') do |directory|
+      stub_const('Demo::STATE', File.join(directory, 'pids.json'))
+      pid = Process.spawn(RbConfig.ruby, '-e', 'exit 0')
+      launcher = described_class.new(['stop'])
+      deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+      loop do
+        state, = Open3.capture2('ps', '-p', pid.to_s, '-o', 'stat=')
+        break if state.strip.start_with?('Z')
+        raise 'Child did not exit' if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+        sleep 0.01
+      end
+      File.write(Demo::STATE, JSON.generate('supervisor' => { 'pid' => pid, 'started' => launcher.identity(pid) }, 'children' => []))
+      expect { launcher.stop }.to output(/Demo processes stopped/).to_stdout
+      expect(File.exist?(Demo::STATE)).to be(false)
+    ensure
+      Process.waitpid(pid) if pid
+    end
+  end
+
+  it 'reaps an exited child group without signaling a zombie-only group' do
+    launcher = described_class.new(['stop'])
+    pid = Process.spawn(RbConfig.ruby, '-e', 'exit 0', pgroup: true)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+    loop do
+      state, = Open3.capture2('ps', '-p', pid.to_s, '-o', 'stat=')
+      break if state.strip.start_with?('Z')
+      raise 'Child did not exit' if Process.clock_gettime(Process::CLOCK_MONOTONIC) > deadline
+      sleep 0.01
+    end
+    child = { 'pid' => pid, 'started' => launcher.identity(pid), 'label' => 'fixture' }
+    expect { launcher.cleanup([child]) }.not_to raise_error
+    expect(launcher.identity(pid)).to be_nil
+  ensure
+    begin
+      Process.waitpid(pid) if pid
+    rescue Errno::ECHILD
+      nil
+    end
+  end
+
 end

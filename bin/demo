@@ -218,21 +218,43 @@ class Demo
     record['started'] && identity(Integer(record.fetch('pid'))) == record['started']
   end
 
+  def running?(record)
+    return false unless matches?(record)
+    status, = Open3.capture2('ps', '-p', record['pid'].to_s, '-o', 'stat=')
+    !status.strip.empty? && !status.strip.start_with?('Z')
+  end
+
+  def group_running?(pid)
+    output, = Open3.capture2('ps', '-axo', 'pgid=,stat=')
+    output.lines.any? do |line|
+      group, status = line.split
+      group.to_i == pid && status && !status.start_with?('Z')
+    end
+  end
+
+  def signal_group(child, signal)
+    return unless matches?(child) && group_running?(child['pid'])
+    Process.kill(signal, -child['pid'])
+  rescue Errno::ESRCH
+    nil
+  rescue Errno::EPERM
+    # A group may become entirely zombies between inspection and signaling.
+    raise if group_running?(child['pid'])
+  end
+
   def cleanup(children)
-    owned = children.select { |child| matches?(child) && Process.getpgid(child['pid']) == child['pid'] }
-    owned.each { |child| Process.kill('TERM', -child['pid']) rescue Errno::ESRCH }
+    owned = children.select do |child|
+      matches?(child) && Process.getpgid(child['pid']) == child['pid']
+    rescue Errno::ESRCH
+      false
+    end
+    owned.each { |child| signal_group(child, 'TERM') }
     deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 8
-    while owned.any? { |child|
-      state, = Open3.capture2('ps', '-p', child['pid'].to_s, '-o', 'stat=')
-      matches?(child) && !state.strip.start_with?('Z')
-    } && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+    while owned.any? { |child| group_running?(child['pid']) } && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
       sleep 0.1
     end
-    owned.each do |child|
-      Process.kill('KILL', -child['pid']) if matches?(child)
-    rescue Errno::ESRCH
-      nil
-    end
+    # Keep unreaped leaders as identity anchors until all descendants stop.
+    owned.each { |child| signal_group(child, 'KILL') }
     children.each { |child| Process.waitpid(child['pid']) rescue Errno::ECHILD }
   end
 
@@ -243,17 +265,16 @@ class Demo
     end
     state = JSON.parse(File.read(STATE))
     supervisor = state.fetch('supervisor')
-    if matches?(supervisor) && supervisor['pid'] != Process.pid
+    if running?(supervisor) && supervisor['pid'] != Process.pid
       Process.kill('TERM', supervisor['pid'])
       deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 15
-      while matches?(supervisor) && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
+      while running?(supervisor) && Process.clock_gettime(Process::CLOCK_MONOTONIC) < deadline
         sleep 0.1
       end
-      raise 'Demo is still shutting down; inspect tmp/demo logs and retry stop' if matches?(supervisor)
-    else
-      cleanup(state.fetch('children'))
-      FileUtils.rm_f(STATE)
+      raise 'Demo is still shutting down; inspect tmp/demo logs and retry stop' if running?(supervisor)
     end
+    cleanup(state.fetch('children'))
+    FileUtils.rm_f(STATE)
     puts 'Demo processes stopped. Database retained.'
   end
 end
