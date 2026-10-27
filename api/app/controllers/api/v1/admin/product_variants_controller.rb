@@ -411,7 +411,11 @@ module Api
         end
 
         def variant_params
-          source = params[:product_variant].presence || params[:variant].presence
+          source = if defined?(@staff_variant_payload)
+            @staff_variant_payload
+          else
+            params[:product_variant].presence || params[:variant].presence
+          end
           raise ActionController::ParameterMissing, :product_variant unless source
 
           source.permit(

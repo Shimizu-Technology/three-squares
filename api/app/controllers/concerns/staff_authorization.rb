@@ -82,6 +82,9 @@ module StaffAuthorization
 
     # Compatibility with catalog clients sending unchanged fields must not let
     # those values overwrite inventory changed after this authorization read.
+    # Preserve selection even if stripping empties it; .presence fallback must
+    # never switch the handler to a second, unauthorized alias afterward.
+    @staff_variant_payload = attrs if controller_path == "api/v1/admin/product_variants" && %w[create update].include?(action_name)
     keys.each { |key| attrs.delete(key) }
     true
   end

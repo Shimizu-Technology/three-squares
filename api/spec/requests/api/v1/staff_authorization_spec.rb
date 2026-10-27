@@ -296,6 +296,16 @@ RSpec.describe "Staff authorization attack boundaries", type: :request do
       expect(variant.variant_name).to eq("Catalog variant")
     end
 
+    it "retains the authorized variant alias when stripping its unchanged stock empties it" do
+      @actor = manager
+      variant
+      unchanged_operations do
+        request_as(:patch, "/api/v1/admin/products/#{product.id}/variants/#{variant.id}", params: { product_variant: { stock_quantity: 8 }, variant: { stock_quantity: 999 } })
+        expect(response).to have_http_status(:ok)
+      end
+      expect(variant.reload.stock_quantity).to eq(8)
+    end
+
     it "rechecks a restocked variant under lock before a scoped manager deletes it" do
       @actor = manager
       variant.update!(stock_quantity: 0)
