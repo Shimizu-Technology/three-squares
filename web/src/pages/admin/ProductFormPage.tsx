@@ -137,10 +137,13 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
   const [loadingAudits, setLoadingAudits] = useState(false);
   const inventoryModalContentRef = useRef<HTMLDivElement | null>(null);
   const collectionsScrollRef = useRef<HTMLDivElement | null>(null);
+  const shippingDisclosureRef = useRef<HTMLDetailsElement | null>(null);
+  const shippingWeightRef = useRef<HTMLInputElement | null>(null);
+  const [shippingWeightError, setShippingWeightError] = useState('');
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
-    product_type: 'apparel',
+    product_type: 'local',
     vendor: 'Three Squares',
     base_price_cents: 0,
     weight_oz: 0,
@@ -225,8 +228,8 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
       const fresh: ProductFormData = {
         name: product.name || '',
         description: product.description || '',
-        product_type: product.product_type || 'apparel',
-        vendor: product.vendor || 'Three Squares',
+        product_type: product.product_type ?? 'local',
+        vendor: product.vendor ?? 'Three Squares',
         base_price_cents: product.base_price_cents || 0,
         weight_oz: Number(product.weight_oz) || 0,
         published: product.published || false,
@@ -235,7 +238,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
         meta_description: product.meta_description || '',
         inventory_level: product.inventory_level || 'none',
         product_stock_quantity: product.product_stock_quantity ?? undefined,
-        product_low_stock_threshold: product.product_low_stock_threshold || 5,
+        product_low_stock_threshold: product.product_low_stock_threshold ?? 5,
         allow_pickup: product.allow_pickup ?? true,
         allow_shipping: product.allow_shipping ?? false,
         location_ids: product.location_ids || [],
@@ -330,6 +333,14 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
     });
   };
 
+  const showShippingWeightError = () => {
+    const message = 'Shipping weight must be greater than zero.';
+    if (shippingDisclosureRef.current) shippingDisclosureRef.current.open = true;
+    shippingWeightRef.current?.focus({ preventScroll: false });
+    setShippingWeightError(message);
+    toast.error(message);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!draftReady || draftOffer || saving) return;
@@ -338,8 +349,9 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
       toast.error('Product name is required');
       return;
     }
-    if (formData.base_price_cents <= 0) {
-      toast.error('Price must be greater than 0');
+    const allowsZeroPrice = ['market_price', 'quote_only', 'complimentary_with_meal'].includes(formData.product_type);
+    if (!Number.isFinite(formData.base_price_cents) || formData.base_price_cents < 0 || (!allowsZeroPrice && formData.base_price_cents === 0)) {
+      toast.error(allowsZeroPrice ? 'Price must be zero or greater' : 'Price must be greater than 0');
       return;
     }
     if (!formData.allow_pickup && !formData.allow_shipping) {
@@ -348,6 +360,11 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
     }
     if (formData.allow_pickup && formData.location_ids.length === 0) {
       toast.error('Select at least one pickup location.');
+      return;
+    }
+
+    if (formData.allow_shipping && (!Number.isFinite(formData.weight_oz) || formData.weight_oz <= 0)) {
+      showShippingWeightError();
       return;
     }
 
@@ -373,8 +390,8 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
         const saved: ProductFormData = {
           name: updatedProduct.name || '',
           description: updatedProduct.description || '',
-          product_type: updatedProduct.product_type || 'apparel',
-          vendor: updatedProduct.vendor || 'Three Squares',
+          product_type: updatedProduct.product_type ?? 'local',
+          vendor: updatedProduct.vendor ?? 'Three Squares',
           base_price_cents: updatedProduct.base_price_cents || 0,
           weight_oz: Number(updatedProduct.weight_oz) || 0,
           published: updatedProduct.published || false,
@@ -383,7 +400,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
           meta_description: updatedProduct.meta_description || '',
           inventory_level: updatedProduct.inventory_level || 'none',
           product_stock_quantity: updatedProduct.product_stock_quantity ?? undefined,
-          product_low_stock_threshold: updatedProduct.product_low_stock_threshold || 5,
+          product_low_stock_threshold: updatedProduct.product_low_stock_threshold ?? 5,
           allow_pickup: updatedProduct.allow_pickup ?? true,
           allow_shipping: updatedProduct.allow_shipping ?? false,
           location_ids: updatedProduct.location_ids || [],
@@ -508,7 +525,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
           <ArrowLeft className="w-5 h-5 mr-2" />
           Back to Products
         </button>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold text-gray-900">
             {isEditMode ? 'Edit Product' : 'Add New Product'}
           </h1>
@@ -613,7 +630,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
         <fieldset disabled={!draftReady || !!draftOffer || saving} className="space-y-6 min-w-0">
         {/* Basic Information */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Menu item</h2>
           
           <div className="space-y-4">
             {/* Product Name */}
@@ -633,83 +650,27 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
               />
             </div>
 
-            {/* Description */}
+            {/* Price */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                Description
+              <label htmlFor="base_price_cents" className="block text-sm font-medium text-gray-700 mb-1">
+                Price * ($)
               </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
+              <input
+                type="number"
+                id="base_price_cents"
+                name="base_price_cents"
+                value={(formData.base_price_cents / 100).toFixed(2)}
                 onChange={handleChange}
-                rows={4}
+                step="0.01"
+                min="0"
+                required
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
-                placeholder="Describe your product..."
+                placeholder="12.00"
               />
             </div>
 
-            {/* Product Type */}
-            <div>
-              <label htmlFor="product_type" className="block text-sm font-medium text-gray-700 mb-1">
-                Product Type
-              </label>
-              <select
-                id="product_type"
-                name="product_type"
-                value={formData.product_type}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
-              >
-                <option value="apparel">Apparel</option>
-                <option value="accessories">Accessories</option>
-                <option value="hats">Hats</option>
-                <option value="bags">Bags</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            {/* Price & Weight */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="base_price_cents" className="block text-sm font-medium text-gray-700 mb-1">
-                  Base Price * ($)
-                </label>
-                <input
-                  type="number"
-                  id="base_price_cents"
-                  name="base_price_cents"
-                  value={(formData.base_price_cents / 100).toFixed(2)}
-                  onChange={handleChange}
-                  step="0.01"
-                  min="0"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
-                  placeholder="29.99"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="weight_oz" className="block text-sm font-medium text-gray-700 mb-1">
-                  Weight * (oz)
-                </label>
-                <input
-                  type="number"
-                  id="weight_oz"
-                  name="weight_oz"
-                  value={formData.weight_oz}
-                  onChange={handleChange}
-                  step="0.1"
-                  min="0.1"
-                  required
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
-                  placeholder="8.0"
-                />
-                <p className="text-xs text-gray-500 mt-1">Required for shipping calculations</p>
-              </div>
-            </div>
-
-            {/* Visibility Settings */}
+            {/* Availability */}
+            <h3 className="text-sm font-semibold text-gray-900">Store availability</h3>
             <div className="space-y-3 pt-2">
               <div className="flex items-center">
                 <input
@@ -721,7 +682,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                   className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
                 />
                 <label htmlFor="published" className="ml-2 text-sm font-medium text-gray-700">
-                  Published (visible in store)
+                  Published — visible in the store
                 </label>
               </div>
 
@@ -744,9 +705,9 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
 
         {/* Fulfillment & Pickup Locations */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h2 className="text-xl font-semibold text-gray-900 mb-2">Fulfillment</h2>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">Pickup locations &amp; shipping</h2>
           <p className="text-sm text-gray-600 mb-4">
-            Choose whether this product supports pickup, shipping, or both.
+            Choose where customers can pick up this item. Shipping is optional.
           </p>
 
           <div className="space-y-4">
@@ -761,20 +722,6 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
               />
               <label htmlFor="allow_pickup" className="ml-2 text-sm font-medium text-gray-700">
                 Allow Pickup
-              </label>
-            </div>
-
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="allow_shipping"
-                name="allow_shipping"
-                checked={formData.allow_shipping}
-                onChange={handleChange}
-                className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
-              />
-              <label htmlFor="allow_shipping" className="ml-2 text-sm font-medium text-gray-700">
-                Allow Shipping
               </label>
             </div>
 
@@ -803,6 +750,99 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                 )}
               </div>
             )}
+            <details ref={shippingDisclosureRef} open={formData.allow_shipping} className="rounded-lg border border-gray-200 p-4">
+              <summary className="cursor-pointer font-medium text-gray-900">Advanced shipping{formData.allow_shipping ? ' — enabled' : ' — pickup only'}</summary>
+              <div className="mt-4 space-y-4">
+                <div className="flex items-center">
+                  <input
+                    type="checkbox"
+                    id="allow_shipping"
+                    name="allow_shipping"
+                    checked={formData.allow_shipping}
+                    onChange={handleChange}
+                    className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
+                  />
+                  <label htmlFor="allow_shipping" className="ml-2 text-sm font-medium text-gray-700">
+                    Allow Shipping
+                  </label>
+                </div>
+
+                <div>
+                  <label htmlFor="weight_oz" className="block text-sm font-medium text-gray-700 mb-1">
+                    Shipping weight{formData.allow_shipping ? ' *' : ' (optional)'} (oz)
+                  </label>
+                  <input
+                    type="number"
+                    id="weight_oz"
+                    name="weight_oz"
+                    value={formData.weight_oz}
+                    ref={input => {
+                      shippingWeightRef.current = input;
+                      input?.setCustomValidity(formData.allow_shipping && (!Number.isFinite(formData.weight_oz) || formData.weight_oz <= 0)
+                        ? 'Shipping weight must be greater than zero.' : '');
+                    }}
+                    onChange={handleChange}
+                    step="any"
+                    min="0"
+                    required={formData.allow_shipping}
+                    onInvalid={event => { event.preventDefault(); showShippingWeightError(); }}
+                    aria-invalid={!!shippingWeightError && formData.allow_shipping && formData.weight_oz <= 0}
+                    aria-describedby="shipping-weight-help shipping-weight-error"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
+                    placeholder="8.0"
+                  />
+                  {shippingWeightError && formData.allow_shipping && formData.weight_oz <= 0 && <p id="shipping-weight-error" role="alert" className="mt-2 text-sm text-red-800">{shippingWeightError}</p>}
+                  <p id="shipping-weight-help" className="text-xs text-gray-500 mt-1">{formData.allow_shipping ? 'Enter a weight greater than zero. Options without a saved weight inherit this weight; existing option weights are kept.' : 'Pickup-only items do not need a shipping weight. Any saved weight is kept.'}</p>
+                </div>
+              </div>
+            </details>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow p-6">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">Item details</h2>
+          <div className="space-y-4">
+            {/* Description */}
+            <div>
+              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                Description
+              </label>
+              <textarea
+                id="description"
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
+                rows={4}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
+                placeholder="Describe your product..."
+              />
+            </div>
+
+            {/* Product Type */}
+            <div>
+              <label htmlFor="product_type" className="block text-sm font-medium text-gray-700 mb-1">
+                Product Type
+              </label>
+              <select
+                id="product_type"
+                name="product_type"
+                value={formData.product_type}
+                onChange={handleChange}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
+              >
+                <option value="local">Local menu item</option>
+                <option value="shippable">Shippable item (cookies / boxes)</option>
+                <option value="retail">Retail item</option>
+                <option value="market_price">Market price</option>
+                <option value="quote_only">Quote only</option>
+                <option value="complimentary_with_meal">Complimentary with meal</option>
+                {!['local', 'shippable', 'retail', 'market_price', 'quote_only', 'complimentary_with_meal'].includes(formData.product_type) && (
+                  <option value={formData.product_type}>{formData.product_type || '(blank)'} — saved type</option>
+                )}
+              </select>
+              {['market_price', 'quote_only'].includes(formData.product_type) && <p className="text-xs text-gray-600 mt-1">Customers contact you for pricing. This type cannot be paid online; a zero catalog price is allowed.</p>}
+              {formData.product_type === 'complimentary_with_meal' && <p className="text-xs text-gray-600 mt-1">A zero price is allowed for this item.</p>}
+            </div>
           </div>
         </div>
 
@@ -832,7 +872,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                     No Tracking
                   </span>
                   <span className="block text-xs text-gray-600">
-                    Product is always available (digital products, services, unlimited items)
+                    Do not track a quantity. Store visibility and pickup locations still apply.
                   </span>
                 </label>
               </div>
@@ -852,7 +892,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                     Product Level
                   </span>
                   <span className="block text-xs text-gray-600">
-                    Track one total quantity (e.g., "50 hats total" - variants optional for selection)
+                    Track one total quantity (e.g., 50 lunch portions, with optional portion choices)
                   </span>
                 </label>
               </div>
@@ -872,7 +912,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                     Variant Level
                   </span>
                   <span className="block text-xs text-gray-600">
-                    Track stock per size/color combination (e.g., "10 Red/Small, 5 Blue/Large")
+                    Track stock for each option (e.g., 10 boxes of 6 cookies, 5 boxes of 12)
                   </span>
                 </label>
               </div>
@@ -890,7 +930,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                       type="number"
                       id="product_stock_quantity"
                       name="product_stock_quantity"
-                      value={formData.product_stock_quantity || ''}
+                      value={formData.product_stock_quantity ?? ''}
                       onChange={handleChange}
                       min="0"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
@@ -906,7 +946,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                       type="number"
                       id="product_low_stock_threshold"
                       name="product_low_stock_threshold"
-                      value={formData.product_low_stock_threshold || 5}
+                      value={formData.product_low_stock_threshold ?? 5}
                       onChange={handleChange}
                       min="0"
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
@@ -924,7 +964,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
             {formData.inventory_level === 'variant' && (
               <div className="mt-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
                 <p className="text-sm text-blue-800">
-                  <strong>Variant-level tracking:</strong> After saving this product, you can configure variants and set stock quantity for each size/color combination in the Variants section below.
+                  <strong>Variant-level tracking:</strong> After saving this product, you can configure variants and set stock quantity for each portion, box size or flavor in the variants section below.
                 </p>
               </div>
             )}

@@ -40,10 +40,10 @@ interface VariantManagerProps {
   productId: number;
   basePriceCents: number;
   inventoryLevel: 'none' | 'product' | 'variant';
-  canManageStock?: boolean;
+  canManageStock: boolean;
 }
 
-export default function VariantManager({ productId, basePriceCents, inventoryLevel, canManageStock = true }: VariantManagerProps) {
+export default function VariantManager({ productId, basePriceCents, inventoryLevel, canManageStock }: VariantManagerProps) {
   const { getToken } = useAuth();
   
   // Option types state (flexible system)
@@ -127,7 +127,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
     
     variantsList.forEach(variant => {
       // Use options field if available, fall back to size/color
-      const options = variant.options || {};
+      const options = { ...variant.options };
       
       // Check legacy fields
       if (variant.size && !options['Size']) {
@@ -434,217 +434,10 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
 
   return (
     <div className="space-y-6">
-      {hasMissingOptions && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <p className="text-sm font-semibold text-amber-900">Variant options are missing</p>
-            <p className="text-sm text-amber-800">
-              These variants were imported without option labels (size/color). You can auto-detect sizes from SKU or variant title.
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={autoDetectOptions}
-            disabled={autoDetecting}
-            className={`px-4 py-2 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 transition ${
-              autoDetecting ? 'opacity-60 cursor-not-allowed' : ''
-            }`}
-          >
-            {autoDetecting ? 'Detecting...' : 'Auto-detect sizes'}
-          </button>
-        </div>
-      )}
-      {/* Option Types Builder */}
-      <div className="border-2 border-gray-200 rounded-lg p-6 bg-gray-50">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">
-          Variant Options
-        </h3>
-          {!presetsLoading && presets.length > 0 && (
-            <span className="text-sm text-gray-500">
-              {presets.length} presets available
-            </span>
-          )}
-        </div>
-
-        {/* Existing Option Types */}
-        {optionTypes.map((optionType, typeIndex) => (
-          <div key={typeIndex} className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
-            <div className="flex items-center justify-between mb-3">
-              <h4 className="font-medium text-gray-900">{optionType.name}</h4>
-              <div className="flex items-center gap-2">
-                {/* Preset dropdown */}
-                {getPresetsForType(optionType.name).length > 0 && (
-            <select
-              onChange={(e) => {
-                      const preset = presets.find(p => p.id === parseInt(e.target.value));
-                      if (preset) applyPreset(typeIndex, preset);
-                      e.target.value = '';
-                    }}
-                    className="text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
-                  >
-                    <option value="">Apply preset...</option>
-                    {getPresetsForType(optionType.name).map(preset => (
-                      <option key={preset.id} value={preset.id}>
-                        {preset.name} ({preset.values_count} values)
-                      </option>
-                    ))}
-            </select>
-                )}
-                <button
-                  onClick={() => removeOptionType(typeIndex)}
-                  className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                  title="Remove option type"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-            </button>
-          </div>
-        </div>
-
-            {/* Values */}
-          <div className="flex flex-wrap gap-2 mb-3">
-              {optionType.values.map((value, valueIndex) => (
-              <span
-                  key={valueIndex}
-                  className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full text-sm font-medium"
-                >
-                  {value.name}
-                  {value.price_adjustment_cents !== 0 && (
-                    <span className="text-green-600 text-xs">
-                      +${(value.price_adjustment_cents / 100).toFixed(2)}
-                    </span>
-                  )}
-                  <button
-                    onClick={() => removeValueFromOptionType(typeIndex, valueIndex)}
-                    className="hover:bg-blue-200 rounded-full p-0.5"
-                  >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-              </span>
-            ))}
-          </div>
-
-            {/* Add Value Input */}
-            <div className="flex items-center gap-2">
-            <input
-              type="text"
-                placeholder={`Add ${optionType.name.toLowerCase()} value...`}
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary text-sm"
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter') {
-                    addValueToOptionType(typeIndex, (e.target as HTMLInputElement).value);
-                    (e.target as HTMLInputElement).value = '';
-                  }
-                }}
-            />
-            <button
-                onClick={(e) => {
-                  const input = (e.target as HTMLElement).previousElementSibling as HTMLInputElement;
-                  if (input) {
-                    addValueToOptionType(typeIndex, input.value);
-                    input.value = '';
-                  }
-                }}
-                className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
-              >
-                Add
-            </button>
-            </div>
-          </div>
-        ))}
-
-        {/* Add New Option Type */}
-        <div className="flex items-center gap-3 p-4 border-2 border-dashed border-gray-300 rounded-lg bg-white">
-          <input
-            type="text"
-            value={newOptionTypeName}
-            onChange={(e) => setNewOptionTypeName(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && addOptionType()}
-            placeholder="New option type (e.g., Size, Color, Material)"
-            list="common-option-types"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
-          />
-          <datalist id="common-option-types">
-            <option value="Size" />
-            <option value="Color" />
-            <option value="Material" />
-            <option value="Style" />
-            <option value="Flavor" />
-            <option value="Length" />
-          </datalist>
-          <button
-            onClick={addOptionType}
-            className="px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium flex items-center gap-2"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-            </svg>
-            Add Option Type
-          </button>
-        </div>
-
-        {/* Variant Preview */}
-        {optionTypes.length > 0 && (
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center justify-between">
-              <span className="text-blue-800">
-                {totalVariants > 0 ? (
-                  <>
-                    Will generate <strong>{totalVariants}</strong> variants
-                    {optionTypes.length > 1 && (
-                      <span className="text-blue-600 ml-1">
-                        ({optionTypes.map(t => t.values.length).join(' × ')})
-                      </span>
-                    )}
-                  </>
-                ) : (
-                  <span className="text-blue-600">Add values to each option type to generate variants</span>
-                )}
-              </span>
-              {totalVariants > 50 && (
-                <span className="text-amber-600 text-sm">Large number of variants</span>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Generate Button */}
-        <button
-          type="button"
-          onClick={generateVariants}
-          disabled={generating || totalVariants === 0}
-          className={`w-full mt-4 py-3 rounded-lg font-semibold text-white flex items-center justify-center gap-2 transition ${
-            generating || totalVariants === 0
-              ? 'bg-gray-300 cursor-not-allowed'
-              : 'bg-tsPrimary hover:bg-primary-dark'
-          }`}
-        >
-          {generating ? (
-            <>
-              <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
-              Generating...
-            </>
-          ) : (
-            <>
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-              </svg>
-              Generate Variants
-            </>
-          )}
-        </button>
-
-        {variants.length > 0 && (
-          <p className="text-xs text-gray-600 mt-2 text-center">
-            Existing combinations will be skipped. Only new variants will be created.
-          </p>
-        )}
+      <div>
+        <h2 className="text-xl font-semibold text-gray-900">Portions, boxes &amp; flavors</h2>
+        <p className="text-sm text-gray-600 mt-1">Offer choices such as a lunch portion, a box of 6 cookies or a flavor. Existing variants save separately from the main form.</p>
       </div>
-
       {/* Variants Table */}
       {variants.length > 0 && (
         <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
@@ -658,7 +451,6 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
             <table className="w-full">
               <thead className="bg-gray-50 border-b">
                 <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">SKU</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Variant</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-600 uppercase tracking-wider">Price</th>
                   {inventoryLevel === 'variant' && (
@@ -671,8 +463,13 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
               <tbody className="bg-white divide-y divide-gray-200">
                 {variants.map((variant) => (
                   <tr key={variant.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 text-sm text-gray-900 font-mono">{variant.sku}</td>
-                    <td className="px-4 py-4 text-sm text-gray-900 font-medium">{variant.display_name || variant.variant_name}</td>
+                    <td className="px-4 py-4 text-sm text-gray-900 font-medium">
+                      {variant.display_name || variant.variant_name}
+                      <details className="mt-1 text-xs font-normal text-gray-600">
+                        <summary className="cursor-pointer">SKU</summary>
+                        <code className="break-all">{variant.sku}</code>
+                      </details>
+                    </td>
                     <td className="px-4 py-4 text-sm">
                       <span className="text-gray-900 font-semibold">{formatPrice(variant.price_cents)}</span>
                       {variant.price_cents !== basePriceCents && (
@@ -708,6 +505,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
                     )}
                     <td className="px-4 py-4 text-sm">
                       <button
+                        type="button"
                         onClick={() => toggleAvailability(variant.id, variant.available)}
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition cursor-pointer hover:opacity-80 ${
                           (variant.actually_available ?? variant.available ?? true)
@@ -725,12 +523,14 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
                     <td className="px-4 py-4 text-sm text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          type="button"
                           onClick={() => startEdit(variant)}
                           className="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition text-xs font-medium"
                         >
                           Edit
                         </button>
                         <button
+                          type="button"
                           onClick={() => deleteVariant(variant.id, variant.display_name || variant.variant_name)}
                           className="inline-flex items-center px-3 py-1.5 bg-red-600 text-white rounded hover:bg-primary-dark transition text-xs font-medium"
                         >
@@ -748,10 +548,235 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
 
       {variants.length === 0 && (
         <div className="text-center py-12 text-gray-500">
-          <p className="text-lg mb-2">No variants yet</p>
-          <p className="text-sm">Add option types above and click "Generate Variants" to create them.</p>
+          <p className="text-lg mb-2">No additional choices yet</p>
+          <p className="text-sm">For an item sold one way, no extra choices are needed. Open the options below to add portions, cookie boxes or flavors.</p>
         </div>
       )}
+
+      <details className="rounded-lg border border-gray-200 p-4">
+        <summary className="cursor-pointer font-medium text-gray-900">Add portion, box size or flavor options (advanced)</summary>
+        <div className="mt-4 space-y-4">
+          {hasMissingOptions && (
+            <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-amber-900">Variant options are missing</p>
+                <p className="text-sm text-amber-800">
+                  These variants were imported without option labels. You can auto-detect sizes from SKU or variant title.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={autoDetectOptions}
+                disabled={autoDetecting}
+                className={`px-4 py-2 rounded-lg text-sm font-medium bg-amber-600 text-white hover:bg-amber-700 transition ${
+                  autoDetecting ? 'opacity-60 cursor-not-allowed' : ''
+                }`}
+              >
+                {autoDetecting ? 'Detecting...' : 'Auto-detect sizes'}
+              </button>
+            </div>
+          )}
+          {/* Option Types Builder */}
+          <div className="border-2 border-gray-200 rounded-lg p-6 bg-gray-50">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">
+              Variant Options
+            </h3>
+              {!presetsLoading && presets.length > 0 && (
+                <span className="text-sm text-gray-500">
+                  {presets.length} presets available
+                </span>
+              )}
+            </div>
+
+            {/* Existing Option Types */}
+            {optionTypes.map((optionType, typeIndex) => (
+              <div key={typeIndex} className="mb-6 p-4 bg-white rounded-lg border border-gray-200">
+                <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+                  <h4 className="font-medium text-gray-900">{optionType.name}</h4>
+                  <div className="flex items-center gap-2">
+                    {/* Preset dropdown */}
+                    {getPresetsForType(optionType.name).length > 0 && (
+                <select
+                  aria-label={`Preset for ${optionType.name}`}
+                  onChange={(e) => {
+                          const preset = presets.find(p => p.id === parseInt(e.target.value));
+                          if (preset) applyPreset(typeIndex, preset);
+                          e.target.value = '';
+                        }}
+                        className="text-sm px-2 py-1 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
+                      >
+                        <option value="">Apply preset...</option>
+                        {getPresetsForType(optionType.name).map(preset => (
+                          <option key={preset.id} value={preset.id}>
+                            {preset.name} ({preset.values_count} values)
+                          </option>
+                        ))}
+                </select>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removeOptionType(typeIndex)}
+                      className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
+                      title="Remove option type"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                </button>
+              </div>
+            </div>
+
+                {/* Values */}
+              <div className="flex flex-wrap gap-2 mb-3">
+                  {optionType.values.map((value, valueIndex) => (
+                  <span
+                      key={valueIndex}
+                      className="inline-flex items-center gap-2 bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full text-sm font-medium"
+                    >
+                      {value.name}
+                      {value.price_adjustment_cents !== 0 && (
+                        <span className="text-green-600 text-xs">
+                          +${(value.price_adjustment_cents / 100).toFixed(2)}
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        aria-label={`Remove ${value.name} from ${optionType.name}`}
+                        onClick={() => removeValueFromOptionType(typeIndex, valueIndex)}
+                        className="hover:bg-blue-200 rounded-full p-0.5"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                  </span>
+                ))}
+              </div>
+
+                {/* Add Value Input */}
+                <div className="flex flex-wrap items-center gap-2">
+                <input
+                  type="text"
+                    aria-label={`New ${optionType.name} value`}
+                    placeholder={`Add ${optionType.name.toLowerCase()} value...`}
+                  className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary text-sm"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addValueToOptionType(typeIndex, (e.target as HTMLInputElement).value);
+                        (e.target as HTMLInputElement).value = '';
+                      }
+                    }}
+                />
+                <button
+                  type="button"
+                    onClick={(e) => {
+                      const input = (e.target as HTMLElement).previousElementSibling as HTMLInputElement;
+                      if (input) {
+                        addValueToOptionType(typeIndex, input.value);
+                        input.value = '';
+                      }
+                    }}
+                    className="px-3 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
+                  >
+                    Add
+                </button>
+                </div>
+              </div>
+            ))}
+
+            {/* Add New Option Type */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 p-4 border-2 border-dashed border-gray-300 rounded-lg bg-white">
+              <input
+                type="text"
+                value={newOptionTypeName}
+                onChange={(e) => setNewOptionTypeName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { e.preventDefault(); addOptionType(); }
+                }}
+                aria-label="New option type"
+                placeholder="New option type (e.g., Portion, Box size, Flavor)"
+                list="common-option-types"
+                className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
+              />
+              <datalist id="common-option-types">
+                <option value="Portion" />
+                <option value="Box size" />
+                <option value="Flavor" />
+              </datalist>
+              <button
+                type="button"
+                onClick={addOptionType}
+                className="px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium flex items-center gap-2"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                </svg>
+                Add Option Type
+              </button>
+            </div>
+
+            {/* Variant Preview */}
+            {optionTypes.length > 0 && (
+              <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <span className="text-blue-800">
+                    {totalVariants > 0 ? (
+                      <>
+                        Will generate <strong>{totalVariants}</strong> variants
+                        {optionTypes.length > 1 && (
+                          <span className="text-blue-600 ml-1">
+                            ({optionTypes.map(t => t.values.length).join(' × ')})
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      <span className="text-blue-600">Add values to each option type to generate variants</span>
+                    )}
+                  </span>
+                  {totalVariants > 50 && (
+                    <span className="text-amber-600 text-sm">Large number of variants</span>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Generate Button */}
+            <button
+              type="button"
+              onClick={generateVariants}
+              disabled={generating || totalVariants === 0}
+              className={`w-full mt-4 py-3 rounded-lg font-semibold text-white flex items-center justify-center gap-2 transition ${
+                generating || totalVariants === 0
+                  ? 'bg-gray-300 cursor-not-allowed'
+                  : 'bg-tsPrimary hover:bg-primary-dark'
+              }`}
+            >
+              {generating ? (
+                <>
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent"></div>
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
+                  </svg>
+                  Generate Variants
+                </>
+              )}
+            </button>
+
+            {variants.length > 0 && (
+              <p className="text-xs text-gray-600 mt-2 text-center">
+                Existing combinations will be skipped. Only new variants will be created.
+              </p>
+            )}
+          </div>
+
+        </div>
+      </details>
 
       {/* Edit Modal */}
       {showEditModal && editingVariant && (
@@ -832,12 +857,14 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
             
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 shrink-0">
               <button
+                type="button"
                 onClick={cancelEdit}
                 className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
                 Cancel
               </button>
               <button
+                type="button"
                 onClick={saveEdit}
                 className="px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition-colors"
               >

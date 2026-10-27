@@ -14,6 +14,7 @@ export interface POSProduct {
   name: string;
   slug: string;
   product_type: string;
+  location_available?: boolean;
   image_url: string | null;
   variants: POSVariant[];
 }

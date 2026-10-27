@@ -125,6 +125,7 @@ for (const create of [false, true]) test(`a late ${create ? 'create' : 'update'}
   await page.locator('#name').fill('Submitted meal');
   if (create) {
     await page.locator('#base_price_cents').fill('12.00');
+    await page.locator('summary').filter({ hasText: 'Advanced shipping' }).click();
     await page.locator('#weight_oz').fill('8');
     await page.locator('#allow_pickup').uncheck();
     await page.locator('#allow_shipping').check();

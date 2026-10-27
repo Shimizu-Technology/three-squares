@@ -10,6 +10,8 @@ import {
   ProductDetailModal,
 } from '../../components/admin/products';
 import AdminRequestState from '../../components/admin/AdminRequestState';
+import { useStaffAccess } from '../../components/admin/StaffAccess.tsx';
+import LocalAvailabilityToggle from '../../components/admin/LocalAvailabilityToggle';
 import { SkeletonListPage } from '../../components/admin';
 
 import { parseProductQuery, productListPath, clampProductPage, productScrollKey, readProductScroll, writeProductScroll } from '../../components/admin/products/productQueryState';
@@ -56,6 +58,18 @@ function downloadTemplate() {
 
 export default function AdminProductsPage() {
   const { getToken, userId } = useAuth();
+  const access = useStaffAccess();
+  const availabilityLocations = access.user?.authorized_locations || [];
+  const [availabilityLocationId, setAvailabilityLocationId] = useState<number | null>(availabilityLocations[0]?.id || null);
+  const availabilityLocation = availabilityLocations.find(location => location.id === availabilityLocationId);
+  const saveLocalAvailability = (productId: number, locationId: number, available: boolean) => {
+    if (!active.current) return;
+    setProducts(current => current.map(product => {
+      if (product.id !== productId) return product;
+      const locations = product.location_ids || [];
+      return { ...product, location_ids: available ? [...new Set([...locations, locationId])] : locations.filter(id => id !== locationId) };
+    }));
+  };
   const location = useLocation();
   const navigationType = useNavigationType();
   const navigate = useNavigate();
@@ -355,6 +369,15 @@ export default function AdminProductsPage() {
       </div>
 
       {/* Filters */}
+      {access.can('availability.manage') && availabilityLocations.length > 0 && <section className="mb-4 rounded-xl border border-gray-300 bg-white p-4">
+        <label className="block text-sm font-semibold text-gray-800">Pickup availability location
+          <select aria-label="Pickup availability location" value={availabilityLocationId || ''} disabled={access.user?.operational_scope === 'specific'} onChange={event => setAvailabilityLocationId(Number(event.target.value))} className="mt-2 min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-base sm:max-w-sm">
+            {availabilityLocations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}
+          </select>
+        </label>
+        <p className="mt-2 text-sm text-gray-600">Mark a meal sold out or restore it at this counter.</p>
+      </section>}
+
       <ProductFilters
         searchQuery={searchQuery}
         onSearchChange={q => { changeQuery({ q, page: 1 }, searchEditing.current); searchEditing.current = true; }}
@@ -397,6 +420,7 @@ export default function AdminProductsPage() {
           onArchive={handleArchive}
           onUnarchive={handleUnarchive}
           onDuplicate={handleDuplicate}
+          renderAvailability={availabilityLocation && access.can('availability.manage') ? product => product.allow_pickup ? <LocalAvailabilityToggle key={`${product.id}:${availabilityLocation.id}`} productId={product.id} productName={product.name} locationId={availabilityLocation.id} locationName={availabilityLocation.name} available={(product.location_ids || []).includes(availabilityLocation.id)} disabled={loading || loadError} onSaved={saveLocalAvailability} /> : <p className="text-sm text-gray-600">Pickup not offered</p> : undefined}
         />
       )}
 
