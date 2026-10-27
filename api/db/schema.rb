@@ -572,6 +572,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_060000) do
     t.datetime "updated_at", null: false
     t.index ["checkout_session_id"], name: "index_payment_attempts_on_checkout_session_id"
     t.index ["checkout_session_id"], name: "one_active_collection_per_session", unique: true, where: "(((operation)::text = 'sale'::text) AND ((state)::text <> ALL ((ARRAY['failed'::character varying, 'cancelled'::character varying, 'compensated'::character varying])::text[])))"
+    t.index ["id", "order_id"], name: "index_payment_attempts_on_id_and_order_id", unique: true
     t.index ["order_id"], name: "index_payment_attempts_on_order_id"
     t.index ["payment_identity_id", "operation_key"], name: "idx_on_payment_identity_id_operation_key_7304b18f9d", unique: true
     t.index ["payment_identity_id", "raw_provider_id"], name: "idx_on_payment_identity_id_raw_provider_id_00e8d6929f", unique: true
@@ -854,6 +855,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_060000) do
   add_foreign_key "payment_profiles", "payment_identities"
   add_foreign_key "payment_transactions", "orders"
   add_foreign_key "payment_transactions", "payment_attempts"
+  add_foreign_key "payment_transactions", "payment_attempts", column: ["payment_attempt_id", "order_id"], primary_key: ["id", "order_id"], name: "charge_consumption_matches_original_order"
   add_foreign_key "payment_transactions", "payment_identities"
   add_foreign_key "product_collections", "collections"
   add_foreign_key "product_collections", "products"

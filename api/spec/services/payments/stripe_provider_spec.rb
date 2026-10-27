@@ -28,6 +28,16 @@ RSpec.describe Payments::StripeProvider do
     end
   end
 
+  it "rejects a different adapter account before sending any request" do
+    other = PaymentIdentity.create!(provider: "stripe", environment: "sandbox", external_account_id: "acct_other", profile_key: "other", credential_reference: "stripe_default")
+    wrong = described_class.new(other)
+    expect(Stripe::PaymentIntent).not_to receive(:create)
+    expect(Stripe::PaymentIntent).not_to receive(:retrieve)
+    expect { wrong.setup(attempt: attempt) }.to raise_error(Payments::BindingError)
+    expect { wrong.query(attempt: attempt) }.to raise_error(Payments::BindingError)
+    expect { wrong.validate_binding!(intent, attempt) }.to raise_error(Payments::BindingError)
+  end
+
   it "requires actual captured cents for payment success" do
     attempt.update!(raw_provider_id: "pi_fixture")
     allow(Stripe::PaymentIntent).to receive(:retrieve).and_return(intent)

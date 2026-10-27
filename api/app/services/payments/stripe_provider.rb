@@ -13,6 +13,7 @@ module Payments
     end
 
     def setup(attempt:)
+      validate_attempt_identity!(attempt)
       session = attempt.checkout_session
       intent = Stripe::PaymentIntent.create({
         amount: attempt.requested_cents, currency: attempt.currency.downcase,
@@ -27,6 +28,7 @@ module Payments
     end
 
     def query(attempt:)
+      validate_attempt_identity!(attempt)
       if attempt.raw_provider_id.blank?
         results = Stripe::PaymentIntent.search({ query: "metadata['payment_attempt_id']:'#{attempt.id}'", limit: 2 }, request_options).data
         return Result.new(status: "unknown", identity_id: identity.id, raw_id: nil, requested_cents: attempt.requested_cents,
@@ -47,7 +49,14 @@ module Payments
         approved_cents: captured, captured_cents: captured, currency: intent.currency.upcase, metadata: {})
     end
 
+    def validate_attempt_identity!(attempt)
+      unless attempt.payment_identity_id == identity.id && attempt.checkout_session.payment_identity_id == identity.id && attempt.order_id == attempt.checkout_session.order_id
+        raise BindingError, "Adapter identity does not match stored attempt"
+      end
+    end
+
     def validate_binding!(intent, attempt)
+      validate_attempt_identity!(attempt)
       metadata = intent.metadata.to_h.stringify_keys
       expected = { "checkout_session_id" => attempt.checkout_session_id, "payment_attempt_id" => attempt.id,
         "payment_identity_id" => identity.id, "order_id" => attempt.order_id.to_s, "snapshot_digest" => attempt.payload_digest }

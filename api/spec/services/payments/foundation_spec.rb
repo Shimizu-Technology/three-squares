@@ -58,6 +58,17 @@ RSpec.describe "Payment foundation" do
     end.to raise_error(ActiveRecord::RecordNotUnique)
   end
 
+  it "only consumes a charge for its original order and never unconsumes it" do
+    attrs = { payment_identity: identity, payment_attempt: attempt, provider: "stripe", raw_provider_id: "pi_bound", reference: identity.canonical_reference("pi_bound"), currency: "USD", amount_cents: 1500, state: "captured", first_observed_at: Time.current, last_observed_at: Time.current }
+    foreign_order = create(:order)
+    expect(PaymentTransaction.new(**attrs, order: foreign_order)).not_to be_valid
+    charge = PaymentTransaction.create!(**attrs, order: order)
+    expect { charge.update!(order: nil) }.to raise_error(ActiveRecord::RecordInvalid)
+    expect do
+      PaymentTransaction.transaction(requires_new: true) { PaymentTransaction.where(id: charge.id).update_all(order_id: foreign_order.id) }
+    end.to raise_error(ActiveRecord::InvalidForeignKey)
+  end
+
   it "does not treat unknown capture as paid" do
     result = Payments::Result.new(status: "unknown", identity_id: identity.id, raw_id: nil, requested_cents: 1500, approved_cents: 0, captured_cents: 0, currency: "USD", metadata: {})
     expect(result.captured?).to be false
@@ -72,7 +83,7 @@ RSpec.describe "Payment foundation" do
   it "fails the production boot configuration in a subprocess" do
     path = Rails.root.join("app/services/payments/configuration.rb")
     source = "require 'active_support/all'; module Rails; def self.env; ActiveSupport::StringInquirer.new('production'); end; end; require ARGV[0]; Payments::Configuration.validate_environment!"
-    [{"APP_DEPLOYMENT_ENV" => "development"}, {"APP_DEPLOYMENT_ENV" => "production", "WORLDPAY_MODE" => "simulated"}, {"APP_DEPLOYMENT_ENV" => "production", "APP_MODE" => "test"}, {"APP_DEPLOYMENT_ENV" => "production", "PAYMENTS_SIMULATION_ENABLED" => "true"}].each do |env|
+    [{"APP_DEPLOYMENT_ENV" => "production", "APP_MODE" => nil}, {"APP_DEPLOYMENT_ENV" => "production", "APP_MODE" => "TEST"}, {"APP_DEPLOYMENT_ENV" => "production", "APP_MODE" => "production", "STRIPE_SECRET_KEY" => "sk_test_fixture"}, {"APP_DEPLOYMENT_ENV" => "development"}, {"APP_DEPLOYMENT_ENV" => "production", "WORLDPAY_MODE" => "simulated"}, {"APP_DEPLOYMENT_ENV" => "production", "APP_MODE" => "test"}, {"APP_DEPLOYMENT_ENV" => "production", "PAYMENTS_SIMULATION_ENABLED" => "true"}].each do |env|
       _, err, status = Open3.capture3(env, RbConfig.ruby, "-e", source, path.to_s)
       expect(status).not_to be_success
       expect(err).to include("UnsafeConfiguration")

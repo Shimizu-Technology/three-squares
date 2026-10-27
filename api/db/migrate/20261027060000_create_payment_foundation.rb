@@ -55,6 +55,7 @@ class CreatePaymentFoundation < ActiveRecord::Migration[8.1]
       t.integer :recovery_count, null: false, default: 0
       t.timestamps
     end
+    add_index :payment_attempts, [:id, :order_id], unique: true, if_not_exists: true
     add_index :payment_attempts, [:payment_identity_id, :operation_key], unique: true, if_not_exists: true
     add_index :payment_attempts, [:payment_identity_id, :raw_provider_id], unique: true, if_not_exists: true
     add_index :payment_attempts, :checkout_session_id, unique: true, where: "operation = 'sale' AND state NOT IN ('failed', 'cancelled', 'compensated')", name: "one_active_collection_per_session", if_not_exists: true
@@ -70,6 +71,7 @@ class CreatePaymentFoundation < ActiveRecord::Migration[8.1]
       t.datetime :first_observed_at, :last_observed_at, null: false
       t.timestamps
     end
+    add_foreign_key :payment_transactions, :payment_attempts, column: [:payment_attempt_id, :order_id], primary_key: [:id, :order_id], name: "charge_consumption_matches_original_order" unless foreign_key_exists?(:payment_transactions, name: "charge_consumption_matches_original_order")
     add_index :payment_transactions, [:provider, :reference], unique: true, if_not_exists: true
     add_index :payment_transactions, [:payment_identity_id, :raw_provider_id], unique: true, name: "unique_identity_transaction", if_not_exists: true
     add_index :payment_transactions, :order_id, unique: true, where: "order_id IS NOT NULL", name: "one_consumed_charge_per_order", if_not_exists: true
