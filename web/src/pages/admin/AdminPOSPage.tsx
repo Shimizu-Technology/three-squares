@@ -19,6 +19,7 @@ import {
   setTerminalLocation,
   type TerminalStatus,
 } from '../../services/stripeTerminal';
+import AdminRequestState from '../../components/admin/AdminRequestState';
 import type { Reader } from '@stripe/terminal-js';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -81,6 +82,7 @@ async function fetchPOSMenu(token: string, locationId?: number): Promise<{ categ
   if (locationId) params.set('location_id', locationId.toString());
   const res = await fetch(`${API_BASE}/api/v1/admin/pos/menu?${params}`, {
     headers: { Authorization: `Bearer ${token}` },
+    signal: AbortSignal.timeout(20000),
   });
   if (!res.ok) throw new Error('Failed to load menu');
   return res.json();
@@ -295,6 +297,10 @@ export default function AdminPOSPage() {
   const [categories, setCategories] = useState<POSCategory[]>([]);
   const [locations, setLocations] = useState<POSLocation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadedLocation, setLoadedLocation] = useState<number | null>(null);
+  const menuRequest = useRef(0);
+  const menuActive = useRef(false);
 
   // Filters
   const [activeCategory, setActiveCategory] = useState<string>('All');
@@ -332,26 +338,47 @@ export default function AdminPOSPage() {
 
   // ─── Load menu ──────────────────────────────────────────────────────────
 
+  const hasMenu = selectedLocation !== undefined && loadedLocation === selectedLocation;
+  const canSelectMenu = hasMenu && !loading && !loadError;
+
   const loadMenu = useCallback(async () => {
+    if (!menuActive.current) return;
+    const generation = ++menuRequest.current;
+    setLoading(true);
+    setVariantPickerProduct(null);
     try {
-      setLoading(true);
       const token = await getToken();
-      if (!token) return;
+      if (generation !== menuRequest.current || selectedLocationRef.current !== selectedLocation) return;
+      if (!token) throw new Error('Sign in to load the POS menu');
       const data = await fetchPOSMenu(token, selectedLocation);
-      setCategories(data.categories);
+      if (generation !== menuRequest.current || selectedLocationRef.current !== selectedLocation) return;
+      if (!Array.isArray(data.locations) || !Array.isArray(data.categories)) throw new Error('Invalid POS menu response');
       setLocations(data.locations);
-      if (!selectedLocation && data.locations.length > 0) {
+      if (selectedLocation === undefined) {
+        if (!data.locations.length) throw new Error('No POS locations available');
+        // The unscoped response only discovers locations. Never offer its menu.
         setSelectedLocation(data.locations[0].id);
+        return;
       }
+      if (!data.locations.some(location => location.id === selectedLocation)) throw new Error('Selected POS location unavailable');
+      setCategories(data.categories);
+      setLoadedLocation(selectedLocation);
+      setLoadError(false);
     } catch (err) {
+      if (generation !== menuRequest.current || selectedLocationRef.current !== selectedLocation) return;
       console.error('Failed to load POS menu:', err);
+      setLoadError(true);
     } finally {
-      setLoading(false);
+      if (generation === menuRequest.current) setLoading(false);
     }
   }, [getToken, selectedLocation]);
 
   useEffect(() => {
-    loadMenu();
+    menuActive.current = true;
+    setLoadError(false);
+    setVariantPickerProduct(null);
+    void loadMenu();
+    return () => { menuActive.current = false; menuRequest.current += 1; };
   }, [loadMenu]);
 
   useEffect(() => {
@@ -367,12 +394,13 @@ export default function AdminPOSPage() {
 
   // ─── Filtered items ─────────────────────────────────────────────────────
 
-  const allItems = useMemo(() => categories.flatMap((c) => c.items), [categories]);
+  const visibleCategories = useMemo(() => hasMenu ? categories : [], [hasMenu, categories]);
+  const allItems = useMemo(() => visibleCategories.flatMap((c) => c.items), [visibleCategories]);
 
   const filteredItems = useMemo(() => {
     let items = activeCategory === 'All'
       ? allItems
-      : categories.find((c) => c.name === activeCategory)?.items || [];
+      : visibleCategories.find((c) => c.name === activeCategory)?.items || [];
 
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -380,9 +408,9 @@ export default function AdminPOSPage() {
     }
 
     return items;
-  }, [allItems, categories, activeCategory, searchQuery]);
+  }, [allItems, visibleCategories, activeCategory, searchQuery]);
 
-  const categoryNames = useMemo(() => ['All', ...categories.map((c) => c.name)], [categories]);
+  const categoryNames = useMemo(() => ['All', ...visibleCategories.map((c) => c.name)], [visibleCategories]);
   const selectedLocationName = useMemo(
     () => locations.find((loc) => loc.id === selectedLocation)?.name ?? 'Select location',
     [locations, selectedLocation]
@@ -391,6 +419,12 @@ export default function AdminPOSPage() {
   // ─── Cart logic ─────────────────────────────────────────────────────────
 
   const addToCart = useCallback((product: POSProduct, variant: POSVariant) => {
+    if (!canSelectMenu) return;
+    const currentProduct = allItems.find(item => item.id === product.id);
+    const currentVariant = currentProduct?.variants.find(item => item.id === variant.id && item.in_stock);
+    if (!currentProduct || !currentVariant) return;
+    product = currentProduct;
+    variant = currentVariant;
     setCart((prev) => {
       const existing = prev.find((c) => c.variant.id === variant.id);
       if (existing) {
@@ -407,9 +441,10 @@ export default function AdminPOSPage() {
     });
     setQuickAdjustVariantId(variant.id);
     setLastAddedItem({ product, variant });
-  }, []);
+  }, [canSelectMenu, allItems]);
 
   const handleProductClick = useCallback((product: POSProduct) => {
+    if (!canSelectMenu) return;
     const availableVariants = product.variants.filter((v) => v.in_stock);
     if (availableVariants.length === 0) return;
     if (availableVariants.length === 1) {
@@ -417,15 +452,16 @@ export default function AdminPOSPage() {
     } else {
       setVariantPickerProduct(product);
     }
-  }, [addToCart]);
+  }, [addToCart, canSelectMenu]);
 
   const updateQuantity = useCallback((variantId: number, delta: number) => {
+    if (delta > 0 && (!canSelectMenu || !allItems.some(item => item.variants.some(variant => variant.id === variantId && variant.in_stock)))) return;
     setCart((prev) =>
       prev
         .map((c) => (c.variant.id === variantId ? { ...c, quantity: c.quantity + delta } : c))
         .filter((c) => c.quantity > 0)
     );
-  }, []);
+  }, [canSelectMenu, allItems]);
 
   const removeFromCart = useCallback((variantId: number) => {
     setCart((prev) => prev.filter((c) => c.variant.id !== variantId));
@@ -888,14 +924,6 @@ export default function AdminPOSPage() {
 
   // ─── Render ─────────────────────────────────────────────────────────────
 
-  if (loading) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-gray-500">Loading POS...</div>
-      </div>
-    );
-  }
-
   return (
     <div className="h-screen flex bg-linear-to-br from-slate-100 via-white to-slate-100 overflow-hidden">
       {/* ── Left Panel: Menu ────────────────────────────────────────────── */}
@@ -1024,8 +1052,15 @@ export default function AdminPOSPage() {
           )}
         </div>
 
+        <div className="shrink-0 px-4 pt-3">
+          <AdminRequestState resource="POS menu and locations" loading={loading} error={loadError} hasData={hasMenu} onRetry={() => void loadMenu()} />
+          {!loading && !loadError && hasMenu && (
+            <button type="button" onClick={() => void loadMenu()} className="btn-secondary min-h-[44px]">Refresh menu</button>
+          )}
+        </div>
+
         {/* Category tabs */}
-        {!searchQuery && (
+        {hasMenu && !searchQuery && (
           <div className="flex gap-2 px-4 py-3 bg-white border-b border-slate-200 overflow-x-auto shrink-0">
             {categoryNames.map((name) => (
               <button
@@ -1045,7 +1080,7 @@ export default function AdminPOSPage() {
 
         {/* Product grid */}
         <div className="flex-1 overflow-auto p-4">
-          {filteredItems.length === 0 ? (
+          {!hasMenu ? null : filteredItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-56 text-slate-400 border border-dashed border-slate-300 rounded-2xl bg-white">
               <AlertCircle className="w-8 h-8 mb-2" />
               <p>No items found</p>
@@ -1064,7 +1099,7 @@ export default function AdminPOSPage() {
                   <button
                     key={item.id}
                     onClick={() => handleProductClick(item)}
-                    disabled={!hasStock}
+                    disabled={!hasStock || !canSelectMenu}
                     className={`p-3.5 rounded-2xl text-left transition-all min-h-[112px] border ${
                       inCart
                         ? 'border-tsPrimary/40 bg-tsPrimary/5 shadow-sm'
@@ -1177,6 +1212,7 @@ export default function AdminPOSPage() {
                       </button>
                       <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
                       <button
+                        disabled={!canSelectMenu || !allItems.some(product => product.variants.some(variant => variant.id === item.variant.id && variant.in_stock))}
                         onClick={() => updateQuantity(item.variant.id, 1)}
                         className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100"
                       >
@@ -1232,18 +1268,21 @@ export default function AdminPOSPage() {
                   -1
                 </button>
                 <button
+                  disabled={!canSelectMenu || !allItems.some(product => product.variants.some(variant => variant.id === quickAdjustItem.variant.id && variant.in_stock))}
                   onClick={() => adjustQuickItem(1)}
                   className="py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
                 >
                   +1
                 </button>
                 <button
+                  disabled={!canSelectMenu || !allItems.some(product => product.variants.some(variant => variant.id === quickAdjustItem.variant.id && variant.in_stock))}
                   onClick={() => adjustQuickItem(2)}
                   className="py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
                 >
                   +2
                 </button>
                 <button
+                  disabled={!canSelectMenu || !allItems.some(product => product.variants.some(variant => variant.id === quickAdjustItem.variant.id && variant.in_stock))}
                   onClick={() => adjustQuickItem(5)}
                   className="py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
                 >
@@ -1328,6 +1367,7 @@ export default function AdminPOSPage() {
 
           {lastAddedItem && cart.length > 0 && (
             <button
+              disabled={!canSelectMenu || !allItems.some(item => item.id === lastAddedItem.product.id && item.variants.some(variant => variant.id === lastAddedItem.variant.id && variant.in_stock))}
               onClick={() => addToCart(lastAddedItem.product, lastAddedItem.variant)}
               className="w-full mb-2 py-2.5 px-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors text-left truncate"
               title={`Add again: ${lastAddedItem.product.name}${lastAddedItem.variant.name !== 'Default' ? ` (${lastAddedItem.variant.name})` : ''}`}
@@ -1386,9 +1426,9 @@ export default function AdminPOSPage() {
         />
       )}
 
-      {variantPickerProduct && (
+      {variantPickerProduct && canSelectMenu && (
         <VariantPickerModal
-          product={variantPickerProduct}
+          product={allItems.find(item => item.id === variantPickerProduct.id) || variantPickerProduct}
           onSelect={(variant) => {
             addToCart(variantPickerProduct, variant);
             setVariantPickerProduct(null);

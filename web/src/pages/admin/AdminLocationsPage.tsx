@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import AdminRequestState from '../../components/admin/AdminRequestState';
 import LocationQrCode from '../../components/admin/LocationQrCode';
 import { authDelete, authGet, authPost, authPut } from '../../services/authApi';
 
@@ -131,6 +132,10 @@ export default function AdminLocationsPage() {
   const { getToken } = useAuth();
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const requestId = useRef(0);
+  const active = useRef(false);
   const [savingId, setSavingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [form, setForm] = useState<LocationFormState>(createEmptyForm());
@@ -171,10 +176,16 @@ export default function AdminLocationsPage() {
   };
 
   const fetchLocations = useCallback(async (resetId?: number) => {
+    if (!active.current) return;
+    const id = ++requestId.current;
+    setLoading(true);
     try {
-      setLoading(true);
-      const response = await authGet<LocationsResponse>('/admin/locations', getToken);
-      const nextLocations = response.data.data || [];
+      const response = await authGet<LocationsResponse>('/admin/locations', getToken, { timeout: 20000 });
+      if (id !== requestId.current) return;
+      if (!Array.isArray(response.data.data)) throw new Error('Invalid locations response');
+      const nextLocations = response.data.data;
+      setHasLoaded(true);
+      setLoadError(false);
       setLocations(nextLocations);
       setEditForms((previous) =>
         nextLocations.reduce<Record<number, LocationFormState>>((acc, location) => {
@@ -184,15 +195,18 @@ export default function AdminLocationsPage() {
         }, {})
       );
     } catch (error) {
+      if (id !== requestId.current) return;
       console.error('Failed to fetch locations:', error);
-      toast.error('Failed to load locations');
+      setLoadError(true);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
   }, [getToken]);
 
   useEffect(() => {
+    active.current = true;
     void fetchLocations();
+    return () => { active.current = false; requestId.current += 1; };
   }, [fetchLocations]);
 
   const handleCreate = async (event: React.FormEvent) => {
@@ -354,9 +368,8 @@ export default function AdminLocationsPage() {
       </div>
 
       <div className="space-y-4">
-        {loading ? (
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-sm text-gray-500">Loading...</div>
-        ) : locations.length === 0 ? (
+        <AdminRequestState resource="Locations" loading={loading} error={loadError} hasData={hasLoaded} onRetry={() => void fetchLocations()} />
+        {!hasLoaded ? null : locations.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-sm text-gray-500">No locations found.</div>
         ) : (
           locations.map((location) => {
