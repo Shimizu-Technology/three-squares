@@ -8,7 +8,13 @@ test.beforeEach(async ({ page }) => {
   await page.route('**/api/v1/cart', (route) => route.fulfill({ json: {
     items: [], subtotal_cents: 0, item_count: 0,
   } }));
-  await page.route('**/api/v1/locations', (route) => route.fulfill({ json: { locations: [] } }));
+  const main = { id: 1, slug: 'main', name: 'Three Squares Main' };
+  await page.addInitScript((selectedLocation) => {
+    localStorage.setItem('tsq-location', JSON.stringify({ state: { selectedLocation }, version: 0 }));
+  }, main);
+  await page.route('**/api/v1/locations', (route) => route.fulfill({ json: { locations: [
+    main, { id: 2, slug: 'donki', name: 'Three Squares Donki' },
+  ] } }));
   await page.route('**/api/v1/collections*', (route) => route.fulfill({ json: { collections: [
     { id: 1, slug: 'breakfast', name: 'Breakfast', product_count: 1, business_line: 'three_squares' },
   ] } }));
@@ -57,6 +63,10 @@ test('header and pagination reflow at 320px with 200 percent text', async ({ pag
   await expect(page.locator('a[href="/products/toast-fixture"]')).toBeVisible();
   await page.evaluate(() => { document.documentElement.style.fontSize = '32px'; });
   expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(320);
+  const pickupName = page.getByRole('button', { name: /Pickup location is Three Squares Main/ }).getByText('Three Squares Main', { exact: true });
+  await expect(pickupName).toBeVisible();
+  // A zero-width truncated label can be technically visible; require readable geometry.
+  expect((await pickupName.boundingBox())!.width).toBeGreaterThan(100);
   const toggle = page.getByRole('button', { name: 'Toggle menu' });
   await toggle.click();
   await expect(toggle).toHaveAttribute('aria-expanded', 'true');
