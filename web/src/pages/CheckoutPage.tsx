@@ -608,7 +608,7 @@ function CheckoutForm() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                     </svg>
                   </div>
-                  <h2 className="text-xl font-bold text-gray-900">Delivery Method</h2>
+                  <h2 className="text-xl font-bold text-gray-900">{cartSupportsShipping ? 'Delivery Method' : 'Pickup Details'}</h2>
                 </div>
                 <div className={`grid grid-cols-1 ${cartSupportsShipping && cartSupportsPickup ? 'sm:grid-cols-2' : ''} gap-4`}>
                   {cartSupportsShipping && (
@@ -664,7 +664,7 @@ function CheckoutForm() {
                 </div>
                 {!cartSupportsShipping && cartSupportsPickup && (
                   <p className="mt-3 text-sm text-amber-700">
-                    Your cart contains pickup-only items. Shipping is unavailable.
+                    Your order will be picked up at the selected location.
                   </p>
                 )}
                 {cartSupportsShipping && !cartSupportsPickup && (
@@ -905,13 +905,13 @@ function CheckoutForm() {
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-gray-900">Order Notes</h2>
-                    <p className="text-sm text-gray-500">Optional - delivery instructions, allergies, etc.</p>
+                    <p className="text-sm text-gray-500">Optional - meal preferences and pickup notes.</p>
                   </div>
                 </div>
                 <textarea
                   value={orderNotes}
                   onChange={(e) => setOrderNotes(e.target.value)}
-                  placeholder="e.g., Please deliver to the side door, food allergies, etc."
+                  placeholder="e.g., Food allergies or pickup instructions."
                   rows={3}
                   maxLength={500}
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition resize-none text-sm"
