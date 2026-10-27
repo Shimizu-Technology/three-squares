@@ -64,6 +64,7 @@ module Payments
       end
       raise
     ensure
+      TerminalLease.observe_reader(attempt, result) if attempt.payment_terminal_id
       TerminalLease.release_resolved(attempt) if attempt.payment_terminal_id
     end
   end

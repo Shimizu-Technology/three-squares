@@ -24,6 +24,20 @@ module Payments
       terminal
     end
 
+    def self.observe_reader(attempt, result)
+      # Only the simulator's authenticated ledger emits this readiness fact.
+      # A financial unknown or connection heartbeat alone never enables a reader.
+      return unless result&.metadata&.dig(:simulated) && result.metadata[:reader_state] == 'waiting_for_card'
+      terminal = attempt.payment_terminal
+      terminal&.with_lock do
+        stored = attempt.reload
+        if terminal.leased_attempt_id == stored.id && terminal.status == 'processing' && !terminal.command_token &&
+            !stored.cancel_requested_at && !stored.compensation_claimed_at && !%w[captured failed cancelled compensated].include?(stored.state)
+          terminal.update!(status: 'waiting_for_card')
+        end
+      end
+    end
+
     def self.release_resolved(attempt)
       terminal = attempt.payment_terminal
       terminal&.with_lock { terminal.release_resolved! }

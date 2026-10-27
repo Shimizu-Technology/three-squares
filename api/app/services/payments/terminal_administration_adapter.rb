@@ -12,11 +12,12 @@ module Payments
       elsif @identity.provider == 'worldpay'
         runtime
       else
-        raise UnsupportedCapability, 'Register Stripe readers in their assigned location before provisioning them here'
+        stripe_provider.request_options # Validate the original credential slot without I/O.
       end
     end
 
     def pair(operation:, activation_code:)
+      return stripe_observation(operation) if @identity.provider == 'stripe' && @identity.environment != 'simulated'
       unless @identity.environment == 'simulated'
         return lane_observation(runtime.client.pair(lane_id: numeric_lane(operation), terminal_id: operation.terminal_reference,
           activation_code: activation_code, description: operation.label))
@@ -30,6 +31,8 @@ module Payments
     end
 
     def retire(operation:)
+      # Stripe retirement is local: retain its registered reader and history.
+      return stripe_observation(operation) if @identity.provider == 'stripe' && @identity.environment != 'simulated'
       return lane_observation(runtime.client.delete_lane(lane_id: numeric_lane(operation))) unless @identity.environment == 'simulated'
       facts = {status: 'succeeded', lane_id: operation.lane_id, terminal_id: operation.terminal_reference}
       operation.with_lock { operation.update!(facts: operation.facts.merge('simulated_host_result' => facts.stringify_keys)) }
@@ -37,6 +40,7 @@ module Payments
     end
 
     def query(operation:)
+      return stripe_observation(operation) if @identity.provider == 'stripe' && @identity.environment != 'simulated'
       if @identity.environment == 'simulated'
         return operation.facts.fetch('simulated_host_result', {'status' => 'unknown'}).symbolize_keys
       end
@@ -47,6 +51,28 @@ module Payments
     end
 
     private
+
+    def stripe_provider
+      @stripe_provider ||= StripeProvider.new(@identity)
+    end
+
+    def stripe_observation(operation)
+      caps = @profile.fetch('capabilities')
+      assigned = caps.fetch('stripe_terminal_locations', {})[operation.location_id.to_s]
+      assigned ||= caps['stripe_terminal_location_id'] if @profile['location_id'] == operation.location_id
+      unless assigned.is_a?(String) && assigned.match?(/\Atml_[A-Za-z0-9]{1,128}\z/) && operation.terminal_reference.match?(/\Atmr_[A-Za-z0-9]{1,128}\z/)
+        raise BindingError, 'Assign the original Stripe reader location before registering this reader'
+      end
+      # Registration in this app only verifies an already registered reader.
+      # No Stripe reader create/delete operation or activation code is used.
+      reader = stripe_provider.client.v1.terminal.readers.retrieve(operation.terminal_reference)
+      unless reader.id == operation.terminal_reference && reader.location == assigned && reader.livemode == (@identity.environment == 'production')
+        return {status: 'failed'}
+      end
+      {status: 'succeeded', lane_id: operation.lane_id, terminal_id: reader.id,
+        device_serial: reader.serial_number, device_model: reader.device_type, device_firmware: reader.device_sw_version,
+        connection_state: reader.status == 'online' ? 'connected' : 'unknown'}
+    end
 
     def runtime
       @runtime ||= Worldpay::TriPosRuntime.new(identity: @identity, profile: @profile)

@@ -40,7 +40,7 @@ module Payments
         TerminalAdministration.create!(payment_identity: identity, payment_profile: profile, location: location, user: user,
           payment_terminal: terminal, operation_key: operation_key, lane_id: lane_id, terminal_reference: terminal_reference,
           label: label, kind: kind, payload_digest: Snapshot.digest(payload), facts: {
-            'profile' => {'id' => profile.id, 'presentation' => profile.presentation, 'capabilities' => profile.capabilities.slice(*TerminalContext::PROFILE_KEYS)}
+            'profile' => {'id' => profile.id, 'location_id' => profile.location_id, 'presentation' => profile.presentation, 'capabilities' => profile.capabilities.slice(*TerminalContext::PROFILE_KEYS)}
           })
       end
       return operation if %w[succeeded failed].include?(operation.state)
@@ -49,7 +49,7 @@ module Payments
       if operation.dispatched_at
         observation = adapter.query(operation: operation)
       else
-        if kind == 'pair' && !(activation_code.is_a?(String) && activation_code.bytesize.between?(1, 80) && !activation_code.match?(/[\x00-\x1f\x7f]/))
+        if kind == 'pair' && identity.provider == 'worldpay' && !(activation_code.is_a?(String) && activation_code.bytesize.between?(1, 80) && !activation_code.match?(/[\x00-\x1f\x7f]/))
           raise Error, 'Enter the reader activation code to pair this device'
         end
         claimed = operation.with_lock do

@@ -36,13 +36,7 @@ module Payments
       raise
     ensure
       TerminalLease.release_resolved(attempt)
-      terminal = attempt.payment_terminal
-      terminal&.with_lock do
-        if terminal.leased_attempt_id == attempt.id && terminal.status == 'processing' && !terminal.command_token &&
-            (attempt.reload.state == 'collecting' || result&.metadata&.dig(:reader_state) == 'waiting_for_card')
-          terminal.update!(status: 'waiting_for_card')
-        end
-      end
+      TerminalLease.observe_reader(attempt, result)
     end
   end
 end

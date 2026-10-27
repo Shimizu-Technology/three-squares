@@ -78,6 +78,21 @@ RSpec.describe 'Bound terminal collection and administration', type: :request do
     expect(terminal.reload.leased_attempt_id).to eq(attempt.id)
     expect(InventoryCommitment.where(order_id: attempt.order_id)).to be_empty
   end
+  it 'restores simulator reader readiness from its bound ledger after a worker dies during dispatch' do
+    attempt = saved_order
+    start(attempt)
+    allow_any_instance_of(Payments::TerminalProvider).to receive(:sale).and_raise(Payments::Error, 'worker died after claim')
+    expect { ProcessTerminalSaleJob.perform_now(attempt.id) }.to raise_error(Payments::Error)
+    expect(terminal.reload.status).to eq('processing')
+    Payments::ReconcileAttempt.call(attempt: attempt.reload, force: true)
+    expect(terminal.reload.status).to eq('waiting_for_card')
+    expect(attempt.reload.dispatched_at).to be_present
+    post "/api/v1/admin/payment_terminals/#{terminal.id}/simulate", params: {attempt_id: attempt.id, command: 'approve'}, as: :json
+    expect(response).to have_http_status(:ok), response.body
+    expect(attempt.order.reload.payment_status).to eq('paid')
+    expect(SimulatedPaymentRecord.where(payment_attempt: attempt, kind: 'collection').count).to eq(1)
+  end
+
   it 'cancels locally before dispatch and never sends a queued sale afterward' do
     attempt = saved_order
     start(attempt)

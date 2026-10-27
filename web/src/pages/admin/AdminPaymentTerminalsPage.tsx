@@ -272,9 +272,9 @@ function TerminalAdministration({ user, getToken }: { user: StaffAccessUser; get
   };
 
   const dialogOperation = confirmation?.kind === 'operation' ? confirmation.operation : null;
-  const needsCode = !!dialogOperation && dialogOperation.kind !== 'retire' && dialogOperation.state === 'reserved';
+  const needsCode = !!dialogOperation && dialogOperation.device.provider === 'worldpay' && dialogOperation.kind !== 'retire' && dialogOperation.state === 'reserved';
   const dialogDevice = dialogOperation?.device ?? (confirmation?.kind === 'edit' ? confirmation.terminal : null);
-  const title = confirmation?.kind === 'edit' ? 'Edit reader settings' : dialogOperation?.kind === 'retire' ? 'Retire this reader?' : 'Pair this reader?';
+  const title = confirmation?.kind === 'edit' ? 'Edit reader settings' : dialogOperation?.kind === 'retire' ? 'Retire this reader?' : dialogOperation?.device.provider === 'stripe' ? 'Verify registered Stripe reader?' : 'Pair this reader?';
   return <div className="min-w-0 space-y-6 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] [overflow-wrap:anywhere]">
     <header className="flex flex-wrap items-start justify-between gap-3">
       <div className="space-y-2"><h1 className="text-2xl font-bold">Payment readers</h1><p className="text-sm">Pair and manage readers for authorized locations. Resolve any saved operation before making another change.</p></div>
@@ -302,7 +302,7 @@ function TerminalAdministration({ user, getToken }: { user: StaffAccessUser; get
     </section>}
     <section aria-labelledby={`${id}-add`} className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-5">
       <h2 id={`${id}-add`} className="text-lg font-semibold">Pair a new reader</h2>
-      <p className="text-sm">Choose an existing payment profile and its location. For Worldpay sandbox or production, use the assigned numeric lane and reader identifier. Ask an administrator if a profile is missing.</p>
+      <p className="text-sm">Choose an existing payment profile and its location. Stripe readers must already be registered in that account and location; this page verifies their assignment. For Worldpay sandbox or production, use the assigned numeric lane and reader identifier. Ask an administrator if a profile is missing.</p>
       <form onSubmit={prepareCreate} className="space-y-4">
         <fieldset disabled={blocked || loading || !!loadError} className="grid min-w-0 gap-4 sm:grid-cols-2 disabled:opacity-60">
           <legend className="sr-only">New reader details</legend>
@@ -347,7 +347,7 @@ function TerminalAdministration({ user, getToken }: { user: StaffAccessUser; get
           </div>
         </article>;
       })}
-      <p className="text-xs text-gray-600">Connectivity does not establish a payment outcome. Retirement is confirmed only after the provider and server resolve the saved operation.</p>
+      <p className="text-xs text-gray-600">Connectivity does not establish a payment outcome. Retirement stops new payments in this app and retains history. Stripe registration is retained at Stripe; Worldpay lane deletion needs provider confirmation.</p>
     </section>
     <Dialog open={confirmation !== null} onOpenChange={open => { if (!open && !busy) { setConfirmation(null); setActivationCode(''); } }}
       labelledBy={`${id}-dialog-title`} describedBy={`${id}-dialog-description`} dismissible={!busy} className="w-lg rounded-xl">
@@ -359,7 +359,7 @@ function TerminalAdministration({ user, getToken }: { user: StaffAccessUser; get
         <h2 id={`${id}-dialog-title`} className="text-xl font-semibold">{title}</h2>
         <p id={`${id}-dialog-description`} className="text-sm">{confirmation?.kind === 'edit' ? 'Only the label and enabled status can change. The profile, location, lane and reader identifiers stay assigned.'
           : dialogOperation?.kind === 'retire' ? 'Confirm this exact device and lane. A busy or unresolved lane must be reconciled before retirement can complete.'
-            : 'Confirm this exact device, location, lane and payment environment before sending its activation code.'}</p>
+            : 'Confirm this exact device, location, lane and payment environment. Worldpay pairing sends an activation code; Stripe registration verifies the existing reader.'}</p>
         {dialogDevice && <DeviceFacts device={dialogDevice} locations={locations} />}
         {error && <p role="alert" className="text-sm text-red-800">{error}</p>}
         {confirmation?.kind === 'edit' && <>
