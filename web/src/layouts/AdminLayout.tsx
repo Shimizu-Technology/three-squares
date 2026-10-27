@@ -139,7 +139,7 @@ export default function AdminLayout() {
     setCheckingAdmin(true);
     if (!user) { setIsAdmin(false); setCheckingAdmin(false); return; }
     try {
-      const response = await authGet<{ admin: boolean }>('/me', getToken);
+      const response = await authGet<{ admin: boolean }>('/me', getToken, { timeout: 20000 });
       if (id !== accessRequest.current) return;
       setIsAdmin(response.data.admin === true);
       setAccessError(false);
@@ -214,7 +214,13 @@ export default function AdminLayout() {
     <a href="#admin-main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-60 focus:rounded focus:bg-white focus:p-3">Skip to content</a>
     <aside id="admin-sidebar" aria-label="Admin sidebar" className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-gray-200 bg-white md:flex ${collapsed ? 'w-20' : 'w-64'}`}>
       <Link to="/admin" aria-label="Three Squares Admin" className="flex h-16 shrink-0 items-center justify-center bg-tsPrimary px-3 text-lg font-bold text-white">{collapsed ? 'TS' : 'Three Squares Admin'}</Link>
-      <nav aria-label="Admin navigation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3" onScroll={() => setTooltip(null)}>{renderNavigation(collapsed)}</nav>
+      <nav aria-label="Admin navigation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3" onScroll={event => {
+        const focused = document.activeElement;
+        if (collapsed && focused instanceof HTMLElement && event.currentTarget.contains(focused)) {
+          const name = focused.getAttribute('aria-label');
+          if (name) showTooltip(focused, name);
+        } else setTooltip(null);
+      }}>{renderNavigation(collapsed)}</nav>
       {account(collapsed)}
     </aside>
     {tooltip && collapsed && <div role="tooltip" className="pointer-events-none fixed z-60 rounded-lg bg-gray-950 px-3 py-2 text-sm font-medium text-white shadow-lg" style={{ top: tooltip.top, left: tooltip.left }}>{tooltip.name}</div>}
