@@ -26,7 +26,7 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible();
     const amount = dialog.getByLabel('Quote amount ($)', { exact: true });
-    const notes = dialog.getByLabel('Follow-up notes (staff recorded)', { exact: true });
+    const notes = dialog.getByRole('textbox', { name: 'Follow-up notes (staff recorded)', exact: true });
     await amount.fill('12.345');
     await dialog.getByRole('button', { name: 'Record quote', exact: true }).click();
     await expect(dialog.getByRole('alert')).toContainText('at most two decimal places');
