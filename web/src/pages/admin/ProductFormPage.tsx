@@ -137,6 +137,9 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
   const [loadingAudits, setLoadingAudits] = useState(false);
   const inventoryModalContentRef = useRef<HTMLDivElement | null>(null);
   const collectionsScrollRef = useRef<HTMLDivElement | null>(null);
+  const shippingDisclosureRef = useRef<HTMLDetailsElement | null>(null);
+  const shippingWeightRef = useRef<HTMLInputElement | null>(null);
+  const [shippingWeightError, setShippingWeightError] = useState('');
   const [formData, setFormData] = useState<ProductFormData>({
     name: '',
     description: '',
@@ -330,6 +333,14 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
     });
   };
 
+  const showShippingWeightError = () => {
+    const message = 'Shipping weight must be greater than zero.';
+    if (shippingDisclosureRef.current) shippingDisclosureRef.current.open = true;
+    shippingWeightRef.current?.focus({ preventScroll: false });
+    setShippingWeightError(message);
+    toast.error(message);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!draftReady || draftOffer || saving) return;
@@ -349,6 +360,11 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
     }
     if (formData.allow_pickup && formData.location_ids.length === 0) {
       toast.error('Select at least one pickup location.');
+      return;
+    }
+
+    if (formData.allow_shipping && (!Number.isFinite(formData.weight_oz) || formData.weight_oz <= 0)) {
+      showShippingWeightError();
       return;
     }
 
@@ -734,7 +750,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                 )}
               </div>
             )}
-            <details open={formData.allow_shipping} className="rounded-lg border border-gray-200 p-4">
+            <details ref={shippingDisclosureRef} open={formData.allow_shipping} className="rounded-lg border border-gray-200 p-4">
               <summary className="cursor-pointer font-medium text-gray-900">Advanced shipping{formData.allow_shipping ? ' — enabled' : ' — pickup only'}</summary>
               <div className="mt-4 space-y-4">
                 <div className="flex items-center">
@@ -761,6 +777,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                     name="weight_oz"
                     value={formData.weight_oz}
                     ref={input => {
+                      shippingWeightRef.current = input;
                       input?.setCustomValidity(formData.allow_shipping && (!Number.isFinite(formData.weight_oz) || formData.weight_oz <= 0)
                         ? 'Shipping weight must be greater than zero.' : '');
                     }}
@@ -768,10 +785,13 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                     step="any"
                     min="0"
                     required={formData.allow_shipping}
-                    aria-describedby="shipping-weight-help"
+                    onInvalid={event => { event.preventDefault(); showShippingWeightError(); }}
+                    aria-invalid={!!shippingWeightError && formData.allow_shipping && formData.weight_oz <= 0}
+                    aria-describedby="shipping-weight-help shipping-weight-error"
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     placeholder="8.0"
                   />
+                  {shippingWeightError && formData.allow_shipping && formData.weight_oz <= 0 && <p id="shipping-weight-error" role="alert" className="mt-2 text-sm text-red-800">{shippingWeightError}</p>}
                   <p id="shipping-weight-help" className="text-xs text-gray-500 mt-1">{formData.allow_shipping ? 'Enter a weight greater than zero. Options without a saved weight inherit this weight; existing option weights are kept.' : 'Pickup-only items do not need a shipping weight. Any saved weight is kept.'}</p>
                 </div>
               </div>

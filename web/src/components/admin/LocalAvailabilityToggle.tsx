@@ -24,7 +24,7 @@ export default function LocalAvailabilityToggle({ productId, productName, locati
     if (pending.current || disabled) return;
     pending.current = true; setSaving(true); setError('');
     try {
-      const response = await authPatch<{ data: { product_id: number; location_id: number; available: boolean } }>(`/admin/products/${productId}/availability`, { availability: { location_id: locationId, available: !available } }, getToken);
+      const response = await authPatch<{ data: { product_id: number; location_id: number; available: boolean } }>(`/admin/products/${productId}/availability`, { availability: { location_id: locationId, available: !available } }, getToken, { timeout: 20000 });
       const result = response.data.data;
       if (result.product_id !== productId || result.location_id !== locationId || typeof result.available !== 'boolean') throw new Error('Invalid availability response');
       onSaved(productId, locationId, result.available);

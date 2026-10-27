@@ -23,7 +23,12 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     expect(writes[0]).toMatchObject({ location_ids: [1], allow_shipping: false, weight_oz: 0, product_type: 'local', product_low_stock_threshold: 0 });
     await page.locator('summary').filter({ hasText: 'Advanced shipping' }).click();
     await page.locator('#allow_shipping').check();
+    await page.locator('summary').filter({ hasText: 'Advanced shipping' }).click();
+    await expect(page.locator('#weight_oz')).not.toBeVisible();
     await page.getByRole('button', { name: 'Update Product', exact: true }).click();
+    await expect(page.locator('#weight_oz')).toBeVisible();
+    await expect(page.locator('#weight_oz')).toBeFocused();
+    await expect(page.getByRole('alert').filter({ hasText: 'Shipping weight must be greater than zero.' })).toBeVisible();
     expect(await page.locator('#weight_oz').evaluate((input: HTMLInputElement) => input.validity.valid)).toBe(false);
     expect(writes).toHaveLength(1);
     await page.locator('#weight_oz').fill('8');
@@ -78,5 +83,65 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     expect(reads.every(url => new URL(url).searchParams.get('include_unavailable') === 'true')).toBe(true);
     expect(catalogRead).toBe(false);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
+  });
+}
+
+for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]]) {
+  test(`Products names the counter and retries a local availability save at ${width}x${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    const meal = { id: 91230, name: 'Local toggle lunch', slug: 'local-toggle', product_type: 'local', base_price_cents: 1200, published: true, archived: false, inventory_level: 'none', allow_pickup: true, location_ids: [1, 2], collections: [] };
+    const shipping = { ...meal, id: 91231, name: 'Local toggle shipping box', slug: 'shipping-toggle', allow_pickup: false };
+    let fail = true;
+    const writes: unknown[] = [];
+    await page.route('**/api/v1/admin/products**', route => {
+      if (route.request().method() === 'PATCH') {
+        const data = route.request().postDataJSON(); writes.push(data);
+        if (fail) return route.fulfill({ status: 500, json: { error: 'Unavailable' } });
+        meal.location_ids = data.availability.available ? [1, 2] : [2];
+        return route.fulfill({ json: { data: { product_id: meal.id, location_id: 1, available: data.availability.available } } });
+      }
+      return route.fulfill({ json: { data: [meal, shipping] } });
+    });
+    await page.goto('/admin/products?q=Local+toggle');
+    await page.getByRole('combobox', { name: 'Pickup availability location', exact: true }).selectOption('1');
+    const mark = page.getByRole('button', { name: 'Mark Local toggle lunch sold out at Three Squares Main', exact: true }).filter({ visible: true });
+    await expect(mark).toBeEnabled();
+    await expect(page.getByText('Pickup not offered', { exact: true }).filter({ visible: true })).toBeVisible();
+    await mark.click();
+    await expect(page.getByRole('alert').filter({ visible: true })).toContainText('Couldn’t change availability at Three Squares Main');
+    await expect(mark).toBeEnabled();
+    fail = false; await mark.click();
+    const restore = page.getByRole('button', { name: 'Restore Local toggle lunch at Three Squares Main', exact: true }).filter({ visible: true });
+    await expect(restore).toBeEnabled();
+    await restore.click(); await expect(mark).toBeEnabled();
+    expect(writes).toEqual([{ availability: { location_id: 1, available: false } }, { availability: { location_id: 1, available: false } }, { availability: { location_id: 1, available: true } }]);
+    expect(meal.published).toBe(true);
+  });
+}
+
+for (const [width, height] of [[768, 1024], [1024, 768]]) {
+  test(`a stalled counter availability request times out and permits retry at ${width}x${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    let stalled = true;
+    let available = true;
+    let held: import('@playwright/test').Route | undefined;
+    await page.route('**/api/v1/admin/payment_terminals**', route => route.fulfill({ json: { terminals: [] } }));
+    await page.route('**/api/v1/admin/pos/menu**', route => route.fulfill({ json: { locations: [{ id: 1, name: 'Main counter' }], categories: [{ name: 'Lunch', items: [{ id: 91230, name: 'Timeout lunch', slug: 'timeout', product_type: 'local', location_available: available, image_url: null, variants: [{ id: 92230, name: 'Lunch', price_cents: 1200, price_formatted: '$12.00', sku: 'QA', in_stock: available }] }] }] } }));
+    await page.route('**/api/v1/admin/products/91230/availability', route => {
+      if (stalled) { held = route; return; }
+      available = false;
+      return route.fulfill({ json: { data: { product_id: 91230, location_id: 1, available: false } } });
+    });
+    await page.goto('/admin/pos');
+    const article = page.getByRole('article', { name: 'Timeout lunch', exact: true });
+    const mark = article.getByRole('button', { name: /^Mark / });
+    await mark.click(); await expect(mark).toBeDisabled();
+    await expect(article.getByRole('alert')).toContainText('Try again', { timeout: 25000 });
+    await expect(mark).toBeEnabled();
+    await held?.abort().catch(() => {});
+    stalled = false;
+    let saved = false; page.on('response', response => { if (response.url().endsWith('/availability') && response.status() === 200) saved = true; });
+    await mark.click(); await expect.poll(() => saved).toBe(true);
+    await expect(article.getByRole('button', { name: /^Restore / })).toBeEnabled();
   });
 }

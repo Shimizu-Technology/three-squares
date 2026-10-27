@@ -96,7 +96,7 @@ const shippingDisclosure = h => h.find(node => node.type === 'details' && text(n
 // Exercise the input's custom-validity callback. Native UI/focus stays with parent QA.
 const weightValidation = field => {
   let message;
-  field.props.ref({ setCustomValidity(value) { message = value; } });
+  field.props.ref({ setCustomValidity(value) { message = value; }, focus() {} });
   return message;
 };
 
@@ -187,5 +187,21 @@ test('scoped managers keep stock read only and main saves omit protected invento
   for (const key of ['inventory_level', 'product_stock_quantity', 'product_low_stock_threshold']) assert.equal(key in h.requests[0].product, false);
   assert.equal(h.requests[0].product.product_type, 'local');
   assert.equal(readProductDraft(h.userId, '42'), null);
+  h.unmount();
+});
+
+test('submitting collapsed invalid shipping opens the section, focuses weight and sends no request', async () => {
+  const h = harness({ ...fresh, allow_shipping: true, weight_oz: 0 });
+  await h.flush();
+  const disclosure = { open: false };
+  let focused = false;
+  shippingDisclosure(h).props.ref.current = disclosure;
+  h.field('weight_oz').props.ref({ setCustomValidity() {}, focus() { focused = true; } });
+  await h.submit();
+  assert.equal(h.requests.length, 0);
+  assert.equal(disclosure.open, true);
+  assert.equal(focused, true);
+  assert.equal(h.field('weight_oz').props['aria-invalid'], true);
+  assert.ok(nodes(h.tree).some(node => node.props?.role === 'alert' && text(node).includes('Shipping weight must be greater than zero.')));
   h.unmount();
 });
