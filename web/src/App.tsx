@@ -560,7 +560,7 @@ function AppContent() {
                 />
                 <p className="text-[11px] uppercase tracking-wide text-warm-500 mt-2">by B&amp;G Pacific</p>
                 <p className="text-warm-500 text-sm mt-4 leading-relaxed">
-                  Good Food. Great Vibes. Quality Service.<br />
+                  Good Food, Good Mood, Good Service<br />
                   Guam-style comfort food & catering
                 </p>
                 <div className="flex space-x-4 mt-4">

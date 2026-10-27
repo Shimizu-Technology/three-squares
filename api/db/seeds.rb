@@ -68,7 +68,7 @@ categories = [
   { name: "Grab & Go", slug: "grab-n-go", description: "Sold by weight - Donki location", position: 9 },
   
   # Latte Stone Cookies
-  { name: "Latte Stone Cookies", slug: "cookies", description: "Premium Guam-made shortbread cookies", position: 9 },
+  { name: "Latte Stone Cookies", slug: "cookies", description: "Latte Stone Cookies", position: 9 },
   { name: "Cookie Gift Boxes", slug: "cookie-boxes", description: "Assortment boxes and tins", position: 10 },
   { name: "Mini Cookies", slug: "mini-cookies", description: "Bite-sized snacking cookies", position: 11 },
   
@@ -423,20 +423,20 @@ if HomepageSection.count == 0
     subtitle: "Good Food, Good Mood, Good Service — Guam-style comfort food & catering by B&G Pacific",
     button_text: "View Menu",
     button_link: "/products",
-    background_image_url: "/images/plated1.jpg",
+    background_image_url: "/images/Loco_Moco.JPG",
     settings: {
       "overlay_opacity" => 0.4,
       "text_alignment" => "center",
       "badge_text" => "B&G Pacific LLC",
-      "secondary_button_text" => "Order Catering",
+      "secondary_button_text" => "Ask About Catering",
       "secondary_button_link" => "/catering"
     }
   )
 
   [
     { title: "Restaurant Menu", subtitle: "Breakfast, lunch, and dinner favorites", button_text: "View Menu", button_link: "/products", image_url: "/images/Cheeseburger.jpg", position: 0 },
-    { title: "Latte Stone Cookies", subtitle: "Premium Guam-made shortbread cookies", button_text: "Shop Cookies", button_link: "/products?collection=cookies", image_url: "/images/latte-stone-cookies/30.png", position: 1 },
-    { title: "Catering Services", subtitle: "Corporate, government & private events", button_text: "Order Catering", button_link: "/catering", image_url: "/images/catering4.jpg", position: 2 }
+    { title: "Latte Stone Cookies", subtitle: "Latte Stone Cookies", button_text: "Shop Cookies", button_link: "/products?collection=cookies", image_url: "/images/latte-stone-cookies/30.png", position: 1 },
+    { title: "Catering Services", subtitle: "Ask about catering for a gathering", button_text: "Request a Quote", button_link: "/catering", image_url: "/images/catering4.jpg", position: 2 }
   ].each do |card|
     HomepageSection.create!(
       section_type: "category_card",

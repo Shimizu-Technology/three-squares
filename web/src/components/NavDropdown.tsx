@@ -157,7 +157,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
             {storefrontCount > 1 && (
               <>
                 <p className="px-5 py-2 text-[11px] font-semibold uppercase tracking-wider text-warm-400">
-                  Shop by Business
+                  Browse by menu
                 </p>
                 {showThreeSquares && (
                   <Link

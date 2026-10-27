@@ -1,8 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import FadeIn from '../components/animations/FadeIn';
-import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 import Breadcrumbs from '../components/Breadcrumbs';
 import api from '../services/api';
 import Dialog from '../components/ui/Dialog';
@@ -24,103 +23,6 @@ const BUDGET_RANGES = [
   '$2,500 - $5,000',
   '$5,000 - $10,000',
   '$10,000+',
-];
-
-// Catering packages data
-const cateringPackages = [
-  {
-    name: "Breakfast Package",
-    description: "Start your meeting right with our popular breakfast selections",
-    minGuests: 10,
-    pricePerPerson: "$12.99",
-    items: [
-      "Scrambled Eggs",
-      "Bacon & Portuguese Sausage",
-      "Hash Browns or Rice",
-      "Fresh Fruit Platter",
-      "Coffee & Juice Service"
-    ]
-  },
-  {
-    name: "Lunch Box Package",
-    description: "Individual boxed lunches perfect for meetings and events",
-    minGuests: 10,
-    pricePerPerson: "$15.99",
-    items: [
-      "Choice of Entrée (Chicken Katsu, Kalbi, or Tinaktak)",
-      "Rice & Side Salad",
-      "Drink & Dessert",
-      "Individually Packaged"
-    ]
-  },
-  {
-    name: "Fiesta Buffet",
-    description: "Full buffet service for larger gatherings and celebrations",
-    minGuests: 25,
-    pricePerPerson: "$24.99",
-    items: [
-      "3 Entrée Selections",
-      "Rice & 2 Side Dishes",
-      "Garden Salad Bar",
-      "Rolls & Butter",
-      "Dessert Selection",
-      "Beverage Station"
-    ]
-  },
-  {
-    name: "Executive Luncheon",
-    description: "Upscale catering for corporate events and VIP gatherings",
-    minGuests: 15,
-    pricePerPerson: "$34.99",
-    items: [
-      "Premium Entrée Selection",
-      "Gourmet Sides",
-      "Fresh Salad Course",
-      "Artisan Bread Service",
-      "Dessert & Coffee Service",
-      "Professional Setup & Service"
-    ]
-  }
-];
-
-// Services offered
-const services = [
-  {
-    title: "Corporate Events",
-    description: "From board meetings to company celebrations, we deliver professional catering that impresses.",
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-      </svg>
-    )
-  },
-  {
-    title: "Government & HUBZone",
-    description: "Certified vendor for government contracts. Invoice and PO billing available.",
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-      </svg>
-    )
-  },
-  {
-    title: "Private Celebrations",
-    description: "Birthdays, graduations, fiestas — we make your special moments delicious.",
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 15.546c-.523 0-1.046.151-1.5.454a2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.704 2.704 0 00-3 0 2.704 2.704 0 01-3 0 2.701 2.701 0 00-1.5-.454M9 6v2m3-2v2m3-2v2M9 3h.01M12 3h.01M15 3h.01M21 21v-7a2 2 0 00-2-2H5a2 2 0 00-2 2v7h18z" />
-      </svg>
-    )
-  },
-  {
-    title: "Drop-Off & Full Service",
-    description: "Choose simple delivery or full-service with setup, serving, and cleanup.",
-    icon: (
-      <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-      </svg>
-    )
-  }
 ];
 
 // Form initial state
@@ -210,68 +112,36 @@ export default function CateringPage() {
         ]} />
       </div>
 
-      {/* Hero Section */}
-      <div className="bg-warm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24">
-          <FadeIn direction="none">
-            <h1 className="text-4xl sm:text-5xl font-bold text-center mb-6 text-gray-900 tracking-tight">
-              Catering Services
-            </h1>
-          </FadeIn>
-          <FadeIn delay={0.1}>
-            <p className="text-lg sm:text-xl text-center max-w-2xl mx-auto text-gray-600 mb-8">
-              From intimate gatherings to large corporate events, Three Squares delivers 
-              Guam-style comfort food that brings people together.
-            </p>
-          </FadeIn>
-          <FadeIn delay={0.2}>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <button
-                onClick={openInquiry}
-                className="inline-flex items-center justify-center gap-2 bg-warm-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-warm-700 transition shadow-lg"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                Request a Quote
-              </button>
-              <a
-                href="tel:+16716462652"
-                className="inline-flex items-center justify-center gap-2 bg-white text-warm-700 border-2 border-warm-600 px-8 py-4 rounded-lg font-semibold hover:bg-warm-50 transition"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                Call (671) 646-2652
-              </a>
-            </div>
-          </FadeIn>
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-16 grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-widest text-tsPrimary mb-4">Three Squares catering</p>
+          <h1 className="text-4xl sm:text-5xl font-bold text-warm-900 tracking-tight leading-tight">Food for your gathering</h1>
+          <p className="mt-5 text-lg text-warm-700 leading-relaxed max-w-xl">Tell us about your event and the food you have in mind. A catering inquiry starts a conversation about availability and a quote.</p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <button onClick={openInquiry} className="btn-primary">Request a quote</button>
+            <Link to="/products?business_line=catering" className="btn-secondary inline-flex items-center">Browse catering items</Link>
+          </div>
+          <p className="mt-5 text-sm text-warm-600">Submitting an inquiry does not place or pay for an order.</p>
         </div>
-      </div>
+        <figure className="overflow-hidden rounded-2xl bg-warm-100">
+          <img src="/images/catering7.jpg" alt="Food arranged in a catering tray" className="w-full aspect-[4/3] object-cover" loading="eager" />
+        </figure>
+      </section>
 
-      {/* Services Grid */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <FadeIn>
-          <h2 className="text-3xl font-bold text-center mb-12 text-gray-900">
-            How We Can Help
-          </h2>
-        </FadeIn>
-        <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {services.map((service, index) => (
-            <StaggerItem key={index}>
-              <div className="flex gap-4 p-6 rounded-xl border border-gray-100 hover:border-warm-200 hover:shadow-md transition">
-              <div className="shrink-0 w-12 h-12 bg-warm-100 rounded-lg flex items-center justify-center text-warm-600">
-                  {service.icon}
-                </div>
-                <div>
-                  <h3 className="font-semibold text-lg text-gray-900 mb-2">{service.title}</h3>
-                  <p className="text-gray-600">{service.description}</p>
-                </div>
-              </div>
-            </StaggerItem>
-          ))}
-        </StaggerContainer>
-      </div>
+      <section className="bg-white py-12 sm:py-16">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid md:grid-cols-2 gap-6">
+          <div className="rounded-2xl border border-warm-200 p-6 sm:p-8">
+            <h2 className="text-2xl font-bold text-warm-900">Choosing from the menu?</h2>
+            <p className="mt-3 text-warm-700">Browse the catering items currently listed online, then choose a pickup location when ordering.</p>
+            <Link to="/products?business_line=catering" className="inline-block mt-5 font-semibold text-tsPrimary underline underline-offset-4">View catering items</Link>
+          </div>
+          <div className="rounded-2xl border border-warm-200 p-6 sm:p-8">
+            <h2 className="text-2xl font-bold text-warm-900">Planning an event?</h2>
+            <p className="mt-3 text-warm-700">Share the date, guest count and menu preferences. The team can review your request and discuss a quote.</p>
+            <button onClick={openInquiry} className="mt-5 font-semibold text-tsPrimary underline underline-offset-4">Open inquiry form</button>
+          </div>
+        </div>
+      </section>
 
       {/* Catering Inquiry Form */}
       <Dialog open={showForm} onOpenChange={setShowForm} labelledBy="catering-form-title"
@@ -285,7 +155,7 @@ export default function CateringPage() {
                   </div>
                   <h3 id="catering-form-title" className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h3>
                   <p className="text-gray-600 mb-6">
-                    We've received your catering inquiry and will get back to you within 24-48 hours.
+                    Your inquiry has been received. The team can review your details and follow up about a quote.
                   </p>
                   <button
                     onClick={() => { setShowForm(false); setSubmitted(false); }}
@@ -299,7 +169,7 @@ export default function CateringPage() {
                   <div className="shrink-0 px-5 py-4 sm:px-6 sm:py-5 border-b border-warm-200 bg-warm-50/80 flex justify-between items-center">
                     <div>
                       <h3 id="catering-form-title" className="text-xl sm:text-2xl font-bold text-gray-900">Request a Catering Quote</h3>
-                      <p className="text-sm text-gray-500 mt-1">Tell us about your event and we&apos;ll send a custom quote.</p>
+                      <p className="text-sm text-gray-500 mt-1">Share your event details so the team can discuss a quote.</p>
                     </div>
                     <button
                       onClick={() => setShowForm(false)}
@@ -514,7 +384,7 @@ export default function CateringPage() {
                         {submitting ? 'Submitting...' : 'Submit Inquiry'}
                       </button>
                       <p className="text-sm text-gray-500 text-center mt-3">
-                        We'll respond within 24-48 hours with a custom quote.
+                        Submitting this form requests a quote. It does not confirm availability or place an order.
                       </p>
                     </div>
                   </form>
@@ -522,114 +392,15 @@ export default function CateringPage() {
               )}
       </Dialog>
 
-      {/* Catering Packages */}
-      <div className="bg-gray-50 py-16">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <FadeIn>
-            <h2 className="text-3xl font-bold text-center mb-4 text-gray-900">
-              Catering Packages
-            </h2>
-            <p className="text-center text-gray-600 mb-12 max-w-2xl mx-auto">
-              Choose from our popular packages or let us create a custom menu for your event. 
-              All prices are per person with minimum guest requirements.
-            </p>
-          </FadeIn>
-          
-          <StaggerContainer className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {cateringPackages.map((pkg, index) => (
-              <StaggerItem key={index}>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition h-full flex flex-col">
-                  <div className="p-6 flex-1">
-                    <div className="flex justify-between items-start mb-4">
-                      <h3 className="font-bold text-xl text-gray-900">{pkg.name}</h3>
-                      <span className="bg-warm-100 text-warm-800 text-sm font-semibold px-3 py-1 rounded-full">
-                        {pkg.pricePerPerson}/person
-                      </span>
-                    </div>
-                    <p className="text-gray-600 mb-4">{pkg.description}</p>
-                    <p className="text-sm text-gray-500 mb-4">Minimum {pkg.minGuests} guests</p>
-                    <ul className="space-y-2">
-                      {pkg.items.map((item, i) => (
-                        <li key={i} className="flex items-center gap-2 text-gray-700">
-                          <svg className="w-4 h-4 text-green-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                          </svg>
-                          {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="p-6 bg-gray-50 border-t border-gray-100">
-                    <button
-                      onClick={openInquiry}
-                      className="block w-full text-center bg-warm-600 text-white py-3 rounded-lg font-semibold hover:bg-warm-700 transition"
-                    >
-                      Request Quote
-                    </button>
-                  </div>
-                </div>
-              </StaggerItem>
-            ))}
-          </StaggerContainer>
+      <section className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-14 sm:py-20 grid lg:grid-cols-2 gap-8 lg:gap-14 items-center">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-widest text-tsPrimary mb-4">From the kitchen</p>
+          <h2 className="text-3xl sm:text-4xl font-bold text-warm-900 tracking-tight">Tell us what your table needs</h2>
+          <p className="mt-4 text-warm-700 leading-relaxed">The inquiry form has room for your event date, guest count, food preferences and other details. The team will need to confirm the menu, availability and price with you.</p>
+          <button onClick={openInquiry} className="btn-primary mt-7">Request a quote</button>
         </div>
-      </div>
-
-      {/* Lead Time & Info */}
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-        <FadeIn>
-          <div className="bg-warm-50 rounded-2xl p-8 md:p-12">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900">Booking Information</h2>
-            <div className="grid md:grid-cols-2 gap-8">
-              <div>
-                <h3 className="font-semibold text-lg mb-3 text-gray-900">Lead Time Requirements</h3>
-                <ul className="space-y-2 text-gray-700">
-                  <li className="flex items-start gap-2">
-                    <svg className="w-5 h-5 text-warm-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span><strong>Small orders (10-25 guests):</strong> 48 hours notice</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-5 h-5 text-warm-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span><strong>Medium orders (26-75 guests):</strong> 1 week notice</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-5 h-5 text-warm-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span><strong>Large events (75+ guests):</strong> 2 weeks notice</span>
-                  </li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="font-semibold text-lg mb-3 text-gray-900">Payment Options</h3>
-                <ul className="space-y-2 text-gray-700">
-                  <li className="flex items-start gap-2">
-                    <svg className="w-5 h-5 text-green-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Credit/Debit Cards
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-5 h-5 text-green-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    Invoice/PO for Government & Corporate
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <svg className="w-5 h-5 text-green-500 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                    50% deposit for large events
-                  </li>
-                </ul>
-              </div>
-            </div>
-          </div>
-        </FadeIn>
-      </div>
+        <img src="/images/Mini_Bentos.jpg" alt="Boxed meals from Three Squares" className="w-full aspect-[4/3] object-cover rounded-2xl" loading="eager" />
+      </section>
 
       {/* CTA Section */}
       <div className="bg-tsNavy py-16">
@@ -646,7 +417,7 @@ export default function CateringPage() {
                 className="text-lg mb-8"
                 style={{ color: 'rgba(255,255,255,0.95)', textShadow: '0 1px 6px rgba(0,0,0,0.35)' }}
               >
-                Submit an inquiry and we'll create a custom quote for your occasion.
+                Send your event details so the team can discuss a quote with you.
               </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button
