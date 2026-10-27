@@ -13,7 +13,6 @@ import {
   collectPayment,
   cancelPaymentCollection,
   disconnectReader,
-  resetTerminalSession,
   onStatusChange,
   destroyTerminal,
   setTokenProvider,
@@ -302,6 +301,9 @@ export default function AdminPOSPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<number | undefined>();
 
+  const selectedLocationRef = useRef(selectedLocation);
+  selectedLocationRef.current = selectedLocation;
+
   // Cart
   const [cart, setCart] = useState<CartItem[]>([]);
   const [customerName, setCustomerName] = useState('Walk-in');
@@ -319,6 +321,7 @@ export default function AdminPOSPage() {
 
   // Terminal
   const [terminalLocationReady, setTerminalLocationReady] = useState(false);
+  const [resettingReader, setResettingReader] = useState(false);
   const [terminalStatus, setTerminalStatus] = useState<TerminalStatus>('not_initialized');
   const [terminalReader, setTerminalReader] = useState<Reader | null>(null);
   const [terminalError, setTerminalError] = useState<string | null>(null);
@@ -627,21 +630,24 @@ export default function AdminPOSPage() {
   }, [getToken, userId, clearCart, clearPendingTerminalSession]);
 
   const handleResetReaderSession = useCallback(async () => {
+    if (resettingReader) return;
+    const locationId = selectedLocation;
+    setResettingReader(true);
     try {
       setTerminalError(null);
       setTerminalLocationReady(false);
-      await resetTerminalSession();
-      await setTerminalLocation(selectedLocation);
-      setTerminalLocationReady(!!selectedLocation);
+      await setTerminalLocation(locationId, { reset: true });
+      if (selectedLocationRef.current !== locationId) return;
+      setTerminalLocationReady(!!locationId);
       setTerminalReader(null);
       setAvailableReaders([]);
       setShowReaderPicker(false);
       setTerminalError(localStorage.getItem(POS_PENDING_TERMINAL_KEY) ? 'Reader reset. The saved payment still requires a status check.' : 'Reader reset. Connect a reader before taking card payments.');
       setTerminalCollecting(false);
     } catch (err) {
-      setTerminalError(err instanceof Error ? err.message : 'Failed to reset reader session');
-    }
-  }, [selectedLocation]);
+      if (selectedLocationRef.current === locationId) setTerminalError(err instanceof Error ? err.message : 'Failed to reset reader session');
+    } finally { setResettingReader(false); }
+  }, [selectedLocation, resettingReader]);
 
   const handleTerminalPayment = useCallback(async () => {
     if (cart.length === 0 || terminalCollecting || hasPendingTerminalSession || localStorage.getItem(POS_PENDING_TERMINAL_KEY)) return;
@@ -917,7 +923,7 @@ export default function AdminPOSPage() {
             <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
               <MapPin className="w-4 h-4 text-slate-500" />
               <select
-                disabled={hasPendingTerminalSession || submitting || terminalCollecting}
+                disabled={hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)}
                 value={selectedLocation || ''}
                 onChange={(e) => setSelectedLocation(Number(e.target.value))}
                 className="bg-transparent text-slate-700 text-sm outline-none cursor-pointer"
@@ -984,7 +990,7 @@ export default function AdminPOSPage() {
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
               <MapPin className="w-4 h-4 text-slate-500" />
               <select
-                disabled={hasPendingTerminalSession || submitting || terminalCollecting}
+                disabled={hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)}
                 value={selectedLocation || ''}
                 onChange={(e) => setSelectedLocation(Number(e.target.value))}
                 className="w-full bg-transparent text-slate-700 text-sm outline-none cursor-pointer"
@@ -1279,6 +1285,7 @@ export default function AdminPOSPage() {
           {(terminalReader || hasPendingTerminalSession || terminalCollecting || terminalError) && (
             <button
               onClick={handleResetReaderSession}
+              disabled={resettingReader || terminalCollecting}
               className="w-full mb-2 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium hover:bg-slate-100 transition-colors"
             >
               Reset Reader Session

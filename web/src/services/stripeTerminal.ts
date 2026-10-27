@@ -5,7 +5,7 @@
 import { loadStripeTerminal } from '@stripe/terminal-js';
 import type { Terminal, Reader, ErrorResponse } from '@stripe/terminal-js';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:3000';
 
 let terminal: Terminal | null = null;
 let connectedReader: Reader | null = null;
@@ -13,11 +13,11 @@ let terminalLocationId: number | undefined;
 let locationChange = Promise.resolve();
 
 // POS chooses its own location. Storefront browsing state never supplies account authority.
-export async function setTerminalLocation(locationId: number | undefined): Promise<void> {
+export async function setTerminalLocation(locationId: number | undefined, { reset = false }: { reset?: boolean } = {}): Promise<void> {
   locationChange = locationChange.catch(() => {}).then(async () => {
-    if (terminalLocationId === locationId) return;
+    if (terminalLocationId === locationId && !reset) return;
     terminalLocationId = undefined;
-    if (terminal) await resetTerminalSession();
+    if (terminal) await resetSDKSession();
     terminalLocationId = locationId;
   });
   return locationChange;
@@ -113,12 +113,12 @@ async function clearCachedCredentialsSafe(t: Terminal): Promise<void> {
  * Initialize the Stripe Terminal SDK.
  * Must be called once before any other terminal operations.
  */
-export async function initializeTerminal(): Promise<Terminal> {
+export async function initializeTerminal(load = loadStripeTerminal): Promise<Terminal> {
   if (terminal) return terminal;
 
   updateStatus('initializing');
 
-  const StripeTerminal = await loadStripeTerminal();
+  const StripeTerminal = await load();
   if (!StripeTerminal) {
     throw new Error('Failed to load Stripe Terminal SDK');
   }
@@ -235,7 +235,7 @@ export async function disconnectReader(): Promise<void> {
   }
 }
 
-export async function resetTerminalSession(): Promise<void> {
+async function resetSDKSession(): Promise<void> {
   const t = await initializeTerminal();
 
   // Best-effort cancellation if reader is waiting for card input.
@@ -285,4 +285,9 @@ export function destroyTerminal(): void {
     connectedReader = null;
     updateStatus('not_initialized');
   }
+}
+
+// Explicit resets share the same queue as account changes.
+export async function resetTerminalSession(): Promise<void> {
+  return setTerminalLocation(terminalLocationId, { reset: true });
 }
