@@ -46,6 +46,7 @@ class Order < ApplicationRecord
   validates :fulfillment_type, inclusion: { in: %w[pickup shipping] }
   validates :source, inclusion: { in: %w[online pos phone] }
   validates :payment_method, inclusion: { in: %w[stripe cash card_present] }, allow_nil: true
+  validates :payment_provider, inclusion: { in: %w[stripe worldpay paypal test] }, allow_nil: true
   validates :status, inclusion: { in: VALID_STATUSES }
   validates :payment_status, inclusion: { in: %w[pending paid failed refunded] }
   validates :total_cents, numericality: { greater_than_or_equal_to: 0 }
@@ -139,7 +140,15 @@ class Order < ApplicationRecord
     payment_status == "paid" && refundable_amount_cents > 0
   end
 
-    def can_cancel?
+  def effective_payment_provider
+    payment_provider.presence || inferred_payment_provider_from_legacy_reference
+  end
+
+  def effective_payment_reference
+    payment_reference.presence || payment_intent_id
+  end
+
+  def can_cancel?
     %w[pending confirmed processing ready].include?(status)
   end
 
@@ -292,6 +301,14 @@ class Order < ApplicationRecord
     return if location_id.present?
 
     errors.add(:location, "must be selected for pickup orders")
+  end
+
+  def inferred_payment_provider_from_legacy_reference
+    reference = payment_intent_id.to_s
+    return "test" if reference.start_with?("test_")
+    return "stripe" if reference.start_with?("pi_", "ch_")
+
+    nil
   end
 
   def generate_order_number

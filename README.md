@@ -16,6 +16,10 @@ three-squares/
 └── README.md
 ```
 
+## Key Docs
+
+- [Worldpay Integration Plan](docs/WORLDPAY-INTEGRATION-PLAN.md)
+
 ## Getting Started
 
 ### API (Rails)

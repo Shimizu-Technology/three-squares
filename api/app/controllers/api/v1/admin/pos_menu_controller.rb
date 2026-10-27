@@ -15,11 +15,7 @@ module Api
             .includes(:product_variants, :product_images, :collections)
 
           # Filter by location — auto-scope for location-locked staff
-          effective_location_id = if current_user.location_scoped?
-            current_user.assigned_location_id
-          elsif params[:location_id].present?
-            params[:location_id].to_i
-          end
+          effective_location_id = effective_admin_location_id(params[:location_id])
 
           if effective_location_id
             products = products.joins(:product_locations)

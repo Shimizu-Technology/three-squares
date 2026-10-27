@@ -105,7 +105,10 @@ test.describe('Visual Inspection - Full User Flow: Add to Cart & Checkout', () =
   test('Complete shopping flow with screenshots', async ({ page }) => {
     // Clear cart first
     await page.goto('/');
-    await page.evaluate(() => localStorage.removeItem('hafaloha-cart'));
+    await page.evaluate(() => {
+      localStorage.removeItem('three-squares-cart');
+      localStorage.removeItem('cart_session_id');
+    });
     await page.reload();
     
     // Step 1: Browse products
@@ -152,7 +155,10 @@ test.describe('Visual Inspection - Full User Flow: Add to Cart & Checkout', () =
 test.describe('Visual Inspection - Edge Cases', () => {
   test('Empty cart state', async ({ page }) => {
     await page.goto('/');
-    await page.evaluate(() => localStorage.removeItem('hafaloha-cart'));
+    await page.evaluate(() => {
+      localStorage.removeItem('three-squares-cart');
+      localStorage.removeItem('cart_session_id');
+    });
     await page.reload();
     await page.waitForTimeout(1000);
     

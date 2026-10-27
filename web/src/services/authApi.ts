@@ -1,5 +1,6 @@
 import type { AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 import api from './api';
+import { getAdminDeviceHeaders } from './adminDeviceIdentity';
 
 export type GetTokenFn = () => Promise<string | null>;
 
@@ -52,7 +53,7 @@ async function buildAuthHeaders(getToken: GetTokenFn, headers?: Record<string, s
   }
 
   return {
-    ...headers,
+    ...getAdminDeviceHeaders(headers ?? {}),
     Authorization: `Bearer ${token}`,
   };
 }

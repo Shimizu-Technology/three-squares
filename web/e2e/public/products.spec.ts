@@ -14,8 +14,9 @@ test.describe('Products Page', () => {
     
     const count = await productLinks.count();
     if (count === 0) {
-      // No products - check for empty state message
-      await expect(page.locator('text=No products')).toBeVisible();
+      // No products - check for either generic filter empty state or storefront coming-soon state
+      const emptyState = page.locator('text=/No products found|No products|Coming Soon!/i').first();
+      await expect(emptyState).toBeVisible();
     } else {
       await expect(productLinks.first()).toBeVisible();
       expect(count).toBeGreaterThan(0);

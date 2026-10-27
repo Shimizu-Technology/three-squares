@@ -18,6 +18,8 @@ export interface Refund {
   status: string;
   reason: string | null;
   stripe_refund_id: string | null;
+  provider_refund_id?: string | null;
+  payment_provider?: 'stripe' | 'paypal' | 'worldpay' | 'test' | null;
   created_at: string;
   admin_user: string | null;
 }
@@ -27,6 +29,7 @@ export interface Order {
   order_number: string;
   status: string;
   payment_status: string;
+  payment_provider?: 'stripe' | 'paypal' | 'worldpay' | 'test' | null;
   order_type: 'retail' | 'wholesale';
   business_line?: 'three_squares' | 'latte_stone' | 'catering';
   customer_name: string;

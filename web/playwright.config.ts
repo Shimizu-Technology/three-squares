@@ -10,6 +10,9 @@ const __dirname = path.dirname(__filename);
 // Load environment variables from .env
 dotenv.config({ path: path.resolve(__dirname, '.env') });
 
+const devPort = process.env.PLAYWRIGHT_DEV_PORT || '5173';
+const baseURL = process.env.TEST_BASE_URL || `http://localhost:${devPort}`;
+
 /**
  * Hafaloha E2E Test Configuration
  * 
@@ -43,7 +46,7 @@ export default defineConfig({
   /* Shared settings for all projects */
   use: {
     /* Base URL for navigation */
-    baseURL: process.env.TEST_BASE_URL || 'http://localhost:5173',
+    baseURL,
     
     /* Collect trace when retrying the failed test */
     trace: 'on-first-retry',
@@ -183,8 +186,8 @@ export default defineConfig({
 
   /* Run local dev server before starting tests */
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:5173',
+    command: `npm run dev -- --port ${devPort}`,
+    url: baseURL,
     reuseExistingServer: true,
     timeout: 120 * 1000,
   },

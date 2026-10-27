@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import FadeIn from '../components/animations/FadeIn';
@@ -6,6 +7,7 @@ import { StaggerContainer, StaggerItem } from '../components/animations/StaggerC
 import Breadcrumbs from '../components/Breadcrumbs';
 import api from '../services/api';
 import useLockBodyScroll from '../hooks/useLockBodyScroll';
+import { getStorefrontMenuPath } from '../utils/storefronts';
 
 // Event types and budget ranges (should match API)
 const EVENT_TYPES = [
@@ -202,6 +204,7 @@ export default function CateringPage() {
   const minDate = new Date();
   minDate.setDate(minDate.getDate() + 3);
   const minDateStr = minDate.toISOString().split('T')[0];
+  const cateringMenuPath = getStorefrontMenuPath('catering');
 
   return (
     <div className="min-h-screen bg-warm-50">
@@ -214,43 +217,92 @@ export default function CateringPage() {
       </div>
 
       {/* Hero Section */}
-      <div className="bg-warm">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-24">
-          <FadeIn direction="none">
-            <h1 className="text-4xl sm:text-5xl font-bold text-center mb-6 text-gray-900 tracking-tight">
-              Catering Services
-            </h1>
-          </FadeIn>
-          <FadeIn delay={0.1}>
-            <p className="text-lg sm:text-xl text-center max-w-2xl mx-auto text-gray-600 mb-8">
-              From intimate gatherings to large corporate events, Three Squares delivers 
-              Guam-style comfort food that brings people together.
-            </p>
-          </FadeIn>
-          <FadeIn delay={0.2}>
-            <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <button
-                onClick={() => setShowForm(true)}
-                className="inline-flex items-center justify-center gap-2 bg-warm-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-warm-700 transition shadow-lg"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                Request a Quote
-              </button>
-              <a
-                href="tel:+16716462652"
-                className="inline-flex items-center justify-center gap-2 bg-white text-warm-700 border-2 border-warm-600 px-8 py-4 rounded-lg font-semibold hover:bg-warm-50 transition"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                Call (671) 646-2652
-              </a>
+      <section className="border-b border-warm-200 bg-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 sm:py-12 lg:py-14">
+          <div className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_280px] lg:items-center">
+            <div>
+              <FadeIn direction="none">
+                <span className="inline-flex items-center gap-2 rounded-full border border-tsGold/30 bg-tsGold/10 px-4 py-2 text-sm font-semibold text-warm-800">
+                  <span className="h-2 w-2 rounded-full bg-tsGold" />
+                  Catering by Three Squares
+                </span>
+              </FadeIn>
+              <FadeIn delay={0.08}>
+                <h1 className="mt-5 max-w-3xl text-4xl font-bold tracking-tight text-warm-900 sm:text-5xl">
+                  Catering for office lunches, parties, fiestas, and large events.
+                </h1>
+              </FadeIn>
+              <FadeIn delay={0.16}>
+                <p className="mt-4 max-w-2xl text-lg leading-relaxed text-warm-600">
+                  One place to browse the menu, plan your event, and request a custom quote
+                  for Guam gatherings of every size.
+                </p>
+              </FadeIn>
+              <FadeIn delay={0.24}>
+                <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+                  <Link
+                    to={cateringMenuPath}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl bg-tsPrimary px-7 py-3.5 font-semibold text-white transition hover:bg-primary-dark"
+                  >
+                    Browse Catering Menu
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </Link>
+                  <button
+                    onClick={() => setShowForm(true)}
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-warm-200 bg-white px-7 py-3.5 font-semibold text-warm-800 transition hover:bg-warm-50"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                    </svg>
+                    Request a Quote
+                  </button>
+                  <a
+                    href="tel:+16716462652"
+                    className="inline-flex items-center justify-center gap-2 rounded-xl border border-warm-200 bg-white px-7 py-3.5 font-semibold text-warm-800 transition hover:bg-warm-50"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                    </svg>
+                    Call (671) 646-2652
+                  </a>
+                </div>
+              </FadeIn>
             </div>
-          </FadeIn>
+
+            <FadeIn delay={0.12}>
+              <div className="hidden lg:block overflow-hidden rounded-2xl border border-warm-200 bg-warm-100 shadow-sm">
+                <img
+                  src="/images/Cocktail_Stations_-_Assorted_Poppers.jpg"
+                  alt=""
+                  className="h-56 w-full object-cover"
+                  aria-hidden="true"
+                />
+              </div>
+            </FadeIn>
+          </div>
         </div>
-      </div>
+      </section>
+
+      <section className="border-b border-warm-200 bg-warm-50">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="rounded-2xl border border-warm-200 bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-warm-500">Best for</p>
+              <p className="mt-2 text-sm text-warm-700">Office lunches, parties, government events, and full-service catering.</p>
+            </div>
+            <div className="rounded-2xl border border-warm-200 bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-warm-500">Lead times</p>
+              <p className="mt-2 text-sm text-warm-700">48 hours for small orders, one to two weeks for larger events.</p>
+            </div>
+            <div className="rounded-2xl border border-warm-200 bg-white p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-warm-500">Need help?</p>
+              <p className="mt-2 text-sm text-warm-700">Browse the menu for quick ordering or request a custom quote for staffed service.</p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Services Grid */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16">

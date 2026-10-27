@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -44,13 +44,11 @@ export default function AdminProductsPage() {
     return () => { document.body.style.overflow = 'unset'; };
   }, [selectedProduct]);
 
-  useEffect(() => { fetchProducts(); }, []);
-
   // Reset page on filter/sort change
   useEffect(() => { setCurrentPage(1); }, [searchQuery, filterPublished, filterType, sortBy, sortDir]);
 
   // ── Fetch ──────────────────────────────────────────────
-  const fetchProducts = async () => {
+  const fetchProducts = useCallback(async () => {
     try {
       setLoading(true);
       const response = await authGet<ProductListResponse>('/admin/products', getToken, {
@@ -64,7 +62,9 @@ export default function AdminProductsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken]);
+
+  useEffect(() => { void fetchProducts(); }, [fetchProducts]);
 
   const fetchProductDetails = async (slug: string) => {
     try {
@@ -83,7 +83,7 @@ export default function AdminProductsPage() {
     try {
       await authPatch(`/admin/products/${product.id}`, { product: { published: !product.published } }, getToken);
       toast.success(product.published ? 'Product unpublished' : 'Product published');
-      fetchProducts();
+      void fetchProducts();
     } catch { toast.error('Failed to update product'); }
   };
 

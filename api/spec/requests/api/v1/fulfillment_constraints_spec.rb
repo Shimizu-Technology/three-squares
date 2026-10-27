@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Fulfillment constraints', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:session_id) { "session-#{SecureRandom.hex(6)}" }
   let(:headers) { { 'X-Session-ID' => session_id } }
   let(:location) { Location.create!(name: 'Main Store', slug: "main-#{SecureRandom.hex(4)}", active: true) }
@@ -136,6 +138,30 @@ RSpec.describe 'Fulfillment constraints', type: :request do
       expect(json['error']).to eq('Cart fulfillment validation failed')
       expect(json['issues'].map { |issue| issue['type'] }).to include('location_unavailable')
     end
+
+    it 'rejects pickup when the selected location is currently closed' do
+      location.update!(hours_json: { 'Monday' => 'Closed' })
+
+      product, variant = create_product_with_variant(
+        name: 'Closed Location Item',
+        slug: "closed-location-#{SecureRandom.hex(3)}",
+        allow_pickup: true,
+        allow_shipping: false
+      )
+      ProductLocation.create!(product: product, location: location, available: true)
+      add_cart_item!(variant)
+
+      travel_to Time.zone.parse('2026-04-27 10:00') do
+        post '/api/v1/orders',
+             params: { order: base_order_params.merge(fulfillment_type: 'pickup', location_id: location.id) },
+             headers: headers
+      end
+
+      expect(response).to have_http_status(:unprocessable_entity)
+      json = JSON.parse(response.body)
+      expect(json['error']).to eq('Cart fulfillment validation failed')
+      expect(json['issues'].map { |issue| issue['type'] }).to include('location_closed')
+    end
   end
 
   describe 'POST /api/v1/payment_intents' do
@@ -165,4 +191,3 @@ RSpec.describe 'Fulfillment constraints', type: :request do
     end
   end
 end
-

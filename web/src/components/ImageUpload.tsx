@@ -26,7 +26,7 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
 
-  const uploadImage = async (file: File) => {
+  const uploadImage = useCallback(async (file: File) => {
     try {
       setUploading(true);
       const token = await getToken();
@@ -85,7 +85,7 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
     } finally {
       setUploading(false);
     }
-  };
+  }, [getToken, onImagesChange, productId]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -105,7 +105,7 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
         await uploadImage(file);
       }
     }
-  }, [images, productId]);
+  }, [uploadImage]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -298,4 +298,3 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
     </div>
   );
 }
-

@@ -7,6 +7,7 @@ import api, { collectionsApi, type Collection } from '../services/api';
 
 import { API_BASE_URL } from '../config';
 import { ANNOUNCEMENT_STYLE_HEX } from '../constants/announcementStyles';
+import { refreshAppConfig } from '../hooks/useAppConfig';
 
 // ============================================================================
 // TYPES
@@ -14,7 +15,8 @@ import { ANNOUNCEMENT_STYLE_HEX } from '../constants/announcementStyles';
 
 interface SiteSettings {
   payment_test_mode: boolean;
-  payment_processor: string;
+  payment_processor: 'stripe' | 'paypal' | 'worldpay';
+  supported_live_payment_processors: Array<'stripe' | 'paypal' | 'worldpay'>;
   // Per-order-type email settings
   send_retail_emails: boolean;
   send_wholesale_emails: boolean;
@@ -69,6 +71,24 @@ const DEFAULT_CATEGORY_CARD_LINKS: Record<number, string> = {
 };
 const DEFAULT_HERO_LINK = '/products';
 
+interface ApiErrorResponse {
+  error?: string;
+  errors?: string[];
+}
+
+const getErrorMessage = (error: unknown, fallback: string) => {
+  if (axios.isAxiosError(error)) {
+    const data = error.response?.data as ApiErrorResponse | undefined;
+    return data?.errors?.join(', ') || data?.error || fallback;
+  }
+
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
+};
+
 const getMissingOriginFields = (address: SiteSettings['shipping_origin_address']) => {
   return REQUIRED_ORIGIN_FIELDS.filter((field) => !address[field]?.toString().trim());
 };
@@ -120,20 +140,7 @@ export default function AdminSettingsPage() {
   const [collections, setCollections] = useState<Collection[]>([]);
   const [lastSavedSiteSettings, setLastSavedSiteSettings] = useState<SiteSettings | null>(null);
 
-  // Fetch general settings
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  // Fetch homepage sections when tab changes
-  useEffect(() => {
-    if (activeTab === 'homepage') {
-      fetchSections();
-      fetchCollections();
-    }
-  }, [activeTab]);
-
-  const fetchSettings = async () => {
+  const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
       const token = await getToken();
@@ -152,13 +159,13 @@ export default function AdminSettingsPage() {
       };
       setSettings(mergedSettings);
       setLastSavedSiteSettings(mergedSettings);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to load settings:', err);
-      toast.error('Failed to load settings. Please try again.');
+      toast.error(getErrorMessage(err, 'Failed to load settings. Please try again.'));
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken]);
 
   const fetchSections = useCallback(async () => {
     try {
@@ -168,9 +175,9 @@ export default function AdminSettingsPage() {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSections(response.data.sections);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch sections:', err);
-      toast.error('Failed to load homepage sections');
+      toast.error(getErrorMessage(err, 'Failed to load homepage sections'));
     } finally {
       setSectionsLoading(false);
     }
@@ -180,10 +187,23 @@ export default function AdminSettingsPage() {
     try {
       const response = await collectionsApi.getCollections({ per_page: 200 });
       setCollections(response.collections);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch collections:', err);
     }
   }, []);
+
+  // Fetch general settings
+  useEffect(() => {
+    void fetchSettings();
+  }, [fetchSettings]);
+
+  // Fetch homepage sections when tab changes
+  useEffect(() => {
+    if (activeTab === 'homepage') {
+      void fetchSections();
+      void fetchCollections();
+    }
+  }, [activeTab, fetchCollections, fetchSections]);
 
   const handleTabChange = (tab: TabType) => {
     setSearchParams({ tab });
@@ -215,7 +235,6 @@ export default function AdminSettingsPage() {
 
   const isSiteSettingsDirty =
     getSiteSettingsSnapshot(settings) !== getSiteSettingsSnapshot(lastSavedSiteSettings);
-
   // ============================================================================
   // GENERAL SETTINGS HANDLERS
   // ============================================================================
@@ -241,14 +260,15 @@ export default function AdminSettingsPage() {
 
       setSettings((prev) => (prev ? { ...prev, ...response.data } : response.data));
       setLastSavedSiteSettings((prev) => (prev ? { ...prev, ...response.data } : response.data));
+      void refreshAppConfig({ broadcast: true });
       const message = settings.payment_test_mode
         ? 'Production mode enabled - Real payments will be processed'
         : 'Test mode enabled - Payments will be simulated';
 
       toast.success(message, { duration: 4000 });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to update settings:', err);
-      toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update payment mode' : 'Failed to update payment mode');
+      toast.error(getErrorMessage(err, 'Failed to update payment mode'));
     } finally {
       setSaving(false);
     }
@@ -281,9 +301,9 @@ export default function AdminSettingsPage() {
         : `${label} order emails disabled`;
 
       toast.success(message, { duration: 3000 });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to toggle email setting:', err);
-      toast.error('Failed to update email setting');
+      toast.error(getErrorMessage(err, 'Failed to update email setting'));
     } finally {
       setSaving(false);
     }
@@ -304,6 +324,7 @@ export default function AdminSettingsPage() {
 
       setSettings((prev) => (prev ? { ...prev, ...response.data } : response.data));
       setLastSavedSiteSettings((prev) => (prev ? { ...prev, ...response.data } : response.data));
+      void refreshAppConfig({ broadcast: true });
 
       const labels: Record<string, string> = {
         enable_storefront_three_squares: 'Three Squares',
@@ -314,6 +335,38 @@ export default function AdminSettingsPage() {
     } catch (err: unknown) {
       console.error('Failed to toggle storefront:', err);
       toast.error('Failed to update storefront setting');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handlePaymentProcessorChange = async (paymentProcessor: SiteSettings['payment_processor']) => {
+    if (!settings || settings.payment_processor === paymentProcessor) return;
+
+    const supportedLiveProcessors = new Set(settings.supported_live_payment_processors || ['stripe']);
+    if (!settings.payment_test_mode && !supportedLiveProcessors.has(paymentProcessor)) {
+      toast.error(`${paymentProcessor === 'worldpay' ? 'Worldpay' : 'PayPal'} is not enabled for live checkout in this build.`);
+      return;
+    }
+
+    try {
+      setSaving(true);
+      const token = await getToken();
+      const response = await axios.put(
+        `${API_BASE_URL}/api/v1/admin/site_settings`,
+        { site_setting: { payment_processor: paymentProcessor } },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      setSettings((prev) => (prev ? { ...prev, ...response.data } : response.data));
+      setLastSavedSiteSettings((prev) => (prev ? { ...prev, ...response.data } : response.data));
+      void refreshAppConfig({ broadcast: true });
+
+      const label = paymentProcessor === 'worldpay' ? 'Worldpay' : paymentProcessor === 'paypal' ? 'PayPal' : 'Stripe';
+      toast.success(`Payment processor set to ${label}`);
+    } catch (err: unknown) {
+      console.error('Failed to update payment processor:', err);
+      toast.error(getErrorMessage(err, 'Failed to update payment processor'));
     } finally {
       setSaving(false);
     }
@@ -331,13 +384,9 @@ export default function AdminSettingsPage() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       return response.data as SiteSettings;
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to update settings:', err);
-      const errorMsg =
-        err.response?.data?.errors?.join(', ') ||
-        err.response?.data?.error ||
-        'Failed to update settings';
-      toast.error(errorMsg);
+      toast.error(getErrorMessage(err, 'Failed to update settings'));
     } finally {
       setSaving(false);
     }
@@ -362,6 +411,7 @@ export default function AdminSettingsPage() {
       const merged = { ...settings, ...responseData };
       setSettings(merged);
       setLastSavedSiteSettings(merged);
+      void refreshAppConfig({ broadcast: true });
       toast.success('Settings saved');
     }
   };
@@ -378,9 +428,9 @@ export default function AdminSettingsPage() {
       setPlaceholderUploading(true);
       setSettings({ ...settings, placeholder_image_url: placeholderImageUrl });
       toast.success('Placeholder image ready. Click Save to apply.');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to update placeholder image:', err);
-      toast.error(err.response?.data?.error || 'Failed to update placeholder image');
+      toast.error(getErrorMessage(err, 'Failed to update placeholder image'));
     } finally {
       setPlaceholderUploading(false);
     }
@@ -410,9 +460,9 @@ export default function AdminSettingsPage() {
 
       await updatePlaceholderImage(blobUrl);
       setShowPlaceholderUrlInput(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to upload placeholder image:', err);
-      toast.error(err.response?.data?.error || 'Failed to upload placeholder image');
+      toast.error(getErrorMessage(err, 'Failed to upload placeholder image'));
       setPlaceholderUploading(false);
     }
   };
@@ -464,9 +514,9 @@ export default function AdminSettingsPage() {
       await fetchSections();
       setEditingSection(null);
       setShowNewForm(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to save section:', err);
-      toast.error('Failed to save section');
+      toast.error(getErrorMessage(err, 'Failed to save section'));
     } finally {
       setSaving(false);
     }
@@ -482,9 +532,9 @@ export default function AdminSettingsPage() {
       });
       toast.success('Section deleted');
       await fetchSections();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to delete section:', err);
-      toast.error('Failed to delete section');
+      toast.error(getErrorMessage(err, 'Failed to delete section'));
     }
   };
 
@@ -578,6 +628,7 @@ export default function AdminSettingsPage() {
             onSaveSiteSettings={handleSaveSiteSettings}
             onDiscardSiteSettings={handleDiscardSiteSettings}
             onToggleStorefront={handleToggleStorefront}
+            onPaymentProcessorChange={handlePaymentProcessorChange}
           />
         )}
 
@@ -622,6 +673,7 @@ interface GeneralSettingsTabProps {
   onSaveSiteSettings: () => void;
   onDiscardSiteSettings: () => void;
   onToggleStorefront: (field: 'enable_storefront_three_squares' | 'enable_storefront_latte_stone' | 'enable_storefront_catering') => void;
+  onPaymentProcessorChange: (paymentProcessor: SiteSettings['payment_processor']) => void;
 }
 
 function GeneralSettingsTab({
@@ -640,10 +692,12 @@ function GeneralSettingsTab({
   onSaveSiteSettings,
   onDiscardSiteSettings,
   onToggleStorefront,
+  onPaymentProcessorChange,
 }: GeneralSettingsTabProps) {
   const missingOriginFields = getMissingOriginFields(settings.shipping_origin_address);
   const isDefaultPlaceholder =
     !settings.placeholder_image_url || settings.placeholder_image_url === DEFAULT_PLACEHOLDER_IMAGE;
+  const supportedLiveProcessors = new Set(settings.supported_live_payment_processors || ['stripe']);
 
   return (
     <div className="space-y-6">
@@ -742,7 +796,7 @@ function GeneralSettingsTab({
               <h3 className="font-medium text-gray-900">Payment Test Mode</h3>
               <p className="text-sm text-gray-600 mt-1">
                 When enabled, all payments are simulated without charging customers.
-                Turn this off to process real payments via Stripe.
+                Turn this off to process real payments via the selected payment processor.
               </p>
             </div>
             <button
@@ -778,7 +832,7 @@ function GeneralSettingsTab({
                   <div>
                     <p className="font-medium text-gray-900">Production Mode Active</p>
                     <p className="text-sm text-gray-600">
-                      Real payments will be processed via Stripe.
+                      Real payments will be processed via Stripe. Unsupported live processors are disabled below.
                     </p>
                   </div>
                 </>
@@ -855,16 +909,61 @@ function GeneralSettingsTab({
         {/* Payment Processor */}
         <div>
           <h3 className="font-medium text-gray-900 mb-2">Payment Processor</h3>
-          <div className="flex items-center">
-            <img
-              src="https://stripe.com/img/v3/home/social.png"
-              alt="Stripe"
-              className="h-8 w-auto mr-3"
-            />
-            <span className="text-gray-700 font-medium">Stripe</span>
-            <span className="ml-2 px-2 py-1 bg-green-100 text-green-800 text-xs font-semibold rounded">
-              Active
-            </span>
+          <p className="text-sm text-gray-600 mb-4">
+            Stripe is the only processor enabled for live customer checkout in this build. Other processors remain
+            available in test mode for configuration work, but they cannot be activated for real orders yet.
+          </p>
+          <div className="space-y-3">
+            {([
+              { id: 'stripe' as const, label: 'Stripe', desc: 'Current embedded checkout and terminal integration' },
+              { id: 'worldpay' as const, label: 'Worldpay', desc: 'Prepared for hosted checkout flow and future triPOS work' },
+              { id: 'paypal' as const, label: 'PayPal', desc: 'Reserved option, not currently wired into checkout' },
+            ]).map(({ id, label, desc }) => {
+              const liveSupported = supportedLiveProcessors.has(id);
+              const disabledInProduction = !settings.payment_test_mode && !liveSupported;
+
+              return (
+              <label
+                key={id}
+                className={`flex items-start gap-3 rounded-lg border p-4 cursor-pointer transition ${
+                  settings.payment_processor === id
+                    ? 'border-tsPrimary bg-tsSurface'
+                    : 'border-gray-200 hover:border-gray-300'
+                } ${(saving || disabledInProduction) ? 'opacity-60 cursor-not-allowed' : ''}`}
+              >
+                <input
+                  type="radio"
+                  name="payment_processor"
+                  value={id}
+                  checked={settings.payment_processor === id}
+                  disabled={saving || disabledInProduction}
+                  onChange={() => onPaymentProcessorChange(id)}
+                  className="mt-1 h-4 w-4 text-tsPrimary focus:ring-tsPrimary"
+                />
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900">{label}</span>
+                    {settings.payment_processor === id && (
+                      <span className="px-2 py-0.5 bg-green-100 text-green-800 text-xs font-semibold rounded">
+                        Active
+                      </span>
+                    )}
+                    {!liveSupported && (
+                      <span className="px-2 py-0.5 bg-amber-100 text-amber-800 text-xs font-semibold rounded">
+                        Test Only
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-600 mt-1">{desc}</p>
+                  {disabledInProduction && (
+                    <p className="text-xs text-amber-700 mt-2">
+                      Not available while production mode is active.
+                    </p>
+                  )}
+                </div>
+              </label>
+              );
+            })}
           </div>
         </div>
         </div>
@@ -1476,7 +1575,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
     } else {
       setLinkType('custom');
     }
-  }, [section?.id]);
+  }, [section?.button_link, section?.id]);
 
   useEffect(() => {
     if (linkType === 'collection') {
@@ -1516,9 +1615,9 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
 
       setFormData((prev) => ({ ...prev, [field]: blobUrl }));
       toast.success('Image uploaded');
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to upload image:', err);
-      toast.error(err.response?.data?.error || 'Failed to upload image');
+      toast.error(getErrorMessage(err, 'Failed to upload image'));
     } finally {
       setImageUploading(false);
     }

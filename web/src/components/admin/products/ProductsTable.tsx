@@ -29,7 +29,6 @@ export default function ProductsTable({
   totalFiltered,
   itemsPerPage,
   sortBy,
-  sortDir: _sortDir,
   onSort,
   onPageChange,
   onView,

@@ -9,6 +9,7 @@ class User < ApplicationRecord
 
   # Associations
   belongs_to :assigned_location, class_name: "Location", optional: true
+  has_many :admin_devices, dependent: :nullify
   has_many :cart_items, dependent: :destroy
   has_many :imports, dependent: :destroy
   has_many :orders, dependent: :nullify  # Keep orders but remove user association on delete

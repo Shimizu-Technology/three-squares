@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -45,11 +45,7 @@ export default function AdminCollectionsPage() {
     sort_order: 0,
   });
 
-  useEffect(() => {
-    fetchCollections();
-  }, []);
-
-  const fetchCollections = async () => {
+  const fetchCollections = useCallback(async () => {
     try {
       setLoading(true);
       const response = await authGet<CollectionsResponse>('/admin/collections', getToken);
@@ -60,7 +56,11 @@ export default function AdminCollectionsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken]);
+
+  useEffect(() => {
+    void fetchCollections();
+  }, [fetchCollections]);
 
   const handleEdit = (collection: Collection) => {
     setSelectedCollection(collection);
@@ -113,7 +113,7 @@ export default function AdminCollectionsPage() {
       }
 
       setShowEditModal(false);
-      fetchCollections();
+      void fetchCollections();
     } catch (err) {
       console.error('Failed to save collection:', err);
       toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to save collection' : 'Failed to save collection');
@@ -131,7 +131,7 @@ export default function AdminCollectionsPage() {
       toast.success('Collection deleted successfully');
       setShowDeleteModal(false);
       setSelectedCollection(null);
-      fetchCollections();
+      void fetchCollections();
     } catch (err) {
       console.error('Failed to delete collection:', err);
       toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to delete collection' : 'Failed to delete collection');
@@ -412,4 +412,3 @@ export default function AdminCollectionsPage() {
     </div>
   );
 }
-

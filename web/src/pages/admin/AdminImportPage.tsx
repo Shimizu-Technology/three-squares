@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Upload, FileText, AlertCircle, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
 import useLockBodyScroll from '../../hooks/useLockBodyScroll';
@@ -240,26 +240,9 @@ export default function AdminImportPage() {
     return `About ${minutes}m ${remaining.toString().padStart(2, '0')}s`;
   };
 
-  useEffect(() => {
-    fetchImports();
-  }, []);
-
   useLockBodyScroll(!!selectedImport);
 
-  // Poll for current import status
-  useEffect(() => {
-    if (!currentImport || !['pending', 'processing'].includes(currentImport.status)) {
-      return;
-    }
-
-    const interval = setInterval(() => {
-      fetchImportStatus(currentImport.id);
-    }, 3000); // Poll every 3 seconds
-
-    return () => clearInterval(interval);
-  }, [currentImport]);
-
-  const fetchImports = async () => {
+  const fetchImports = useCallback(async () => {
     try {
       const response = await authGet<AdminImportsListResponse>('/admin/imports', getToken);
       const importsData = response.data.data;
@@ -272,9 +255,9 @@ export default function AdminImportPage() {
     } catch (error) {
       console.error('Failed to fetch imports:', error);
     }
-  };
+  }, [getToken]);
 
-  const fetchImportStatus = async (importId: number) => {
+  const fetchImportStatus = useCallback(async (importId: number) => {
     try {
       const response = await authGet<AdminImportResponse>(`/admin/imports/${importId}`, getToken);
       const importData = response.data.data;
@@ -286,12 +269,29 @@ export default function AdminImportPage() {
       // If completed or failed, stop polling
       if (['completed', 'failed'].includes(importData.status)) {
         setCurrentImport(null);
-        fetchImports(); // Refresh list
+        void fetchImports(); // Refresh list
       }
     } catch (error) {
       console.error('Failed to fetch import status:', error);
     }
-  };
+  }, [fetchImports, getToken]);
+
+  useEffect(() => {
+    void fetchImports();
+  }, [fetchImports]);
+
+  // Poll for current import status
+  useEffect(() => {
+    if (!currentImport || !['pending', 'processing'].includes(currentImport.status)) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      void fetchImportStatus(currentImport.id);
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [currentImport, fetchImportStatus]);
 
   const handleProductsFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -876,4 +876,3 @@ export default function AdminImportPage() {
     </div>
   );
 }
-

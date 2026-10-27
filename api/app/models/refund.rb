@@ -6,7 +6,9 @@ class Refund < ApplicationRecord
 
   validates :amount_cents, presence: true, numericality: { greater_than: 0 }
   validates :status, inclusion: { in: %w[pending succeeded failed] }
+  validates :payment_provider, inclusion: { in: %w[stripe worldpay paypal test] }, allow_nil: true
   validates :stripe_refund_id, uniqueness: true, allow_nil: true
+  validates :provider_refund_id, uniqueness: true, allow_nil: true
 
   scope :succeeded, -> { where(status: "succeeded") }
   scope :pending, -> { where(status: "pending") }

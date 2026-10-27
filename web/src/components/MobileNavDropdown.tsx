@@ -1,8 +1,8 @@
-import { useState, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
+import { useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { collectionsApi, type Collection } from '../services/api';
 import { useCartStore } from '../store/cartStore';
 import useAppConfig from '../hooks/useAppConfig';
+import { getEnabledStorefronts, getStorefrontPath } from '../utils/storefronts';
 
 interface MobileNavDropdownProps {
   onItemClick: () => void;
@@ -11,31 +11,9 @@ interface MobileNavDropdownProps {
 
 export default function MobileNavDropdown({ onItemClick, darkMode = false }: MobileNavDropdownProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [collections, setCollections] = useState<Collection[]>([]);
-  const [loading, setLoading] = useState(true);
   const cart = useCartStore((state) => state.cart);
   const config = useAppConfig();
-
-  const showThreeSquares = config ? config.enable_storefront_three_squares !== false : false;
-  const showLatteStone = config ? config.enable_storefront_latte_stone !== false : false;
-  const showCatering = config ? config.enable_storefront_catering !== false : false;
-  const storefrontCount = [showThreeSquares, showLatteStone, showCatering].filter(Boolean).length;
-
-  // Fetch collections on mount
-  useEffect(() => {
-    const fetchCollections = async () => {
-      try {
-        const response = await collectionsApi.getCollections({ per_page: 10 });
-        setCollections(response.collections);
-      } catch (error) {
-        console.error('Failed to fetch collections:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchCollections();
-  }, []);
+  const storefronts = getEnabledStorefronts(config);
 
   const handleStorefrontClick = (
     event: ReactMouseEvent<HTMLAnchorElement>,
@@ -99,7 +77,7 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
       {/* Expandable Sub-menu */}
       {isExpanded && (
         <div className="animate-slide-down">
-          {/* Collections List */}
+          {/* Storefront-first navigation */}
           <div className={`pl-3 space-y-1 ml-1 ${darkMode ? 'border-l-2 border-white/20' : 'border-l-2 border-tsPrimary/30'}`}>
             {/* All Products */}
             <Link
@@ -117,91 +95,42 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
               All Products
             </Link>
 
-            {storefrontCount > 1 && (
+            {storefronts.length > 0 && (
               <>
                 <p className={`text-xs uppercase tracking-wider font-semibold py-2 ${darkMode ? 'text-white/40' : 'text-warm-400'}`}>
                   Shop by Business
                 </p>
-                {showThreeSquares && (
+                {storefronts.map((storefront) => (
                   <Link
-                    to="/shop/three-squares"
-                    className={`flex items-center gap-2 py-2 ${
+                    key={storefront.key}
+                    to={getStorefrontPath(storefront.key)}
+                    className={`block py-2 ${
                       darkMode
                         ? 'text-white/80 hover:text-tsGold'
                         : 'text-warm-700 hover:text-tsPrimary'
                     }`}
-                    onClick={(event) => handleStorefrontClick(event, 'three_squares', 'Three Squares')}
+                    onClick={(event) => handleStorefrontClick(event, storefront.key, storefront.label)}
                   >
-                    Three Squares
+                    <span className="block font-medium">{storefront.label}</span>
+                    <span className={`block text-sm mt-0.5 ${
+                      darkMode ? 'text-white/45' : 'text-warm-500'
+                    }`}>
+                      {storefront.description}
+                    </span>
                   </Link>
-                )}
-                {showLatteStone && (
-                  <Link
-                    to="/shop/latte-stone-cookies"
-                    className={`flex items-center gap-2 py-2 ${
-                      darkMode
-                        ? 'text-white/80 hover:text-tsGold'
-                        : 'text-warm-700 hover:text-tsPrimary'
-                    }`}
-                    onClick={(event) => handleStorefrontClick(event, 'latte_stone', 'Latte Stone Cookies')}
-                  >
-                    Latte Stone Cookies
-                  </Link>
-                )}
-                {showCatering && (
-                  <Link
-                    to="/shop/catering"
-                    className={`flex items-center gap-2 py-2 ${
-                      darkMode
-                        ? 'text-white/80 hover:text-tsGold'
-                        : 'text-warm-700 hover:text-tsPrimary'
-                    }`}
-                    onClick={(event) => handleStorefrontClick(event, 'catering', 'Catering')}
-                  >
-                    Catering
-                  </Link>
-                )}
+                ))}
               </>
             )}
 
-            {/* Collections */}
-            {loading ? (
-              <div className={`text-sm py-2 ${darkMode ? 'text-white/50' : 'text-warm-400'}`}>Loading collections...</div>
-            ) : (
-              collections.slice(0, 6).map((collection) => (
-                <Link
-                  key={collection.id}
-                  to={`/collections/${collection.slug}`}
-                  className={`flex items-center gap-2 py-2 ${
-                    darkMode 
-                      ? 'text-white/70 hover:text-tsGold' 
-                      : 'text-warm-600 hover:text-tsPrimary'
-                  }`}
-                  onClick={onItemClick}
-                >
-                  <span className="text-tsGold text-xs">●</span>
-                  {collection.name}
-                  {collection.product_count > 0 && (
-                    <span className={`ml-auto text-xs ${darkMode ? 'text-white/40' : 'text-warm-400'}`}>
-                      {collection.product_count}
-                    </span>
-                  )}
-                </Link>
-              ))
-            )}
-
-            {/* View All Collections */}
-            {collections.length > 0 && (
-              <Link
-                to="/collections"
-                className={`block py-2 font-medium hover:underline ${
-                  darkMode ? 'text-tsGold' : 'text-tsPrimary'
-                }`}
-                onClick={onItemClick}
-              >
-                View All Collections →
-              </Link>
-            )}
+            <Link
+              to="/collections"
+              className={`block py-2 font-medium hover:underline ${
+                darkMode ? 'text-tsGold' : 'text-tsPrimary'
+              }`}
+              onClick={onItemClick}
+            >
+              Browse Collections →
+            </Link>
           </div>
         </div>
       )}

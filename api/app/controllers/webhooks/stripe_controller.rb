@@ -93,6 +93,7 @@ module Webhooks
       # Use update_column to bypass validations — webhooks should always succeed
       # regardless of model validation state (e.g., missing optional fields).
       record.update_column(:payment_status, "paid")
+      record.update_columns(payment_provider: "stripe", payment_reference: payment_intent.id) if record.respond_to?(:payment_provider)
       Rails.logger.info "✅ #{target[:type]} ##{record.id} payment_status updated to 'paid' via Stripe webhook"
 
       if target[:type] == "Order"
@@ -177,6 +178,8 @@ module Webhooks
           refund = begin
             Refund.create!(
               stripe_refund_id: stripe_refund.id,
+              provider_refund_id: stripe_refund.id,
+              payment_provider: "stripe",
               order: record,
               amount_cents: stripe_refund.amount,
               reason: stripe_refund.reason || "Refunded via Stripe Dashboard",
@@ -207,7 +210,7 @@ module Webhooks
     end
 
     def handle_charge_refund_updated(stripe_refund)
-      refund = Refund.find_by(stripe_refund_id: stripe_refund.id)
+      refund = Refund.find_by(provider_refund_id: stripe_refund.id) || Refund.find_by(stripe_refund_id: stripe_refund.id)
       unless refund
         Rails.logger.info "ℹ️  charge.refund.updated for unknown refund #{stripe_refund.id} — skipping"
         return
@@ -253,7 +256,8 @@ module Webhooks
       return { type: "Order", record: order } if order
 
       # Fallback: find by payment_intent_id stored on the order
-      order = Order.find_by(payment_intent_id: payment_intent.id) if payment_intent.id.present?
+      order = Order.find_by(payment_reference: payment_intent.id) if payment_intent.id.present?
+      order ||= Order.find_by(payment_intent_id: payment_intent.id) if payment_intent.id.present?
       return { type: "Order", record: order } if order
 
       Rails.logger.warn "⚠️  Could not find payment target for payment_intent #{payment_intent.id} (metadata.order_id: #{order_id})"
@@ -263,7 +267,7 @@ module Webhooks
     def find_payment_target_from_intent_id(payment_intent_id)
       return nil if payment_intent_id.blank?
 
-      order = Order.find_by(payment_intent_id: payment_intent_id)
+      order = Order.find_by(payment_reference: payment_intent_id) || Order.find_by(payment_intent_id: payment_intent_id)
       return { type: "Order", record: order } if order
 
       nil

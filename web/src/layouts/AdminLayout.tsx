@@ -33,6 +33,7 @@ const ROUTE_META: Record<string, RouteMeta> = {
   '/admin/analytics':                { title: 'Analytics',        parent: '/admin' },
   '/admin/catering':                 { title: 'Catering',         parent: '/admin' },
   '/admin/users':                    { title: 'Users',            parent: '/admin' },
+  '/admin/devices':                  { title: 'Devices',          parent: '/admin' },
   '/admin/import':                   { title: 'CSV Import',       parent: '/admin' },
   '/admin/settings':                 { title: 'Settings',         parent: '/admin' },
   '/admin/settings/variant-presets': { title: 'Variant Presets',   parent: '/admin/settings' },
@@ -172,6 +173,7 @@ export default function AdminLayout() {
   ];
   const systemNavigation: NavItem[] = [
     { name: 'Users',    path: '/admin/users', icon: 'users' },
+    { name: 'Devices',  path: '/admin/devices', icon: 'devices' },
     { name: 'Import',   path: '/admin/import', icon: 'import' },
     { name: 'Settings', path: '/admin/settings', icon: 'settings' },
     { name: 'Variant Presets', path: '/admin/settings/variant-presets', icon: 'presets' },

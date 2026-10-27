@@ -21,7 +21,10 @@ test.describe('Retail Order - Complete User Journey', () => {
   test.beforeEach(async ({ page }) => {
     // Clear cart before each test
     await page.goto('/');
-    await page.evaluate(() => localStorage.removeItem('hafaloha-cart'));
+    await page.evaluate(() => {
+      localStorage.removeItem('three-squares-cart');
+      localStorage.removeItem('cart_session_id');
+    });
   });
 
   test('1. Customer: Browse and add product to cart', async ({ page }) => {
@@ -91,7 +94,6 @@ test.describe('Retail Order - Complete User Journey', () => {
     await page.waitForTimeout(1000);
 
     // Open cart drawer if not already open (click cart icon)
-    const cartIcon = page.locator('button:has(svg), a').filter({ has: page.locator('svg') }).filter({ hasText: '' }).nth(1);
     const cartDrawer = page.locator('[class*="fixed"][class*="right"]').first();
     
     if (!(await cartDrawer.isVisible())) {
@@ -184,7 +186,7 @@ test.describe('Retail Order - Complete User Journey', () => {
       await stripeFrame.locator('input[name="exp-date"], input[placeholder*="MM / YY"]').first().fill('12/28');
       await stripeFrame.locator('input[name="cvc"], input[placeholder*="CVC"]').first().fill('123');
       await stripeFrame.locator('input[name="postal"], input[placeholder*="ZIP"]').first().fill('96910');
-    } catch (e) {
+    } catch {
       console.log('Stripe iframe not found or different structure - continuing...');
       // Take a screenshot to debug
       await page.screenshot({ path: 'test-results/comprehensive/05b-stripe-debug.png', fullPage: true });
@@ -259,7 +261,10 @@ test.describe('Retail Order - Complete User Journey', () => {
 test.describe('Retail Order - Edge Cases', () => {
   test('Empty cart shows appropriate message', async ({ page }) => {
     await page.goto('/');
-    await page.evaluate(() => localStorage.removeItem('hafaloha-cart'));
+    await page.evaluate(() => {
+      localStorage.removeItem('three-squares-cart');
+      localStorage.removeItem('cart_session_id');
+    });
     await page.reload();
 
     // Try to go to checkout with empty cart

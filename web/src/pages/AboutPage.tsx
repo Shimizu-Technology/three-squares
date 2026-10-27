@@ -1,8 +1,14 @@
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 import Breadcrumbs from '../components/Breadcrumbs';
+import useAppConfig from '../hooks/useAppConfig';
+import { isStorefrontEnabled } from '../utils/storefronts';
 
 export default function AboutPage() {
+  const config = useAppConfig();
+  const cateringEnabled = isStorefrontEnabled(config, 'catering');
+  const latteStoneEnabled = isStorefrontEnabled(config, 'latte_stone');
+
   return (
     <div className="min-h-screen bg-warm-50">
       {/* Breadcrumbs */}
@@ -23,7 +29,7 @@ export default function AboutPage() {
           </FadeIn>
           <FadeIn delay={0.1}>
             <p className="text-lg sm:text-xl text-center max-w-2xl mx-auto text-gray-600">
-              Good Food, Good Mood, Good Service — Guam's premier comfort food restaurant and catering service
+              Good Food, Good Mood, Good Service — Guam&apos;s premier comfort food destination
             </p>
           </FadeIn>
         </div>
@@ -44,9 +50,18 @@ export default function AboutPage() {
                 passionate about serving authentic Guam-style comfort food that brings people together.
               </p>
               <p className="text-lg text-gray-700 mb-6 leading-relaxed">
-                B&G Pacific also encompasses <strong>Everything Guam LLC</strong>, the home of our 
-                Latte Stone Cookies — artisan shortbread cookies baked in small batches and cut in the 
-                iconic shape of the latte stone. We&apos;re sharing Guam with the world, one cookie at a time.
+                {latteStoneEnabled ? (
+                  <>
+                    B&G Pacific also encompasses <strong>Everything Guam LLC</strong>, the home of our 
+                    Latte Stone Cookies — artisan shortbread cookies baked in small batches and cut in the 
+                    iconic shape of the latte stone. We&apos;re sharing Guam with the world, one cookie at a time.
+                  </>
+                ) : (
+                  <>
+                    B&G Pacific continues to expand with customer-first brands rooted in Guam, built around
+                    local hospitality, thoughtful service, and quality products made with pride.
+                  </>
+                )}
               </p>
               <p className="text-lg text-gray-700 leading-relaxed">
                 Our menu celebrates the diverse culinary traditions of Guam — from traditional Chamorro 
@@ -116,27 +131,27 @@ export default function AboutPage() {
               </p>
               <ul className="space-y-3 text-gray-700">
                 <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-tsGold flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-tsGold shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
                   </svg>
                   <span><strong>Three Squares Famous Fried Chicken</strong> — Our signature dish, 
                   crispy-fried to perfection</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-tsGold flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-tsGold shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
                   </svg>
                   <span><strong>BBQ Kalbi Shortribs</strong> — Korean-style marinated short ribs, 
                   a local favorite</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-tsGold flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-tsGold shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
                   </svg>
                   <span><strong>Tinaktak</strong> — Traditional Chamorro dish with beef and coconut milk</span>
                 </li>
                 <li className="flex items-start gap-3">
-                  <svg className="w-5 h-5 text-tsGold flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5 text-tsGold shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.111a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />
                   </svg>
                   <span><strong>Coconut Banana Cake</strong> — Our famous dessert that customers rave about</span>
@@ -146,54 +161,55 @@ export default function AboutPage() {
           </div>
         </FadeIn>
 
-        {/* Catering Services */}
-        <FadeIn>
-          <div className="mb-16 rounded-xl p-8 sm:p-10 bg-gradient-to-br from-tsSurface to-white border border-warm-200">
-            <h2 className="text-2xl font-semibold mb-4 text-gray-900 tracking-tight">Full-Service Catering</h2>
-            <p className="text-lg text-gray-700 mb-6 leading-relaxed">
-              As a <strong>woman-owned, HUBZone certified</strong> business, Three Squares is proud to 
-              offer catering services for corporate events, government functions, and private celebrations. 
-              Our catering menu includes:
-            </p>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-700">
-              <div className="flex items-center gap-2">
-                <span className="text-tsGold">✓</span>
-                <span>Take-Out & Party Platters</span>
+        {cateringEnabled && (
+          <FadeIn>
+            <div className="mb-16 rounded-xl p-8 sm:p-10 bg-linear-to-br from-tsSurface to-white border border-warm-200">
+              <h2 className="text-2xl font-semibold mb-4 text-gray-900 tracking-tight">Full-Service Catering</h2>
+              <p className="text-lg text-gray-700 mb-6 leading-relaxed">
+                As a <strong>woman-owned, HUBZone certified</strong> business, Three Squares is proud to 
+                offer catering services for corporate events, government functions, and private celebrations. 
+                Our catering menu includes:
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-gray-700">
+                <div className="flex items-center gap-2">
+                  <span className="text-tsGold">✓</span>
+                  <span>Take-Out & Party Platters</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-tsGold">✓</span>
+                  <span>Lunch & Dinner Buffets</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-tsGold">✓</span>
+                  <span>Bulk Order Bentos</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-tsGold">✓</span>
+                  <span>Private Events at Three Squares</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-tsGold">✓</span>
+                  <span>Corporate Meeting Catering</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-tsGold">✓</span>
+                  <span>Cocktail Buffets</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="text-tsGold">✓</span>
-                <span>Lunch & Dinner Buffets</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-tsGold">✓</span>
-                <span>Bulk Order Bentos</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-tsGold">✓</span>
-                <span>Private Events at Three Squares</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-tsGold">✓</span>
-                <span>Corporate Meeting Catering</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-tsGold">✓</span>
-                <span>Cocktail Buffets</span>
+              <div className="mt-8">
+                <a
+                  href="/catering"
+                  className="inline-flex items-center gap-2 bg-tsPrimary text-white px-6 py-3 rounded-lg font-medium hover:bg-tsNavy transition"
+                >
+                  View Catering Menu
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                  </svg>
+                </a>
               </div>
             </div>
-            <div className="mt-8">
-              <a
-                href="/catering"
-                className="inline-flex items-center gap-2 bg-tsPrimary text-white px-6 py-3 rounded-lg font-medium hover:bg-tsNavy transition"
-              >
-                View Catering Menu
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-                </svg>
-              </a>
-            </div>
-          </div>
-        </FadeIn>
+          </FadeIn>
+        )}
 
         {/* Locations */}
         <div className="mb-16">
@@ -245,7 +261,7 @@ export default function AboutPage() {
           <div className="rounded-xl p-8 sm:p-10 mb-16 bg-warm text-center">
             <h2 className="text-2xl font-semibold mb-3 text-gray-900 tracking-tight">Get In Touch</h2>
             <p className="text-gray-600 mb-8 max-w-prose mx-auto">
-              Questions about our menu or catering services? We'd love to hear from you!
+              Questions about our menu or locations? We&apos;d love to hear from you!
             </p>
             <div className="flex flex-wrap justify-center gap-4">
               <a
@@ -310,7 +326,7 @@ export default function AboutPage() {
           <div className="text-center py-8">
             <h2 className="text-2xl font-semibold mb-4 text-gray-900 tracking-tight">Ready to Order?</h2>
             <p className="mb-6 max-w-xl mx-auto text-gray-600">
-              Explore our menu and place your order online for dine-in, takeout, or catering.
+              Explore our menu and place your order online for dine-in or takeout.
             </p>
             <a
               href="/products"

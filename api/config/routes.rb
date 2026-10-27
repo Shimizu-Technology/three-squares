@@ -34,6 +34,14 @@ Rails.application.routes.draw do
 
         # Users (admin management)
         resources :users, only: [ :index, :show, :update ]
+        resources :devices, only: [ :index, :update ] do
+          collection do
+            get :current
+            put :current, action: :update_current
+            post "current/push_subscription", action: :subscribe_current
+            delete "current/push_subscription", action: :unsubscribe_current
+          end
+        end
 
         # Catering inquiries (admin management)
         resources :catering, only: [ :index, :show, :update, :destroy ] do
@@ -162,6 +170,7 @@ Rails.application.routes.draw do
 
       # Payment intents (for Stripe checkout)
       resources :payment_intents, only: [ :create ]
+      resources :checkout_sessions, only: [ :create ]
 
       # Config endpoint (public)
       get "config", to: "config#show"
@@ -188,6 +197,9 @@ Rails.application.routes.draw do
   namespace :webhooks do
     # Stripe webhook
     post "stripe", to: "stripe#create"
+
+    # Worldpay webhook (disabled until BOG/Worldpay credentials and event scope are confirmed)
+    post "worldpay", to: "worldpay#create"
 
     # EasyPost webhook
     # post 'easypost', to: 'easypost#create'

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { useCartStore } from '../store/cartStore';
-import { configApi, locationsApi, ordersApi, shippingApi, paymentIntentsApi, formatPrice } from '../services/api';
+import { configApi, locationsApi, ordersApi, shippingApi, checkoutSessionsApi, formatPrice } from '../services/api';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import StripeProvider from '../components/payment/StripeProvider';
@@ -22,7 +22,7 @@ function CheckoutForm() {
   const elements = useElements();
   
   // Get items from cart (with fallback to empty array)
-  const items = cart?.items || [];
+  const items = useMemo(() => cart?.items || [], [cart?.items]);
   const subtotalCents = cart?.subtotal_cents || 0; // Use cents directly from cart
   const cartSupportsShipping = items.length > 0 && items.every((item) => item.product.allow_shipping === true);
   const cartSupportsPickup = items.length > 0 && items.every((item) => item.product.allow_pickup === true);
@@ -94,6 +94,7 @@ function CheckoutForm() {
   }> | null>(null);
   
   const isTestMode = appConfig?.app_mode === 'test';
+  const usesEmbeddedCardCheckout = appConfig?.payment_checkout_mode === 'embedded';
 
   // Compatible pickup locations = intersection of available_location_ids across all cart items.
   const compatiblePickupLocationIds = useMemo(() => {
@@ -114,28 +115,29 @@ function CheckoutForm() {
   );
 
   // Load app config
-  useEffect(() => {
-    const loadConfig = async () => {
-      try {
-        const config = await configApi.getConfig();
-        setAppConfig(config);
-        const locations = await locationsApi.getLocations();
-        const locs = locations.locations || [];
-        setPickupLocations(locs);
-        // Pre-fill from location store, fall back to first location
-        if (storedLocation && locs.some((l: Location) => l.id === storedLocation.id)) {
-          setPickupLocationId(storedLocation.id);
-        } else if (locs.length > 0) {
-          setPickupLocationId(locs[0].id);
-        }
-      } catch (err) {
-        console.error('Failed to load config:', err);
-      } finally {
-        setConfigLoading(false);
+  const loadConfig = useCallback(async () => {
+    try {
+      const config = await configApi.getConfig();
+      setAppConfig(config);
+      const locations = await locationsApi.getLocations();
+      const locs = locations.locations || [];
+      setPickupLocations(locs);
+      // Pre-fill from location store, fall back to first location
+      if (storedLocation && locs.some((l: Location) => l.id === storedLocation.id)) {
+        setPickupLocationId(storedLocation.id);
+      } else if (locs.length > 0) {
+        setPickupLocationId(locs[0].id);
       }
-    };
-    loadConfig();
-  }, []);
+    } catch (err) {
+      console.error('Failed to load config:', err);
+    } finally {
+      setConfigLoading(false);
+    }
+  }, [storedLocation]);
+
+  useEffect(() => {
+    void loadConfig();
+  }, [loadConfig]);
   
   // Fetch cart on mount
   useEffect(() => {
@@ -237,7 +239,7 @@ function CheckoutForm() {
     if (deliveryMethod === 'pickup') {
       if (!cartSupportsPickup) return false;
       if (compatiblePickupLocations.length === 0) return false;
-      return hasContactInfo && pickupLocationId !== null && (isTestMode || paymentReady);
+      return hasContactInfo && pickupLocationId !== null && (isTestMode || !usesEmbeddedCardCheckout || paymentReady);
     }
     
     if (!cartSupportsShipping) return false;
@@ -249,7 +251,7 @@ function CheckoutForm() {
       shippingAddress.state.trim() !== '' &&
       shippingAddress.zip.trim() !== '';
     
-    return hasContactInfo && hasAddress && shippingMethod !== null && (isTestMode || paymentReady);
+    return hasContactInfo && hasAddress && shippingMethod !== null && (isTestMode || !usesEmbeddedCardCheckout || paymentReady);
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -293,7 +295,6 @@ function CheckoutForm() {
         return;
       }
 
-      const shippingCostCents = deliveryMethod === 'pickup' ? 0 : (shippingMethod?.rate_cents || 0);
       let orderShippingAddress;
       let orderShippingMethod;
 
@@ -350,7 +351,24 @@ function CheckoutForm() {
           setError('Failed to create order. Please try again.');
         }
       } else {
-        // Real Stripe payment flow
+        const sessionResponse = await checkoutSessionsApi.create(
+          {
+            email,
+            fulfillment_type: deliveryMethod,
+            location_id: deliveryMethod === 'pickup' ? pickupLocationId || undefined : undefined,
+            shipping_address: deliveryMethod === 'shipping' ? orderShippingAddress : undefined,
+            shipping_method: orderShippingMethod,
+          },
+          token,
+          sessionId
+        );
+
+        if (sessionResponse.flow !== 'embedded' || sessionResponse.provider !== 'stripe') {
+          setError('This payment provider is not fully enabled in the checkout yet. Please try again later or switch back to test mode.');
+          setLoading(false);
+          return;
+        }
+
         if (!stripe || !elements) {
           setError('Payment system is not ready. Please wait and try again.');
           setLoading(false);
@@ -362,20 +380,9 @@ function CheckoutForm() {
           setLoading(false);
           return;
         }
-        // Step 1: Create PaymentIntent
-        const intentResponse = await paymentIntentsApi.create(
-          {
-            email,
-            shipping_cost_cents: shippingCostCents,
-            fulfillment_type: deliveryMethod,
-            location_id: deliveryMethod === 'pickup' ? pickupLocationId || undefined : undefined,
-          },
-          token,
-          sessionId
-        );
-        // Step 2: Confirm card payment with Stripe
+
         const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
-          intentResponse.client_secret,
+          sessionResponse.client_secret || '',
           { payment_method: { card: cardElement, billing_details: { name, email, phone } } }
         );
         if (stripeError) {
@@ -816,6 +823,8 @@ function CheckoutForm() {
               {/* Payment Section */}
               <PaymentForm
                 isTestMode={isTestMode}
+                paymentMode={appConfig?.payment_checkout_mode}
+                paymentProcessor={appConfig?.payment_processor}
                 onPaymentReady={handlePaymentReady}
               />
 

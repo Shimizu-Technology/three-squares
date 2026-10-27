@@ -2,8 +2,9 @@ import { useMemo, type ReactNode } from 'react';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import type { StripeElementsOptions } from '@stripe/stripe-js';
+import useAppConfig from '../../hooks/useAppConfig';
 
-const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+const envStripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
 
 interface StripeProviderProps {
   children: ReactNode;
@@ -11,13 +12,16 @@ interface StripeProviderProps {
 }
 
 export default function StripeProvider({ children, clientSecret }: StripeProviderProps) {
+  const config = useAppConfig();
+  const stripePublishableKey = config?.stripe_publishable_key || envStripePublishableKey;
+
   const stripePromise = useMemo(() => {
     if (!stripePublishableKey) {
-      console.warn('Missing VITE_STRIPE_PUBLISHABLE_KEY — Stripe will not be available (test mode still works)');
+      console.warn('Missing Stripe publishable key — embedded card checkout will not be available');
       return null;
     }
     return loadStripe(stripePublishableKey);
-  }, []);
+  }, [stripePublishableKey]);
 
   const options: StripeElementsOptions = useMemo(() => {
     if (clientSecret) {

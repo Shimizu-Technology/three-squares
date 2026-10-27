@@ -12,8 +12,8 @@ module Api
 
         # GET /api/v1/admin/dashboard/stats
         def stats
-          # Scope queries to assigned location for location-locked staff
-          base_scope = current_user.location_scoped? ? Order.where(location_id: current_user.assigned_location_id) : Order.all
+          effective_location_id = effective_admin_location_id(params[:location_id])
+          base_scope = effective_location_id.present? ? Order.where(location_id: effective_location_id) : Order.all
 
           total_orders = base_scope.count
           total_revenue_cents = base_scope.where(payment_status: "paid").sum(:total_cents)
@@ -37,7 +37,8 @@ module Api
         # GET /api/v1/admin/dashboard/chart_data
         # Returns daily order counts and revenue for the last 30 days
         def chart_data
-          base_scope = current_user.location_scoped? ? Order.where(location_id: current_user.assigned_location_id) : Order.all
+          effective_location_id = effective_admin_location_id(params[:location_id])
+          base_scope = effective_location_id.present? ? Order.where(location_id: effective_location_id) : Order.all
 
           days = (params[:days] || 30).to_i.clamp(7, 90)
           start_date = days.days.ago.beginning_of_day

@@ -2,7 +2,7 @@ import axios from 'axios';
 // src/pages/admin/AdminVariantPresetsPage.tsx
 // Admin page for managing variant presets (reusable option templates)
 
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { toast } from 'react-hot-toast';
 import variantPresetsService, { 
@@ -45,11 +45,7 @@ export default function AdminVariantPresetsPage() {
   const [newValuePrice, setNewValuePrice] = useState('0');
 
   // Load presets on mount
-  useEffect(() => {
-    loadPresets();
-  }, []);
-
-  const loadPresets = async () => {
+  const loadPresets = useCallback(async () => {
     try {
       setLoading(true);
       const response = await variantPresetsService.getAll(getToken);
@@ -63,7 +59,11 @@ export default function AdminVariantPresetsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken]);
+
+  useEffect(() => {
+    void loadPresets();
+  }, [loadPresets]);
 
   const handleCreate = () => {
     setEditingPreset(null);
@@ -91,7 +91,7 @@ export default function AdminVariantPresetsPage() {
       const response = await variantPresetsService.duplicate(preset.id, getToken);
       if (response.success) {
         toast.success(`Duplicated as "${response.data.name}"`);
-        loadPresets();
+        void loadPresets();
       }
     } catch (error) {
       console.error('Failed to duplicate preset:', error);
@@ -107,7 +107,7 @@ export default function AdminVariantPresetsPage() {
     try {
       await variantPresetsService.remove(preset.id, getToken);
       toast.success('Preset deleted');
-      loadPresets();
+      void loadPresets();
     } catch (error) {
       console.error('Failed to delete preset:', error);
       toast.error('Failed to delete preset');
@@ -141,7 +141,7 @@ export default function AdminVariantPresetsPage() {
       }
       
       setShowModal(false);
-      loadPresets();
+      void loadPresets();
     } catch (error) {
       console.error('Failed to save preset:', error);
       toast.error(axios.isAxiosError(error) ? error.response?.data?.error || 'Failed to save preset' : 'Failed to save preset');

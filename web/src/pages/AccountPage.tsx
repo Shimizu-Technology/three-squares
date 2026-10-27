@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useUser, useAuth, SignInButton, UserProfile } from '@clerk/clerk-react';
 import axios from 'axios';
@@ -32,15 +32,7 @@ export default function AccountPage() {
   const [ordersError, setOrdersError] = useState<string | null>(null);
   const [showUserProfile, setShowUserProfile] = useState(false);
 
-  useEffect(() => {
-    if (authLoaded && isSignedIn) {
-      fetchRecentOrders();
-    } else if (authLoaded && !isSignedIn) {
-      setOrdersLoading(false);
-    }
-  }, [authLoaded, isSignedIn]);
-
-  const fetchRecentOrders = async () => {
+  const fetchRecentOrders = useCallback(async () => {
     try {
       setOrdersLoading(true);
       const token = await getToken();
@@ -56,7 +48,15 @@ export default function AccountPage() {
     } finally {
       setOrdersLoading(false);
     }
-  };
+  }, [getToken]);
+
+  useEffect(() => {
+    if (authLoaded && isSignedIn) {
+      void fetchRecentOrders();
+    } else if (authLoaded && !isSignedIn) {
+      setOrdersLoading(false);
+    }
+  }, [authLoaded, fetchRecentOrders, isSignedIn]);
 
   const getStatusColor = (status: string) => {
     switch (status) {

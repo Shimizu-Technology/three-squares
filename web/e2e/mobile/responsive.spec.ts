@@ -10,7 +10,10 @@ test.describe('Mobile Responsive Tests', () => {
   test.beforeEach(async ({ page }) => {
     // Clear cart before each test
     await page.goto('/');
-    await page.evaluate(() => localStorage.removeItem('hafaloha-cart'));
+    await page.evaluate(() => {
+      localStorage.removeItem('three-squares-cart');
+      localStorage.removeItem('cart_session_id');
+    });
   });
 
   test('Homepage layout on mobile', async ({ page }) => {

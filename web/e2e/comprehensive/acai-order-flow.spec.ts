@@ -20,8 +20,6 @@ import { test, expect } from '@playwright/test';
  */
 
 test.describe('Acai Cake Order - Complete User Journey', () => {
-  let orderNumber: string;
-
   test('1. Customer: Navigate to Acai page and view options', async ({ page }) => {
     await page.goto('/acai-cakes');
     await page.waitForLoadState('networkidle');
@@ -39,7 +37,7 @@ test.describe('Acai Cake Order - Complete User Journey', () => {
     await expect(price).toBeVisible();
     
     // Verify progress bar
-    const progressText = page.locator('text=/\\d+\/\\d+/').first();
+    const progressText = page.locator('text=/\\d+/\\d+/').first();
     await expect(progressText).toBeVisible();
     
     // Screenshot: Acai page loaded

@@ -20,6 +20,7 @@ import {
   type TerminalStatus,
 } from '../../services/stripeTerminal';
 import type { Reader } from '@stripe/terminal-js';
+import { getAdminDeviceHeaders } from '../../services/adminDeviceIdentity';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -80,7 +81,7 @@ async function fetchPOSMenu(token: string, locationId?: number): Promise<{ categ
   const params = new URLSearchParams();
   if (locationId) params.set('location_id', locationId.toString());
   const res = await fetch(`${API_BASE}/api/v1/admin/pos/menu?${params}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: getAdminDeviceHeaders({ Authorization: `Bearer ${token}` }),
   });
   if (!res.ok) throw new Error('Failed to load menu');
   return res.json();
@@ -89,10 +90,10 @@ async function fetchPOSMenu(token: string, locationId?: number): Promise<{ categ
 async function createPOSOrder(token: string, orderData: Record<string, unknown>) {
   const res = await fetch(`${API_BASE}/api/v1/admin/pos/orders`, {
     method: 'POST',
-    headers: {
+    headers: getAdminDeviceHeaders({
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
-    },
+    }),
     body: JSON.stringify({ order: orderData }),
   });
   const data = await res.json();
@@ -103,10 +104,10 @@ async function createPOSOrder(token: string, orderData: Record<string, unknown>)
 async function confirmTerminalPayment(token: string, orderId: number) {
   const res = await fetch(`${API_BASE}/api/v1/admin/pos/orders/${orderId}/confirm_terminal_payment`, {
     method: 'POST',
-    headers: {
+    headers: getAdminDeviceHeaders({
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
-    },
+    }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to confirm terminal payment');

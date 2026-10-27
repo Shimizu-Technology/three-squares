@@ -20,6 +20,7 @@ import {
   ClipboardCheck,
   Truck,
   Monitor,
+  BellRing,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -34,6 +35,7 @@ export const ADMIN_ICONS: Record<string, LucideIcon> = {
   locations: MapPin,
   inventory: Warehouse,
   pos: Monitor,
+  devices: BellRing,
   catering: UtensilsCrossed,
   pickup_queue: ClipboardCheck,
   shipping_queue: Truck,

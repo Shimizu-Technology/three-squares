@@ -1,4 +1,4 @@
-import { test, expect, request } from '@playwright/test';
+import { test, expect } from '@playwright/test';
 
 /**
  * Inventory Audit System Tests
@@ -10,17 +10,7 @@ import { test, expect, request } from '@playwright/test';
  * - API endpoint verification
  */
 
-// API base URL
-const API_BASE = process.env.VITE_API_BASE_URL || 'http://localhost:3000';
-
 test.describe('Inventory Audit - API Verification', () => {
-  let authToken: string;
-
-  test.beforeAll(async () => {
-    // Note: In a real scenario, we'd get the auth token from Clerk
-    // For now, we'll test public endpoints and admin endpoints via UI
-  });
-
   test('inventory audits API returns data structure', async ({ page }) => {
     // This test verifies the API structure via the admin UI
     await page.goto('/admin/inventory');
@@ -53,8 +43,6 @@ test.describe('Inventory Audit - API Verification', () => {
     await page.waitForTimeout(2000);
 
     // Look for summary cards/stats
-    const statsElements = page.locator('[class*="stat"], [class*="card"], [class*="summary"]');
-    
     // Screenshot: Summary section
     await page.screenshot({ 
       path: 'test-results/comprehensive/inventory-audit-02-summary.png' 
@@ -170,8 +158,6 @@ test.describe('Inventory Audit - Order Flow Integration', () => {
     });
 
     // Look for an order that can be cancelled
-    const cancelButton = page.locator('button:has-text("Cancel")').first();
-    
     console.log(`
     Cancellation Audit Verification:
     =================================
@@ -282,8 +268,6 @@ test.describe('Inventory Audit - Data Integrity', () => {
     await page.waitForTimeout(2000);
 
     // Look for summary showing stock added vs removed
-    const summarySection = page.locator('text=/added|removed|net|total/i').first();
-
     // Screenshot: Stock movement summary
     await page.screenshot({ 
       path: 'test-results/comprehensive/inventory-audit-10-balance.png', 

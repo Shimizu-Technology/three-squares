@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import {
   TrendingUp, TrendingDown, Minus,
@@ -31,11 +31,7 @@ export default function AdminAnalyticsPage() {
   const [chartMode, setChartMode] = useState<'revenue' | 'orders'>('revenue');
   const [days, setDays] = useState(14);
 
-  useEffect(() => {
-    fetchChartData();
-  }, [days]);
-
-  const fetchChartData = async () => {
+  const fetchChartData = useCallback(async () => {
     try {
       setLoading(true);
       const res = await authGet<ChartData>('/admin/dashboard/chart_data', getToken, {
@@ -47,7 +43,11 @@ export default function AdminAnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [days, getToken]);
+
+  useEffect(() => {
+    void fetchChartData();
+  }, [fetchChartData]);
 
   const comp = chartData?.comparison;
   const revenueChange = comp

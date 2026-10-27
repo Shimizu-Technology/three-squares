@@ -1,4 +1,4 @@
-import { test, expect, chromium, Browser, BrowserContext, Page } from '@playwright/test';
+import { test, expect, chromium } from '@playwright/test';
 
 /**
  * Race Condition Prevention Tests
@@ -11,9 +11,6 @@ import { test, expect, chromium, Browser, BrowserContext, Page } from '@playwrig
  * Note: True race condition testing requires multiple browser contexts
  * running in parallel against items with very limited stock.
  */
-
-// API base URL for direct API testing
-const API_BASE = process.env.VITE_API_BASE_URL || 'http://localhost:3000';
 
 test.describe('Race Conditions - Stock Validation', () => {
   test('out of stock items cannot be purchased', async ({ page }) => {

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
 import { authGet, authPatch } from '../../services/authApi';
@@ -12,8 +12,16 @@ interface User {
   role: 'admin' | 'customer';
   is_admin: boolean;
   clerk_id: string;
+  assigned_location_id?: number | null;
+  assigned_location_name?: string | null;
+  location_scoped?: boolean;
   created_at: string;
   updated_at: string;
+}
+
+interface LocationOption {
+  id: number;
+  name: string;
 }
 
 interface Stats {
@@ -32,9 +40,14 @@ interface AdminUserResponse {
   message: string;
 }
 
+interface AdminLocationsResponse {
+  data: LocationOption[];
+}
+
 export default function AdminUsersPage() {
   const { getToken } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
+  const [locations, setLocations] = useState<LocationOption[]>([]);
   const [stats, setStats] = useState<Stats>({ total: 0, admins: 0, customers: 0 });
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -42,7 +55,7 @@ export default function AdminUsersPage() {
   const [updatingUserId, setUpdatingUserId] = useState<number | null>(null);
 
   // Fetch users
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       setLoading(true);
       
@@ -60,14 +73,39 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken, roleFilter, searchQuery]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [roleFilter]);
+    void fetchUsers();
+  }, [fetchUsers]);
+
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await authGet<AdminLocationsResponse>('/admin/locations', getToken);
+        setLocations(response.data.data || []);
+      } catch (err) {
+        console.error('Failed to fetch locations:', err);
+        toast.error('Failed to load location options');
+      }
+    };
+
+    void fetchLocations();
+  }, [getToken]);
 
   const handleSearch = () => {
-    fetchUsers();
+    void fetchUsers();
+  };
+
+  const updateUser = async (userId: number, payload: Partial<User>) => {
+    setUpdatingUserId(userId);
+    try {
+      const response = await authPatch<AdminUserResponse>(`/admin/users/${userId}`, { user: payload }, getToken);
+      setUsers((prev) => prev.map((user) => (user.id === userId ? response.data.user : user)));
+      return response.data;
+    } finally {
+      setUpdatingUserId(null);
+    }
   };
 
   // Toggle user role
@@ -80,12 +118,12 @@ export default function AdminUsersPage() {
     }
 
     try {
-      setUpdatingUserId(user.id);
-      const response = await authPatch<AdminUserResponse>(`/admin/users/${user.id}`, { user: { role: newRole } }, getToken);
+      const response = await updateUser(user.id, {
+        role: newRole,
+        assigned_location_id: newRole === 'admin' ? (user.assigned_location_id ?? null) : null,
+      });
       
       // Update user in list
-      setUsers(users.map(u => u.id === user.id ? response.data.user : u));
-      
       // Update stats
       if (newRole === 'admin') {
         setStats({ ...stats, admins: stats.admins + 1, customers: stats.customers - 1 });
@@ -93,12 +131,22 @@ export default function AdminUsersPage() {
         setStats({ ...stats, admins: stats.admins - 1, customers: stats.customers + 1 });
       }
       
-      toast.success(response.data.message);
+      toast.success(response.message);
     } catch (err) {
       console.error('Failed to update user:', err);
       toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update user' : 'Failed to update user');
-    } finally {
-      setUpdatingUserId(null);
+    }
+  };
+
+  const assignLocation = async (user: User, assignedLocationId: string) => {
+    try {
+      const response = await updateUser(user.id, {
+        assigned_location_id: assignedLocationId ? Number(assignedLocationId) : null,
+      });
+      toast.success(response.message || 'User location updated');
+    } catch (err) {
+      console.error('Failed to update assigned location:', err);
+      toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update location assignment' : 'Failed to update location assignment');
     }
   };
 
@@ -203,6 +251,9 @@ export default function AdminUsersPage() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Joined
                   </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Location Scope
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider min-w-[160px]">
                     Actions
                   </th>
@@ -239,6 +290,25 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(user.created_at)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {user.is_admin ? (
+                        <select
+                          value={user.assigned_location_id ?? ''}
+                          onChange={(event) => void assignLocation(user, event.target.value)}
+                          disabled={updatingUserId === user.id}
+                          className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                        >
+                          <option value="">Global Access</option>
+                          {locations.map((location) => (
+                            <option key={location.id} value={location.id}>
+                              {location.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-sm text-gray-400">Not applicable</span>
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <button
@@ -295,6 +365,27 @@ export default function AdminUsersPage() {
                 <div className="text-sm text-gray-500 mb-4">
                   Joined {formatDate(user.created_at)}
                 </div>
+
+                {user.is_admin && (
+                  <div className="mb-4">
+                    <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1">
+                      Location Scope
+                    </label>
+                    <select
+                      value={user.assigned_location_id ?? ''}
+                      onChange={(event) => void assignLocation(user, event.target.value)}
+                      disabled={updatingUserId === user.id}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    >
+                      <option value="">Global Access</option>
+                      {locations.map((location) => (
+                        <option key={location.id} value={location.id}>
+                          {location.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
 
                 <button
                   onClick={() => toggleUserRole(user)}

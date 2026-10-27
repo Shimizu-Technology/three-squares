@@ -1,8 +1,8 @@
 import { useState, useRef, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { collectionsApi, type Collection } from '../services/api';
 import { useCartStore } from '../store/cartStore';
 import useAppConfig from '../hooks/useAppConfig';
+import { getEnabledStorefronts, getStorefrontPath } from '../utils/storefronts';
 
 interface NavDropdownProps {
   onItemClick: () => void;
@@ -11,34 +11,11 @@ interface NavDropdownProps {
 
 export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [collections, setCollections] = useState<Collection[]>([]);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cart = useCartStore((state) => state.cart);
   const config = useAppConfig();
-
-  const showThreeSquares = config ? config.enable_storefront_three_squares !== false : false;
-  const showLatteStone = config ? config.enable_storefront_latte_stone !== false : false;
-  const showCatering = config ? config.enable_storefront_catering !== false : false;
-  const storefrontCount = [showThreeSquares, showLatteStone, showCatering].filter(Boolean).length;
-
-  // Fetch collections on mount
-  useEffect(() => {
-    const fetchCollections = async () => {
-      try {
-        const response = await collectionsApi.getCollections({ per_page: 10 });
-        // Show collections with at least 1 product, sorted by product count
-        const filtered = response.collections
-          .filter((c: Collection) => c.product_count > 0)
-          .sort((a: Collection, b: Collection) => b.product_count - a.product_count)
-          .slice(0, 5); // Top 5 collections
-        setCollections(filtered);
-      } catch (err) {
-        console.error('Failed to fetch collections for nav:', err);
-      }
-    };
-    fetchCollections();
-  }, []);
+  const storefronts = getEnabledStorefronts(config);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -131,64 +108,37 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
         </svg>
       </Link>
 
-      {/* Dynamic dropdown with real collections */}
+      {/* Storefront-first dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl border border-warm-200 z-50 animate-slide-down overflow-hidden w-56">
+        <div className="absolute top-full left-0 mt-2 bg-white rounded-2xl shadow-xl border border-warm-200 z-50 animate-slide-down overflow-hidden w-80">
           <div className="py-2">
-            {/* Dynamic collections */}
-            {collections.map((col) => (
+            {storefronts.length > 1 && (
+              <p className="px-5 pt-3 pb-2 text-[11px] font-semibold uppercase tracking-wider text-warm-400">
+                Shop by Business
+              </p>
+            )}
+            {storefronts.map((storefront) => (
               <Link
-                key={col.id}
-                to={`/collections/${col.slug}`}
-                className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
-                onClick={handleItemClick}
+                key={storefront.key}
+                to={getStorefrontPath(storefront.key)}
+                className="block px-5 py-3 hover:bg-tsSurface transition"
+                onClick={(event) => handleStorefrontClick(event, storefront.key, storefront.label)}
               >
-                <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
-                </svg>
-                {col.name}
-                <span className="ml-auto text-xs text-warm-400">{col.product_count}</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full border border-warm-200 bg-warm-50 text-tsPrimary flex items-center justify-center shrink-0">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.75} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
+                    </svg>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-semibold text-warm-800">{storefront.label}</p>
+                    <p className="text-sm text-warm-500 leading-snug">{storefront.description}</p>
+                  </div>
+                </div>
               </Link>
             ))}
 
-            {collections.length > 0 && <div className="border-t border-warm-100 my-1" />}
-
-            {storefrontCount > 1 && (
-              <>
-                <p className="px-5 py-2 text-[11px] font-semibold uppercase tracking-wider text-warm-400">
-                  Shop by Business
-                </p>
-                {showThreeSquares && (
-                  <Link
-                    to="/shop/three-squares"
-                    className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
-                    onClick={(event) => handleStorefrontClick(event, 'three_squares', 'Three Squares')}
-                  >
-                    Three Squares
-                  </Link>
-                )}
-                {showLatteStone && (
-                  <Link
-                    to="/shop/latte-stone-cookies"
-                    className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
-                    onClick={(event) => handleStorefrontClick(event, 'latte_stone', 'Latte Stone Cookies')}
-                  >
-                    Latte Stone Cookies
-                  </Link>
-                )}
-                {showCatering && (
-                  <Link
-                    to="/shop/catering"
-                    className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
-                    onClick={(event) => handleStorefrontClick(event, 'catering', 'Catering')}
-                  >
-                    Catering
-                  </Link>
-                )}
-              </>
-            )}
-
-            <div className="border-t border-warm-100 my-1" />
+            <div className="border-t border-warm-100 my-2" />
 
             <Link
               to="/products"

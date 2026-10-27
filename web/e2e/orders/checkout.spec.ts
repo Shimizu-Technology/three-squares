@@ -5,7 +5,8 @@ test.describe('Checkout Flow', () => {
     // Clear cart before each test
     await page.goto('/');
     await page.evaluate(() => {
-      localStorage.removeItem('hafaloha-cart');
+      localStorage.removeItem('three-squares-cart');
+      localStorage.removeItem('cart_session_id');
     });
   });
 

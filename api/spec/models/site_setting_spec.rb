@@ -6,7 +6,7 @@ RSpec.describe SiteSetting, type: :model do
       expect(build(:site_setting)).to be_valid
     end
 
-    it 'restricts payment_processor to stripe/paypal' do
+    it 'restricts payment_processor to supported values' do
       setting = build(:site_setting, payment_processor: 'square')
 
       expect(setting).not_to be_valid
@@ -18,6 +18,26 @@ RSpec.describe SiteSetting, type: :model do
 
       expect(setting).not_to be_valid
       expect(setting.errors[:shipping_origin_address].first).to include('missing required fields')
+    end
+
+    it 'allows non-stripe processors in test mode' do
+      setting = build(:site_setting, payment_test_mode: true, payment_processor: 'worldpay')
+
+      expect(setting).to be_valid
+    end
+
+    it 'rejects unsupported processors in production mode' do
+      setting = build(:site_setting, payment_test_mode: false, payment_processor: 'worldpay')
+
+      expect(setting).not_to be_valid
+      expect(setting.errors[:payment_processor]).to include('is not supported while production mode is active. Supported processors: stripe')
+    end
+
+    it 'rejects paypal in production mode' do
+      setting = build(:site_setting, payment_test_mode: false, payment_processor: 'paypal')
+
+      expect(setting).not_to be_valid
+      expect(setting.errors[:payment_processor]).to include('is not supported while production mode is active. Supported processors: stripe')
     end
   end
 
@@ -35,11 +55,16 @@ RSpec.describe SiteSetting, type: :model do
     it 'reports payment processor correctly' do
       stripe_setting = build(:site_setting, payment_processor: 'stripe')
       paypal_setting = build(:site_setting, payment_processor: 'paypal')
+      worldpay_setting = build(:site_setting, payment_processor: 'worldpay')
 
       expect(stripe_setting.using_stripe?).to be(true)
       expect(stripe_setting.using_paypal?).to be(false)
+      expect(stripe_setting.using_worldpay?).to be(false)
       expect(paypal_setting.using_paypal?).to be(true)
       expect(paypal_setting.using_stripe?).to be(false)
+      expect(paypal_setting.using_worldpay?).to be(false)
+      expect(worldpay_setting.using_worldpay?).to be(true)
+      expect(worldpay_setting.using_stripe?).to be(false)
     end
   end
 

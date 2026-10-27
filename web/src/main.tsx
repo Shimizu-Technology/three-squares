@@ -4,6 +4,7 @@ import { ClerkProvider } from '@clerk/clerk-react'
 import { PostHogProvider } from 'posthog-js/react'
 import './index.css'
 import App from './App.tsx'
+import { registerAdminServiceWorker } from './services/adminDevice'
 
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -15,6 +16,10 @@ if (!PUBLISHABLE_KEY) {
 const posthogOptions = {
   api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
 }
+
+void registerAdminServiceWorker().catch((error) => {
+  console.warn('Failed to register admin push service worker:', error);
+});
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

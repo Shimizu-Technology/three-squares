@@ -3,6 +3,28 @@
 class PaymentService
   class PaymentError < StandardError; end
 
+  def self.create_checkout_session(amount_cents:, customer_email:, order_id:, test_mode: false, payment_processor: nil)
+    provider = Payments::ProviderResolver.resolve(
+      payment_processor: payment_processor || SiteSetting.instance.payment_processor,
+      test_mode: test_mode
+    )
+
+    provider.create_checkout_session(
+      amount_cents: amount_cents,
+      customer_email: customer_email,
+      order_id: order_id
+    )
+  rescue Stripe::StripeError => e
+    Rails.logger.error "Stripe Checkout Session Error: #{e.message}"
+    { success: false, error: "Failed to initialize payment. Please try again." }
+  rescue PaymentError => e
+    Rails.logger.error "Payment Provider Error: #{e.message}"
+    { success: false, error: e.message }
+  rescue StandardError => e
+    Rails.logger.error "Checkout Session Error: #{e.class} - #{e.message}"
+    { success: false, error: "An unexpected error occurred. Please try again." }
+  end
+
   # Process a payment (real or simulated based on test_mode)
   # @param amount_cents [Integer] - Amount to charge in cents
   # @param payment_method [Hash] - Payment method details (card token, etc.)
@@ -10,18 +32,27 @@ class PaymentService
   # @param customer_email [String] - Customer's email
   # @param test_mode [Boolean] - Whether to simulate payment (default: false)
   # @return [Hash] - { success: boolean, charge_id: string, error: string }
-  def self.process_payment(amount_cents:, payment_method:, order:, customer_email:, test_mode: false)
-    if test_mode
-      process_test_payment(amount_cents, payment_method, order, customer_email)
-    else
-      process_real_payment(amount_cents, payment_method, order, customer_email)
-    end
+  def self.process_payment(amount_cents:, payment_method:, order:, customer_email:, test_mode: false, payment_processor: nil)
+    provider = Payments::ProviderResolver.resolve(
+      payment_processor: payment_processor || SiteSetting.instance.payment_processor,
+      test_mode: test_mode
+    )
+
+    provider.process_payment(
+      amount_cents: amount_cents,
+      payment_method: payment_method,
+      order: order,
+      customer_email: customer_email
+    )
   rescue Stripe::CardError => e
     Rails.logger.error "Stripe Card Error: #{e.message}"
     { success: false, error: e.message }
   rescue Stripe::StripeError => e
     Rails.logger.error "Stripe API Error: #{e.message}"
     { success: false, error: "Payment processing failed. Please try again." }
+  rescue PaymentError => e
+    Rails.logger.error "Payment Provider Error: #{e.message}"
+    { success: false, error: e.message }
   rescue StandardError => e
     Rails.logger.error "Payment Error: #{e.class} - #{e.message}"
     { success: false, error: "An unexpected error occurred. Please try again." }
@@ -33,18 +64,47 @@ class PaymentService
   # @param order_id [Integer] - Order ID for reference
   # @param test_mode [Boolean] - Whether to simulate payment intent (default: false)
   # @return [Hash] - { success: boolean, client_secret: string, error: string }
-  def self.create_payment_intent(amount_cents:, customer_email:, order_id:, test_mode: false)
-    if test_mode
-      create_test_payment_intent(amount_cents, customer_email, order_id)
-    else
-      create_real_payment_intent(amount_cents, customer_email, order_id)
+  def self.create_payment_intent(amount_cents:, customer_email:, order_id:, test_mode: false, payment_processor: nil)
+    result = create_checkout_session(
+      amount_cents: amount_cents,
+      customer_email: customer_email,
+      order_id: order_id,
+      test_mode: test_mode,
+      payment_processor: payment_processor
+    )
+
+    return result unless result[:success]
+
+    if result[:flow] != "embedded" && !(test_mode && result[:flow] == "simulated")
+      return {
+        success: false,
+        error: "The selected payment processor does not use embedded card collection."
+      }
     end
-  rescue Stripe::StripeError => e
-    Rails.logger.error "Stripe Payment Intent Error: #{e.message}"
-    { success: false, error: "Failed to initialize payment. Please try again." }
+
+    {
+      success: true,
+      client_secret: result[:client_secret],
+      payment_intent_id: result[:payment_reference] || result[:payment_intent_id]
+    }
+  end
+
+  def self.verify_payment(payment_reference:, expected_amount_cents:, test_mode: false, payment_processor: nil)
+    provider = Payments::ProviderResolver.resolve(
+      payment_processor: payment_processor || SiteSetting.instance.payment_processor,
+      test_mode: test_mode
+    )
+
+    provider.verify_payment(
+      payment_reference: payment_reference,
+      expected_amount_cents: expected_amount_cents
+    )
+  rescue PaymentError => e
+    Rails.logger.error "Payment Verification Provider Error: #{e.message}"
+    { success: false, captured: :unknown, error: e.message }
   rescue StandardError => e
-    Rails.logger.error "Payment Intent Error: #{e.class} - #{e.message}"
-    { success: false, error: "An unexpected error occurred. Please try again." }
+    Rails.logger.error "Payment Verification Error: #{e.class} - #{e.message}"
+    { success: false, captured: :unknown, error: "Payment verification failed. Please try again." }
   end
 
   # Process a refund (real or simulated based on test_mode)
@@ -54,182 +114,28 @@ class PaymentService
   # @param admin_user [User] - Admin processing the refund
   # @param test_mode [Boolean] - Whether to simulate refund
   # @return [Hash] - { success: boolean, refund: Refund, error: string }
-  def self.refund_payment(order:, amount_cents:, reason: nil, admin_user: nil, test_mode: false)
-    if test_mode
-      process_test_refund(order, amount_cents, reason, admin_user)
-    else
-      process_real_refund(order, amount_cents, reason, admin_user)
-    end
+  def self.refund_payment(order:, amount_cents:, reason: nil, admin_user: nil, test_mode: false, payment_processor: nil)
+    payment_processor ||= order.effective_payment_provider || SiteSetting.instance.payment_processor
+
+    provider = Payments::ProviderResolver.resolve(
+      payment_processor: payment_processor,
+      test_mode: test_mode
+    )
+
+    provider.refund_payment(
+      order: order,
+      amount_cents: amount_cents,
+      reason: reason,
+      admin_user: admin_user
+    )
   rescue Stripe::StripeError => e
     Rails.logger.error "Stripe Refund Error: #{e.message}"
+    { success: false, error: e.message }
+  rescue PaymentError => e
+    Rails.logger.error "Refund Provider Error: #{e.message}"
     { success: false, error: e.message }
   rescue StandardError => e
     Rails.logger.error "Refund Error: #{e.class} - #{e.message}"
     { success: false, error: "An unexpected error occurred during refund." }
-  end
-
-  private
-
-  # Real Stripe payment processing
-  def self.process_real_payment(amount_cents, payment_method, order, customer_email)
-    Rails.logger.info "💳 Processing real Stripe payment: $#{'%.2f' % (amount_cents / 100.0)}"
-
-    charge = Stripe::Charge.create(
-      amount: amount_cents,
-      currency: "usd",
-      source: payment_method[:token],
-      description: "Order ##{order.id} - Three Squares",
-      receipt_email: customer_email,
-      metadata: {
-        order_id: order.id,
-        order_type: order.order_type
-      }
-    )
-
-    {
-      success: true,
-      charge_id: charge.id,
-      payment_method: "stripe",
-      card_last4: charge.source&.last4,
-      card_brand: charge.source&.brand
-    }
-  end
-
-  # Simulated payment for test mode
-  def self.process_test_payment(amount_cents, payment_method, order, customer_email)
-    Rails.logger.info "⚙️  TEST MODE: Simulating payment of $#{'%.2f' % (amount_cents / 100.0)}"
-    Rails.logger.info "   Order ID: #{order.id}"
-    Rails.logger.info "   Customer: #{customer_email}"
-    Rails.logger.info "   Payment Method: #{payment_method.inspect}"
-
-    # Simulate a slight delay (like a real API call)
-    sleep(0.5)
-
-    # Generate fake charge ID
-    charge_id = "test_charge_#{SecureRandom.hex(12)}"
-
-    {
-      success: true,
-      charge_id: charge_id,
-      payment_method: "test",
-      card_last4: "4242",
-      card_brand: "Visa (Test)"
-    }
-  end
-
-  # Real Stripe Payment Intent
-  def self.create_real_payment_intent(amount_cents, customer_email, order_id)
-    Rails.logger.info "💳 Creating real Stripe Payment Intent: $#{'%.2f' % (amount_cents / 100.0)}"
-
-    intent = Stripe::PaymentIntent.create(
-      amount: amount_cents,
-      currency: "usd",
-      receipt_email: customer_email,
-      metadata: {
-        order_id: order_id
-      }
-    )
-
-    {
-      success: true,
-      client_secret: intent.client_secret,
-      payment_intent_id: intent.id
-    }
-  end
-
-  # Test mode Payment Intent
-  # When Stripe test keys are configured, we still call Stripe (which handles test mode)
-  # This allows full Stripe.js integration testing with test cards like 4242 4242 4242 4242
-  def self.create_test_payment_intent(amount_cents, customer_email, order_id)
-    Rails.logger.info "⚙️  TEST MODE: Creating Stripe Payment Intent with test keys"
-    Rails.logger.info "   Amount: $#{'%.2f' % (amount_cents / 100.0)}"
-    Rails.logger.info "   Customer: #{customer_email}"
-    Rails.logger.info "   Order ID: #{order_id}"
-
-    configured_test_secret =
-      ENV["STRIPE_SECRET_KEY_TEST"].presence ||
-      ENV["STRIPE_SECRET_KEY"].presence ||
-      Stripe.api_key
-
-    # Check if we have a test Stripe key configured
-    if configured_test_secret.present? && configured_test_secret.start_with?("sk_test_")
-      # Use real Stripe API with test keys - enables full checkout testing
-      intent = Stripe::PaymentIntent.create(
-        amount: amount_cents,
-        currency: "usd",
-        receipt_email: customer_email,
-        metadata: {
-          order_id: order_id,
-          test_mode: true
-        }
-      )
-
-      {
-        success: true,
-        client_secret: intent.client_secret,
-        payment_intent_id: intent.id
-      }
-    else
-      # No Stripe keys - return simulated response (won't work with Stripe.js)
-      Rails.logger.warn "⚠️  No Stripe test keys configured - using simulated payment intent"
-      {
-        success: true,
-        client_secret: "test_secret_#{SecureRandom.hex(16)}",
-        payment_intent_id: "test_pi_#{SecureRandom.hex(12)}"
-      }
-    end
-  end
-
-  def self.process_real_refund(order, amount_cents, reason, admin_user)
-    Rails.logger.info "💸 Processing Stripe refund: $#{"%.2f" % (amount_cents / 100.0)} for Order ##{order.order_number}"
-
-    refund_params = {
-      payment_intent: order.payment_intent_id,
-      amount: amount_cents,
-      reason: map_refund_reason(reason)
-    }
-
-    stripe_refund = Stripe::Refund.create(refund_params)
-
-    refund = order.refunds.create!(
-      stripe_refund_id: stripe_refund.id,
-      amount_cents: amount_cents,
-      reason: reason,
-      status: stripe_refund.status == "succeeded" ? "succeeded" : "pending",
-      user: admin_user,
-      metadata: { stripe_status: stripe_refund.status }
-    )
-
-    order.update!(payment_status: "refunded") if order.fully_refunded?
-
-    { success: true, refund: refund, stripe_refund_id: stripe_refund.id }
-  end
-
-  def self.process_test_refund(order, amount_cents, reason, admin_user)
-    Rails.logger.info "⚙️  TEST MODE: Simulating refund of $#{"%.2f" % (amount_cents / 100.0)} for Order ##{order.order_number}"
-
-    sleep(0.3)
-    fake_refund_id = "test_refund_#{SecureRandom.hex(12)}"
-
-    refund = order.refunds.create!(
-      stripe_refund_id: fake_refund_id,
-      amount_cents: amount_cents,
-      reason: reason,
-      status: "succeeded",
-      user: admin_user,
-      metadata: { test_mode: true }
-    )
-
-    order.update!(payment_status: "refunded") if order.fully_refunded?
-
-    { success: true, refund: refund, stripe_refund_id: fake_refund_id }
-  end
-
-  def self.map_refund_reason(reason)
-    case reason&.downcase
-    when "duplicate" then "duplicate"
-    when "fraudulent" then "fraudulent"
-    else "requested_by_customer"
-    end
   end
 end

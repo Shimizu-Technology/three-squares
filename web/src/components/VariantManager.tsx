@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
@@ -69,12 +69,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
   const editModalContentRef = useRef<HTMLDivElement | null>(null);
 
   // Load variants and presets on mount
-  useEffect(() => {
-    fetchVariants();
-    fetchPresets();
-  }, [productId]);
-
-  const fetchVariants = async () => {
+  const fetchVariants = useCallback(async () => {
     try {
       setLoading(true);
       const token = await getToken();
@@ -102,9 +97,9 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken, productId]);
 
-  const fetchPresets = async () => {
+  const fetchPresets = useCallback(async () => {
     try {
       setPresetsLoading(true);
       const response = await variantPresetsService.getAll(getToken);
@@ -116,7 +111,12 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
     } finally {
       setPresetsLoading(false);
     }
-  };
+  }, [getToken]);
+
+  useEffect(() => {
+    void fetchVariants();
+    void fetchPresets();
+  }, [fetchPresets, fetchVariants]);
 
   // Extract option types from existing variants for editing
   const extractOptionTypesFromVariants = (variantsList: Variant[]) => {

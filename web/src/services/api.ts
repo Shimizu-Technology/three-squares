@@ -1,6 +1,7 @@
-import axios from 'axios';
+import axios, { AxiosHeaders } from 'axios';
 import type { CreateOrderRequest, CreateOrderResponse, AppConfig } from '../types/order';
 import { API_BASE_URL } from '../config';
+import { getAdminDeviceId } from './adminDeviceIdentity';
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api/v1`,
@@ -33,6 +34,18 @@ const attachAuthErrorInterceptor = (instance: typeof axios | typeof api) => {
 
 attachAuthErrorInterceptor(api);
 attachAuthErrorInterceptor(axios);
+
+api.interceptors.request.use((config) => {
+  const headers = AxiosHeaders.from(config.headers);
+  const deviceId = getAdminDeviceId();
+
+  if (deviceId) {
+    headers.set('X-Admin-Device-Id', deviceId);
+  }
+
+  config.headers = headers;
+  return config;
+});
 
 // Types
 export interface Product {
@@ -104,6 +117,7 @@ export interface Collection {
   id: number;
   name: string;
   slug: string;
+  business_line?: 'three_squares' | 'latte_stone' | 'catering';
   description: string;
   image_url: string | null;
   thumbnail_url: string | null; // Added for collections landing page
@@ -277,14 +291,60 @@ export const ordersApi = {
 // Payment Intents API (Stripe)
 export interface CreatePaymentIntentRequest {
   email: string;
-  shipping_cost_cents: number;
   fulfillment_type: 'pickup' | 'shipping';
   location_id?: number;
+  shipping_address?: {
+    name: string;
+    street1: string;
+    street2?: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+    phone?: string;
+  };
+  shipping_method?: {
+    carrier: string;
+    service: string;
+    rate_cents: number;
+    rate_id?: string;
+  };
 }
 
 export interface CreatePaymentIntentResponse {
   client_secret: string;
   payment_intent_id: string;
+  amount_cents: number;
+}
+
+export interface CreateCheckoutSessionRequest {
+  email: string;
+  fulfillment_type: 'pickup' | 'shipping';
+  location_id?: number;
+  shipping_address?: {
+    name: string;
+    street1: string;
+    street2?: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+    phone?: string;
+  };
+  shipping_method?: {
+    carrier: string;
+    service: string;
+    rate_cents: number;
+    rate_id?: string;
+  };
+}
+
+export interface CreateCheckoutSessionResponse {
+  provider: 'stripe' | 'worldpay' | 'test';
+  flow: 'embedded' | 'hosted' | 'simulated';
+  client_secret?: string;
+  payment_reference?: string;
+  payment_intent_id?: string;
   amount_cents: number;
 }
 
@@ -302,6 +362,24 @@ export const paymentIntentsApi = {
       headers['X-Session-ID'] = sessionId;
     }
     const response = await api.post('/payment_intents', data, { headers });
+    return response.data;
+  },
+};
+
+export const checkoutSessionsApi = {
+  create: async (
+    data: CreateCheckoutSessionRequest,
+    token?: string | null,
+    sessionId?: string | null
+  ): Promise<CreateCheckoutSessionResponse> => {
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    if (sessionId) {
+      headers['X-Session-ID'] = sessionId;
+    }
+    const response = await api.post('/checkout_sessions', data, { headers });
     return response.data;
   },
 };
@@ -352,4 +430,3 @@ export const formatPrice = (cents: number): string => {
 };
 
 export default api;
-

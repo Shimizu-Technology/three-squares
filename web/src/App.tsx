@@ -1,42 +1,7 @@
-import { useState, useEffect } from 'react';
+import { Suspense, lazy, useEffect, useState } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser, useAuth } from '@clerk/clerk-react';
-import ProductsPage from './pages/ProductsPage';
-import BusinessLineEntryPage from './pages/BusinessLineEntryPage';
-import ProductDetailPage from './pages/ProductDetailPage';
-import HomePage from './pages/HomePage';
-import AboutPage from './pages/AboutPage';
-import CollectionsPage from './pages/CollectionsPage';
-import CollectionDetailPage from './pages/CollectionDetailPage';
-import AdminSettingsPage from './pages/AdminSettingsPage';
-import AdminLayout from './layouts/AdminLayout';
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
-import AdminOrdersPage from './pages/admin/AdminOrdersPage';
-import AdminPickupQueuePage from './pages/admin/AdminPickupQueuePage';
-import AdminShippingQueuePage from './pages/admin/AdminShippingQueuePage';
-import AdminProductsPage from './pages/admin/AdminProductsPage';
-import AdminCollectionsPage from './pages/admin/AdminCollectionsPage';
-import AdminImportPage from './pages/admin/AdminImportPage';
-import ProductFormPage from './pages/admin/ProductFormPage';
-import AdminInventoryPage from './pages/admin/AdminInventoryPage';
-import AdminUsersPage from './pages/admin/AdminUsersPage';
-import AdminVariantPresetsPage from './pages/admin/AdminVariantPresetsPage';
-import AdminCateringPage from './pages/admin/AdminCateringPage';
 import LocationPicker from './components/LocationPicker';
-import AdminLocationsPage from './pages/admin/AdminLocationsPage';
-import AdminPOSPage from './pages/admin/AdminPOSPage';
-import CheckoutPage from './pages/CheckoutPage';
-import OrderConfirmationPage from './pages/OrderConfirmationPage';
-import OrderHistoryPage from './pages/OrderHistoryPage';
-import AccountPage from './pages/AccountPage';
-import NotFoundPage from './pages/NotFoundPage';
-import ContactPage from './pages/ContactPage';
-import ShippingInfoPage from './pages/ShippingInfoPage';
-import ReturnsPage from './pages/ReturnsPage';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import CateringPage from './pages/CateringPage';
-import LocationsPage from './pages/LocationsPage';
 import axios from 'axios';
 import { Toaster } from 'react-hot-toast';
 import CartIcon from './components/CartIcon'; // Import CartIcon
@@ -46,10 +11,61 @@ import SmoothScroll from './components/SmoothScroll'; // Import SmoothScroll
 import { AnimatePresence } from 'framer-motion'; // Page transitions
 import NavDropdown from './components/NavDropdown'; // Import NavDropdown
 import MobileNavDropdown from './components/MobileNavDropdown'; // Import MobileNavDropdown
-import LocationPill from './components/LocationPill'; // Import LocationPill
+import LocationContextBar from './components/LocationContextBar';
 import { useCartStore } from './store/cartStore'; // Import cart store
 import { API_BASE_URL } from './config';
 import AnnouncementBanner from './components/AnnouncementBanner';
+import useAppConfig from './hooks/useAppConfig';
+import StorefrontGate from './components/StorefrontGate';
+import { getStorefrontPath, isStorefrontEnabled } from './utils/storefronts';
+
+const ProductsPage = lazy(() => import('./pages/ProductsPage'));
+const BusinessLineEntryPage = lazy(() => import('./pages/BusinessLineEntryPage'));
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
+const HomePage = lazy(() => import('./pages/HomePage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const CollectionsPage = lazy(() => import('./pages/CollectionsPage'));
+const CollectionDetailPage = lazy(() => import('./pages/CollectionDetailPage'));
+const AdminSettingsPage = lazy(() => import('./pages/AdminSettingsPage'));
+const AdminLayout = lazy(() => import('./layouts/AdminLayout'));
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
+const AdminAnalyticsPage = lazy(() => import('./pages/admin/AdminAnalyticsPage'));
+const AdminOrdersPage = lazy(() => import('./pages/admin/AdminOrdersPage'));
+const AdminPickupQueuePage = lazy(() => import('./pages/admin/AdminPickupQueuePage'));
+const AdminShippingQueuePage = lazy(() => import('./pages/admin/AdminShippingQueuePage'));
+const AdminProductsPage = lazy(() => import('./pages/admin/AdminProductsPage'));
+const AdminCollectionsPage = lazy(() => import('./pages/admin/AdminCollectionsPage'));
+const AdminImportPage = lazy(() => import('./pages/admin/AdminImportPage'));
+const ProductFormPage = lazy(() => import('./pages/admin/ProductFormPage'));
+const AdminInventoryPage = lazy(() => import('./pages/admin/AdminInventoryPage'));
+const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'));
+const AdminDevicesPage = lazy(() => import('./pages/admin/AdminDevicesPage'));
+const AdminVariantPresetsPage = lazy(() => import('./pages/admin/AdminVariantPresetsPage'));
+const AdminCateringPage = lazy(() => import('./pages/admin/AdminCateringPage'));
+const AdminLocationsPage = lazy(() => import('./pages/admin/AdminLocationsPage'));
+const AdminPOSPage = lazy(() => import('./pages/admin/AdminPOSPage'));
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
+const OrderConfirmationPage = lazy(() => import('./pages/OrderConfirmationPage'));
+const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPage'));
+const AccountPage = lazy(() => import('./pages/AccountPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const ShippingInfoPage = lazy(() => import('./pages/ShippingInfoPage'));
+const ReturnsPage = lazy(() => import('./pages/ReturnsPage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+const CateringPage = lazy(() => import('./pages/CateringPage'));
+const LocationsPage = lazy(() => import('./pages/LocationsPage'));
+
+function RouteFallback() {
+  return (
+    <div className="min-h-[40vh] flex items-center justify-center px-4">
+      <div className="text-center">
+        <div className="mx-auto h-10 w-10 animate-spin rounded-full border-2 border-warm-200 border-t-tsPrimary" />
+        <p className="mt-4 text-sm font-medium text-warm-600">Loading page...</p>
+      </div>
+    </div>
+  );
+}
 
 // Custom UserButton with Admin Dashboard Link and My Orders
 function CustomUserButton({ isAdmin }: { isAdmin: boolean }) {
@@ -98,9 +114,11 @@ function CustomUserButton({ isAdmin }: { isAdmin: boolean }) {
 // AppContent component (uses useNavigate, must be inside BrowserRouter)
 function AppContent() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [desktopSearchOpen, setDesktopSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const navigate = useNavigate();
   const location = useLocation();
+  const appConfig = useAppConfig();
   const { user, isLoaded } = useUser();
   const { getToken } = useAuth();
   const [isAdmin, setIsAdmin] = useState(false);
@@ -109,8 +127,24 @@ function AppContent() {
   // Close cart and mobile menu on route change (handles back/forward, programmatic navigation, etc.)
   useEffect(() => {
     setMobileMenuOpen(false); // eslint-disable-line react-hooks/set-state-in-effect -- intentional: reset UI on route change
+    setDesktopSearchOpen(false);
     closeCart();
   }, [location.pathname, closeCart]);
+
+  useEffect(() => {
+    if (!desktopSearchOpen) {
+      return;
+    }
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setDesktopSearchOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [desktopSearchOpen]);
 
   useEffect(() => {
     const handleAuthError = () => {
@@ -138,6 +172,7 @@ function AppContent() {
       navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery('');
       setMobileMenuOpen(false);
+      setDesktopSearchOpen(false);
     }
   };
 
@@ -189,6 +224,9 @@ function AppContent() {
   const isOrderingPage = ORDERING_PATHS.some(
     (p) => location.pathname === p || location.pathname.startsWith(p + '/')
   );
+  const showThreeSquaresStorefront = isStorefrontEnabled(appConfig, 'three_squares');
+  const showLatteStoneStorefront = isStorefrontEnabled(appConfig, 'latte_stone');
+  const showCateringStorefront = isStorefrontEnabled(appConfig, 'catering');
 
   return (
     <>
@@ -236,35 +274,30 @@ function AppContent() {
 
         {/* Navigation - Hidden when printing and on admin pages */}
         {!isAdminPage && (
-        <nav className="bg-warm-50 border-b border-warm-200 sticky top-0 z-40 print:hidden">
+        <div className="sticky top-0 z-40 print:hidden">
+        <nav className="bg-warm-50 border-b border-warm-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center h-18 py-3.5">
+            <div className="flex justify-between items-center h-18 py-3.5 gap-3">
               {/* Logo */}
-              <Link to="/" className="flex items-center gap-3 group" onClick={handleNavClick}>
+              <Link
+                to="/"
+                className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3 group"
+                onClick={handleNavClick}
+              >
                 <img 
                   src="/images/three-squares-logo.svg" 
                   alt="Three Squares" 
-                  className="block h-8 sm:h-9 w-auto object-contain"
+                  className="block h-7 sm:h-8 lg:h-9 w-auto max-w-[210px] sm:max-w-[260px] object-contain"
                 />
                 <span className="hidden xl:block text-[11px] tracking-wide uppercase text-warm-500">
                   by B&amp;G Pacific
                 </span>
               </Link>
 
-              {/* Location Pill - visible on ordering pages */}
-              {isOrderingPage && <LocationPill />}
-
               {/* Desktop Navigation Links */}
-              <div className="hidden lg:flex items-center space-x-8">
+              <div className="hidden xl:flex items-center space-x-8">
                 {/* Shop Dropdown */}
                 <NavDropdown onItemClick={handleNavClick} darkMode={false} />
-                <Link
-                  to="/catering"
-                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2 whitespace-nowrap"
-                  onClick={handleNavClick}
-                >
-                  Catering
-                </Link>
                 <Link
                   to="/locations"
                   className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2 whitespace-nowrap"
@@ -282,7 +315,7 @@ function AppContent() {
               </div>
 
               {/* Right Side: Search, Cart, Auth, Mobile Menu */}
-              <div className="flex items-center space-x-3 lg:space-x-4">
+              <div className="flex shrink-0 items-center space-x-1 sm:space-x-3 lg:space-x-4">
                 {/* Search Bar - Desktop (xl+) */}
                 <form onSubmit={handleSearch} className="hidden xl:block">
                   <div className="relative">
@@ -312,11 +345,8 @@ function AppContent() {
                 {/* Search Icon - Desktop (lg to xl) */}
                 <button
                   type="button"
-                  className="hidden lg:flex xl:hidden p-2.5 min-w-[44px] min-h-[44px] items-center justify-center text-warm-600 hover:text-tsPrimary transition rounded-lg"
-                  onClick={() => {
-                    const input = document.querySelector('input[placeholder="Search menu..."]') as HTMLInputElement;
-                    if (input) input.focus();
-                  }}
+                  className="hidden lg:flex xl:hidden p-2 sm:p-2.5 min-w-[44px] min-h-[44px] items-center justify-center text-warm-600 hover:text-tsPrimary transition rounded-lg"
+                  onClick={() => setDesktopSearchOpen(true)}
                   aria-label="Search"
                 >
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -342,10 +372,10 @@ function AppContent() {
                   </SignedIn>
                 </div>
 
-                {/* Mobile/Tablet Menu Button (< lg) */}
+                {/* Mobile/Tablet Menu Button (< xl) */}
                 <button
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-warm-600 hover:text-tsPrimary transition rounded-lg"
+                  className="xl:hidden p-2 sm:p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-warm-600 hover:text-tsPrimary transition rounded-lg"
                   aria-label="Toggle menu"
                 >
                   {mobileMenuOpen ? (
@@ -364,7 +394,7 @@ function AppContent() {
 
           {/* Mobile Menu */}
           {mobileMenuOpen && (
-            <div className="lg:hidden border-t border-warm-100 bg-white animate-slide-down">
+            <div className="xl:hidden border-t border-warm-100 bg-white animate-slide-down">
               <div className="px-4 py-4 space-y-4">
                 {/* Mobile Search */}
                 <form onSubmit={handleSearch}>
@@ -396,16 +426,6 @@ function AppContent() {
                 <MobileNavDropdown onItemClick={handleNavClick} darkMode={false} />
                 
                 {/* Other Nav Links */}
-                <Link
-                  to="/catering"
-                  className="flex items-center gap-3 text-warm-700 hover:text-tsPrimary font-medium py-2"
-                  onClick={handleNavClick}
-                >
-                  <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.87c1.355 0 2.697.055 4.024.165C17.155 8.51 18 9.473 18 10.608v2.513m-3-4.87v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0L3 16.5m15-3.38a48.474 48.474 0 00-6-.37c-2.032 0-4.034.126-6 .37m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.17c0 .62-.504 1.124-1.125 1.124H4.125A1.125 1.125 0 013 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 016 13.12M12.265 3.11a.375.375 0 11-.53 0L12 2.845l.265.265z" />
-                  </svg>
-                  Catering
-                </Link>
                 <Link
                   to="/locations"
                   className="flex items-center gap-3 text-warm-700 hover:text-tsPrimary font-medium py-2"
@@ -454,61 +474,155 @@ function AppContent() {
             </div>
           )}
         </nav>
+        {isOrderingPage && <LocationContextBar />}
+        </div>
+        )}
+
+        {desktopSearchOpen && (
+          <div
+            className="hidden lg:block fixed inset-0 z-50"
+            onClick={() => setDesktopSearchOpen(false)}
+          >
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+            <div className="relative mx-auto max-w-2xl px-4 pt-24 sm:pt-28">
+              <div
+                className="rounded-2xl border border-warm-200 bg-white shadow-2xl p-4 sm:p-5"
+                onClick={(event) => event.stopPropagation()}
+              >
+                <div className="flex items-start gap-3">
+                  <div className="flex-1">
+                    <p className="text-[11px] uppercase tracking-[0.18em] text-warm-500 mb-2">
+                      Search the menu
+                    </p>
+                    <form onSubmit={handleSearch}>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                          placeholder="Search menu..."
+                          autoFocus
+                          className="w-full pl-12 pr-4 py-3.5 bg-warm-50 border border-warm-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary text-base text-warm-900 placeholder-warm-400 transition"
+                        />
+                        <svg
+                          className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-warm-400"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                          />
+                        </svg>
+                      </div>
+                    </form>
+                    <p className="mt-3 text-sm text-warm-500">
+                      Search by dish name, collection, or keyword, then press Enter.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setDesktopSearchOpen(false)}
+                    className="p-2 text-warm-400 hover:text-warm-700 transition rounded-lg"
+                    aria-label="Close search"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Location picker modal — renders as fixed overlay when active */}
         {!isAdminPage && isOrderingPage && <LocationPicker />}
 
         {/* Routes with page transitions */}
-        <AnimatePresence mode="wait">
-        <Routes location={location} key={routeTransitionKey}>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/products" element={<ProductsPage />} />
-          <Route path="/shop/three-squares" element={<BusinessLineEntryPage businessLine="three_squares" />} />
-          <Route path="/shop/latte-stone-cookies" element={<BusinessLineEntryPage businessLine="latte_stone" />} />
-          <Route path="/shop/catering" element={<BusinessLineEntryPage businessLine="catering" />} />
-          <Route path="/products/:slug" element={<ProductDetailPage />} />
-          <Route path="/collections" element={<CollectionsPage />} />
-          <Route path="/collections/:slug" element={<CollectionDetailPage />} />
-          <Route path="/about" element={<AboutPage />} />
-          <Route path="/catering" element={<CateringPage />} />
-          <Route path="/locations" element={<LocationsPage />} />
-          
-          <Route path="/checkout" element={<CheckoutPage />} />
-          <Route path="/account" element={<AccountPage />} />
-          <Route path="/orders" element={<OrderHistoryPage />} />
-          <Route path="/orders/:id" element={<OrderConfirmationPage />} />
-          <Route path="/contact" element={<ContactPage />} />
-          <Route path="/shipping" element={<ShippingInfoPage />} />
-          <Route path="/returns" element={<ReturnsPage />} />
-          <Route path="/privacy" element={<PrivacyPolicyPage />} />
-          
-          {/* POS Mode — Full screen, outside admin layout */}
-          <Route path="/admin/pos" element={<AdminPOSPage />} />
+        <Suspense fallback={<RouteFallback />}>
+          <AnimatePresence mode="wait">
+            <Routes location={location} key={routeTransitionKey}>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/products" element={<ProductsPage />} />
+              <Route
+                path="/shop/three-squares"
+                element={(
+                  <StorefrontGate storefront="three_squares">
+                    <BusinessLineEntryPage businessLine="three_squares" />
+                  </StorefrontGate>
+                )}
+              />
+              <Route
+                path="/shop/latte-stone-cookies"
+                element={(
+                  <StorefrontGate storefront="latte_stone">
+                    <BusinessLineEntryPage businessLine="latte_stone" />
+                  </StorefrontGate>
+                )}
+              />
+              <Route
+                path="/shop/catering"
+                element={(
+                  <StorefrontGate storefront="catering">
+                    <BusinessLineEntryPage businessLine="catering" />
+                  </StorefrontGate>
+                )}
+              />
+              <Route path="/products/:slug" element={<ProductDetailPage />} />
+              <Route path="/collections" element={<CollectionsPage />} />
+              <Route path="/collections/:slug" element={<CollectionDetailPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route
+                path="/catering"
+                element={(
+                  <StorefrontGate storefront="catering">
+                    <CateringPage />
+                  </StorefrontGate>
+                )}
+              />
+              <Route path="/locations" element={<LocationsPage />} />
+              
+              <Route path="/checkout" element={<CheckoutPage />} />
+              <Route path="/account" element={<AccountPage />} />
+              <Route path="/orders" element={<OrderHistoryPage />} />
+              <Route path="/orders/:id" element={<OrderConfirmationPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/shipping" element={<ShippingInfoPage />} />
+              <Route path="/returns" element={<ReturnsPage />} />
+              <Route path="/privacy" element={<PrivacyPolicyPage />} />
+              
+              {/* POS Mode — Full screen, outside admin layout */}
+              <Route path="/admin/pos" element={<AdminPOSPage />} />
 
-          {/* Admin Routes with Layout */}
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<AdminDashboardPage />} />
-            <Route path="analytics" element={<AdminAnalyticsPage />} />
-            <Route path="orders" element={<AdminOrdersPage />} />
-            <Route path="orders/pickup-queue" element={<AdminPickupQueuePage />} />
-            <Route path="orders/shipping-queue" element={<AdminShippingQueuePage />} />
-            <Route path="products" element={<AdminProductsPage />} />
-            <Route path="products/new" element={<ProductFormPage />} />
-            <Route path="products/:id/edit" element={<ProductFormPage />} />
-            <Route path="collections" element={<AdminCollectionsPage />} />
-            <Route path="locations" element={<AdminLocationsPage />} />
-            <Route path="import" element={<AdminImportPage />} />
-            <Route path="inventory" element={<AdminInventoryPage />} />
-            <Route path="users" element={<AdminUsersPage />} />
-            <Route path="catering" element={<AdminCateringPage />} />
-            <Route path="settings" element={<AdminSettingsPage />} />
-            <Route path="settings/variant-presets" element={<AdminVariantPresetsPage />} />
-          </Route>
-          
-          <Route path="*" element={<NotFoundPage />} />
-        </Routes>
-        </AnimatePresence>
+              {/* Admin Routes with Layout */}
+              <Route path="/admin" element={<AdminLayout />}>
+                <Route index element={<AdminDashboardPage />} />
+                <Route path="analytics" element={<AdminAnalyticsPage />} />
+                <Route path="orders" element={<AdminOrdersPage />} />
+                <Route path="orders/pickup-queue" element={<AdminPickupQueuePage />} />
+                <Route path="orders/shipping-queue" element={<AdminShippingQueuePage />} />
+                <Route path="products" element={<AdminProductsPage />} />
+                <Route path="products/new" element={<ProductFormPage />} />
+                <Route path="products/:id/edit" element={<ProductFormPage />} />
+                <Route path="collections" element={<AdminCollectionsPage />} />
+                <Route path="locations" element={<AdminLocationsPage />} />
+                <Route path="import" element={<AdminImportPage />} />
+                <Route path="inventory" element={<AdminInventoryPage />} />
+                <Route path="users" element={<AdminUsersPage />} />
+                <Route path="devices" element={<AdminDevicesPage />} />
+                <Route path="catering" element={<AdminCateringPage />} />
+                <Route path="settings" element={<AdminSettingsPage />} />
+                <Route path="settings/variant-presets" element={<AdminVariantPresetsPage />} />
+              </Route>
+              
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </AnimatePresence>
+        </Suspense>
 
         {/* Footer - Hidden when printing and on admin pages */}
         {!isAdminPage && (
@@ -525,7 +639,7 @@ function AppContent() {
                 <p className="text-[11px] uppercase tracking-wide text-warm-500 mt-2">by B&amp;G Pacific</p>
                 <p className="text-warm-500 text-sm mt-4 leading-relaxed">
                   Good Food. Great Vibes. Quality Service.<br />
-                  Guam-style comfort food & catering
+                  Guam-style comfort food made for Guam
                 </p>
                 <div className="flex space-x-4 mt-4">
                   <a 
@@ -562,21 +676,34 @@ function AppContent() {
                       Full Menu
                     </Link>
                   </li>
-                  <li>
-                    <Link to="/products?category=breakfast" className="text-warm-500 hover:text-warm-900 transition text-sm">
-                      Breakfast
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/products?category=mains" className="text-warm-500 hover:text-warm-900 transition text-sm">
-                      Main Dishes
-                    </Link>
-                  </li>
-                  <li>
-                    <Link to="/catering" className="text-warm-500 hover:text-warm-900 transition text-sm">
-                      Catering
-                    </Link>
-                  </li>
+                  {showThreeSquaresStorefront && (
+                    <li>
+                      <Link to="/products?category=breakfast" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                        Breakfast
+                      </Link>
+                    </li>
+                  )}
+                  {showThreeSquaresStorefront && (
+                    <li>
+                      <Link to="/products?category=mains" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                        Main Dishes
+                      </Link>
+                    </li>
+                  )}
+                  {showLatteStoneStorefront && (
+                    <li>
+                      <Link to={getStorefrontPath('latte_stone')} className="text-warm-500 hover:text-warm-900 transition text-sm">
+                        Cookie Shop
+                      </Link>
+                    </li>
+                  )}
+                  {showCateringStorefront && (
+                    <li>
+                      <Link to="/catering" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                        Catering
+                      </Link>
+                    </li>
+                  )}
                 </ul>
               </div>
 

@@ -14,6 +14,7 @@ module Api
           render json: {
             payment_test_mode: settings.payment_test_mode,
             payment_processor: settings.payment_processor,
+            supported_live_payment_processors: SiteSetting::LIVE_PAYMENT_PROCESSORS,
             store_name: settings.store_name,
             store_email: settings.store_email,
             store_phone: settings.store_phone,
@@ -39,6 +40,7 @@ module Api
               message: "Settings updated successfully",
               payment_test_mode: settings.payment_test_mode,
               payment_processor: settings.payment_processor,
+              supported_live_payment_processors: SiteSetting::LIVE_PAYMENT_PROCESSORS,
               store_name: settings.store_name,
               store_email: settings.store_email,
               store_phone: settings.store_phone,

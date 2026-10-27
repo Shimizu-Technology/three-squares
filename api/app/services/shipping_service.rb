@@ -185,6 +185,7 @@ class ShippingService
 
     # Return a single fallback rate in the same format as EasyPost rates
     [ {
+      rate_id: "fallback_standard",
       id: "fallback_standard",
       carrier: "Standard Shipping",
       service: is_international ? "International Mail" : "USPS Priority Mail",
@@ -247,6 +248,7 @@ class ShippingService
       .sort_by { |rate| rate.rate.to_f }
       .map do |rate|
         {
+          rate_id: rate.id,
           id: rate.id,
           carrier: rate.carrier,
           service: rate.service,

@@ -40,6 +40,7 @@ module Api
           {
             payment_test_mode: settings.payment_test_mode,
             payment_processor: settings.payment_processor,
+            supported_live_payment_processors: SiteSetting::LIVE_PAYMENT_PROCESSORS,
             # Per-order-type email settings
             send_retail_emails: settings.send_retail_emails,
             send_wholesale_emails: settings.send_wholesale_emails,

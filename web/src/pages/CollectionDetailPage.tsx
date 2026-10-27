@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { collectionsApi } from '../services/api';
 import type { Collection as ApiCollection, Product } from '../services/api';
@@ -8,6 +8,7 @@ import { ProductGridSkeleton, PageHeaderSkeleton } from '../components/Skeleton'
 import FadeIn from '../components/animations/FadeIn';
 import Breadcrumbs from '../components/Breadcrumbs';
 import { useLocationStore } from '../store/locationStore';
+import useAppConfig from '../hooks/useAppConfig';
 
 type Collection = ApiCollection;
 
@@ -18,6 +19,7 @@ interface Meta {
 }
 
 export default function CollectionDetailPage() {
+  const config = useAppConfig();
   const { slug } = useParams<{ slug: string }>();
   const [collection, setCollection] = useState<Collection | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
@@ -44,32 +46,7 @@ export default function CollectionDetailPage() {
   // Single effect for data fetching. Resets page to 1 on location change
   // to avoid requesting a page that doesn't exist at the new location.
   const prevLocationRef = useRef(selectedLocation?.id);
-  useEffect(() => {
-    if (selectedLocation?.id !== prevLocationRef.current) {
-      prevLocationRef.current = selectedLocation?.id;
-      if (currentPage === 1) {
-        // Already on page 1 — setCurrentPage(1) would be a no-op, so fetch directly
-        fetchCollectionData();
-      } else {
-        // Reset to page 1 — the effect will re-fire when currentPage updates
-        setCurrentPage(1);
-      }
-      return;
-    }
-    if (slug) {
-      fetchCollectionData();
-    }
-  }, [slug, currentPage, searchQuery, productType, selectedLocation?.id]);
-
-  useEffect(() => {
-    if (!didScrollRef.current) {
-      didScrollRef.current = true;
-      return;
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentPage]);
-
-  const fetchCollectionData = async () => {
+  const fetchCollectionData = useCallback(async () => {
     if (!slug) return;
 
     try {
@@ -91,7 +68,30 @@ export default function CollectionDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, productType, searchQuery, selectedLocation?.id, slug]);
+
+  useEffect(() => {
+    if (selectedLocation?.id !== prevLocationRef.current) {
+      prevLocationRef.current = selectedLocation?.id;
+      if (currentPage === 1) {
+        void fetchCollectionData();
+      } else {
+        setCurrentPage(1);
+      }
+      return;
+    }
+    if (slug) {
+      void fetchCollectionData();
+    }
+  }, [config, currentPage, fetchCollectionData, selectedLocation?.id, slug]);
+
+  useEffect(() => {
+    if (!didScrollRef.current) {
+      didScrollRef.current = true;
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -269,4 +269,3 @@ export default function CollectionDetailPage() {
     </div>
   );
 }
-

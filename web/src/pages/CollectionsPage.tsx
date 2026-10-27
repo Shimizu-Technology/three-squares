@@ -1,11 +1,12 @@
 import axios from 'axios';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { collectionsApi } from '../services/api';
 import type { Collection as ApiCollection } from '../services/api';
 import { CollectionCardSkeleton, PageHeaderSkeleton } from '../components/Skeleton';
 import FadeIn from '../components/animations/FadeIn';
 import OptimizedImage from '../components/ui/OptimizedImage';
+import useAppConfig from '../hooks/useAppConfig';
 
 type Collection = ApiCollection;
 
@@ -16,6 +17,7 @@ interface Meta {
 }
 
 export default function CollectionsPage() {
+  const config = useAppConfig();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [meta, setMeta] = useState<Meta | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,19 +27,7 @@ export default function CollectionsPage() {
   const [searchInput, setSearchInput] = useState(''); // For controlled input
   const didScrollRef = useRef(false);
 
-  useEffect(() => {
-    fetchCollections();
-  }, [currentPage, searchQuery]);
-
-  useEffect(() => {
-    if (!didScrollRef.current) {
-      didScrollRef.current = true;
-      return;
-    }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [currentPage]);
-
-  const fetchCollections = async () => {
+  const fetchCollections = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -54,7 +44,19 @@ export default function CollectionsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, searchQuery]);
+
+  useEffect(() => {
+    void fetchCollections();
+  }, [config, fetchCollections]);
+
+  useEffect(() => {
+    if (!didScrollRef.current) {
+      didScrollRef.current = true;
+      return;
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentPage]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -414,4 +416,3 @@ export default function CollectionsPage() {
     </div>
   );
 }
-

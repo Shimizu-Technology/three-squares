@@ -1,11 +1,14 @@
 class SiteSetting < ApplicationRecord
   VALID_ANNOUNCEMENT_STYLES = %w[gold info success warning danger].freeze
+  VALID_PAYMENT_PROCESSORS = %w[stripe paypal worldpay].freeze
+  LIVE_PAYMENT_PROCESSORS = %w[stripe].freeze
 
   # Singleton pattern - only one record should ever exist
-  validates :payment_processor, presence: true, inclusion: { in: %w[stripe paypal] }
+  validates :payment_processor, presence: true, inclusion: { in: VALID_PAYMENT_PROCESSORS }
   validates :payment_test_mode, inclusion: { in: [ true, false ] }
   validates :announcement_style, inclusion: { in: VALID_ANNOUNCEMENT_STYLES }, allow_nil: true
   validate :validate_shipping_origin_address
+  validate :validate_payment_processor_support_for_mode
 
   # Singleton accessor — always queries DB to ensure Sidekiq workers see
   # the latest admin settings. Single-row table, so this is fast (~0.1ms).
@@ -64,6 +67,18 @@ class SiteSetting < ApplicationRecord
     payment_processor == "paypal"
   end
 
+  def using_worldpay?
+    payment_processor == "worldpay"
+  end
+
+  def live_payment_processor_supported?
+    LIVE_PAYMENT_PROCESSORS.include?(payment_processor)
+  end
+
+  def supported_payment_processors_for_mode
+    test_mode? ? VALID_PAYMENT_PROCESSORS : LIVE_PAYMENT_PROCESSORS
+  end
+
   def shipping_origin_complete?
     missing = missing_shipping_origin_fields
     missing.empty?
@@ -80,6 +95,13 @@ class SiteSetting < ApplicationRecord
     return if missing.empty?
 
     errors.add(:shipping_origin_address, "is missing required fields: #{missing.join(', ')}")
+  end
+
+  def validate_payment_processor_support_for_mode
+    return if supported_payment_processors_for_mode.include?(payment_processor)
+
+    supported = supported_payment_processors_for_mode.join(", ")
+    errors.add(:payment_processor, "is not supported while #{test_mode? ? 'test mode' : 'production mode'} is active. Supported processors: #{supported}")
   end
 
   def missing_shipping_origin_fields

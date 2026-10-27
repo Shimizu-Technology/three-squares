@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_05_11_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -103,6 +103,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
   end
 
+  create_table "admin_devices", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.string "browser"
+    t.datetime "created_at", null: false
+    t.string "device_uuid", null: false
+    t.datetime "last_seen_at"
+    t.bigint "location_id"
+    t.string "name", null: false
+    t.string "platform"
+    t.datetime "updated_at", null: false
+    t.string "user_agent"
+    t.bigint "user_id"
+    t.index ["active"], name: "index_admin_devices_on_active"
+    t.index ["device_uuid"], name: "index_admin_devices_on_device_uuid", unique: true
+    t.index ["location_id"], name: "index_admin_devices_on_location_id"
+    t.index ["user_id"], name: "index_admin_devices_on_user_id"
+  end
+
+  create_table "admin_push_subscriptions", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.bigint "admin_device_id", null: false
+    t.text "auth_key", null: false
+    t.datetime "created_at", null: false
+    t.text "endpoint", null: false
+    t.datetime "last_sent_at"
+    t.text "p256dh_key", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_admin_push_subscriptions_on_active"
+    t.index ["admin_device_id"], name: "index_admin_push_subscriptions_on_admin_device_id"
+    t.index ["endpoint"], name: "index_admin_push_subscriptions_on_endpoint", unique: true
+  end
+
   create_table "cart_items", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "product_variant_id", null: false
@@ -143,29 +175,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
   end
 
   create_table "collections", force: :cascade do |t|
-    t.boolean "auto_hide", default: false, null: false
-    t.string "banner_text"
-    t.string "business_line", default: "three_squares", null: false
-    t.string "collection_type", default: "standard", null: false
     t.datetime "created_at", null: false
     t.text "description"
-    t.datetime "ends_at"
     t.boolean "featured"
     t.string "image_url"
-    t.boolean "is_featured", default: false, null: false
     t.text "meta_description"
     t.string "meta_title"
     t.string "name"
     t.boolean "published", default: false
     t.string "slug"
     t.integer "sort_order"
-    t.datetime "starts_at"
     t.datetime "updated_at", null: false
-    t.index ["business_line"], name: "index_collections_on_business_line"
-    t.index ["collection_type"], name: "index_collections_on_collection_type"
-    t.index ["is_featured"], name: "index_collections_on_is_featured"
     t.index ["slug"], name: "index_collections_on_slug", unique: true
-    t.index ["starts_at", "ends_at"], name: "index_collections_on_starts_at_and_ends_at"
   end
 
   create_table "contact_submissions", force: :cascade do |t|
@@ -386,23 +407,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
     t.string "address"
     t.string "admin_email"
     t.jsonb "admin_sms_phones", default: [], null: false
-    t.boolean "auto_deactivate", default: false, null: false
     t.datetime "created_at", null: false
-    t.text "description"
-    t.datetime "ends_at"
     t.jsonb "hours_json", default: {}, null: false
-    t.string "location_type", default: "permanent", null: false
-    t.bigint "menu_collection_id"
     t.string "name", null: false
     t.string "phone"
-    t.string "qr_code_url"
     t.string "slug", null: false
-    t.datetime "starts_at"
     t.datetime "updated_at", null: false
-    t.index ["active", "location_type"], name: "index_locations_on_active_and_location_type"
     t.index ["active"], name: "index_locations_on_active"
-    t.index ["location_type"], name: "index_locations_on_location_type"
-    t.index ["menu_collection_id"], name: "index_locations_on_menu_collection_id"
     t.index ["slug"], name: "index_locations_on_slug", unique: true
   end
 
@@ -453,6 +464,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
     t.bigint "participant_id"
     t.string "payment_intent_id"
     t.string "payment_method"
+    t.string "payment_provider"
+    t.string "payment_reference"
+    t.string "payment_session_id"
     t.string "payment_status"
     t.string "shipping_address_line1"
     t.string "shipping_address_line2"
@@ -479,6 +493,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
     t.index ["order_number"], name: "index_orders_on_order_number", unique: true
     t.index ["order_type"], name: "index_orders_on_order_type"
     t.index ["participant_id"], name: "index_orders_on_participant_id"
+    t.index ["payment_provider", "payment_reference"], name: "index_orders_on_payment_provider_and_reference"
+    t.index ["payment_session_id"], name: "index_orders_on_payment_session_id"
     t.index ["payment_status"], name: "index_orders_on_payment_status"
     t.index ["source"], name: "index_orders_on_source"
     t.index ["staff_created"], name: "index_orders_on_staff_created"
@@ -582,7 +598,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
     t.boolean "allow_shipping", default: false, null: false
     t.boolean "archived", default: false, null: false
     t.integer "base_price_cents"
-    t.string "business_line", default: "three_squares", null: false
     t.datetime "created_at", null: false
     t.text "description"
     t.boolean "featured"
@@ -608,7 +623,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
     t.index ["allow_pickup"], name: "index_products_on_allow_pickup"
     t.index ["allow_shipping"], name: "index_products_on_allow_shipping"
     t.index ["archived"], name: "index_products_on_archived"
-    t.index ["business_line"], name: "index_products_on_business_line"
     t.index ["slug"], name: "index_products_on_slug", unique: true
   end
 
@@ -619,6 +633,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
     t.jsonb "metadata", default: {}
     t.text "notes"
     t.bigint "order_id", null: false
+    t.string "payment_provider"
+    t.string "provider_refund_id"
     t.string "reason"
     t.boolean "sms_sent", default: false, null: false
     t.string "status", default: "pending"
@@ -626,6 +642,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
     t.datetime "updated_at", null: false
     t.bigint "user_id"
     t.index ["order_id"], name: "index_refunds_on_order_id"
+    t.index ["provider_refund_id"], name: "index_refunds_on_provider_refund_id", unique: true
     t.index ["status"], name: "index_refunds_on_status"
     t.index ["stripe_refund_id"], name: "index_refunds_on_stripe_refund_id", unique: true
     t.index ["user_id"], name: "index_refunds_on_user_id"
@@ -646,6 +663,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
     t.boolean "enable_admin_sms", default: true, null: false
     t.boolean "enable_order_emails", default: true, null: false
     t.boolean "enable_order_sms", default: true, null: false
+    t.boolean "enable_storefront_catering", default: true, null: false
+    t.boolean "enable_storefront_latte_stone", default: true, null: false
+    t.boolean "enable_storefront_three_squares", default: true, null: false
     t.jsonb "fallback_shipping_rates", default: {"domestic"=>[{"rate_cents"=>800, "max_weight_oz"=>16}, {"rate_cents"=>1500, "max_weight_oz"=>48}, {"rate_cents"=>2000, "max_weight_oz"=>80}, {"rate_cents"=>3000, "max_weight_oz"=>160}, {"rate_cents"=>5000, "max_weight_oz"=>nil}], "international"=>[{"rate_cents"=>2500, "max_weight_oz"=>16}, {"rate_cents"=>4000, "max_weight_oz"=>48}, {"rate_cents"=>6000, "max_weight_oz"=>80}, {"rate_cents"=>9000, "max_weight_oz"=>160}, {"rate_cents"=>15000, "max_weight_oz"=>nil}]}, null: false
     t.text "order_notification_emails", default: [], array: true
     t.string "payment_processor", default: "stripe", null: false
@@ -692,6 +712,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
 
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
+  add_foreign_key "admin_devices", "locations"
+  add_foreign_key "admin_devices", "users"
+  add_foreign_key "admin_push_subscriptions", "admin_devices"
   add_foreign_key "cart_items", "product_variants"
   add_foreign_key "cart_items", "users"
   add_foreign_key "catering_inquiries", "users", column: "responded_by_id"
@@ -707,7 +730,6 @@ ActiveRecord::Schema[8.1].define(version: 2026_03_13_120000) do
   add_foreign_key "inventory_audits", "product_variants"
   add_foreign_key "inventory_audits", "products"
   add_foreign_key "inventory_audits", "users"
-  add_foreign_key "locations", "collections", column: "menu_collection_id"
   add_foreign_key "order_items", "orders"
   add_foreign_key "order_items", "product_variants"
   add_foreign_key "order_items", "products"

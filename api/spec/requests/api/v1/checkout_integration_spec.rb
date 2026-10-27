@@ -65,15 +65,20 @@ RSpec.describe 'Checkout integration', type: :request do
         country: 'US',
         phone: '671-555-0199'
       },
-      shipping_method: {
-        service: 'Standard',
-        rate_cents: 500
-      },
       payment_method: {
         type: 'test',
         token: 'tok_visa'
       }
     }
+  end
+
+  def shipping_address_payload
+    base_order_payload[:shipping_address]
+  end
+
+  def current_shipping_method_for_session
+    cart_items = CartItem.where(session_id: session_id).includes(:product_variant)
+    ShippingService.calculate_rates(cart_items, shipping_address_payload).first
   end
 
   it 'completes shipping checkout flow end-to-end' do
@@ -86,22 +91,26 @@ RSpec.describe 'Checkout integration', type: :request do
     )
     add_cart_item!(variant, quantity: 2)
 
+    shipping_method = current_shipping_method_for_session
+
     post '/api/v1/payment_intents',
          params: {
            email: 'integration@example.com',
            fulfillment_type: 'shipping',
-           shipping_cost_cents: 500
+           shipping_address: shipping_address_payload,
+           shipping_method: shipping_method
          },
          headers: headers
 
     expect(response).to have_http_status(:ok)
     payment_json = JSON.parse(response.body)
-    expect(payment_json['amount_cents']).to eq(3500)
+    expect(payment_json['amount_cents']).to eq(3000 + shipping_method[:rate_cents])
     expect(payment_json['payment_intent_id']).to be_present
 
     post '/api/v1/orders',
          params: {
            order: base_order_payload.merge(
+             shipping_method: shipping_method,
              fulfillment_type: 'shipping',
              location_id: nil
            )
@@ -112,8 +121,8 @@ RSpec.describe 'Checkout integration', type: :request do
     order_json = JSON.parse(response.body)
     expect(order_json['order']['fulfillment_type']).to eq('shipping')
     expect(order_json['order']['location']).to be_nil
-    expect(order_json['order']['shipping_cost_cents']).to eq(500)
-    expect(order_json['order']['total_cents']).to eq(3500)
+    expect(order_json['order']['shipping_cost_cents']).to eq(shipping_method[:rate_cents])
+    expect(order_json['order']['total_cents']).to eq(3000 + shipping_method[:rate_cents])
     expect(CartItem.where(session_id: session_id)).to be_empty
   end
 
@@ -131,8 +140,7 @@ RSpec.describe 'Checkout integration', type: :request do
          params: {
            email: 'integration@example.com',
            fulfillment_type: 'pickup',
-           location_id: pickup_location.id,
-           shipping_cost_cents: 500
+           location_id: pickup_location.id
          },
          headers: headers
 
@@ -181,7 +189,13 @@ RSpec.describe 'Checkout integration', type: :request do
          params: {
            email: 'integration@example.com',
            fulfillment_type: 'shipping',
-           shipping_cost_cents: 0
+           shipping_address: shipping_address_payload,
+           shipping_method: {
+             carrier: 'Standard Shipping',
+             service: 'Tampered',
+             rate_cents: 0,
+             rate_id: 'does-not-exist'
+           }
          },
          headers: headers
 
@@ -190,5 +204,54 @@ RSpec.describe 'Checkout integration', type: :request do
     expect(payment_json['error']).to eq('Your cart cannot mix shippable and pickup-only items. Please keep to one fulfillment path.')
     expect(payment_json['issues'].map { |issue| issue['type'] }).to include('mixed_fulfillment')
   end
-end
 
+  it 'rejects tampered shipping pricing that does not match current rates' do
+    _, variant = create_product_with_variant(
+      name: 'Shipping Item',
+      slug: "shipping-tamper-#{SecureRandom.hex(3)}",
+      allow_pickup: false,
+      allow_shipping: true,
+      price_cents: 1500
+    )
+    add_cart_item!(variant, quantity: 1)
+
+    shipping_method = current_shipping_method_for_session
+
+    post '/api/v1/payment_intents',
+         params: {
+           email: 'integration@example.com',
+           fulfillment_type: 'shipping',
+           shipping_address: shipping_address_payload,
+           shipping_method: {
+             carrier: shipping_method[:carrier],
+             service: shipping_method[:service],
+             rate_cents: 1,
+             rate_id: shipping_method[:rate_id]
+            }
+         },
+         headers: headers
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    payment_json = JSON.parse(response.body)
+    expect(payment_json['error']).to eq('Selected shipping method is no longer available. Please recalculate shipping.')
+
+    post '/api/v1/orders',
+         params: {
+           order: base_order_payload.deep_merge(
+             fulfillment_type: 'shipping',
+             shipping_address: shipping_address_payload,
+             shipping_method: {
+               carrier: shipping_method[:carrier],
+               service: shipping_method[:service],
+               rate_cents: 1,
+               rate_id: shipping_method[:rate_id]
+             }
+           )
+         },
+         headers: headers
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    order_json = JSON.parse(response.body)
+    expect(order_json['error']).to eq('Selected shipping method is no longer available. Please recalculate shipping.')
+  end
+end

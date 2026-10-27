@@ -4,6 +4,7 @@
  */
 import { loadStripeTerminal } from '@stripe/terminal-js';
 import type { Terminal, Reader, ErrorResponse } from '@stripe/terminal-js';
+import { getAdminDeviceHeaders } from './adminDeviceIdentity';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -58,10 +59,10 @@ async function fetchConnectionToken(): Promise<string> {
   }
   const response = await fetch(`${API_BASE}/api/v1/admin/stripe_terminal/connection_token`, {
     method: 'POST',
-    headers: {
+    headers: getAdminDeviceHeaders({
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
-    },
+    }),
   });
 
   if (!response.ok) {

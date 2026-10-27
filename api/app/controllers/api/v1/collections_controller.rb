@@ -6,6 +6,7 @@ module Api
       # GET /api/v1/collections
       def index
         @collections = Collection.published
+                                 .for_enabled_storefronts
                                  .includes(:products)
 
         # Search by name or description
@@ -81,9 +82,11 @@ module Api
 
       def set_collection
         @collection = Collection.published
+                                .for_enabled_storefronts
                                 .includes(:products)
                                 .find_by(id: params[:id]) ||
                       Collection.published
+                                .for_enabled_storefronts
                                 .includes(:products)
                                 .find_by(slug: params[:id])
 
@@ -99,6 +102,7 @@ module Api
           id: collection.id,
           name: collection.name,
           slug: collection.slug,
+          business_line: collection.storefront_key,
           description: collection.description,
           image_url: collection.image_url,
           featured: collection.featured,

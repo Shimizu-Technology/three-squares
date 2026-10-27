@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
 import type { Order } from '../../components/admin/orders';
@@ -17,6 +17,7 @@ import { configApi, locationsApi } from '../../services/api';
 import { authGet, authPatch, authPost } from '../../services/authApi';
 import type { AppConfig } from '../../types/order';
 import type { Location } from '../../services/api';
+import type { CurrentAdminDeviceResponse } from '../../services/adminDevice';
 
 interface OrdersIndexResponse {
   orders: Order[];
@@ -101,8 +102,10 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   const [processingRefund, setProcessingRefund] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [summary, setSummary] = useState<OrdersSummaryResponse | null>(null);
+  const [deviceDefaultLocationName, setDeviceDefaultLocationName] = useState<string | null>(null);
+  const hasLoadedDeviceDefault = useRef(false);
 
-  const buildFilterParams = (): Record<string, unknown> => {
+  const buildFilterParams = useCallback((): Record<string, unknown> => {
     const params: Record<string, unknown> = {};
     if (statusFilter !== 'all') params.status = statusFilter;
     if (orderTypeFilter !== 'all') params.order_type = orderTypeFilter;
@@ -113,10 +116,10 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
     if (startDate) params.start_date = startDate;
     if (endDate) params.end_date = endDate;
     return params;
-  };
+  }, [businessLineFilter, endDate, fulfillmentFilter, locationFilter, orderTypeFilter, searchQuery, startDate, statusFilter]);
 
   // ── Fetch orders ──────────────────────────────────────────────
-  const fetchOrders = async () => {
+  const fetchOrders = useCallback(async () => {
     try {
       setLoading(true);
       const params: Record<string, unknown> = { page, per_page: 25, ...buildFilterParams() };
@@ -131,9 +134,9 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [buildFilterParams, getToken, page]);
 
-  const fetchSummary = async () => {
+  const fetchSummary = useCallback(async () => {
     try {
       const params = buildFilterParams();
       const response = await authGet<OrdersSummaryResponse>('/admin/orders/summary', getToken, { params });
@@ -141,15 +144,15 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
     } catch (error) {
       console.error('Failed to fetch order summary:', error);
     }
-  };
+  }, [buildFilterParams, getToken]);
 
   useEffect(() => {
-    fetchOrders();
-  }, [page, statusFilter, orderTypeFilter, businessLineFilter, fulfillmentFilter, locationFilter, startDate, endDate]);
+    void fetchOrders();
+  }, [fetchOrders]);
 
   useEffect(() => {
-    fetchSummary();
-  }, [statusFilter, orderTypeFilter, businessLineFilter, fulfillmentFilter, locationFilter, startDate, endDate]);
+    void fetchSummary();
+  }, [fetchSummary]);
 
   useEffect(() => {
     configApi.getConfig().then(setAppConfig).catch(console.error);
@@ -163,6 +166,31 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
         console.error('Failed to load locations for filters:', error);
       });
   }, []);
+
+  useEffect(() => {
+    if (hasLoadedDeviceDefault.current) return;
+
+    const loadDeviceDefaults = async () => {
+      try {
+        const response = await authGet<CurrentAdminDeviceResponse>('/admin/devices/current', getToken);
+        const device = response.data.device;
+
+        hasLoadedDeviceDefault.current = true;
+
+        if (!device.location_id) return;
+
+        setDeviceDefaultLocationName(device.location_name || null);
+
+        if (locationFilter === 'all') {
+          setLocationFilter(String(device.location_id));
+        }
+      } catch (error) {
+        console.error('Failed to load current device defaults:', error);
+      }
+    };
+
+    void loadDeviceDefaults();
+  }, [getToken, locationFilter]);
 
   useEffect(() => {
     if (mode === 'pickup_queue') {
@@ -432,6 +460,13 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
             <span>Total: <span className="font-semibold text-gray-900">{summary?.total_orders || 0}</span></span>
             <span>Paid: <span className="font-semibold text-gray-900">{summary?.paid_orders || 0}</span></span>
           </div>
+        </div>
+      )}
+
+      {deviceDefaultLocationName && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          This device defaults to <span className="font-semibold">{deviceDefaultLocationName}</span>. Change the
+          location filter below whenever you need to work across locations.
         </div>
       )}
 

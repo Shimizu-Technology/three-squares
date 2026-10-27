@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Package, Filter, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import { authGet } from '../../services/authApi';
@@ -95,12 +95,7 @@ export default function AdminInventoryPage() {
   });
   const [page, setPage] = useState(1);
 
-  useEffect(() => {
-    loadAudits();
-    loadSummary();
-  }, [page, auditType, dateRange]);
-
-  const loadAudits = async () => {
+  const loadAudits = useCallback(async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams();
@@ -120,9 +115,9 @@ export default function AdminInventoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [auditType, dateRange.end, dateRange.start, getToken, page]);
 
-  const loadSummary = async () => {
+  const loadSummary = useCallback(async () => {
     try {
       const params = new URLSearchParams();
       if (dateRange.start) params.append('start_date', dateRange.start);
@@ -134,7 +129,12 @@ export default function AdminInventoryPage() {
     } catch (err) {
       console.error('Failed to load summary:', err);
     }
-  };
+  }, [dateRange.end, dateRange.start, getToken]);
+
+  useEffect(() => {
+    void loadAudits();
+    void loadSummary();
+  }, [loadAudits, loadSummary]);
 
   const formatDate = (dateStr: string) => {
     return format(new Date(dateStr), 'MMM d, yyyy h:mm a');

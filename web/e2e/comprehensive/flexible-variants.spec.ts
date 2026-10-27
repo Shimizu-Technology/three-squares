@@ -21,9 +21,8 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Flexible Variants - Admin Product Creation', () => {
   let testProductName: string;
-  let testProductSlug: string;
 
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async () => {
     test.skip(!process.env.TEST_USER_EMAIL, 'Skipping - no admin credentials');
     testProductName = 'Variant Test ' + Date.now();
   });
@@ -362,7 +361,10 @@ test.describe('Flexible Variants - Customer Experience', () => {
   test('6. Customer: Complete purchase with flexible variant', async ({ page }) => {
     // Clear cart first
     await page.goto('/');
-    await page.evaluate(() => localStorage.removeItem('hafaloha-cart'));
+    await page.evaluate(() => {
+      localStorage.removeItem('three-squares-cart');
+      localStorage.removeItem('cart_session_id');
+    });
     await page.reload();
 
     // Add item to cart

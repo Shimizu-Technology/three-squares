@@ -15,7 +15,6 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Fundraiser Order - Complete User Journey', () => {
   const fundraiserSlug = 'wings-fan-gear';
-  let orderNumber: string;
 
   test('1. Customer: View fundraiser page', async ({ page }) => {
     await page.goto(`/fundraisers/${fundraiserSlug}`);
@@ -190,7 +189,6 @@ test.describe('Fundraiser Order - Complete User Journey', () => {
     await page.screenshot({ path: 'test-results/comprehensive/fundraiser-10-new-form.png', fullPage: true });
 
     // Fill out fundraiser details - look for Name input by placeholder or label
-    const nameInput = page.locator('input[placeholder*="Fundraiser"], input[placeholder*="Soccer"], input').filter({ hasText: '' }).first();
     // Use the first text input on the form
     const allInputs = page.locator('form input[type="text"], form input:not([type])');
     if (await allInputs.count() > 0) {

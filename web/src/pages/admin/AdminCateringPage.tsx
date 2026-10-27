@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { authGet, authPatch, authPost } from '../../services/authApi';
 import { Calendar, Users, DollarSign, AlertCircle, CheckCircle, XCircle, Mail, Phone, Building, Eye } from 'lucide-react';
@@ -67,11 +67,7 @@ export default function AdminCateringPage() {
   const [quoteAmount, setQuoteAmount] = useState('');
   const [adminNotes, setAdminNotes] = useState('');
 
-  useEffect(() => {
-    fetchData();
-  }, [statusFilter]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       const [inquiriesRes, statsRes] = await Promise.all([
         authGet<{ inquiries: CateringInquiry[] }>(`/admin/catering${statusFilter ? `?status=${statusFilter}` : ''}`, getToken),
@@ -84,9 +80,9 @@ export default function AdminCateringPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken, statusFilter]);
 
-  const fetchInquiryDetails = async (id: number) => {
+  const fetchInquiryDetails = useCallback(async (id: number) => {
     try {
       const res = await authGet<{ inquiry: CateringInquiry }>(`/admin/catering/${id}`, getToken);
       setSelectedInquiry(res.data.inquiry);
@@ -95,7 +91,11 @@ export default function AdminCateringPage() {
     } catch (error) {
       console.error('Error fetching inquiry details:', error);
     }
-  };
+  }, [getToken]);
+
+  useEffect(() => {
+    void fetchData();
+  }, [fetchData]);
 
   const handleQuote = async () => {
     if (!selectedInquiry || !quoteAmount) return;
@@ -104,8 +104,8 @@ export default function AdminCateringPage() {
         quoted_amount: parseFloat(quoteAmount),
         admin_notes: adminNotes,
       }, getToken);
-      fetchData();
-      fetchInquiryDetails(selectedInquiry.id);
+      void fetchData();
+      void fetchInquiryDetails(selectedInquiry.id);
       setQuoteAmount('');
     } catch (error) {
       console.error('Error sending quote:', error);
@@ -116,8 +116,8 @@ export default function AdminCateringPage() {
     if (!selectedInquiry) return;
     try {
       await authPost(`/admin/catering/${selectedInquiry.id}/status`, { status }, getToken);
-      fetchData();
-      fetchInquiryDetails(selectedInquiry.id);
+      void fetchData();
+      void fetchInquiryDetails(selectedInquiry.id);
     } catch (error) {
       console.error('Error updating status:', error);
     }
@@ -129,7 +129,7 @@ export default function AdminCateringPage() {
       await authPatch(`/admin/catering/${selectedInquiry.id}`, {
         inquiry: { admin_notes: adminNotes },
       }, getToken);
-      fetchInquiryDetails(selectedInquiry.id);
+      void fetchInquiryDetails(selectedInquiry.id);
     } catch (error) {
       console.error('Error updating notes:', error);
     }

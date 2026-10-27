@@ -82,9 +82,8 @@ module Api
           orders_query = orders_query.where(fulfillment_type: params[:fulfillment_type])
         end
 
-        if params[:location_id].present?
-          orders_query = orders_query.where(location_id: params[:location_id].to_i)
-        end
+        effective_location_id = effective_admin_location_id(params[:location_id])
+        orders_query = orders_query.where(location_id: effective_location_id) if effective_location_id.present?
 
         if params[:business_line].present?
           orders_query = apply_business_line_filter(orders_query, params[:business_line].to_s)
@@ -190,6 +189,7 @@ module Api
           if settings.enable_order_sms
             SendAdminOrderSmsJob.perform_later(order.id)
           end
+          SendAdminPushNotificationJob.perform_later(order.id)
         rescue StandardError => notify_error
           # Notification enqueue failed (Redis down, etc.) — log but don't
           # fail the checkout. The order is committed and payment is valid.
@@ -227,6 +227,9 @@ module Api
         # "payment error — a refund is being processed."
         status = e.captured == true ? :internal_server_error : :unprocessable_entity
         render json: { success: false, error: e.message, message: e.message }, status: status
+      rescue CheckoutPricingService::PricingError => e
+        message = e.message
+        render json: { success: false, error: message, message: message }, status: :unprocessable_entity
       rescue InventoryCommitError => e
         unless order_finalized
           log_payment_reconciliation_required(order, e)
@@ -441,6 +444,12 @@ module Api
       def build_order(cart_items, fulfillment_type:, location_id:)
         shipping_address = order_params[:shipping_address] || {}
         shipping_method_params = order_params[:shipping_method] || {}
+        pricing = CheckoutPricingService.resolve!(
+          cart_items: cart_items,
+          fulfillment_type: fulfillment_type,
+          shipping_address: shipping_address,
+          shipping_method: shipping_method_params
+        )
 
         order = Order.new(
           user: current_user,
@@ -462,8 +471,8 @@ module Api
           shipping_country: shipping_address[:country] || order_params[:shipping_country] || "US",
 
           # Shipping method (store as JSON/text with carrier and service info)
-          shipping_method: [ shipping_method_params[:carrier], shipping_method_params[:service] ].compact.join(" ").presence,
-          shipping_cost_cents: fulfillment_type == "pickup" ? 0 : (shipping_method_params[:rate_cents] || 0)
+          shipping_method: pricing.shipping_method_label,
+          shipping_cost_cents: pricing.shipping_cost_cents
         )
 
         # Calculate totals
@@ -489,9 +498,9 @@ module Api
           subtotal_cents += item_total
         end
 
-        order.subtotal_cents = subtotal_cents
+        order.subtotal_cents = pricing.subtotal_cents
         order.tax_cents = 0 # TODO: Calculate tax if needed
-        order.total_cents = order.subtotal_cents + order.shipping_cost_cents + order.tax_cents
+        order.total_cents = pricing.total_cents + order.tax_cents
 
         order
       end
@@ -566,11 +575,18 @@ module Api
 
           order.payment_status = "paid"
           order.payment_intent_id = payment_result[:charge_id]
+          order.payment_provider = payment_result[:provider] || "test"
+          order.payment_reference = payment_result[:payment_reference] || payment_result[:charge_id]
           return payment_result
         end
 
         if payment_intent_id.present?
-          verification = verify_payment_intent(payment_intent_id, order.total_cents)
+          verification = PaymentService.verify_payment(
+            payment_reference: payment_intent_id,
+            expected_amount_cents: order.total_cents,
+            test_mode: settings.payment_test_mode,
+            payment_processor: settings.payment_processor
+          )
           unless verification[:success]
             # Only set payment_intent_id when Stripe confirms the PI was
             # captured (succeeded) or when capture status is unknown (transient
@@ -580,11 +596,15 @@ module Api
             # can emit a reconciliation log for manual review.
             if verification[:captured] # true or :unknown — both truthy
               order.payment_intent_id = payment_intent_id
+              order.payment_provider = verification[:provider] || settings.payment_processor
+              order.payment_reference = payment_intent_id
             end
             raise CheckoutValidationError.new(verification[:error], captured: verification[:captured])
           end
 
           order.payment_intent_id = payment_intent_id
+          order.payment_provider = verification[:provider] || settings.payment_processor
+          order.payment_reference = verification[:payment_reference] || payment_intent_id
           order.payment_status = "paid"
           return verification
         end
@@ -594,12 +614,15 @@ module Api
           payment_method: payment_method_params,
           order: order,
           customer_email: order.email,
-          test_mode: settings.payment_test_mode
+          test_mode: settings.payment_test_mode,
+          payment_processor: settings.payment_processor
         )
         raise CheckoutValidationError, payment_result[:error] unless payment_result[:success]
 
         order.payment_status = "paid"
         order.payment_intent_id = payment_result[:charge_id]
+        order.payment_provider = payment_result[:provider] || settings.payment_processor
+        order.payment_reference = payment_result[:payment_reference] || payment_result[:charge_id]
         payment_result
       end
 
@@ -664,12 +687,13 @@ module Api
       end
 
       def log_payment_reconciliation_required(order, error)
-        return if order.blank? || order.payment_intent_id.blank?
+        return if order.blank? || order.effective_payment_reference.blank?
         # Skip synthetic non-Stripe IDs (e.g., test_charge_... from test
         # mode). These can never be reversed or reconciled — logging them
         # produces false-alarm PAYMENT_RECONCILIATION_REQUIRED entries in
         # test environments on every inventory failure after a test payment.
-        return unless order.payment_intent_id.start_with?("pi_", "ch_")
+        return unless order.effective_payment_provider == "stripe"
+        return unless order.effective_payment_reference.start_with?("pi_", "ch_")
         # Allow "pending" in addition to "paid" — the amount-mismatch path
         # in verify_payment_intent raises before setting status to "paid",
         # but Stripe has already captured money. Without this, the audit
@@ -677,7 +701,8 @@ module Api
         return unless %w[paid pending].include?(order.payment_status)
 
         Rails.logger.error(
-          "PAYMENT_RECONCILIATION_REQUIRED order_finalize_failed payment_intent_id=#{order.payment_intent_id} " \
+          "PAYMENT_RECONCILIATION_REQUIRED order_finalize_failed payment_reference=#{order.effective_payment_reference} " \
+          "payment_provider=#{order.effective_payment_provider} " \
           "order_number=#{order.order_number || 'pending'} error_class=#{error.class} error_message=#{error.message}"
         )
       end
@@ -685,7 +710,7 @@ module Api
       def attempt_payment_reversal(order)
         # Assign payment_reference early so it's available in the rescue
         # block even if a guard clause raises (e.g., corrupted AR object).
-        payment_reference = order&.payment_intent_id
+        payment_reference = order&.effective_payment_reference
         return if order.blank? || payment_reference.blank?
         # Allow reversal when payment_status is "paid" OR when a
         # payment_intent_id exists but status is still "pending" — the
@@ -693,9 +718,10 @@ module Api
         # captured money but we raised before setting status to "paid".
         return unless %w[paid pending].include?(order.payment_status)
         # Skip synthetic non-Stripe IDs (e.g., test_charge_... from local test mode).
+        return unless order.effective_payment_provider == "stripe"
         return unless payment_reference.start_with?("pi_", "ch_")
 
-        ProcessPaymentReversalJob.perform_later(payment_reference, order.order_number || "pending")
+        ProcessPaymentReversalJob.perform_later(payment_reference, order.order_number || "pending", order.effective_payment_provider)
         Rails.logger.info "PAYMENT_REVERSAL_ENQUEUED reference=#{payment_reference} order_number=#{order.order_number || 'pending'}"
       rescue StandardError => e
         Rails.logger.error "PAYMENT_REVERSAL_ENQUEUE_FAILED reference=#{payment_reference} error=#{e.class}: #{e.message}"
@@ -718,6 +744,7 @@ module Api
           order_number: order.order_number,
           status: order.status,
           payment_status: order.payment_status,
+          payment_provider: order.effective_payment_provider,
           order_type: order.order_type,
           business_line: infer_business_line(order),
           fulfillment_type: order.fulfillment_type,
@@ -770,6 +797,7 @@ module Api
           status: order.status,
           status_display: order.status&.titleize,
           payment_status: order.payment_status,
+          payment_provider: order.effective_payment_provider,
           order_type: order.order_type,
           business_line: infer_business_line(order),
           fulfillment_type: order.fulfillment_type,
@@ -861,42 +889,18 @@ module Api
         end
       end
 
-      # Verify a Stripe PaymentIntent was successful
+      # Legacy compatibility shim for callers that still pass Stripe-style
+      # payment_intent_id values. New provider verification lives in
+      # PaymentService.verify_payment.
       def verify_payment_intent(payment_intent_id, expected_amount_cents)
         settings = SiteSetting.instance
 
-        if settings.payment_test_mode && payment_intent_id.start_with?("test_pi_")
-          # Test mode: accept test payment intents
-          return { success: true, captured: true }
-        end
-
-        begin
-          intent = Stripe::PaymentIntent.retrieve(payment_intent_id)
-
-          unless intent.status == "succeeded"
-            # Money was never captured — no reversal needed.
-            return { success: false, captured: false, error: "Payment has not been completed (status: #{intent.status})" }
-          end
-
-          # PI succeeded — money IS captured from this point.
-          # Verify amount matches (allow small rounding differences)
-          if (intent.amount - expected_amount_cents).abs > 1
-            Rails.logger.warn "Payment amount mismatch: expected #{expected_amount_cents}, got #{intent.amount}"
-            return { success: false, captured: true, error: "Payment amount does not match order total" }
-          end
-
-          { success: true, captured: true }
-        rescue Stripe::InvalidRequestError => e
-          # Invalid PI id — money was never captured.
-          Rails.logger.error "Invalid PaymentIntent ID: #{e.message}"
-          { success: false, captured: false, error: "Invalid payment reference" }
-        rescue Stripe::StripeError => e
-          # Transient Stripe error — we don't know if money was captured.
-          # Flag captured: :unknown so the caller can emit a reconciliation
-          # audit log for manual review.
-          Rails.logger.error "Stripe verification error: #{e.message}"
-          { success: false, captured: :unknown, error: "Payment verification failed. Please try again." }
-        end
+        PaymentService.verify_payment(
+          payment_reference: payment_intent_id,
+          expected_amount_cents: expected_amount_cents,
+          test_mode: settings.payment_test_mode,
+          payment_processor: settings.payment_processor
+        )
       end
 
       # Support lookup by both numeric ID and order number (e.g., HAF-R-20251210-0001)

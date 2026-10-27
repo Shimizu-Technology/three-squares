@@ -130,7 +130,7 @@ export default function RefundModal({ order, processing, onProcess, onClose }: R
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
             <p className="text-sm text-yellow-800 font-medium">This action cannot be undone.</p>
             <p className="text-xs text-yellow-700 mt-1">
-              The refund will be processed through Stripe immediately.
+              The refund will be processed through the current payment provider.
             </p>
           </div>
         </div>

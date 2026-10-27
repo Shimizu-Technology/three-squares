@@ -204,8 +204,12 @@ module Api
           }, status: :unprocessable_entity
         end
 
-        # Determine test mode
-        test_mode = ENV["APP_MODE"] == "test"
+        # Use the same payment test mode toggle as checkout. Also treat
+        # legacy test payment references as simulated even if the admin
+        # has since switched the site back to production mode.
+        settings = SiteSetting.instance
+        test_mode = settings.payment_test_mode || @order.effective_payment_reference.to_s.start_with?("test_")
+        payment_processor = @order.effective_payment_provider || settings.payment_processor
 
         # Process the refund
         result = PaymentService.refund_payment(
@@ -213,7 +217,8 @@ module Api
           amount_cents: amount_cents,
           reason: reason,
           admin_user: current_user,
-          test_mode: test_mode
+          test_mode: test_mode,
+          payment_processor: payment_processor
         )
 
         if result[:success]
@@ -374,11 +379,8 @@ module Api
         orders_query = orders_query.where(order_type: params[:order_type]) if params[:order_type].present?
         orders_query = orders_query.where(fulfillment_type: params[:fulfillment_type]) if params[:fulfillment_type].present?
         # Location scoping: staff assigned to a location only see that location's orders
-        if current_user&.location_scoped?
-          orders_query = orders_query.where(location_id: current_user.assigned_location_id)
-        elsif params[:location_id].present?
-          orders_query = orders_query.where(location_id: params[:location_id].to_i)
-        end
+        effective_location_id = effective_admin_location_id(params[:location_id])
+        orders_query = orders_query.where(location_id: effective_location_id) if effective_location_id.present?
 
         if params[:search].present?
           search_term = "%#{params[:search]}%"
@@ -492,6 +494,10 @@ module Api
 
       def set_order
         @order = Order.includes(:order_items, :user, :refunds).find(params[:id])
+        if current_user&.location_scoped? && @order.location_id != current_user.assigned_location_id
+          render json: { error: "Order not found" }, status: :not_found
+          return
+        end
       rescue ActiveRecord::RecordNotFound
         render json: { error: "Order not found" }, status: :not_found
       end
@@ -711,6 +717,7 @@ module Api
           order_number: order.order_number,
           status: order.status,
           payment_status: order.payment_status,
+          payment_provider: order.effective_payment_provider,
           order_type: order.order_type,
           customer_name: order.name,
           customer_email: order.email,
@@ -756,6 +763,7 @@ module Api
           order_number: order.order_number,
           status: order.status,
           payment_status: order.payment_status,
+          payment_provider: order.effective_payment_provider,
           order_type: order.order_type,
           customer_name: order.name,
           customer_email: order.email,
@@ -811,6 +819,8 @@ module Api
           status: refund.status,
           reason: refund.reason,
           stripe_refund_id: refund.stripe_refund_id,
+          provider_refund_id: refund.provider_refund_id,
+          payment_provider: refund.payment_provider,
           created_at: refund.created_at.iso8601,
           admin_user: refund.user&.name || refund.user&.email
         }

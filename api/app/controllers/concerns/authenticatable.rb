@@ -5,7 +5,7 @@ module Authenticatable
 
   included do
     before_action :authenticate_request
-    attr_reader :current_user
+    attr_reader :current_user, :current_admin_device
   end
 
   private
@@ -41,6 +41,7 @@ module Authenticatable
       end
 
       @current_user = find_or_create_user(clerk_id, email)
+      resolve_current_admin_device
       Rails.logger.info("User authenticated: #{@current_user.email} (Admin: #{@current_user.admin?})")
     rescue StandardError => e
       Rails.logger.error("Authentication error: #{e.class} - #{e.message}")
@@ -116,10 +117,31 @@ module Authenticatable
       primary_email_obj = clerk_user["email_addresses"].find { |e| e["id"] == clerk_user["primary_email_address_id"] }
       email = primary_email_obj ? primary_email_obj["email_address"] : nil
 
-      @current_user = find_or_create_user(clerk_id, email) if email
+      if email
+        @current_user = find_or_create_user(clerk_id, email)
+        resolve_current_admin_device
+      end
     rescue StandardError => e
       Rails.logger.warn("Optional auth failed: #{e.class} - #{e.message}")
       nil
     end
+  end
+
+  def effective_admin_location_id(explicit_location_id = nil)
+    return current_user.assigned_location_id if current_user&.location_scoped?
+    return explicit_location_id.to_i if explicit_location_id.present?
+
+    current_admin_device&.location_id
+  end
+
+  def resolve_current_admin_device
+    @current_admin_device = nil
+    return unless current_user&.admin?
+
+    device_uuid = request.headers["X-Admin-Device-Id"].to_s.strip
+    return if device_uuid.blank?
+
+    @current_admin_device = AdminDevice.active.find_by(device_uuid: device_uuid)
+    @current_admin_device&.mark_seen!
   end
 end

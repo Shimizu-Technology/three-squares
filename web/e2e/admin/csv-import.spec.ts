@@ -225,8 +225,6 @@ test.describe('CSV Import - Inventory', () => {
     await page.waitForTimeout(2000);
 
     // Look for inventory options
-    const inventorySection = page.locator('text=/inventory|stock/i').first();
-
     // Screenshot: Inventory options
     await page.screenshot({ 
       path: 'test-results/admin/csv-import-09-inventory.png', 

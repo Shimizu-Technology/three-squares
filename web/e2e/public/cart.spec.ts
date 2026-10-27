@@ -5,7 +5,8 @@ test.describe('Shopping Cart', () => {
     // Clear any existing cart state
     await page.goto('/');
     await page.evaluate(() => {
-      localStorage.removeItem('hafaloha-cart');
+      localStorage.removeItem('three-squares-cart');
+      localStorage.removeItem('cart_session_id');
     });
     await page.reload();
   });

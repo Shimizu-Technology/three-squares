@@ -12,6 +12,8 @@ module Api
           app_mode: settings.payment_test_mode ? "test" : "production",
           payment_test_mode: settings.payment_test_mode,
           payment_processor: settings.payment_processor,
+          supported_live_payment_processors: SiteSetting::LIVE_PAYMENT_PROCESSORS,
+          payment_checkout_mode: payment_checkout_mode(settings),
           stripe_publishable_key: stripe_publishable_key(settings),
           placeholder_image_url: settings.placeholder_image_url,
           features: {
@@ -40,6 +42,13 @@ module Api
         else
           ENV["STRIPE_PUBLISHABLE_KEY"]
         end
+      end
+
+      def payment_checkout_mode(settings)
+        return "simulated" if settings.test_mode?
+        return "embedded" if settings.using_stripe?
+
+        "unsupported"
       end
     end
   end

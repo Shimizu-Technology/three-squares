@@ -7,6 +7,8 @@ import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 import { homepageApi, type HomepageSection } from '../services/api';
 import useAppConfig from '../hooks/useAppConfig';
+import type { StorefrontKey } from '../utils/storefronts';
+import { getEnabledStorefronts, getStorefrontPath, isStorefrontEnabled, isStorefrontManagedPathEnabled } from '../utils/storefronts';
 
 // Strip emoji characters from text (replace with empty string)
 const stripEmoji = (text: string): string =>
@@ -15,43 +17,57 @@ const stripEmoji = (text: string): string =>
 // Default fallback content - Three Squares focused
 const defaultHero = {
   title: "Good Food. Good Mood.",
-  subtitle: "Guam-style comfort food made with love since 2016. Dine in, take out, or let us cater your next event.",
+  subtitle: "Guam-style comfort food made with love since 2016. Dine in, take out, or order ahead from your nearest location.",
   badge_text: "Three Squares",
   button_text: "View Our Menu",
   button_link: "/products",
-  secondary_button_text: "Order Catering",
-  secondary_button_link: "/catering",
   background_image_url: "/images/plated1.jpg" as string | null,
   settings: {
     badge_text: "Three Squares",
-    secondary_button_text: "Order Catering",
-    secondary_button_link: "/catering",
+    secondary_button_text: "",
+    secondary_button_link: "",
   },
 };
 
 const defaultCategoryCards: Array<{
+  key: string;
   id?: number;
   title: string;
   subtitle: string;
   button_text: string;
   button_link: string;
   image_url: string;
+  storefrontKey?: StorefrontKey;
 }> = [
   {
+    key: 'daily-menu',
     title: "Daily Menu",
     subtitle: "Fresh island-style plates served daily",
     button_text: "View Menu",
     button_link: "/products",
-    image_url: "/images/Cheeseburger.jpg"
+    image_url: "/images/Cheeseburger.jpg",
+    storefrontKey: 'three_squares',
   },
   {
+    key: 'cookie-shop',
+    title: "Cookie Shop",
+    subtitle: "Small-batch Latte Stone Cookies for gifting and shipping",
+    button_text: "Shop Cookies",
+    button_link: getStorefrontPath('latte_stone'),
+    image_url: "/images/IMG-4158.jpg",
+    storefrontKey: 'latte_stone',
+  },
+  {
+    key: 'catering',
     title: "Catering",
     subtitle: "Let us handle your next event",
     button_text: "Learn More",
     button_link: "/catering",
-    image_url: "/images/catering4.jpg"
+    image_url: "/images/catering4.jpg",
+    storefrontKey: 'catering',
   },
   {
+    key: 'locations',
     title: "Locations",
     subtitle: "Two convenient spots on Guam",
     button_text: "Find Us",
@@ -66,7 +82,7 @@ const allStorefrontCards = [
     title: 'Three Squares',
     subtitle: 'Daily comfort food plates and local favorites for pickup.',
     cta: 'Shop Three Squares',
-    to: '/shop/three-squares',
+    to: getStorefrontPath('three_squares'),
     image_url: '/images/Cheeseburger.jpg',
   },
   {
@@ -74,20 +90,59 @@ const allStorefrontCards = [
     title: 'Latte Stone Cookies',
     subtitle: 'Artisan shortbread cookies baked in small batches, cut in the iconic shape of the latte stone. Shipped nationwide.',
     cta: 'Shop Cookies',
-    to: '/shop/latte-stone-cookies',
+    to: getStorefrontPath('latte_stone'),
     image_url: '/images/IMG-4158.jpg',
   },
   {
     key: 'catering' as const,
     title: 'Catering',
     subtitle: 'Party trays and catering packages for events and gatherings.',
-    cta: 'Shop Catering',
-    to: '/shop/catering',
+    cta: 'Explore Catering',
+    to: getStorefrontPath('catering'),
     image_url: '/images/Cocktail_Stations_-_Assorted_Poppers.jpg',
   },
 ];
 
 const heroEase: [number, number, number, number] = [0.22, 1, 0.36, 1];
+
+const getDefaultSecondaryAction = (cateringEnabled: boolean, latteStoneEnabled: boolean) => {
+  if (cateringEnabled) {
+    return {
+      text: 'Order Catering',
+      link: '/catering',
+    };
+  }
+
+  if (latteStoneEnabled) {
+    return {
+      text: 'Shop Cookies',
+        link: getStorefrontPath('latte_stone'),
+    };
+  }
+
+  return {
+    text: 'Find a Location',
+    link: '/locations',
+  };
+};
+
+const stripDisabledStorefrontMentions = (
+  subtitle: string | null | undefined,
+  options: { cateringEnabled: boolean; latteStoneEnabled: boolean }
+) => {
+  if (!subtitle) return subtitle;
+
+  const normalized = subtitle.toLowerCase();
+  if (!options.cateringEnabled && normalized.includes('cater')) {
+    return defaultHero.subtitle;
+  }
+
+  if (!options.latteStoneEnabled && (normalized.includes('latte stone') || normalized.includes('cookie'))) {
+    return defaultHero.subtitle;
+  }
+
+  return subtitle;
+};
 
 export default function HomePage() {
   const [hero, setHero] = useState<HomepageSection | null>(null);
@@ -95,15 +150,12 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const prefersReducedMotion = useReducedMotion();
   const config = useAppConfig();
+  const cateringEnabled = isStorefrontEnabled(config, 'catering');
+  const latteStoneEnabled = isStorefrontEnabled(config, 'latte_stone');
 
   const storefrontCards = useMemo(() => {
-    if (!config) return [];
-    const enableMap: Record<string, boolean | undefined> = {
-      three_squares: config.enable_storefront_three_squares,
-      latte_stone: config.enable_storefront_latte_stone,
-      catering: config.enable_storefront_catering,
-    };
-    return allStorefrontCards.filter((card) => enableMap[card.key] !== false);
+    const enabledKeys = new Set(getEnabledStorefronts(config).map((storefront) => storefront.key));
+    return allStorefrontCards.filter((card) => enabledKeys.has(card.key));
   }, [config]);
 
   useEffect(() => {
@@ -131,7 +183,15 @@ export default function HomePage() {
   // Use dynamic or fallback content
   const isHeroReady = !loading;
   const heroContent = isHeroReady ? (hero || defaultHero) : null;
-  const cardsContent = categoryCards.length > 0 ? categoryCards : defaultCategoryCards;
+  const filteredCategoryCards = categoryCards.filter((card) => isStorefrontManagedPathEnabled(config, card.button_link));
+  const fallbackCategoryCards = defaultCategoryCards.filter((card) => {
+    if (card.storefrontKey && !isStorefrontEnabled(config, card.storefrontKey)) {
+      return false;
+    }
+
+    return isStorefrontManagedPathEnabled(config, card.button_link);
+  });
+  const cardsContent = filteredCategoryCards.length > 0 ? filteredCategoryCards : fallbackCategoryCards;
   const heroImageUrl = isHeroReady
     ? heroContent?.background_image_url || defaultHero.background_image_url
     : null;
@@ -143,11 +203,32 @@ export default function HomePage() {
   const secondaryButtonText =
     typeof heroSettings.secondary_button_text === 'string'
       ? heroSettings.secondary_button_text
-      : defaultHero.settings.secondary_button_text;
+      : '';
   const secondaryButtonLink =
     typeof heroSettings.secondary_button_link === 'string'
       ? heroSettings.secondary_button_link
-      : defaultHero.settings.secondary_button_link;
+      : '';
+  const fallbackSecondaryAction = getDefaultSecondaryAction(cateringEnabled, latteStoneEnabled);
+  const resolvedSecondaryAction =
+    secondaryButtonText &&
+    secondaryButtonLink &&
+    isStorefrontManagedPathEnabled(config, secondaryButtonLink)
+      ? { text: secondaryButtonText, link: secondaryButtonLink }
+      : fallbackSecondaryAction;
+  const primaryButtonLink =
+    heroContent?.button_link && isStorefrontManagedPathEnabled(config, heroContent.button_link)
+      ? heroContent.button_link
+      : defaultHero.button_link;
+  const heroSubtitle = stripDisabledStorefrontMentions(heroContent?.subtitle, {
+    cateringEnabled,
+    latteStoneEnabled,
+  });
+  const whatWeOfferSubtitle = cateringEnabled
+    ? "From daily plates to full-service catering, we've got you covered"
+    : "From daily plates to island-made specialties, we've got you covered";
+  const aboutBodyTail = cateringEnabled
+    ? "As part of B&G Pacific, we also provide full-service catering for corporate events, weddings, fiestas, and private gatherings."
+    : "As part of B&G Pacific, we continue serving Guam with hospitality, quality ingredients, and a menu built around local favorites.";
 
   // Animation helper — skip motion when user prefers reduced motion
   const heroMotion = (delay: number) =>
@@ -219,13 +300,13 @@ export default function HomePage() {
               </motion.h1>
 
               {/* Subtitle */}
-              {heroContent.subtitle && (
+              {heroSubtitle && (
                 <motion.p
                   {...heroMotion(0.3)}
                   className="text-lg sm:text-xl mb-12 max-w-2xl mx-auto leading-relaxed font-medium"
                   style={{ color: '#ffffff', textShadow: '0 1px 6px rgba(0,0,0,0.9), 0 2px 15px rgba(0,0,0,0.5)' }}
                 >
-                  {stripEmoji(heroContent.subtitle)}
+                  {stripEmoji(heroSubtitle)}
                 </motion.p>
               )}
 
@@ -235,19 +316,19 @@ export default function HomePage() {
                 className="flex flex-col sm:flex-row gap-4 justify-center"
               >
                 <Link
-                  to={heroContent.button_link || "/products"}
+                  to={primaryButtonLink || "/products"}
                   className="group btn-primary text-lg px-10 py-4 inline-flex items-center justify-center gap-2"
                 >
                   {heroContent.button_text || "View Our Menu"}
                   <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                 </Link>
-                {secondaryButtonText && secondaryButtonLink && (
+                {resolvedSecondaryAction.text && resolvedSecondaryAction.link && (
                   <Link
-                    to={secondaryButtonLink}
+                    to={resolvedSecondaryAction.link}
                     className="border-2 border-white/50 text-white hover:bg-white/15 rounded-xl text-lg px-8 py-4 inline-flex items-center justify-center transition-all duration-200 hover:-translate-y-0.5 font-medium"
                     style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}
                   >
-                    {secondaryButtonText}
+                    {resolvedSecondaryAction.text}
                   </Link>
                 )}
               </motion.div>
@@ -339,7 +420,7 @@ export default function HomePage() {
                   What We Offer
                 </h2>
                 <p className="mt-4 text-warm-600 text-lg max-w-2xl mx-auto">
-                  From daily plates to full-service catering, we&apos;ve got you covered
+                  {whatWeOfferSubtitle}
                 </p>
                 <div className="w-12 h-1 bg-tsGold rounded-full mx-auto mt-6" />
               </div>
@@ -428,9 +509,7 @@ export default function HomePage() {
                   made fresh with quality ingredients.
                 </p>
                 <p className="text-warm-600 mb-8 leading-relaxed">
-                  As part of B&G Pacific, we also provide full-service catering 
-                  for corporate events, weddings, fiestas, and private gatherings. 
-                  We&apos;re proud to be HUBZone certified and rated by over 140 
+                  {aboutBodyTail} We&apos;re proud to be HUBZone certified and rated by over 140 
                   reviewers on Yelp.
                 </p>
                 <Link

@@ -28,8 +28,9 @@ class ProcessPaymentReversalJob < ApplicationJob
   # giving up. Tracked via job metadata to survive re-enqueues.
   PI_STATE_MAX_RETRIES = 10
 
-  def perform(payment_reference, order_number = "pending")
+  def perform(payment_reference, order_number = "pending", payment_provider = "stripe")
     return if payment_reference.blank?
+    return unless payment_provider == "stripe"
     return unless payment_reference.start_with?("pi_", "ch_")
 
     refund_args = if payment_reference.start_with?("pi_")

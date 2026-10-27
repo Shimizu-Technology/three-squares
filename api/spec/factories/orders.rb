@@ -2,6 +2,8 @@ FactoryBot.define do
   factory :order do
     sequence(:order_number) { |n| "HAF-R-20250101-#{n.to_s.rjust(4, '0')}" }
     order_type { "retail" }
+    fulfillment_type { "shipping" }
+    source { "online" }
     status { "pending" }
     payment_status { "pending" }
     subtotal_cents { 1000 }

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
@@ -152,15 +152,7 @@ export default function ProductFormPage() {
     collection_ids: [],
   });
 
-  useEffect(() => {
-    fetchCollections();
-    fetchLocations();
-    if (isEditMode) {
-      fetchProduct();
-    }
-  }, [id]);
-
-  const fetchCollections = async () => {
+  const fetchCollections = useCallback(async () => {
     try {
       // Fetch ALL collections (including unpublished) for admin use
       const response = await authGet<CollectionsResponse>('/admin/collections', getToken);
@@ -168,18 +160,18 @@ export default function ProductFormPage() {
     } catch (err) {
       console.error('Failed to fetch collections:', err);
     }
-  };
+  }, [getToken]);
 
-  const fetchLocations = async () => {
+  const fetchLocations = useCallback(async () => {
     try {
       const response = await authGet<LocationsResponse>('/admin/locations', getToken);
       setAllLocations(response.data.data || []);
     } catch (err) {
       console.error('Failed to fetch locations:', err);
     }
-  };
+  }, [getToken]);
 
-  const fetchProduct = async () => {
+  const fetchProduct = useCallback(async () => {
     try {
       setLoading(true);
       const response = await authGet<ProductDetailsResponse>(`/admin/products/${id}`, getToken);
@@ -220,7 +212,15 @@ export default function ProductFormPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [getToken, id, navigate]);
+
+  useEffect(() => {
+    void fetchCollections();
+    void fetchLocations();
+    if (isEditMode) {
+      void fetchProduct();
+    }
+  }, [fetchCollections, fetchLocations, fetchProduct, isEditMode]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
@@ -1172,4 +1172,3 @@ export default function ProductFormPage() {
     </div>
   );
 }
-

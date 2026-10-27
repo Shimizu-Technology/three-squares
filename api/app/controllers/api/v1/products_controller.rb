@@ -6,8 +6,7 @@ module Api
 
       # GET /api/v1/products
       def index
-        @products = Product.published.active  # Only show active (non-archived) products
-                          .includes(:product_variants, :product_images, :collections, :product_locations)
+        @products = public_products_scope
 
         # Base ordering (will be overridden by sort param if present)
         @products = @products.order(featured: :desc, created_at: :desc) unless params[:sort].present?
@@ -96,14 +95,17 @@ module Api
       private
 
       def set_product
-        @product = Product.published
-                         .includes(:product_variants, :product_images, :collections, :product_locations)
-                         .find_by(id: params[:id]) ||
-                   Product.published
-                         .includes(:product_variants, :product_images, :collections, :product_locations)
-                         .find_by(slug: params[:id])
+        @product = public_products_scope.find_by(id: params[:id]) ||
+                   public_products_scope.find_by(slug: params[:id])
 
         render json: { error: "Product not found" }, status: :not_found unless @product
+      end
+
+      def public_products_scope
+        scope = Product.published.active
+                       .includes(:product_variants, :product_images, :collections, :product_locations)
+
+        apply_enabled_storefront_filters(scope)
       end
 
       def serialize_product(product)
@@ -214,6 +216,40 @@ module Api
         else
           relation
         end
+      end
+
+      def apply_enabled_storefront_filters(relation)
+        settings = SiteSetting.instance
+        enabled_lines = [
+          settings.enable_storefront_three_squares,
+          settings.enable_storefront_latte_stone,
+          settings.enable_storefront_catering
+        ]
+
+        return relation.none unless enabled_lines.any?
+
+        base_scope = Product.published.active.joins(:collections)
+        allowed_products = []
+
+        if settings.enable_storefront_three_squares
+          allowed_products << apply_business_line_filter(base_scope, "three_squares")
+        end
+
+        if settings.enable_storefront_latte_stone
+          allowed_products << apply_business_line_filter(base_scope, "latte_stone")
+        end
+
+        if settings.enable_storefront_catering
+          allowed_products << apply_business_line_filter(base_scope, "catering")
+        end
+
+        allowed_ids = allowed_products.flat_map do |scope|
+          scope.reselect(:id).distinct.pluck(:id)
+        end.uniq
+
+        return relation.none if allowed_ids.empty?
+
+        relation.where(id: allowed_ids).distinct
       end
     end
   end

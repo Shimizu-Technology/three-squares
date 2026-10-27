@@ -26,11 +26,11 @@ module Api
           intent = Stripe::PaymentIntent.retrieve(order.payment_intent_id)
 
           if intent.status == "succeeded"
-            order.update!(status: "confirmed", payment_status: "paid")
+            confirm_paid_terminal_order!(order)
             render json: pos_order_json(order)
           elsif intent.status == "requires_capture"
             intent.capture
-            order.update!(status: "confirmed", payment_status: "paid")
+            confirm_paid_terminal_order!(order)
             render json: pos_order_json(order)
           else
             render json: { error: "Payment not completed. Status: #{intent.status}" }, status: :unprocessable_entity
@@ -53,7 +53,7 @@ module Api
             process_payment(@order)
 
             @order.save!
-            deduct_inventory(@order)
+            deduct_inventory(@order) unless @order.payment_method == "card_present"
           end
 
           render json: pos_order_json(@order), status: :created
@@ -76,7 +76,7 @@ module Api
             customer_name: pos_params[:customer_name] || "Walk-in",
             customer_email: pos_params[:customer_email],
             customer_phone: pos_params[:customer_phone],
-            location_id: current_user.location_scoped? ? current_user.assigned_location_id : pos_params[:location_id],
+            location_id: effective_admin_location_id(pos_params[:location_id]),
             notes: pos_params[:special_instructions],
             payment_method: pos_params[:payment_method] || "cash",
             status: "pending",
@@ -166,6 +166,8 @@ module Api
               }
             )
             order.payment_intent_id = intent.id
+            order.payment_provider = "stripe"
+            order.payment_reference = intent.id
             @client_secret = intent.client_secret
           else
             raise StandardError, "Stripe is not configured"
@@ -194,7 +196,22 @@ module Api
               }
             )
             order.payment_intent_id = intent.id
+            order.payment_provider = "stripe"
+            order.payment_reference = intent.id
             @client_secret = intent.client_secret
+          end
+        end
+
+        def confirm_paid_terminal_order!(order)
+          ActiveRecord::Base.transaction do
+            order.lock!
+            deduct_inventory(order) unless order.payment_status == "paid"
+            order.update!(
+              status: "confirmed",
+              payment_status: "paid",
+              payment_provider: order.payment_provider.presence || "stripe",
+              payment_reference: order.payment_reference.presence || order.payment_intent_id
+            )
           end
         end
 

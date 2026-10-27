@@ -7,7 +7,8 @@ export interface ShippingAddress {
   city: string;
   state: string;
   zip: string;
-  country?: string;
+  country: string;
+  phone?: string;
 }
 
 export interface ShippingMethod {
@@ -61,6 +62,7 @@ export interface Order {
   order_number: string;
   status: string;
   payment_status: string;
+  payment_provider?: 'stripe' | 'paypal' | 'worldpay' | 'test' | null;
   total_cents: number;
   total_formatted: string;
   item_count: number;
@@ -75,6 +77,9 @@ export interface CreateOrderResponse {
 
 export interface AppConfig {
   app_mode: 'test' | 'production';
+  payment_processor: 'stripe' | 'paypal' | 'worldpay';
+  supported_live_payment_processors?: Array<'stripe' | 'paypal' | 'worldpay'>;
+  payment_checkout_mode?: 'simulated' | 'embedded' | 'hosted' | 'unsupported';
   stripe_enabled: boolean;
   stripe_publishable_key?: string;
   placeholder_image_url?: string | null;
@@ -94,4 +99,3 @@ export interface AppConfig {
   enable_storefront_latte_stone?: boolean;
   enable_storefront_catering?: boolean;
 }
-

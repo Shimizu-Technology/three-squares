@@ -117,6 +117,18 @@ class FulfillmentValidator
         ]
       end
 
+      if fulfillment_type == "pickup"
+        location = Location.active.find_by(id: location_id)
+        if location && !location.accepting_orders_now?
+          return [
+            {
+              type: "location_closed",
+              message: "#{location.name} is not currently accepting pickup orders."
+            }
+          ]
+        end
+      end
+
       cart_items.each do |item|
         product = item.product_variant.product
 
@@ -150,4 +162,3 @@ class FulfillmentValidator
     end
   end
 end
-

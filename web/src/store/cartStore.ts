@@ -122,11 +122,13 @@ export const useCartStore = create<CartStore>()(
           // Refresh cart
           await get().fetchCart();
           set({ isLoading: false });
-        } catch (error: any) {
+        } catch (error: unknown) {
           console.error('Failed to update quantity:', error);
           set({ isLoading: false });
           
-          const errorMessage = error.response?.data?.error || 'Failed to update quantity';
+          const errorMessage = axios.isAxiosError(error)
+            ? error.response?.data?.error || 'Failed to update quantity'
+            : 'Failed to update quantity';
           toast.error(errorMessage);
           throw error;
         }
@@ -220,4 +222,3 @@ export const useCartStore = create<CartStore>()(
     }
   )
 );
-

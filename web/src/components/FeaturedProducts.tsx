@@ -10,10 +10,12 @@ import { StaggerContainer, StaggerItem } from './animations/StaggerContainer';
 import { ProductGridSkeleton } from './Skeleton';
 import PlaceholderImage from './ui/PlaceholderImage';
 import OptimizedImage from './ui/OptimizedImage';
+import useAppConfig from '../hooks/useAppConfig';
 
 const EMPTY_CART_ITEMS: Array<{ product: { allow_pickup?: boolean; allow_shipping?: boolean; available_location_ids?: number[] } }> = [];
 
 export default function FeaturedProducts() {
+  const config = useAppConfig();
   const [products, setProducts] = useState<Product[]>([]);
   const [locationNameById, setLocationNameById] = useState<Record<number, string>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -57,7 +59,7 @@ export default function FeaturedProducts() {
     };
 
     fetchFeaturedProducts();
-  }, []);
+  }, [config]);
 
   useEffect(() => {
     const fetchLocations = async () => {
