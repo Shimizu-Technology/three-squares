@@ -40,7 +40,7 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await dialog.getByRole('checkbox', { name: `Include ${second.name}`, exact: true }).check();
     await dialog.getByRole('button', { name: `Move ${second.name} up`, exact: true }).click();
     await dialog.getByRole('button', { name: 'Staff preview', exact: true }).click();
-    await expect(dialog.getByRole('heading', { name: 'Staff preview — unsaved editor content', exact: true })).toBeVisible();
+    await expect(dialog.getByRole('heading', { name: 'Staff preview — unsaved editor content', exact: true })).toBeInViewport();
     await expect(dialog.getByText('This preview does not open ordering or publish the menu.', { exact: false })).toBeVisible();
     await expect(dialog.getByText(/Unpublished — unavailable/)).toBeVisible();
     expect(publicRequests).toEqual([]);

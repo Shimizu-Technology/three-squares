@@ -41,6 +41,7 @@ export default function AdminCollectionsPage() {
   const [products, setProducts] = useState<MenuProduct[]>([]), [ids, setIds] = useState<number[]>([]);
   const editorOpener = useRef<HTMLElement | null>(null), nameRef = useRef<HTMLInputElement>(null), errorRef = useRef<HTMLParagraphElement>(null);
   const saveRef = useRef(false), deleteRef = useRef(false);
+  const editorBodyRef = useRef<HTMLDivElement>(null);
 
   const fetchCollections = useCallback(async () => {
     if (!active.current) return;
@@ -57,6 +58,7 @@ export default function AdminCollectionsPage() {
     return () => { active.current = false; requestId.current++; openRequest.current++; };
   }, [fetchCollections]);
   useEffect(() => { if (formError) errorRef.current?.focus(); }, [formError, saving]);
+  useEffect(() => { editorBodyRef.current?.scrollTo({ top: 0 }); }, [section, editorOpen]);
 
   const openEditor = async (collection: Collection | null, target: EditorSection, opener?: HTMLElement) => {
     if (openingRef.current || saveRef.current || deleteRef.current) return;
@@ -136,7 +138,7 @@ export default function AdminCollectionsPage() {
         <header className="shrink-0 space-y-3 border-b border-gray-200 p-4 sm:p-6"><h2 id="menu-editor-title" className="break-words text-2xl font-bold text-gray-900">{selected ? `Edit ${selected.name}` : 'Create menu'}</h2>
           <nav aria-label="Menu editor sections" className="flex flex-wrap gap-2">{([['schedule', 'Menu & schedule'], ['items', 'Menu items'], ['preview', 'Staff preview']] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={section === key} disabled={saving} onClick={() => setSection(key)} className={`min-h-11 rounded-lg px-3 py-2 font-medium ${section === key ? 'bg-tsPrimary text-white' : 'border border-gray-300 text-gray-800'}`}>{label}</button>)}</nav>
         </header>
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-6">
+        <div ref={editorBodyRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-6">
           {formError && <p ref={errorRef} tabIndex={-1} role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-red-900">{formError}</p>}
           <fieldset disabled={saving} className="min-w-0 space-y-4">
             <div hidden={section !== 'schedule'} className="space-y-4">
