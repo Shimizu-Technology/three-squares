@@ -313,6 +313,7 @@ export default function AdminSettingsPage() {
         enable_storefront_latte_stone: 'Latte Stone Cookies',
         enable_storefront_catering: 'Catering',
       };
+      invalidateAppConfig();
       toast.success(`${labels[field]} storefront ${newValue ? 'enabled' : 'disabled'}`, { duration: 3000 });
     } catch (err: unknown) {
       console.error('Failed to toggle storefront:', err);

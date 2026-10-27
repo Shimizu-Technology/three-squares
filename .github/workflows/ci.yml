@@ -71,6 +71,8 @@ jobs:
       - run: npm ci
       - name: Verify lint regression gate
         run: npm run test:ci-tools
+      - name: Test web logic
+        run: npm run test:unit
       - name: Lint without adding inherited errors
         run: npm run lint:ci
       - name: Typecheck and build
