@@ -13,6 +13,9 @@ const initial = '/admin/products?q=Context&published=true&type=other&sort=price&
 const visibleButton = (page: Page, name: string) => page.getByRole('button', { name, exact: true }).filter({ visible: true });
 
 async function fixtureApi(page: Page, save?: (method: string, data: Record<string, unknown>) => Promise<void>, listDelay = 0) {
+  // Keep these component fixtures independent of the real service-health probe.
+  // Real API/health acceptance runs separately against the dedicated QA database.
+  await page.route('**/health', route => route.fulfill({ json: { status: 'ok' } }));
   const products = Array.from({ length: 65 }, (_, i) => makeProduct(i + 1));
   await page.route('**/api/v1/admin/products**', async route => {
     const request = route.request();
