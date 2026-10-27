@@ -905,13 +905,13 @@ function CheckoutForm() {
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-gray-900">Order Notes</h2>
-                    <p className="text-sm text-gray-500">Optional - meal preferences and pickup notes.</p>
+                    <p className="text-sm text-gray-500">{deliveryMethod === 'pickup' ? 'Optional - meal preferences and pickup notes.' : 'Optional - delivery instructions and preferences.'}</p>
                   </div>
                 </div>
                 <textarea
                   value={orderNotes}
                   onChange={(e) => setOrderNotes(e.target.value)}
-                  placeholder="e.g., Food allergies or pickup instructions."
+                  placeholder={deliveryMethod === 'pickup' ? 'e.g., Food allergies or pickup instructions.' : 'e.g., Delivery instructions or food allergies.'}
                   rows={3}
                   maxLength={500}
                   className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition resize-none text-sm"
