@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useMemo, useReducer } from 'react';
+import { useState, useEffect, useCallback, useMemo, useReducer, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { useCartStore } from '../store/cartStore';
-import { configApi, locationsApi, ordersApi, shippingApi, paymentIntentsApi, formatPrice } from '../services/api';
+import { configApi, locationsApi, shippingApi, formatPrice } from '../services/api';
+import { checkoutApi, checkoutCapability, pendingCheckout, saveCheckout, clearPendingCheckout } from '../services/checkout';
 import { authGet } from '../services/authApi';
 import { checkoutContactReducer, emptyCheckoutContact } from '../lib/checkoutContact';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
@@ -18,21 +19,21 @@ import { useLocationStore } from '../store/locationStore';
 function CheckoutForm() {
   const navigate = useNavigate();
   const { getToken, isSignedIn, isLoaded: authLoaded, userId } = useAuth();
-  const { cart, clearCart, sessionId, fetchCart, validateCart, removeItem, isLoading: cartLoading } = useCartStore();
+  const { cart, sessionId, fetchCart, validateCart, removeItem, isLoading: cartLoading } = useCartStore();
   const { selectedLocation: storedLocation } = useLocationStore();
   const stripe = useStripe();
   const elements = useElements();
-  
+
   // Get items from cart (with fallback to empty array)
   const items = cart?.items || [];
   const subtotalCents = cart?.subtotal_cents || 0; // Use cents directly from cart
   const cartSupportsShipping = items.length > 0 && items.every((item) => item.product.allow_shipping === true);
   const cartSupportsPickup = items.length > 0 && items.every((item) => item.product.allow_pickup === true);
-  
+
   // App config
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
-  
+
   // Form state
   const [contact, updateContact] = useReducer(checkoutContactReducer, emptyCheckoutContact);
   const { name, email, phone } = contact.values;
@@ -48,13 +49,13 @@ function CheckoutForm() {
     zip: '',
     country: 'US',
   });
-  
+
   // Shipping
   const [shippingMethod, setShippingMethod] = useState<ShippingMethod | null>(null);
   const [availableShippingRates, setAvailableShippingRates] = useState<ShippingMethod[]>([]);
   const [calculatingShipping, setCalculatingShipping] = useState(false);
   const [shippingError, setShippingError] = useState<string | null>(null);
-  
+
   // Payment state
   const [paymentReady, setPaymentReady] = useState(false);
 
@@ -93,8 +94,45 @@ function CheckoutForm() {
     item_name: string;
     action?: string;
   }> | null>(null);
-  
-  const isTestMode = appConfig?.app_mode === 'test';
+
+  // Environment labels never grant payment authority.
+  const isSandbox = appConfig?.payment_environment === 'sandbox';
+  const submitting = useRef(false);
+  const creationKey = useRef(crypto.randomUUID());
+  const capability = useRef(checkoutCapability());
+  const [canRetryCollection, setCanRetryCollection] = useState(false);
+  const [pendingPayment, setPendingPayment] = useState(pendingCheckout);
+
+  const finishCheckout = useCallback(async (state: Awaited<ReturnType<typeof checkoutApi.show>>) => {
+    if (state.order.payment_status === 'paid' && state.order.inventory_committed) {
+      clearPendingCheckout();
+      await fetchCart();
+      navigate(`/orders/${state.order.id}`);
+      return true;
+    }
+    return false;
+  }, [fetchCart, navigate]);
+
+  useEffect(() => {
+    if (!pendingPayment || !authLoaded) return;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const started = Date.now();
+    const poll = async () => {
+      try {
+        const token = isSignedIn ? await getToken() : null;
+        const state = await checkoutApi.confirm(pendingPayment.id, token, pendingPayment.capability);
+        if (stopped || await finishCheckout(state)) return;
+        setCanRetryCollection(state.payment_state === 'collecting' && !!state.collection_config.client_secret);
+        setError(`Payment status is being checked for order ${state.order.order_number}. Your order is saved. Keep this page or check your order before paying again.`);
+        if (Date.now() - started < 90000) timer = setTimeout(poll, Date.now() - started < 10000 ? 2000 : 10000);
+      } catch {
+        if (!stopped) setError('Your order is saved. We could not check payment status yet. Use Check payment status before paying again.');
+      }
+    };
+    void poll();
+    return () => { stopped = true; if (timer) clearTimeout(timer); };
+  }, [pendingPayment, authLoaded, isSignedIn, getToken, finishCheckout]);
 
   // Compatible pickup locations = intersection of available_location_ids across all cart items.
   const compatiblePickupLocationIds = useMemo(() => {
@@ -160,12 +198,12 @@ function CheckoutForm() {
     };
     loadConfig();
   }, []);
-  
+
   // Fetch cart on mount
   useEffect(() => {
     fetchCart();
   }, [fetchCart]);
-  
+
   // Redirect if cart is empty (but wait for cart to load first!)
   useEffect(() => {
     // Only redirect if cart has loaded AND is empty
@@ -204,7 +242,7 @@ function CheckoutForm() {
       setPickupLocationId(compatiblePickupLocations[0].id);
     }
   }, [deliveryMethod, pickupLocationId, compatiblePickupLocationIds, compatiblePickupLocations]);
-  
+
   // Calculate shipping rates
   const handleCalculateShipping = async () => {
     if (!cartSupportsShipping) {
@@ -216,16 +254,16 @@ function CheckoutForm() {
       setShippingError('Please fill out all required shipping address fields');
       return;
     }
-    
+
     setCalculatingShipping(true);
     setShippingError(null);
-    
+
     try {
       let token: string | null = null;
       if (isSignedIn && authLoaded) {
         token = await getToken();
       }
-      
+
       const response = await shippingApi.calculateRates(
         {
           ...shippingAddress,
@@ -235,7 +273,7 @@ function CheckoutForm() {
         sessionId,
         token
       );
-      
+
       setAvailableShippingRates(response.rates);
       if (response.rates.length > 0) {
         setShippingMethod(response.rates[0]); // Auto-select first option
@@ -248,7 +286,7 @@ function CheckoutForm() {
       setCalculatingShipping(false);
     }
   };
-  
+
   // Handle payment ready state from PaymentForm
   const handlePaymentReady = useCallback((ready: boolean) => {
     setPaymentReady(ready);
@@ -257,31 +295,33 @@ function CheckoutForm() {
   // Check if all required fields are filled
   const isFormValid = () => {
     const hasContactInfo = name.trim() !== '' && email.trim() !== '' && phone.trim() !== '';
-    
+
     if (deliveryMethod === 'pickup') {
       if (!cartSupportsPickup) return false;
       if (compatiblePickupLocations.length === 0) return false;
-      return hasContactInfo && pickupLocationId !== null && (isTestMode || paymentReady);
+      return hasContactInfo && pickupLocationId !== null && paymentReady;
     }
-    
+
     if (!cartSupportsShipping) return false;
 
     // For shipping, need address and shipping method selected
-    const hasAddress = 
+    const hasAddress =
       shippingAddress.street1.trim() !== '' &&
       shippingAddress.city.trim() !== '' &&
       shippingAddress.state.trim() !== '' &&
       shippingAddress.zip.trim() !== '';
-    
-    return hasContactInfo && hasAddress && shippingMethod !== null && (isTestMode || paymentReady);
+
+    return hasContactInfo && hasAddress && shippingMethod !== null && paymentReady;
   };
-  
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting.current || pendingPayment) return;
+    submitting.current = true;
     setError(null);
     setValidationIssues(null);
     setLoading(true);
-    
+
     try {
       // HAF-118: Pre-checkout cart validation to catch sync issues
       // This ensures we catch any stale/phantom items before attempting payment
@@ -293,13 +333,13 @@ function CheckoutForm() {
         setLoading(false);
         return; // Don't proceed until issues are resolved
       }
-      
+
       // Get auth token if signed in
       let token: string | null = null;
       if (isSignedIn && authLoaded) {
         token = await getToken();
       }
-      
+
       // Build shipping data
       if (deliveryMethod === 'shipping' && !cartSupportsShipping) {
         setError('Shipping is not available for all items in your cart.');
@@ -317,7 +357,6 @@ function CheckoutForm() {
         return;
       }
 
-      const shippingCostCents = deliveryMethod === 'pickup' ? 0 : (shippingMethod?.rate_cents || 0);
       let orderShippingAddress;
       let orderShippingMethod;
 
@@ -353,86 +392,29 @@ function CheckoutForm() {
         }
       }
 
-      if (isTestMode) {
-        // Test mode: skip Stripe, create order directly
-        const orderData = {
-          customer_name: name,
-          email, phone,
-          fulfillment_type: deliveryMethod,
-          location_id: deliveryMethod === 'pickup' ? pickupLocationId || undefined : undefined,
-          shipping_address: orderShippingAddress,
-          shipping_method: orderShippingMethod,
-          payment_method: { type: 'test' },
-          notes: orderNotes.trim() || undefined,
-          item_special_instructions: Object.keys(itemInstructions).length > 0 ? itemInstructions : undefined,
-        };
-        const response = await ordersApi.createOrder(orderData, token, sessionId);
-        if (response.success) {
-          await clearCart();
-          navigate(`/orders/${response.order.id}?email=${encodeURIComponent(email)}`);
-        } else {
-          setError('Failed to create order. Please try again.');
-        }
-      } else {
-        // Real Stripe payment flow
-        if (!stripe || !elements) {
-          setError('Payment system is not ready. Please wait and try again.');
-          setLoading(false);
-          return;
-        }
-        const cardElement = elements.getElement(CardElement);
-        if (!cardElement) {
-          setError('Card input not found. Please refresh and try again.');
-          setLoading(false);
-          return;
-        }
-        // Step 1: Create PaymentIntent
-        const intentResponse = await paymentIntentsApi.create(
-          {
-            email,
-            shipping_cost_cents: shippingCostCents,
-            fulfillment_type: deliveryMethod,
-            location_id: deliveryMethod === 'pickup' ? pickupLocationId || undefined : undefined,
-          },
-          token,
-          sessionId
-        );
-        // Step 2: Confirm card payment with Stripe
-        const { error: stripeError, paymentIntent } = await stripe.confirmCardPayment(
-          intentResponse.client_secret,
-          { payment_method: { card: cardElement, billing_details: { name, email, phone } } }
-        );
-        if (stripeError) {
-          setError(stripeError.message || 'Payment failed. Please check your card details.');
-          setLoading(false);
-          return;
-        }
-        if (!paymentIntent || paymentIntent.status !== 'succeeded') {
-          setError('Payment was not completed. Please try again.');
-          setLoading(false);
-          return;
-        }
-        // Step 3: Create order with payment intent ID
-        const orderData = {
-          customer_name: name,
-          email, phone,
-          fulfillment_type: deliveryMethod,
-          location_id: deliveryMethod === 'pickup' ? pickupLocationId || undefined : undefined,
-          shipping_address: orderShippingAddress,
-          shipping_method: orderShippingMethod,
-          payment_method: { type: 'stripe' },
-          payment_intent_id: paymentIntent.id,
-          notes: orderNotes.trim() || undefined,
-          item_special_instructions: Object.keys(itemInstructions).length > 0 ? itemInstructions : undefined,
-        };
-        const response = await ordersApi.createOrder(orderData, token, sessionId);
-        if (response.success) {
-          await clearCart();
-          navigate(`/orders/${response.order.id}?email=${encodeURIComponent(email)}`);
-        } else {
-          setError('Your payment was processed but there was an issue creating your order. Please contact support with reference: ' + paymentIntent.id);
-        }
+      if (!stripe || !elements) throw new Error('Payment system is not ready. Please wait and try again.');
+      const cardElement = elements.getElement(CardElement);
+      if (!cardElement) throw new Error('Card input is unavailable. Please refresh before starting payment.');
+      const orderData = {
+        customer_name: name, email, phone, fulfillment_type: deliveryMethod,
+        location_id: deliveryMethod === 'pickup' ? pickupLocationId || undefined : undefined,
+        shipping_address: orderShippingAddress, shipping_method: orderShippingMethod,
+        notes: orderNotes.trim() || undefined,
+        item_special_instructions: Object.keys(itemInstructions).length ? itemInstructions : undefined,
+      };
+      const state = await checkoutApi.create(orderData, token, capability.current, creationKey.current, sessionId);
+      saveCheckout(state, capability.current, creationKey.current);
+      if (state.flow !== 'stripe_embedded' || !state.collection_config.client_secret) {
+        setPendingPayment(pendingCheckout());
+        throw new Error('Your order is saved. Payment collection is being prepared; check its status before starting again.');
       }
+      const { error: stripeError } = await stripe.confirmCardPayment(state.collection_config.client_secret,
+        { payment_method: { card: cardElement, billing_details: { name, email, phone } } });
+      // Even an SDK/network error can have a late approval. Resume the saved
+      // session rather than creating a second payment against a mutable cart.
+      if (stripeError) setError(stripeError.message || 'Payment status is being checked.');
+      const confirmed = await checkoutApi.confirm(state.id, token, capability.current);
+      if (!(await finishCheckout(confirmed))) setPendingPayment(pendingCheckout());
     } catch (err: unknown) {
       console.error('Checkout error:', err);
       const axiosErr = err as { response?: { data?: { error?: string; issues?: Array<{ message: string }> } } };
@@ -441,17 +423,19 @@ function CheckoutForm() {
         const errorMessages = issues.map((issue) => `• ${issue.message}`).join('\n');
         setError(`Unable to complete order:\n${errorMessages}`);
       } else {
-        setError(axiosErr.response?.data?.error || 'An error occurred. Please try again.');
+        setError(axiosErr.response?.data?.error || (err instanceof Error ? err.message : 'An error occurred. Please try again.'));
       }
     } finally {
+      submitting.current = false;
+      if (pendingCheckout()) setPendingPayment(pendingCheckout());
       setLoading(false);
     }
   };
-  
+
   // Calculate total
   const shippingCostCents = deliveryMethod === 'pickup' ? 0 : (shippingMethod?.rate_cents || 0);
   const totalCents = subtotalCents + shippingCostCents;
-  
+
   if (configLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -462,7 +446,7 @@ function CheckoutForm() {
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen bg-gray-50 py-6 sm:py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -474,28 +458,56 @@ function CheckoutForm() {
           <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">Complete Your Order</h1>
           <p className="text-gray-500 mt-2">Fill in the details below to complete your purchase</p>
         </div>
-        
+
         {/* Test Mode Banner */}
-        {isTestMode && (
+        {isSandbox && (
           <div className="mb-6 bg-yellow-50 border-2 border-yellow-300 rounded-lg p-4">
             <div className="flex items-start">
               <svg className="w-6 h-6 text-yellow-600 mr-3 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               <div>
-                <h3 className="font-semibold text-yellow-800 mb-1">Test Mode Active</h3>
+                <h3 className="font-semibold text-yellow-800 mb-1">Sandbox payments</h3>
                 <p className="text-sm text-yellow-700">
-                  This is a test environment. No real payments will be processed. 
+                  Stripe sandbox is selected. No real payments will be processed.
                   Orders will be created for testing purposes only.
                 </p>
               </div>
             </div>
           </div>
         )}
-        
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Forms */}
           <div className="lg:col-span-2">
+            {pendingPayment && <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4" role="status">
+              <p className="font-semibold">Your order is saved. Payment status is being checked.</p>
+              <button type="button" className="mt-3 underline" onClick={async () => {
+                try {
+                  const token = isSignedIn ? await getToken() : null;
+                  const state = await checkoutApi.confirm(pendingPayment.id, token, pendingPayment.capability);
+                  if (!(await finishCheckout(state))) setError(`Payment status: ${state.payment_state}. Order ${state.order.order_number} remains saved.`);
+                } catch { setError('We could not check payment status. Your order remains saved.'); }
+              }}>Check payment status</button>
+              {canRetryCollection && <button type="button" className="ml-4 mt-3 underline" disabled={loading || !paymentReady} onClick={async () => {
+                if (!stripe || !elements || submitting.current) return;
+                const card = elements.getElement(CardElement);
+                if (!card) return;
+                submitting.current = true;
+                setLoading(true);
+                try {
+                  const token = isSignedIn ? await getToken() : null;
+                  const state = await checkoutApi.show(pendingPayment.id, token, pendingPayment.capability);
+                  if (!state.collection_config.client_secret || state.payment_state !== 'collecting') throw new Error('Payment status changed. Check the saved order.');
+                  const result = await stripe.confirmCardPayment(state.collection_config.client_secret, { payment_method: { card, billing_details: { name, email, phone } } });
+                  if (result.error) setError(result.error.message || 'Card payment could not complete.');
+                  const confirmed = await checkoutApi.confirm(state.id, token, pendingPayment.capability);
+                  if (!(await finishCheckout(confirmed))) setPendingPayment(pendingCheckout());
+                } catch (error) { setError(error instanceof Error ? error.message : 'Payment status is being checked.'); }
+                finally { submitting.current = false; setLoading(false); }
+              }}>Retry card payment for this saved order</button>}
+              <button type="button" className="ml-4 mt-3 underline" onClick={() => navigate(`/orders/${pendingPayment.orderId}`)}>View saved order</button>
+            </div>}
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Contact Information */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
@@ -552,7 +564,7 @@ function CheckoutForm() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Delivery Method */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8">
                 <div className="flex items-center gap-3 mb-6">
@@ -589,7 +601,7 @@ function CheckoutForm() {
                     </div>
                   </button>
                   )}
-                  
+
                   {cartSupportsPickup && (
                   <button
                     type="button"
@@ -630,7 +642,7 @@ function CheckoutForm() {
                     Your cart items do not share a valid fulfillment method. Please review your cart.
                   </p>
                 )}
-                
+
                 <AnimatePresence mode="wait">
                   {deliveryMethod === 'pickup' && cartSupportsPickup && (
                     <motion.div
@@ -676,7 +688,7 @@ function CheckoutForm() {
                   )}
                 </AnimatePresence>
               </div>
-              
+
               {/* Shipping Address - Only show if shipping selected */}
               <AnimatePresence mode="wait">
               {deliveryMethod === 'shipping' && cartSupportsShipping && (
@@ -783,7 +795,7 @@ function CheckoutForm() {
                     </select>
                   </div>
                 </div>
-                
+
                 {/* Calculate Shipping Button */}
                 <div className="mt-6">
                   <button
@@ -794,12 +806,12 @@ function CheckoutForm() {
                   >
                     {calculatingShipping ? 'Calculating...' : 'Calculate Shipping Rates'}
                   </button>
-                  
+
                   {shippingError && (
                     <p className="text-sm text-red-600 mt-2">{shippingError}</p>
                   )}
                 </div>
-                
+
                 {/* Shipping Rates */}
                 {availableShippingRates.length > 0 && (
                   <div className="mt-6">
@@ -836,10 +848,9 @@ function CheckoutForm() {
               </motion.div>
               )}
               </AnimatePresence>
-              
+
               {/* Payment Section */}
               <PaymentForm
-                isTestMode={isTestMode}
                 onPaymentReady={handlePaymentReady}
               />
 
@@ -892,7 +903,7 @@ function CheckoutForm() {
                                   await removeItem(issue.cart_item_id);
                                   await fetchCart();
                                   // Remove this issue from the list
-                                  setValidationIssues((prev) => 
+                                  setValidationIssues((prev) =>
                                     prev?.filter((i) => i.cart_item_id !== issue.cart_item_id) || null
                                   );
                                 }}
@@ -920,11 +931,11 @@ function CheckoutForm() {
                   </div>
                 </div>
               )}
-              
+
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || !isFormValid()}
+                disabled={loading || !isFormValid() || !!pendingPayment}
                 className="w-full bg-tsPrimary text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 {loading ? (
@@ -936,17 +947,17 @@ function CheckoutForm() {
                     Processing...
                   </>
                 ) : (
-                  isTestMode ? `Place Test Order - ${formatPrice(totalCents)}` : `Pay ${formatPrice(totalCents)}`
+                  pendingPayment ? 'Payment status pending' : `Pay ${formatPrice(totalCents)}`
                 )}
               </button>
             </form>
           </div>
-          
+
           {/* Right Column - Order Summary */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 lg:sticky lg:top-24">
               <h2 className="text-xl font-bold text-gray-900 mb-4">Order Summary</h2>
-              
+
               {/* Items */}
               <div className="space-y-4 mb-4 max-h-64 overflow-y-auto">
                 {items.map((item) => (
@@ -1012,7 +1023,7 @@ function CheckoutForm() {
                   </div>
                 ))}
               </div>
-              
+
               {/* Totals */}
               <div className="border-t pt-4 space-y-2">
                 <div className="flex justify-between text-sm">
@@ -1024,9 +1035,9 @@ function CheckoutForm() {
                     {deliveryMethod === 'pickup' ? 'Pickup' : 'Shipping'}
                   </span>
                   <span className="text-gray-900">
-                    {deliveryMethod === 'pickup' 
-                      ? 'FREE' 
-                      : shippingMethod 
+                    {deliveryMethod === 'pickup'
+                      ? 'FREE'
+                      : shippingMethod
                       ? formatPrice(shippingMethod.rate_cents)
                       : 'Calculate after entering address'
                     }
@@ -1041,10 +1052,10 @@ function CheckoutForm() {
                   <span className="text-tsPrimary">{formatPrice(totalCents)}</span>
                 </div>
               </div>
-              
+
               <p className="text-xs text-gray-500 mt-4">
-                {isTestMode 
-                  ? 'Test mode: No real payment will be charged.'
+                {isSandbox
+                  ? 'Sandbox payments: no real payment will be charged.'
                   : deliveryMethod === 'shipping' && !shippingMethod
                   ? 'Enter shipping address and calculate rates to see final total.'
                   : 'Final total shown above.'}

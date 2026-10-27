@@ -1,9 +1,9 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useEffect, useState, type ReactNode } from 'react';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import type { StripeElementsOptions } from '@stripe/stripe-js';
 
-const stripePublishableKey = import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY;
+import { configApi } from '../../services/api';
 
 interface StripeProviderProps {
   children: ReactNode;
@@ -11,13 +11,13 @@ interface StripeProviderProps {
 }
 
 export default function StripeProvider({ children, clientSecret }: StripeProviderProps) {
-  const stripePromise = useMemo(() => {
-    if (!stripePublishableKey) {
-      console.warn('Missing VITE_STRIPE_PUBLISHABLE_KEY — Stripe will not be available (test mode still works)');
-      return null;
-    }
-    return loadStripe(stripePublishableKey);
+  const [publicKey, setPublicKey] = useState<string | null>(null);
+  useEffect(() => {
+    let active = true;
+    configApi.getConfig().then(config => { if (active) setPublicKey(config.stripe_publishable_key || null); }).catch(() => {});
+    return () => { active = false; };
   }, []);
+  const stripePromise = useMemo(() => publicKey ? loadStripe(publicKey) : null, [publicKey]);
 
   const options: StripeElementsOptions = useMemo(() => {
     if (clientSecret) {

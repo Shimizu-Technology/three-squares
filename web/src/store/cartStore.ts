@@ -1,3 +1,4 @@
+import { useLocationStore } from './locationStore';
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import axios from 'axios';
@@ -55,6 +56,7 @@ export const useCartStore = create<CartStore>()(
           const response = await api.get('/cart', {
             headers: {
               'X-Session-ID': sessionId,
+                'X-Location-ID': useLocationStore.getState().selectedLocation?.id?.toString() || '',
             },
           });
           set({ cart: response.data, isLoading: false });
@@ -85,6 +87,7 @@ export const useCartStore = create<CartStore>()(
             {
               headers: {
                 'X-Session-ID': sessionId,
+                'X-Location-ID': useLocationStore.getState().selectedLocation?.id?.toString() || '',
               },
             }
           );
@@ -115,6 +118,7 @@ export const useCartStore = create<CartStore>()(
             {
               headers: {
                 'X-Session-ID': sessionId,
+                'X-Location-ID': useLocationStore.getState().selectedLocation?.id?.toString() || '',
               },
             }
           );
@@ -140,6 +144,7 @@ export const useCartStore = create<CartStore>()(
           await api.delete(`/cart/items/${cartItemId}`, {
             headers: {
               'X-Session-ID': sessionId,
+                'X-Location-ID': useLocationStore.getState().selectedLocation?.id?.toString() || '',
             },
           });
           
@@ -161,6 +166,7 @@ export const useCartStore = create<CartStore>()(
           await api.delete('/cart', {
             headers: {
               'X-Session-ID': sessionId,
+                'X-Location-ID': useLocationStore.getState().selectedLocation?.id?.toString() || '',
             },
           });
           
@@ -179,6 +185,7 @@ export const useCartStore = create<CartStore>()(
           const response = await api.post('/cart/validate', {}, {
             headers: {
               'X-Session-ID': sessionId,
+                'X-Location-ID': useLocationStore.getState().selectedLocation?.id?.toString() || '',
             },
           });
           

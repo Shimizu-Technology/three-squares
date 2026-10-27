@@ -1,12 +1,15 @@
 require 'rails_helper'
+require_relative '../../../support/payment_foundation_helpers'
 
 RSpec.describe 'Checkout integration', type: :request do
+  include PaymentFoundationHelpers
   let(:session_id) { "checkout-session-#{SecureRandom.hex(6)}" }
-  let(:headers) { { 'X-Session-ID' => session_id } }
+  let(:headers) { payment_headers(session_id) }
   let(:pickup_location) { Location.create!(name: 'Main Store', slug: "main-#{SecureRandom.hex(4)}", active: true) }
 
   before do
-    SiteSetting.instance.update!(payment_test_mode: true)
+    configure_payment_fixture!
+    allow(ShippingService).to receive(:calculate_rates).and_return([{ carrier: 'Fixture', service: 'Standard', rate_cents: 500, rate_id: 'fixture-rate' }])
   end
 
   def create_product_with_variant(attrs = {})
@@ -66,6 +69,7 @@ RSpec.describe 'Checkout integration', type: :request do
         phone: '671-555-0199'
       },
       shipping_method: {
+        carrier: 'Fixture',
         service: 'Standard',
         rate_cents: 500
       },
@@ -86,34 +90,21 @@ RSpec.describe 'Checkout integration', type: :request do
     )
     add_cart_item!(variant, quantity: 2)
 
-    post '/api/v1/payment_intents',
-         params: {
-           email: 'integration@example.com',
-           fulfillment_type: 'shipping',
-           shipping_cost_cents: 500
-         },
-         headers: headers
-
-    expect(response).to have_http_status(:ok)
+    post '/api/v1/checkout_sessions', params: { order: base_order_payload.merge(fulfillment_type: 'shipping', location_id: nil) }, headers: headers
+    expect(response).to have_http_status(:created)
     payment_json = JSON.parse(response.body)
     expect(payment_json['amount_cents']).to eq(3500)
-    expect(payment_json['payment_intent_id']).to be_present
-
-    post '/api/v1/orders',
-         params: {
-           order: base_order_payload.merge(
-             fulfillment_type: 'shipping',
-             location_id: nil
-           )
-         },
-         headers: headers
-
-    expect(response).to have_http_status(:created)
-    order_json = JSON.parse(response.body)
-    expect(order_json['order']['fulfillment_type']).to eq('shipping')
-    expect(order_json['order']['location']).to be_nil
-    expect(order_json['order']['shipping_cost_cents']).to eq(500)
-    expect(order_json['order']['total_cents']).to eq(3500)
+    pending = Order.find(payment_json.dig('order', 'id'))
+    expect(pending.payment_status).to eq('pending')
+    expect(pending.order_items.sum(:quantity)).to eq(2)
+    post "/api/v1/checkout_sessions/#{payment_json['id']}/confirm", headers: headers
+    expect(response).to have_http_status(:ok)
+    pending.reload
+    expect(pending.fulfillment_type).to eq('shipping')
+    expect(pending.location).to be_nil
+    expect(pending.shipping_cost_cents).to eq(500)
+    expect(pending.total_cents).to eq(3500)
+    Payments::DispatchOutbox.call(outbox: PaymentOutbox.find_by!(effect_key: "order:#{pending.id}:cart_cleanup"))
     expect(CartItem.where(session_id: session_id)).to be_empty
   end
 
@@ -127,35 +118,18 @@ RSpec.describe 'Checkout integration', type: :request do
     )
     add_cart_item!(variant, quantity: 1)
 
-    post '/api/v1/payment_intents',
-         params: {
-           email: 'integration@example.com',
-           fulfillment_type: 'pickup',
-           location_id: pickup_location.id,
-           shipping_cost_cents: 500
-         },
-         headers: headers
-
-    expect(response).to have_http_status(:ok)
+    post '/api/v1/checkout_sessions', params: { order: base_order_payload.merge(fulfillment_type: 'pickup', location_id: pickup_location.id) }, headers: headers
+    expect(response).to have_http_status(:created)
     payment_json = JSON.parse(response.body)
     expect(payment_json['amount_cents']).to eq(1800)
-
-    post '/api/v1/orders',
-         params: {
-           order: base_order_payload.merge(
-             fulfillment_type: 'pickup',
-             location_id: pickup_location.id
-           )
-         },
-         headers: headers
-
-    expect(response).to have_http_status(:created)
-    order_json = JSON.parse(response.body)
-    expect(order_json['order']['fulfillment_type']).to eq('pickup')
-    expect(order_json['order']['location']).to be_present
-    expect(order_json['order']['location']['id']).to eq(pickup_location.id)
-    expect(order_json['order']['shipping_cost_cents']).to eq(0)
-    expect(order_json['order']['total_cents']).to eq(1800)
+    post "/api/v1/checkout_sessions/#{payment_json['id']}/confirm", headers: headers
+    expect(response).to have_http_status(:ok)
+    order = Order.find(payment_json.dig('order', 'id'))
+    expect(order.fulfillment_type).to eq('pickup')
+    expect(order.location_id).to eq(pickup_location.id)
+    expect(order.shipping_cost_cents).to eq(0)
+    expect(order.total_cents).to eq(1800)
+    Payments::DispatchOutbox.call(outbox: PaymentOutbox.find_by!(effect_key: "order:#{order.id}:cart_cleanup"))
     expect(CartItem.where(session_id: session_id)).to be_empty
   end
 
@@ -177,18 +151,12 @@ RSpec.describe 'Checkout integration', type: :request do
     add_cart_item!(pickup_variant, quantity: 1)
     add_cart_item!(shipping_variant, quantity: 1)
 
-    post '/api/v1/payment_intents',
-         params: {
-           email: 'integration@example.com',
-           fulfillment_type: 'shipping',
-           shipping_cost_cents: 0
-         },
-         headers: headers
+    post '/api/v1/checkout_sessions', params: { order: base_order_payload.merge(fulfillment_type: 'shipping') }, headers: headers
 
     expect(response).to have_http_status(:unprocessable_entity)
     payment_json = JSON.parse(response.body)
     expect(payment_json['error']).to eq('Your cart cannot mix shippable and pickup-only items. Please keep to one fulfillment path.')
-    expect(payment_json['issues'].map { |issue| issue['type'] }).to include('mixed_fulfillment')
+    expect(PaymentAttempt.count).to eq(0)
   end
 end
 

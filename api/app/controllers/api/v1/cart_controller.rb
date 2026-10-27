@@ -27,6 +27,7 @@ module Api
         return render json: { error: "Unable to add this product to cart right now" }, status: :unprocessable_entity unless variant
 
         product = variant.product
+        Payments::Eligibility.validate_product!(variant: variant, location_id: params[:location_id].presence || request.headers["X-Location-ID"].presence)
         quantity = params[:quantity].to_i
 
         # Validate quantity
@@ -121,6 +122,8 @@ module Api
         else
           render json: { errors: cart_item.errors.full_messages }, status: :unprocessable_entity
         end
+      rescue Payments::Error, Payments::FulfillmentError => e
+        render json: { error: e.message }, status: :unprocessable_entity
       rescue ActiveRecord::RecordNotFound
         render json: { error: "Product or variant not found" }, status: :not_found
       end
@@ -136,6 +139,7 @@ module Api
 
         # Check stock availability
         variant = cart_item.product_variant
+        Payments::Eligibility.validate_product!(variant: variant, location_id: params[:location_id].presence || request.headers["X-Location-ID"].presence)
         case variant.product.inventory_level
         when "variant"
           if quantity > variant.stock_quantity
@@ -162,6 +166,8 @@ module Api
         else
           render json: { errors: cart_item.errors.full_messages }, status: :unprocessable_entity
         end
+      rescue Payments::Error, Payments::FulfillmentError => e
+        render json: { error: e.message }, status: :unprocessable_entity
       rescue ActiveRecord::RecordNotFound
         render json: { error: "Cart item not found" }, status: :not_found
       end
@@ -174,6 +180,8 @@ module Api
           message: "Item removed from cart",
           cart_count: get_cart_items.to_a.sum(&:quantity)
         }
+      rescue Payments::Error, Payments::FulfillmentError => e
+        render json: { error: e.message }, status: :unprocessable_entity
       rescue ActiveRecord::RecordNotFound
         render json: { error: "Cart item not found" }, status: :not_found
       end

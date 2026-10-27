@@ -3,11 +3,10 @@ import { CardElement, useStripe, useElements } from '@stripe/react-stripe-js';
 import type { StripeCardElementChangeEvent } from '@stripe/stripe-js';
 
 interface PaymentFormProps {
-  isTestMode: boolean;
   onPaymentReady: (ready: boolean) => void;
 }
 
-export default function PaymentForm({ isTestMode, onPaymentReady }: PaymentFormProps) {
+export default function PaymentForm({ onPaymentReady }: PaymentFormProps) {
   const stripe = useStripe();
   const elements = useElements();
   const [cardError, setCardError] = useState<string | null>(null);
@@ -18,34 +17,6 @@ export default function PaymentForm({ isTestMode, onPaymentReady }: PaymentFormP
     setCardComplete(event.complete);
     onPaymentReady(event.complete && !event.error);
   };
-
-  if (isTestMode) {
-    return (
-      <div className="bg-white rounded-xl shadow-sm border border-warm-100 p-6 sm:p-8">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-tsSurface rounded-full flex items-center justify-center">
-            <svg className="w-5 h-5 text-tsPrimary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
-          </div>
-          <h2 className="text-xl font-bold text-warm-900">Payment</h2>
-        </div>
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-start">
-            <svg className="w-5 h-5 text-yellow-600 mr-2 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            <div>
-              <p className="text-sm font-semibold text-yellow-800">Test Mode — No Payment Required</p>
-              <p className="text-sm text-yellow-700 mt-1">
-                Payment is simulated in test mode. Click "Place Order" to complete your test order.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   if (!stripe || !elements) {
     return (

@@ -86,17 +86,23 @@ async function fetchPOSMenu(token: string, locationId?: number): Promise<{ categ
   return res.json();
 }
 
+let posRequest: { digest: string; key: string } | null = null;
+
 async function createPOSOrder(token: string, orderData: Record<string, unknown>) {
+  const digest = JSON.stringify(orderData);
+  if (!posRequest || posRequest.digest !== digest) posRequest = { digest, key: crypto.randomUUID() };
   const res = await fetch(`${API_BASE}/api/v1/admin/pos/orders`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
+      'Idempotency-Key': posRequest?.key || crypto.randomUUID(),
     },
     body: JSON.stringify({ order: orderData }),
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.error || 'Failed to create order');
+  posRequest = null;
   return data;
 }
 
@@ -109,7 +115,7 @@ async function confirmTerminalPayment(token: string, orderId: number) {
     },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to confirm terminal payment');
+  if (!res.ok || data.payment_status !== 'paid' || !data.inventory_committed) throw new Error(data.error || 'Payment status is being checked. Keep this saved order; do not collect another payment.');
   return data;
 }
 

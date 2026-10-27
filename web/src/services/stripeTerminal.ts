@@ -1,3 +1,4 @@
+import { useLocationStore } from '../store/locationStore';
 /**
  * Stripe Terminal SDK service for S700 reader integration.
  * Handles reader discovery, connection, and payment collection.
@@ -61,6 +62,7 @@ async function fetchConnectionToken(): Promise<string> {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
+      'X-Location-ID': useLocationStore.getState().selectedLocation?.id?.toString() || '',
     },
   });
 
