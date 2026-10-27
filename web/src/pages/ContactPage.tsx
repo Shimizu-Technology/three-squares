@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
@@ -19,6 +19,11 @@ export default function ContactPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
+  const outcomeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (error || submitted) outcomeRef.current?.focus();
+  }, [error, submitted]);
 
   useEffect(() => {
     configApi.getConfig().then(setAppConfig).catch(console.error);
@@ -84,7 +89,7 @@ export default function ContactPage() {
           <div className="lg:col-span-2">
             <FadeIn>
               {submitted ? (
-                <div className="rounded-lg p-8 bg-warm text-center">
+                <div ref={outcomeRef} role="status" tabIndex={-1} className="rounded-lg p-8 bg-warm text-center">
                   <div className="mb-4"><svg className="w-12 h-12 mx-auto text-tsPrimary" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg></div>
                   <h2 className="text-2xl font-bold text-warm-900 mb-2">Mahalo for reaching out!</h2>
                   <p className="text-warm-600 mb-6">
@@ -98,7 +103,7 @@ export default function ContactPage() {
                   </button>
                 </div>
               ) : (
-                <form onSubmit={handleSubmit} className="space-y-6">
+                <form onSubmit={handleSubmit} aria-describedby={error ? 'contact-form-error' : undefined} className="space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div>
                       <label htmlFor="name" className="block text-sm font-medium text-warm-700 mb-2">
@@ -168,7 +173,7 @@ export default function ContactPage() {
                     />
                   </div>
                   {error && (
-                    <div className="rounded-lg p-4 bg-red-50 border border-red-200 text-red-700 text-sm">
+                    <div id="contact-form-error" ref={outcomeRef} role="alert" tabIndex={-1} className="rounded-lg p-4 bg-red-50 border border-red-200 text-red-700 text-sm">
                       {error}
                     </div>
                   )}

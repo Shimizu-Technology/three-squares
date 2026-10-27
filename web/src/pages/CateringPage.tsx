@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 import Breadcrumbs from '../components/Breadcrumbs';
 import api from '../services/api';
-import useLockBodyScroll from '../hooks/useLockBodyScroll';
+import Dialog from '../components/ui/Dialog';
 
 // Event types and budget ranges (should match API)
 const EVENT_TYPES = [
@@ -147,7 +147,15 @@ export default function CateringPage() {
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useLockBodyScroll(showForm);
+  const outcomeRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (showForm && (error || submitted)) outcomeRef.current?.focus();
+  }, [showForm, error, submitted]);
+
+  // Keep an unseen response if a request finishes while the dialog is closed.
+  // The success Close action acknowledges it and starts the next inquiry.
+  const openInquiry = () => setShowForm(true);
 
   // Allow deep-linking directly to the inquiry form from other pages.
   useEffect(() => {
@@ -155,17 +163,6 @@ export default function CateringPage() {
       setShowForm(true);
     }
   }, [searchParams]);
-
-  useEffect(() => {
-    if (!showForm) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        setShowForm(false);
-      }
-    };
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [showForm]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -230,7 +227,7 @@ export default function CateringPage() {
           <FadeIn delay={0.2}>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button
-                onClick={() => setShowForm(true)}
+                onClick={openInquiry}
                 className="inline-flex items-center justify-center gap-2 bg-warm-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-warm-700 transition shadow-lg"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -277,25 +274,16 @@ export default function CateringPage() {
       </div>
 
       {/* Catering Inquiry Form */}
-      {showForm && (
-        <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-sm" onClick={() => setShowForm(false)}>
-          <div className="absolute inset-0 flex items-center justify-center p-3 sm:p-6">
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-label="Request a catering quote"
-              className="w-full max-w-3xl h-[92vh] bg-white rounded-2xl shadow-2xl border border-warm-200 overflow-hidden overscroll-y-contain flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-              onWheel={(e) => e.stopPropagation()}
-            >
+      <Dialog open={showForm} onOpenChange={setShowForm} labelledBy="catering-form-title"
+        className={`w-[calc(100vw-2rem)] max-w-3xl rounded-2xl border border-warm-200 overflow-hidden flex flex-col ${submitted ? '' : 'h-[calc(100dvh-2rem)]'}`}>
               {submitted ? (
-                <div className="p-8 text-center">
+                <div ref={outcomeRef} role="status" tabIndex={-1} className="p-8 text-center overflow-y-auto">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <h3 className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h3>
+                  <h3 id="catering-form-title" className="text-2xl font-bold text-gray-900 mb-2">Thank You!</h3>
                   <p className="text-gray-600 mb-6">
                     We've received your catering inquiry and will get back to you within 24-48 hours.
                   </p>
@@ -308,14 +296,14 @@ export default function CateringPage() {
                 </div>
               ) : (
                 <>
-                  <div className="px-5 py-4 sm:px-6 sm:py-5 border-b border-warm-200 bg-warm-50/80 flex justify-between items-center">
+                  <div className="shrink-0 px-5 py-4 sm:px-6 sm:py-5 border-b border-warm-200 bg-warm-50/80 flex justify-between items-center">
                     <div>
-                      <h3 className="text-xl sm:text-2xl font-bold text-gray-900">Request a Catering Quote</h3>
+                      <h3 id="catering-form-title" className="text-xl sm:text-2xl font-bold text-gray-900">Request a Catering Quote</h3>
                       <p className="text-sm text-gray-500 mt-1">Tell us about your event and we&apos;ll send a custom quote.</p>
                     </div>
                     <button
                       onClick={() => setShowForm(false)}
-                      className="text-gray-400 hover:text-gray-700 transition p-2 rounded-md hover:bg-white"
+                      className="shrink-0 w-11 h-11 flex items-center justify-center text-warm-500 hover:text-warm-700 transition rounded-md hover:bg-white"
                       aria-label="Close modal"
                     >
                       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -325,10 +313,11 @@ export default function CateringPage() {
                   </div>
                   <form
                     onSubmit={handleSubmit}
+                    aria-describedby={error ? 'catering-form-error' : undefined}
                     className="px-5 py-5 sm:px-6 sm:py-6 space-y-6 flex-1 min-h-0 overflow-y-auto overscroll-contain touch-pan-y [scrollbar-gutter:stable] [-webkit-overflow-scrolling:touch]"
                   >
                     {error && (
-                      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+                      <div id="catering-form-error" ref={outcomeRef} role="alert" tabIndex={-1} className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
                         {error}
                       </div>
                     )}
@@ -338,8 +327,9 @@ export default function CateringPage() {
                       <h4 className="font-semibold text-gray-900">Contact Information</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                          <label htmlFor="catering-contact-name" className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
                           <input
+                            id="catering-contact-name"
                             type="text"
                             name="contact_name"
                             value={formData.contact_name}
@@ -349,8 +339,9 @@ export default function CateringPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                          <label htmlFor="catering-contact-email" className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
                           <input
+                            id="catering-contact-email"
                             type="email"
                             name="contact_email"
                             value={formData.contact_email}
@@ -360,8 +351,9 @@ export default function CateringPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                          <label htmlFor="catering-contact-phone" className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
                           <input
+                            id="catering-contact-phone"
                             type="tel"
                             name="contact_phone"
                             value={formData.contact_phone}
@@ -370,8 +362,9 @@ export default function CateringPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Company/Organization</label>
+                          <label htmlFor="catering-company-name" className="block text-sm font-medium text-gray-700 mb-1">Company/Organization</label>
                           <input
+                            id="catering-company-name"
                             type="text"
                             name="company_name"
                             value={formData.company_name}
@@ -387,8 +380,9 @@ export default function CateringPage() {
                       <h4 className="font-semibold text-gray-900">Event Details</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Event Type *</label>
+                          <label htmlFor="catering-event-type" className="block text-sm font-medium text-gray-700 mb-1">Event Type *</label>
                           <select
+                            id="catering-event-type"
                             name="event_type"
                             value={formData.event_type}
                             onChange={handleInputChange}
@@ -402,8 +396,9 @@ export default function CateringPage() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Number of Guests *</label>
+                          <label htmlFor="catering-guest-count" className="block text-sm font-medium text-gray-700 mb-1">Number of Guests *</label>
                           <input
+                            id="catering-guest-count"
                             type="number"
                             name="guest_count"
                             value={formData.guest_count}
@@ -414,20 +409,24 @@ export default function CateringPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Event Date *</label>
+                          <label htmlFor="catering-event-date" className="block text-sm font-medium text-gray-700 mb-1">Event Date *</label>
                           <input
+                            id="catering-event-date"
                             type="date"
                             name="event_date"
                             value={formData.event_date}
                             onChange={handleInputChange}
                             required
                             min={minDateStr}
+                            aria-describedby="catering-date-help"
                             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500"
                           />
+                          <p id="catering-date-help" className="mt-1 text-sm text-warm-500">Choose a date at least three days ahead.</p>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Event Time</label>
+                          <label htmlFor="catering-event-time" className="block text-sm font-medium text-gray-700 mb-1">Event Time</label>
                           <input
+                            id="catering-event-time"
                             type="time"
                             name="event_time"
                             value={formData.event_time}
@@ -436,8 +435,9 @@ export default function CateringPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Budget Range</label>
+                          <label htmlFor="catering-budget-range" className="block text-sm font-medium text-gray-700 mb-1">Budget Range</label>
                           <select
+                            id="catering-budget-range"
                             name="budget_range"
                             value={formData.budget_range}
                             onChange={handleInputChange}
@@ -450,8 +450,9 @@ export default function CateringPage() {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Venue Address</label>
+                          <label htmlFor="catering-venue-address" className="block text-sm font-medium text-gray-700 mb-1">Venue Address</label>
                           <input
+                            id="catering-venue-address"
                             type="text"
                             name="venue_address"
                             value={formData.venue_address}
@@ -467,8 +468,9 @@ export default function CateringPage() {
                     <div className="space-y-4">
                       <h4 className="font-semibold text-gray-900">Additional Information</h4>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Menu Preferences</label>
+                        <label htmlFor="catering-menu-preferences" className="block text-sm font-medium text-gray-700 mb-1">Menu Preferences</label>
                         <textarea
+                          id="catering-menu-preferences"
                           name="menu_preferences"
                           value={formData.menu_preferences}
                           onChange={handleInputChange}
@@ -478,8 +480,9 @@ export default function CateringPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Dietary Restrictions</label>
+                        <label htmlFor="catering-dietary-restrictions" className="block text-sm font-medium text-gray-700 mb-1">Dietary Restrictions</label>
                         <input
+                          id="catering-dietary-restrictions"
                           type="text"
                           name="dietary_restrictions"
                           value={formData.dietary_restrictions}
@@ -489,8 +492,9 @@ export default function CateringPage() {
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
+                        <label htmlFor="catering-special-requests" className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
                         <textarea
+                          id="catering-special-requests"
                           name="special_requests"
                           value={formData.special_requests}
                           onChange={handleInputChange}
@@ -516,10 +520,7 @@ export default function CateringPage() {
                   </form>
                 </>
               )}
-            </div>
-          </div>
-        </div>
-      )}
+      </Dialog>
 
       {/* Catering Packages */}
       <div className="bg-gray-50 py-16">
@@ -560,7 +561,7 @@ export default function CateringPage() {
                   </div>
                   <div className="p-6 bg-gray-50 border-t border-gray-100">
                     <button
-                      onClick={() => setShowForm(true)}
+                      onClick={openInquiry}
                       className="block w-full text-center bg-warm-600 text-white py-3 rounded-lg font-semibold hover:bg-warm-700 transition"
                     >
                       Request Quote
@@ -649,7 +650,7 @@ export default function CateringPage() {
               </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
               <button
-                onClick={() => setShowForm(true)}
+                onClick={openInquiry}
                 className="inline-flex items-center justify-center gap-2 bg-white text-warm-700 px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition shadow-lg"
               >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
