@@ -1,0 +1,19 @@
+{
+  "issue": "https://github.com/Shimizu-Technology/three-squares/issues/40",
+  "source": "c46a401539e632acfab910fce8598a918c965bac",
+  "errors": {
+    "e2e/admin/csv-import.spec.ts|@typescript-eslint/no-unused-vars": 1,
+    "e2e/comprehensive/acai-order-flow.spec.ts|@typescript-eslint/no-unused-vars": 1,
+    "e2e/comprehensive/acai-order-flow.spec.ts|no-useless-escape": 1,
+    "e2e/comprehensive/customer-account.spec.ts|@typescript-eslint/no-unused-vars": 1,
+    "e2e/comprehensive/flexible-variants.spec.ts|@typescript-eslint/no-unused-vars": 2,
+    "e2e/comprehensive/fundraiser-flow.spec.ts|@typescript-eslint/no-unused-vars": 2,
+    "e2e/comprehensive/inventory-audit.spec.ts|@typescript-eslint/no-unused-vars": 6,
+    "e2e/comprehensive/race-conditions.spec.ts|@typescript-eslint/no-unused-vars": 4,
+    "e2e/comprehensive/retail-order-flow.spec.ts|@typescript-eslint/no-unused-vars": 2,
+    "src/components/AnnouncementBanner.tsx|react-hooks/set-state-in-effect": 1,
+    "src/components/admin/products/ProductsTable.tsx|@typescript-eslint/no-unused-vars": 1,
+    "src/pages/AdminSettingsPage.tsx|@typescript-eslint/no-explicit-any": 11,
+    "src/store/cartStore.ts|@typescript-eslint/no-explicit-any": 1
+  }
+}
