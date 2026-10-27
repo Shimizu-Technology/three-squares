@@ -28,6 +28,11 @@ class ProductVariant < ApplicationRecord
   before_validation :generate_sku, if: -> { sku.blank? }
 
   # Money handling
+  # Catalog sale prices apply to all variants; location overrides are not checkout prices.
+  def effective_unit_price_cents
+    product.sale_price_cents.nil? ? price_cents : product.sale_price_cents
+  end
+
   def price
     Money.new(price_cents || 0, "USD")
   end

@@ -8,14 +8,24 @@ module Api
       def show
         settings = SiteSetting.instance
 
+        profiles = PaymentProfile.includes(:payment_identity).where(enabled: true, provider: settings.payment_processor, channel: "online")
+        profile = profiles.find_by(location_id: params[:location_id].presence) || profiles.find_by(location_id: nil)
+        identity = profile&.payment_identity
+        environment = identity&.environment
+        key = if identity&.provider == "stripe"
+          ENV[environment == "production" ? "STRIPE_PUBLISHABLE_KEY" : "STRIPE_PUBLISHABLE_KEY_TEST"]
+        end
         render json: {
-          app_mode: settings.payment_test_mode ? "test" : "production",
-          payment_test_mode: settings.payment_test_mode,
+          app_mode: environment == "production" ? "production" : "test",
+          payment_test_mode: environment != "production",
+          payment_environment: environment,
           payment_processor: settings.payment_processor,
-          stripe_publishable_key: stripe_publishable_key(settings),
+          stripe_publishable_key: key,
+          stripe_account_id: identity&.external_account_id,
+          payment_identity_id: identity&.id,
           placeholder_image_url: settings.placeholder_image_url,
           features: {
-            payments: true, # Always enabled (test mode or production mode)
+            payments: identity.present?,
             shipping: ENV["EASYPOST_API_KEY"].present?
           },
           store_info: {

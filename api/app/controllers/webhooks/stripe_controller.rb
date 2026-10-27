@@ -13,9 +13,25 @@ module Webhooks
       event = verify_and_construct_event
       return head :bad_request unless event
 
+      @event_account = event.respond_to?(:account) ? event.account : nil
+      @event_account ||= ENV["STRIPE_WEBHOOK_ACCOUNT_ID"]
+      environment = event.livemode ? "production" : "sandbox"
+      identity = PaymentIdentity.find_by(provider: "stripe", external_account_id: @event_account, environment: environment)
+      Payments::Configuration.validate_identity!(identity) if identity
+      receipt = PaymentEvent.create_or_find_by!(provider: "stripe", external_account_id: @event_account.to_s, environment: environment, external_event_id: event.id) do |row|
+        row.payment_identity = identity
+        row.payload_digest = Digest::SHA256.hexdigest(@raw_body)
+        row.facts = { "type" => event.type, "object_id" => event.data.object.id }
+      end
+      raise Payments::BindingError, "Event payload changed" unless receipt.payload_digest == Digest::SHA256.hexdigest(@raw_body)
+      return head :ok if receipt.processed_at
+      @event_identity = identity
       handle_event(event)
-
+      receipt.update!(processed_at: Time.current)
       head :ok
+    rescue Payments::BindingError, Payments::Configuration::UnsafeConfiguration => error
+      Rails.logger.warn("Rejected Stripe event: #{error.class}: #{error.message}")
+      head :unprocessable_entity
     end
 
     private
@@ -29,14 +45,7 @@ module Webhooks
     def verify_and_construct_event
       webhook_secret = ENV["STRIPE_WEBHOOK_SECRET"]
 
-      if webhook_secret.blank?
-        if Rails.env.production?
-          Rails.logger.error "❌ Stripe webhook secret missing in production; rejecting webhook"
-          return nil
-        end
-        Rails.logger.warn "⚠️  Stripe webhook signature verification SKIPPED (no webhook secret configured)"
-        return parse_unverified_event
-      end
+      return nil if webhook_secret.blank?
 
       verify_stripe_signature(webhook_secret)
     rescue Stripe::SignatureVerificationError => e
@@ -82,47 +91,24 @@ module Webhooks
     # ── Event Handlers ──────────────────────────────────────────────
 
     def handle_payment_intent_succeeded(payment_intent)
-      target = find_payment_target(payment_intent)
-      return unless target
-      record = target[:record]
-
-      if record.payment_status == "paid"
-        Rails.logger.info "ℹ️  #{target[:type]} ##{record.id} already marked as paid — skipping duplicate webhook"
-        return
-      end
-
-      # Use update_column to bypass validations — webhooks should always succeed
-      # regardless of model validation state (e.g., missing optional fields).
-      record.update_column(:payment_status, "paid")
-      Rails.logger.info "✅ #{target[:type]} ##{record.id} payment_status updated to 'paid' via Stripe webhook"
-
-      if target[:type] == "Order"
-        # Only send email if enabled — SMS already sent in checkout flow
-        if SiteSetting.instance.enable_order_emails && record.customer_email.present?
-          SendOrderConfirmationEmailJob.perform_later(record.id)
-          Rails.logger.info "📧 Order confirmation email enqueued for Order ##{record.id}"
-        end
-      end
-    rescue StandardError => e
-      Rails.logger.error "❌ Failed to update payment target ##{record&.id}: #{e.message}"
+      reconcile_intent(payment_intent)
     end
 
     def handle_payment_intent_failed(payment_intent)
-      target = find_payment_target(payment_intent)
-      return unless target
-      record = target[:record]
+      # Re-query authenticated financial truth; a late failure never overwrites capture.
+      reconcile_intent(payment_intent)
+    end
 
-      # Use update_column to bypass validations — webhook updates must not fail
-      # due to unrelated validation issues on the order model.
-      record.update_column(:payment_status, "failed")
-      Rails.logger.error "❌ Payment failed for #{target[:type]} ##{record.id} (payment_intent: #{payment_intent.id})"
-
-      # Log the failure reason if available
-      if payment_intent.respond_to?(:last_payment_error) && payment_intent.last_payment_error
-        Rails.logger.error "   Failure reason: #{payment_intent.last_payment_error.message}"
-      end
-    rescue StandardError => e
-      Rails.logger.error "❌ Failed to update payment target ##{record&.id}: #{e.message}"
+    def reconcile_intent(payment_intent)
+      attempt_id = payment_intent.metadata.to_h.stringify_keys["payment_attempt_id"]
+      attempt = PaymentAttempt.find_by(id: attempt_id)
+      return unless attempt
+      identity = attempt.payment_identity
+      raise Payments::BindingError, "Webhook environment mismatch" unless @event_identity&.id == identity.id
+      raise Payments::BindingError, "Webhook account mismatch" unless @event_account.to_s == identity.external_account_id.to_s
+      provider = Payments::ProviderResolver.for_identity(identity)
+      provider.validate_binding!(payment_intent, attempt)
+      Payments::ReconcileAttempt.call(attempt: attempt)
     end
 
     def handle_charge_refunded(charge)

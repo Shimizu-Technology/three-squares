@@ -14,7 +14,7 @@ module Payments
         raise UnsafeConfiguration, "Production requires APP_DEPLOYMENT_ENV=production" unless deployment == "production"
         raise UnsafeConfiguration, "Production cannot enable simulation or legacy test mode" if
           (%w[simulated sandbox].include?(ENV["WORLDPAY_MODE"])) || ENV["PAYMENTS_SIMULATION_ENABLED"] == "true" || ENV.fetch("APP_MODE", "test").downcase != "production"
-        if ENV["STRIPE_SECRET_KEY"].present? && !ENV["STRIPE_SECRET_KEY"].start_with?("sk_live_")
+        if ENV["STRIPE_SECRET_KEY"].present? && !ENV["STRIPE_SECRET_KEY"].start_with?("sk_live_", "rk_live_")
           raise UnsafeConfiguration, "Production Stripe credentials must be live"
         end
       elsif deployment.present? && !%w[development test staging].include?(deployment)

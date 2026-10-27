@@ -1,12 +1,14 @@
 require 'rails_helper'
+require_relative '../../../support/payment_foundation_helpers'
 
 RSpec.describe 'Fulfillment constraints', type: :request do
+  include PaymentFoundationHelpers
   let(:session_id) { "session-#{SecureRandom.hex(6)}" }
-  let(:headers) { { 'X-Session-ID' => session_id } }
+  let(:headers) { payment_headers(session_id) }
   let(:location) { Location.create!(name: 'Main Store', slug: "main-#{SecureRandom.hex(4)}", active: true) }
 
   before do
-    SiteSetting.instance.update!(payment_test_mode: true)
+    configure_payment_fixture!
   end
 
   def create_product_with_variant(attrs = {})
@@ -107,14 +109,14 @@ RSpec.describe 'Fulfillment constraints', type: :request do
       ProductLocation.create!(product: product, location: location, available: true)
       add_cart_item!(variant)
 
-      post '/api/v1/orders',
+      post '/api/v1/checkout_sessions',
            params: { order: base_order_params.merge(fulfillment_type: 'pickup', location_id: nil) },
            headers: headers
 
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
-      expect(json['error']).to eq('Cart fulfillment validation failed')
-      expect(json['issues'].map { |issue| issue['type'] }).to include('location_required')
+      expect(json['error']).to be_present
+      expect(json['error']).to eq('Pickup location is required for pickup orders.')
     end
 
     it 'rejects pickup at locations where items are unavailable' do
@@ -127,14 +129,14 @@ RSpec.describe 'Fulfillment constraints', type: :request do
       ProductLocation.create!(product: product, location: location, available: false)
       add_cart_item!(variant)
 
-      post '/api/v1/orders',
+      post '/api/v1/checkout_sessions',
            params: { order: base_order_params.merge(fulfillment_type: 'pickup', location_id: location.id) },
            headers: headers
 
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
-      expect(json['error']).to eq('Cart fulfillment validation failed')
-      expect(json['issues'].map { |issue| issue['type'] }).to include('location_unavailable')
+      expect(json['error']).to be_present
+      expect(json['error']).to include('not available at the selected pickup location')
     end
   end
 
@@ -150,18 +152,13 @@ RSpec.describe 'Fulfillment constraints', type: :request do
       add_cart_item!(variant)
 
       post '/api/v1/payment_intents',
-           params: {
-             email: 'test@example.com',
-             shipping_cost: 0,
-             fulfillment_type: 'shipping',
-             location_id: nil
-           },
+           params: { order: { customer_email: 'test@example.com', fulfillment_type: 'shipping', location_id: nil } },
            headers: headers
 
       expect(response).to have_http_status(:unprocessable_entity)
       json = JSON.parse(response.body)
       expect(json['error']).to eq('This cart supports pickup only.')
-      expect(json['issues'].map { |issue| issue['type'] }).to include('fulfillment_not_supported')
+      expect(PaymentAttempt.count).to eq(0)
     end
   end
 end

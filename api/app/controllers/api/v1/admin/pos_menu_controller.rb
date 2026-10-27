@@ -11,7 +11,7 @@ module Api
         # GET /api/v1/admin/pos/menu
         # Returns products grouped by category with variants, optimized for POS display
         def show
-          products = Product.published
+          products = MenuEligibility.scope(StorefrontEligibility.scope(Product.published))
             .includes(:product_variants, :product_images, :collections)
 
           # Filter by location — auto-scope for location-locked staff
@@ -22,8 +22,8 @@ module Api
           end
 
           if effective_location_id
-            products = products.joins(:product_locations)
-              .where(product_locations: { location_id: effective_location_id, available: true })
+            products = products.where.not(id: ProductLocation.select(:product_id))
+              .or(products.where(id: ProductLocation.where(location_id: effective_location_id, available: true).select(:product_id)))
               .distinct
           end
 
@@ -68,8 +68,8 @@ module Api
               {
                 id: v.id,
                 name: v.display_name,
-                price_cents: v.price_cents,
-                price_formatted: "$#{'%.2f' % (v.price_cents / 100.0)}",
+                price_cents: v.effective_unit_price_cents,
+                price_formatted: "$#{'%.2f' % (v.effective_unit_price_cents / 100.0)}",
                 sku: v.sku,
                 in_stock: v.in_stock?,
                 stock_quantity: v.stock_quantity

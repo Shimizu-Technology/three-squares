@@ -27,6 +27,7 @@ export interface Order {
   order_number: string;
   status: string;
   payment_status: string;
+  inventory_restoration_status?: string;
   order_type: 'retail' | 'wholesale';
   business_line?: 'three_squares' | 'latte_stone' | 'catering';
   customer_name: string;

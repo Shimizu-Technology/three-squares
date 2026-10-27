@@ -438,6 +438,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
     t.index ["user_id"], name: "index_inventory_audits_on_user_id"
   end
 
+  create_table "inventory_commitments", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "order_id", null: false
+    t.string "snapshot_digest", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_id"], name: "index_inventory_commitments_on_order_id", unique: true
+  end
+
+  create_table "inventory_reservations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.jsonb "item_quantities", default: {}, null: false
+    t.bigint "order_id", null: false
+    t.bigint "pool_id", null: false
+    t.string "pool_type", null: false
+    t.integer "quantity", null: false
+    t.jsonb "restored_quantities", default: {}, null: false
+    t.string "state", default: "held", null: false
+    t.datetime "updated_at", null: false
+    t.index ["order_id", "pool_type", "pool_id"], name: "unique_order_inventory_pool", unique: true
+    t.index ["order_id"], name: "index_inventory_reservations_on_order_id"
+    t.index ["pool_type", "pool_id", "state", "expires_at"], name: "active_inventory_reservations"
+    t.check_constraint "quantity > 0 AND (pool_type::text = ANY (ARRAY['Product'::character varying, 'ProductVariant'::character varying]::text[])) AND (state::text = ANY (ARRAY['held'::character varying, 'committed'::character varying, 'released'::character varying]::text[]))", name: "valid_inventory_reservation"
+  end
+
   create_table "locations", force: :cascade do |t|
     t.boolean "active", default: true, null: false
     t.string "address"
@@ -513,6 +538,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
     t.string "payment_provider"
     t.string "payment_reference"
     t.string "payment_session_id"
+    t.jsonb "payment_snapshot", default: {}, null: false
     t.string "payment_status"
     t.string "shipping_address_line1"
     t.string "shipping_address_line2"
@@ -583,11 +609,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
     t.uuid "checkout_session_id", null: false
     t.jsonb "collection_config", default: {}, null: false
     t.datetime "compensation_claimed_at"
+    t.datetime "compensation_dispatched_at"
+    t.datetime "compensation_lease_until"
+    t.uuid "compensation_operation_key"
+    t.string "compensation_provider_id"
+    t.string "compensation_status"
     t.datetime "created_at", null: false
     t.string "currency", default: "USD", null: false
     t.datetime "dispatched_at"
     t.string "error_classification"
     t.string "hosted_url"
+    t.string "last_error"
+    t.datetime "last_queried_at"
     t.datetime "next_recovery_at"
     t.string "operation", default: "sale", null: false
     t.uuid "operation_key", default: -> { "gen_random_uuid()" }, null: false
@@ -597,19 +630,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
     t.jsonb "provider_metadata", default: {}, null: false
     t.string "raw_provider_id"
     t.integer "recovery_count", default: 0, null: false
+    t.datetime "recovery_deadline_at"
     t.bigint "reference_number", null: false
     t.integer "requested_cents", null: false
+    t.integer "retry_count", default: 0, null: false
     t.string "setup_id"
+    t.jsonb "snapshot", default: {}, null: false
     t.string "state", default: "created", null: false
     t.datetime "updated_at", null: false
     t.index ["checkout_session_id"], name: "index_payment_attempts_on_checkout_session_id"
     t.index ["checkout_session_id"], name: "one_active_collection_per_session", unique: true, where: "(((operation)::text = 'sale'::text) AND ((state)::text <> ALL ((ARRAY['failed'::character varying, 'cancelled'::character varying, 'compensated'::character varying])::text[])))"
     t.index ["id", "order_id"], name: "index_payment_attempts_on_id_and_order_id", unique: true
+    t.index ["next_recovery_at"], name: "index_payment_attempts_on_next_recovery_at"
     t.index ["order_id"], name: "index_payment_attempts_on_order_id"
     t.index ["payment_identity_id", "operation_key"], name: "idx_on_payment_identity_id_operation_key_7304b18f9d", unique: true
     t.index ["payment_identity_id", "raw_provider_id"], name: "idx_on_payment_identity_id_raw_provider_id_00e8d6929f", unique: true
     t.index ["payment_identity_id"], name: "index_payment_attempts_on_payment_identity_id"
     t.check_constraint "requested_cents > 0 AND approved_cents >= 0 AND captured_cents >= 0 AND captured_cents <= approved_cents AND approved_cents <= requested_cents", name: "payment_attempt_amount_bounds"
+  end
+
+  create_table "payment_events", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "environment", null: false
+    t.string "external_account_id", null: false
+    t.string "external_event_id", null: false
+    t.jsonb "facts", default: {}, null: false
+    t.string "payload_digest", null: false
+    t.uuid "payment_identity_id"
+    t.datetime "processed_at"
+    t.string "provider", null: false
+    t.datetime "updated_at", null: false
+    t.index ["payment_identity_id"], name: "index_payment_events_on_payment_identity_id"
+    t.index ["provider", "external_account_id", "environment", "external_event_id"], name: "unique_external_payment_event", unique: true
   end
 
   create_table "payment_identities", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -628,6 +680,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
   create_table "payment_operation_numbers", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+  end
+
+  create_table "payment_outboxes", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "delivered_at"
+    t.string "effect_key", null: false
+    t.string "kind", null: false
+    t.string "last_error"
+    t.uuid "lease_token"
+    t.datetime "lease_until"
+    t.datetime "next_attempt_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.jsonb "payload", default: {}, null: false
+    t.integer "retry_count", default: 0, null: false
+    t.string "state", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.index ["effect_key"], name: "index_payment_outboxes_on_effect_key", unique: true
+    t.index ["state", "next_attempt_at"], name: "index_payment_outboxes_on_state_and_next_attempt_at"
   end
 
   create_table "payment_profiles", force: :cascade do |t|
@@ -786,6 +855,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
     t.index ["user_id"], name: "index_refunds_on_user_id"
   end
 
+  create_table "rejected_payment_requests", force: :cascade do |t|
+    t.string "caller_idempotency_key", null: false
+    t.datetime "created_at", null: false
+    t.string "owner_key", null: false
+    t.string "payload_digest", null: false
+    t.string "reason", null: false
+    t.datetime "updated_at", null: false
+    t.index ["owner_key", "caller_idempotency_key"], name: "unique_rejected_payment_request", unique: true
+  end
+
   create_table "site_settings", force: :cascade do |t|
     t.string "acai_gallery_heading"
     t.string "acai_gallery_image_a_url"
@@ -872,6 +951,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
   add_foreign_key "inventory_audits", "product_variants"
   add_foreign_key "inventory_audits", "products"
   add_foreign_key "inventory_audits", "users"
+  add_foreign_key "inventory_commitments", "orders"
+  add_foreign_key "inventory_reservations", "orders"
   add_foreign_key "order_items", "orders"
   add_foreign_key "order_items", "product_variants"
   add_foreign_key "order_items", "products"
@@ -886,6 +967,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062000) do
   add_foreign_key "payment_attempts", "checkout_sessions"
   add_foreign_key "payment_attempts", "orders"
   add_foreign_key "payment_attempts", "payment_identities"
+  add_foreign_key "payment_events", "payment_identities"
   add_foreign_key "payment_profiles", "locations"
   add_foreign_key "payment_profiles", "payment_identities"
   add_foreign_key "payment_transactions", "orders"

@@ -7,6 +7,18 @@ class Rack::Attack
     req.ip if req.path == "/api/v1/contact" && req.post?
   end
 
+  throttle("order_lookup/ip", limit: 30, period: 60) do |req|
+    req.ip if req.get? && req.path.match?(%r{\A/api/v1/(orders|checkout_sessions)/[^/]+\z})
+  end
+
+  throttle("checkout_creation/ip", limit: 10, period: 60) do |req|
+    req.ip if req.post? && %w[/api/v1/checkout_sessions /api/v1/payment_intents /api/v1/orders].include?(req.path)
+  end
+
+  throttle("checkout_mutation/ip", limit: 60, period: 60) do |req|
+    req.ip if req.post? && req.path.match?(%r{\A/api/v1/(checkout_sessions/[^/]+/(confirm|cancel)|admin/pos/orders/[^/]+/confirm_terminal_payment)\z})
+  end
+
   # Return a 429 Too Many Requests response with JSON body
   self.throttled_responder = lambda do |_env|
     [

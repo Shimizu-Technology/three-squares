@@ -182,6 +182,13 @@ Rails.application.routes.draw do
       # Contact form (public)
       post "contact", to: "contact_submissions#create"
 
+      resources :checkout_sessions, only: [:create, :show] do
+        member do
+          post :confirm
+          post :cancel
+        end
+      end
+
       # Orders
       resources :orders, only: [ :create, :show, :index, :update ] do
         collection do

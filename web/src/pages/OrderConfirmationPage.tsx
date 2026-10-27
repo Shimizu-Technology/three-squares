@@ -22,6 +22,8 @@ interface Order {
   status: string;
   status_display?: string;
   payment_status: string;
+  payment_environment?: string;
+  inventory_committed?: boolean;
   order_type: 'retail' | 'wholesale';
   customer_name: string;
   customer_email: string;
@@ -31,6 +33,8 @@ interface Order {
   tax_cents: number;
   total_cents: number;
   shipping_method: string;
+  fulfillment_type?: string;
+  location?: { id: number; name: string } | null;
   // Retail/Shipping fields
   shipping_address_line1?: string;
   shipping_address_line2?: string;
@@ -68,12 +72,10 @@ export default function OrderConfirmationPage() {
       }
 
       try {
-        const params = new URLSearchParams(location.search);
-        const guestEmail = params.get('email');
+        const capability = localStorage.getItem(`tsq-order-capability:${orderId}`);
         const token = isSignedIn ? await getToken() : null;
         const response = await api.get(`/orders/${orderId}`, {
-          params: guestEmail ? { email: guestEmail } : undefined,
-          headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+          headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(capability ? { 'X-Order-Capability': capability } : {}) },
         });
         setOrder(response.data.order);
       } catch (err: unknown) {
@@ -131,7 +133,7 @@ export default function OrderConfirmationPage() {
     );
   }
 
-  const isPickupOrder = order.shipping_method === 'pickup';
+  const isPickupOrder = order.fulfillment_type === 'pickup' || order.shipping_method === 'pickup';
 
   const storePhone = !appConfig?.store_info?.phone?.trim() || /^(1)?671(?:7771234|6462652)$/.test(appConfig.store_info.phone.replace(/\D/g, '')) ? '+1 (671) 646-2652' : appConfig.store_info.phone;
   const storePhoneTel = `tel:${storePhone.replace(/[^\d+]/g, '')}`;
@@ -175,6 +177,8 @@ export default function OrderConfirmationPage() {
       `}</style>
       <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8 print:bg-white print:py-0">
         <div className="max-w-3xl mx-auto">
+          {order.payment_environment && order.payment_environment !== 'production' && <p className="mb-4 rounded-lg bg-amber-50 p-3 text-amber-900">{order.payment_environment === 'simulated' ? 'Simulated payments — no money moves' : 'Sandbox payments'}</p>}
+          {order.payment_status === 'pending' && <p role="status" className="mb-4 rounded-lg bg-amber-50 p-4">Payment status is being checked. Your order is saved; please check it before paying again.</p>}
           {/* Success Header */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-8 sm:p-10 mb-6 text-center print:shadow-none print:border print:p-4 print:mb-4 print:break-inside-avoid relative overflow-hidden">
           {/* Decorative background */}
@@ -199,7 +203,7 @@ export default function OrderConfirmationPage() {
             </motion.div>
             
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
-              Order Confirmed!
+              {order.payment_status === 'paid' && order.inventory_committed ? 'Order Confirmed!' : order.payment_status === 'refunded' ? 'Payment Refunded' : 'Your order is saved'}
             </h1>
             <p className="text-gray-600 mb-6">
               Thank you for your order, <span className="font-semibold">{order.customer_name}</span>!
@@ -214,7 +218,7 @@ export default function OrderConfirmationPage() {
               <svg className="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
-              Confirmation sent to <span className="font-semibold">{order.customer_email}</span>
+              Order updates for <span className="font-semibold">{order.customer_email}</span>
             </div>
           </div>
         </div>
@@ -410,6 +414,13 @@ export default function OrderConfirmationPage() {
           </div>
         )}
 
+        {isPickupOrder && (
+          <div className="bg-white rounded-xl border border-gray-100 p-6 mb-6">
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Pickup Location</h2>
+            <p>{order.location?.name || 'Your selected pickup location'}</p>
+            <p className="mt-2 text-sm text-gray-600">Please check your order status before visiting.</p>
+          </div>
+        )}
         {/* Shipping Address - Only for non-pickup orders */}
         {!isPickupOrder && order.shipping_address_line1 && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-6 print:shadow-none print:border print:p-4 print:mb-4 print:break-inside-avoid">

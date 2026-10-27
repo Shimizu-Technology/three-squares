@@ -13,10 +13,10 @@ import {
   collectPayment,
   cancelPaymentCollection,
   disconnectReader,
-  resetTerminalSession,
   onStatusChange,
   destroyTerminal,
   setTokenProvider,
+  setTerminalLocation,
   type TerminalStatus,
 } from '../../services/stripeTerminal';
 import type { Reader } from '@stripe/terminal-js';
@@ -86,21 +86,42 @@ async function fetchPOSMenu(token: string, locationId?: number): Promise<{ categ
   return res.json();
 }
 
-async function createPOSOrder(token: string, orderData: Record<string, unknown>) {
+const POS_REQUEST_KEY = 'tsq-pos-order-request';
+let posRequest: { digest: string; key: string; owner: string } | null = (() => {
+  try { return JSON.parse(localStorage.getItem(POS_REQUEST_KEY) || 'null'); } catch { return null; }
+})();
+function clearPOSRequest() { posRequest = null; localStorage.removeItem(POS_REQUEST_KEY); }
+
+async function createPOSOrder(token: string, orderData: Record<string, unknown>, owner: string | null | undefined) {
+  if (!owner) throw new Error('Sign in before processing a saved payment.');
+  if (posRequest && posRequest.owner !== owner) throw new Error('Saved payment belongs to another staff session; administrator reconciliation required.');
+  const digest = JSON.stringify(orderData);
+  if (posRequest && posRequest.digest !== digest) throw new Error('Resolve the saved payment before starting another order.');
+  if (!posRequest) posRequest = { digest, key: crypto.randomUUID(), owner };
+  localStorage.setItem(POS_REQUEST_KEY, JSON.stringify(posRequest));
+  // Freeze a recoverable request only after owner/payload validation succeeds.
+  localStorage.setItem(POS_PENDING_TERMINAL_KEY, JSON.stringify({ user_id: owner, order_data: orderData, created_at: new Date().toISOString() }));
   const res = await fetch(`${API_BASE}/api/v1/admin/pos/orders`, {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
+      'Idempotency-Key': posRequest?.key || crypto.randomUUID(),
     },
     body: JSON.stringify({ order: orderData }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to create order');
+  if (!res.ok) {
+    if (data.outcome === 'rejected' && data.no_attempt === true) {
+      clearPOSRequest();
+      localStorage.removeItem(POS_PENDING_TERMINAL_KEY);
+    }
+    throw new Error(data.error || 'Failed to create order');
+  }
   return data;
 }
 
-async function confirmTerminalPayment(token: string, orderId: number) {
+async function confirmTerminalPayment(token: string, orderId: number, allowClosed = false) {
   const res = await fetch(`${API_BASE}/api/v1/admin/pos/orders/${orderId}/confirm_terminal_payment`, {
     method: 'POST',
     headers: {
@@ -109,7 +130,8 @@ async function confirmTerminalPayment(token: string, orderId: number) {
     },
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to confirm terminal payment');
+  if (res.ok && allowClosed && ['failed', 'cancelled', 'compensated'].includes(data.payment_state)) return data;
+  if (!res.ok || data.payment_status !== 'paid' || !data.inventory_committed) throw new Error(data.error || 'Payment status is being checked. Keep this saved order; do not collect another payment.');
   return data;
 }
 
@@ -267,7 +289,7 @@ function VariantPickerModal({
 
 export default function AdminPOSPage() {
   const navigate = useNavigate();
-  const { getToken } = useAuth();
+  const { getToken, userId } = useAuth();
 
   // Data
   const [categories, setCategories] = useState<POSCategory[]>([]);
@@ -278,6 +300,9 @@ export default function AdminPOSPage() {
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<number | undefined>();
+
+  const selectedLocationRef = useRef(selectedLocation);
+  selectedLocationRef.current = selectedLocation;
 
   // Cart
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -295,13 +320,15 @@ export default function AdminPOSPage() {
   const [lastOrder, setLastOrder] = useState<{ order_number: string; total_formatted: string; change_due_formatted?: string } | null>(null);
 
   // Terminal
+  const [terminalLocationReady, setTerminalLocationReady] = useState(false);
+  const [resettingReader, setResettingReader] = useState(false);
   const [terminalStatus, setTerminalStatus] = useState<TerminalStatus>('not_initialized');
   const [terminalReader, setTerminalReader] = useState<Reader | null>(null);
   const [terminalError, setTerminalError] = useState<string | null>(null);
   const [showReaderPicker, setShowReaderPicker] = useState(false);
   const [availableReaders, setAvailableReaders] = useState<Reader[]>([]);
   const [terminalCollecting, setTerminalCollecting] = useState(false);
-  const [hasPendingTerminalSession, setHasPendingTerminalSession] = useState(false);
+  const [hasPendingTerminalSession, setHasPendingTerminalSession] = useState(() => Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
 
   // ─── Load menu ──────────────────────────────────────────────────────────
 
@@ -326,6 +353,17 @@ export default function AdminPOSPage() {
   useEffect(() => {
     loadMenu();
   }, [loadMenu]);
+
+  useEffect(() => {
+    let active = true;
+    setTerminalLocationReady(false);
+    setTerminalReader(null);
+    setAvailableReaders([]);
+    void setTerminalLocation(selectedLocation).then(() => {
+      if (active) setTerminalLocationReady(!!selectedLocation);
+    }).catch(error => { if (active) setTerminalError(error instanceof Error ? error.message : 'Reader credentials could not be reset.'); });
+    return () => { active = false; };
+  }, [selectedLocation]);
 
   // ─── Filtered items ─────────────────────────────────────────────────────
 
@@ -427,7 +465,7 @@ export default function AdminPOSPage() {
   const connectedReaderName = terminalReader
     ? (getReaderMeta(terminalReader).label || getReaderMeta(terminalReader).serial_number || 'Unknown Reader')
     : null;
-  const canSubmitPayment = cart.length > 0 && !submitting && !terminalCollecting;
+  const canSubmitPayment = cart.length > 0 && !submitting && !terminalCollecting && !hasPendingTerminalSession;
 
   const focusSearchField = useCallback(() => {
     const target = desktopSearchRef.current ?? mobileSearchRef.current;
@@ -461,7 +499,7 @@ export default function AdminPOSPage() {
   }, [terminalCollecting]);
 
   const handleConnectReader = useCallback(async (reader: Reader) => {
-    if (terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
+    if (!terminalLocationReady || terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
     try {
       setTerminalError(null);
       const connected = await connectToReader(reader);
@@ -470,10 +508,10 @@ export default function AdminPOSPage() {
     } catch (err) {
       setTerminalError(err instanceof Error ? err.message : 'Connection failed');
     }
-  }, [terminalStatus]);
+  }, [terminalStatus, terminalLocationReady]);
 
   const handleDiscoverReaders = useCallback(async () => {
-    if (terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
+    if (!terminalLocationReady || terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
     try {
       setTerminalError(null);
       await initializeTerminal();
@@ -489,10 +527,10 @@ export default function AdminPOSPage() {
     } catch (err) {
       setTerminalError(err instanceof Error ? err.message : 'Discovery failed');
     }
-  }, [handleConnectReader, terminalStatus]);
+  }, [handleConnectReader, terminalStatus, terminalLocationReady]);
 
   const handleReaderButtonClick = useCallback(async () => {
-    if (terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
+    if (!terminalLocationReady || terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
 
     if (!terminalReader) {
       await handleDiscoverReaders();
@@ -508,7 +546,7 @@ export default function AdminPOSPage() {
     } catch (err) {
       setTerminalError(err instanceof Error ? err.message : 'Reader refresh failed');
     }
-  }, [terminalReader, terminalStatus, handleDiscoverReaders]);
+  }, [terminalReader, terminalStatus, handleDiscoverReaders, terminalLocationReady]);
 
   const handleDisconnectReader = useCallback(async () => {
     try {
@@ -525,8 +563,7 @@ export default function AdminPOSPage() {
       await cancelPaymentCollection();
       setTerminalCollecting(false);
       setTerminalError(null);
-      localStorage.removeItem(POS_PENDING_TERMINAL_KEY);
-      setHasPendingTerminalSession(false);
+      setTerminalError('Reader prompt cancelled. Check the saved payment before starting another.');
     } catch (err) {
       setTerminalError(err instanceof Error ? err.message : 'Unable to cancel reader prompt');
     }
@@ -534,25 +571,86 @@ export default function AdminPOSPage() {
 
   const clearPendingTerminalSession = useCallback(() => {
     localStorage.removeItem(POS_PENDING_TERMINAL_KEY);
+    clearPOSRequest();
     setHasPendingTerminalSession(false);
   }, []);
 
+  const handleCheckSavedPayment = useCallback(async () => {
+    try {
+      const pending = JSON.parse(localStorage.getItem(POS_PENDING_TERMINAL_KEY) || 'null');
+      if (!pending) return;
+      if (pending.user_id !== userId) throw new Error('Saved payment belongs to another staff session; administrator reconciliation required.');
+      const token = await getToken();
+      if (!token) return;
+      // Replaying creation uses the saved payload and original request key.
+      const order = pending.order_data ? await createPOSOrder(token, pending.order_data, userId) : pending;
+      const confirmed = order.payment_method === 'cash' && order.payment_status === 'paid' && order.inventory_committed
+        ? order : await confirmTerminalPayment(token, order.id || order.order_id, true);
+      if (['failed', 'cancelled', 'compensated'].includes(confirmed.payment_state)) {
+        clearPendingTerminalSession();
+        setTerminalError('Saved payment is closed. Review the cart before taking payment.');
+        return;
+      }
+      setLastOrder(confirmed);
+      clearCart();
+      clearPendingTerminalSession();
+    } catch (error) {
+      setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
+      setTerminalError(error instanceof Error ? error.message : 'Payment remains unresolved.');
+    }
+  }, [getToken, userId, clearCart, clearPendingTerminalSession]);
+
+  const handleCancelSavedPayment = useCallback(async () => {
+    try {
+      const pending = JSON.parse(localStorage.getItem(POS_PENDING_TERMINAL_KEY) || 'null');
+      const token = await getToken();
+      if (!pending || !token) return;
+      if (pending.user_id !== userId) throw new Error('Saved payment belongs to another staff session; administrator reconciliation required.');
+      const order = pending.order_data ? await createPOSOrder(token, pending.order_data, userId) : pending;
+      if (order.payment_method === 'cash' && order.payment_status === 'paid' && order.inventory_committed) {
+        setLastOrder(order); clearCart(); clearPendingTerminalSession(); return;
+      }
+      if (!order.checkout_session_id) throw new Error('Saved payment needs administrator reconciliation.');
+      const response = await fetch(`${API_BASE}/api/v1/checkout_sessions/${order.checkout_session_id}/cancel`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      });
+      const state = await response.json();
+      if (!response.ok) throw new Error(state.error || 'Cancellation is unresolved.');
+      if (state.order?.payment_status === 'paid' && state.order.inventory_committed) {
+        clearCart();
+        clearPendingTerminalSession();
+      } else if (['failed', 'cancelled', 'compensated'].includes(state.payment_state)) {
+        clearPendingTerminalSession();
+        setTerminalError('Saved payment is closed. Review the cart before taking payment.');
+      } else throw new Error('Payment remains unresolved. Do not take another payment.');
+    } catch (error) {
+      setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
+      setTerminalError(error instanceof Error ? error.message : 'Cancellation is unresolved.');
+    }
+  }, [getToken, userId, clearCart, clearPendingTerminalSession]);
+
   const handleResetReaderSession = useCallback(async () => {
+    if (resettingReader) return;
+    const locationId = selectedLocation;
+    setResettingReader(true);
     try {
       setTerminalError(null);
-      await resetTerminalSession();
+      setTerminalLocationReady(false);
+      await setTerminalLocation(locationId, { reset: true });
+      if (selectedLocationRef.current !== locationId) return;
+      setTerminalLocationReady(!!locationId);
       setTerminalReader(null);
       setAvailableReaders([]);
       setShowReaderPicker(false);
-      clearPendingTerminalSession();
+      setTerminalError(localStorage.getItem(POS_PENDING_TERMINAL_KEY) ? 'Reader reset. The saved payment still requires a status check.' : 'Reader reset. Connect a reader before taking card payments.');
       setTerminalCollecting(false);
     } catch (err) {
-      setTerminalError(err instanceof Error ? err.message : 'Failed to reset reader session');
-    }
-  }, [clearPendingTerminalSession]);
+      if (selectedLocationRef.current === locationId) setTerminalError(err instanceof Error ? err.message : 'Failed to reset reader session');
+    } finally { setResettingReader(false); }
+  }, [selectedLocation, resettingReader]);
 
   const handleTerminalPayment = useCallback(async () => {
-    if (cart.length === 0 || terminalCollecting) return;
+    if (cart.length === 0 || terminalCollecting || hasPendingTerminalSession || localStorage.getItem(POS_PENDING_TERMINAL_KEY)) return;
     setTerminalCollecting(true);
     setTerminalError(null);
 
@@ -572,14 +670,16 @@ export default function AdminPOSPage() {
         })),
       };
 
-      const orderResult = await createPOSOrder(token, orderData);
+      const orderResult = await createPOSOrder(token, orderData, userId);
 
       if (!orderResult.client_secret) {
         throw new Error('No client secret returned — check Stripe configuration');
       }
 
       localStorage.setItem(POS_PENDING_TERMINAL_KEY, JSON.stringify({
+        user_id: userId,
         order_id: orderResult.id,
+        order_data: orderData,
         order_number: orderResult.order_number,
         amount_cents: cartTotal,
         created_at: new Date().toISOString(),
@@ -604,8 +704,7 @@ export default function AdminPOSPage() {
         setLastOrder(confirmed);
         clearCart();
         setTimeout(() => setLastOrder(null), 4000);
-        localStorage.removeItem(POS_PENDING_TERMINAL_KEY);
-        setHasPendingTerminalSession(false);
+        clearPendingTerminalSession();
       } else {
         // Payment succeeded on terminal but confirmation failed — DO NOT clear cart
         // so staff can see what was ordered. Show order number for manual recovery.
@@ -620,15 +719,16 @@ export default function AdminPOSPage() {
       setTerminalError(message);
       alert(message);
     } finally {
+      setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
       setTerminalCollecting(false);
     }
-  }, [cart, customerName, orderType, selectedLocation, getToken, clearCart, terminalCollecting, cartTotal]);
+  }, [cart, customerName, orderType, selectedLocation, getToken, clearCart, terminalCollecting, cartTotal, userId, hasPendingTerminalSession, clearPendingTerminalSession]);
 
   // ─── Submit order ───────────────────────────────────────────────────────
 
   const submitOrder = useCallback(
     async (paymentMethod: 'cash' | 'stripe', cashReceivedCents?: number) => {
-      if (cart.length === 0) return;
+      if (cart.length === 0 || hasPendingTerminalSession || localStorage.getItem(POS_PENDING_TERMINAL_KEY)) return;
       setSubmitting(true);
       try {
         const token = await getToken();
@@ -649,8 +749,9 @@ export default function AdminPOSPage() {
           orderData.cash_received_cents = cashReceivedCents;
         }
 
-        const result = await createPOSOrder(token, orderData);
+        const result = await createPOSOrder(token, orderData, userId);
         setLastOrder(result);
+        clearPendingTerminalSession();
         setShowCashModal(false);
         clearCart();
 
@@ -660,21 +761,23 @@ export default function AdminPOSPage() {
         const message = err instanceof Error ? err.message : 'Order failed';
         alert(message);
       } finally {
+        setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
+        setShowCashModal(false);
         setSubmitting(false);
       }
     },
-    [cart, customerName, orderType, selectedLocation, getToken, clearCart]
+    [cart, customerName, orderType, selectedLocation, getToken, userId, clearCart, hasPendingTerminalSession, clearPendingTerminalSession]
   );
 
   const handleCardAction = useCallback(() => {
-    if (!canSubmitPayment) return;
+    if (!canSubmitPayment || !terminalLocationReady) return;
     if (!terminalReader) {
       setTerminalError('Connect a Stripe reader before taking card payments.');
       void handleDiscoverReaders();
       return;
     }
     void handleTerminalPayment();
-  }, [canSubmitPayment, terminalReader, handleTerminalPayment, handleDiscoverReaders]);
+  }, [canSubmitPayment, terminalReader, handleTerminalPayment, handleDiscoverReaders, terminalLocationReady]);
 
   useEffect(() => {
     if (cart.length === 0) {
@@ -820,6 +923,7 @@ export default function AdminPOSPage() {
             <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
               <MapPin className="w-4 h-4 text-slate-500" />
               <select
+                disabled={hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)}
                 value={selectedLocation || ''}
                 onChange={(e) => setSelectedLocation(Number(e.target.value))}
                 className="bg-transparent text-slate-700 text-sm outline-none cursor-pointer"
@@ -886,6 +990,7 @@ export default function AdminPOSPage() {
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
               <MapPin className="w-4 h-4 text-slate-500" />
               <select
+                disabled={hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)}
                 value={selectedLocation || ''}
                 onChange={(e) => setSelectedLocation(Number(e.target.value))}
                 className="w-full bg-transparent text-slate-700 text-sm outline-none cursor-pointer"
@@ -1157,7 +1262,7 @@ export default function AdminPOSPage() {
           {hasPendingTerminalSession && !terminalCollecting && (
             <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
               <p className="text-xs font-medium text-amber-800 mb-2">
-                A previous terminal payment session may still be active on the reader.
+                A saved payment is unresolved. Check it before taking another payment. Reader reset does not clear the payment.
               </p>
               <div className="flex gap-2">
                 <button
@@ -1167,18 +1272,20 @@ export default function AdminPOSPage() {
                   Cancel Reader Prompt
                 </button>
                 <button
-                  onClick={clearPendingTerminalSession}
+                  onClick={handleCheckSavedPayment}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg border border-amber-300 text-amber-800 hover:bg-amber-100"
                 >
-                  Clear Notice
+                  Check saved payment
                 </button>
+                <button onClick={handleCancelSavedPayment} className="px-3 py-2 text-xs underline">Cancel saved payment</button>
               </div>
             </div>
           )}
 
-          {(terminalReader || hasPendingTerminalSession || terminalCollecting) && (
+          {(terminalReader || hasPendingTerminalSession || terminalCollecting || terminalError) && (
             <button
               onClick={handleResetReaderSession}
+              disabled={resettingReader || terminalCollecting}
               className="w-full mb-2 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium hover:bg-slate-100 transition-colors"
             >
               Reset Reader Session
@@ -1196,7 +1303,7 @@ export default function AdminPOSPage() {
             </button>
             <button
               onClick={handleCardAction}
-              disabled={!canSubmitPayment || !terminalReader}
+              disabled={!canSubmitPayment || !terminalReader || !terminalLocationReady}
               className="flex items-center justify-center gap-2 py-3 text-white rounded-xl font-medium bg-tsNavy hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {terminalCollecting ? (

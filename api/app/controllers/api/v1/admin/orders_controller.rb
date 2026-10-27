@@ -75,35 +75,11 @@ module Api
       # PATCH/PUT /api/v1/admin/orders/:id
       # Update order (status, tracking, notes)
       def update
-        if @order.update(order_update_params)
-          notification_warnings = []
-
-          # Handle status changes — send notifications via both channels.
-          # Rescue enqueue failures (Redis down) — the status update already
-          # committed, so return success with a warning instead of a 500.
-          if @order.saved_change_to_status?
-            begin
-              sent = send_status_notifications(@order)
-              notification_warnings = sent[:warnings] if sent[:warnings]&.any?
-            rescue StandardError => e
-              Rails.logger.error "❌ Failed to enqueue notifications for order ##{@order.order_number}: #{e.message}"
-              notification_warnings = ["Status updated but notifications failed to enqueue — use Notify button to retry"]
-            end
-
-            # Restore inventory when order is cancelled
-            restore_inventory(@order, current_user) if @order.status == "cancelled"
-          end
-
-          response = {
-            order: detailed_order_json(@order),
-            message: "Order updated successfully"
-          }
-          response[:notification_warnings] = notification_warnings if notification_warnings.any?
-
-          render json: response
-        else
-          render json: { error: @order.errors.full_messages.join(", ") }, status: :unprocessable_entity
-        end
+        @order = Payments::UpdateOrder.call(order: @order, attributes: order_update_params, user: current_user)
+        render json: { order: detailed_order_json(@order), message: @order.metadata.dig('inventory_restoration', 'status') == 'manual_review_required' ?
+          "Order updated. Inventory restoration requires manual review; no stock was changed." : "Order updated successfully" }
+      rescue Payments::Error, ActiveRecord::RecordInvalid => error
+        render json: { error: error.message }, status: :unprocessable_entity
       end
 
       # POST /api/v1/admin/orders/:id/notify
@@ -224,31 +200,32 @@ module Api
           end
 
           # Restore inventory based on restock_items parameter
-          inventory_restored = false
+          restoration = { restored: false, status: "not_requested" }
           if @order.fully_refunded?
             # Always restore inventory for full refunds
-            restore_inventory_for_refund(@order, current_user)
-            inventory_restored = true
+            restoration = restore_inventory_for_refund(@order, current_user)
           elsif restock_items.present?
             # Partial refund with explicit restock request
             if restock_items == true || restock_items == "true" || restock_items == "all"
               # Restock all items
-              restore_inventory_for_refund(@order, current_user)
-              inventory_restored = true
+              restoration = restore_inventory_for_refund(@order, current_user)
             elsif restock_items.is_a?(Array)
               # Restock specific items by order_item_id
-              restore_inventory_for_items(@order, restock_items, current_user)
-              inventory_restored = true
+              restoration = restore_inventory_for_items(@order, restock_items, current_user)
             end
           end
 
+          refund.update!(metadata: refund.metadata.merge('inventory_restoration' => restoration.stringify_keys))
+          @order.update!(metadata: @order.metadata.merge('inventory_restoration' => restoration.stringify_keys)) if restoration[:status] != 'not_requested'
           # Send refund notifications asynchronously (email + SMS)
           # Avoids blocking the refund response on slow Resend/ClickSend API calls
           SendRefundNotificationJob.perform_later(refund.id)
 
           render json: {
-            message: "Refund processed successfully",
-            inventory_restored: inventory_restored,
+            message: restoration[:status] == "manual_review_required" ? "Refund processed. Inventory restoration requires manual review; no stock was restored." : "Refund processed successfully",
+            inventory_restored: restoration[:restored],
+            inventory_restoration_required: restoration[:status] == "manual_review_required",
+            inventory_restoration_status: restoration[:status],
             refund: refund_json(refund),
             order: detailed_order_json(@order.reload)
           }
@@ -660,49 +637,7 @@ module Api
 
       # Restore inventory when an order is cancelled
       def restore_inventory(order, user = nil)
-        order.order_items.includes(product_variant: :product).each do |item|
-          variant = item.product_variant
-          next unless variant # Skip if variant was deleted
-
-          product = variant.product
-
-          case product.inventory_level
-          when "variant"
-            variant.with_lock do
-              previous_stock = variant.stock_quantity
-              new_stock = previous_stock + item.quantity
-              variant.update!(stock_quantity: new_stock)
-
-              # Create audit record for cancellation
-              InventoryAudit.record_order_cancelled(
-                variant: variant,
-                quantity: item.quantity,
-                order: order,
-                user: user
-              )
-            end
-
-          when "product"
-            product.with_lock do
-              previous_stock = product.product_stock_quantity || 0
-              new_stock = previous_stock + item.quantity
-              product.update!(product_stock_quantity: new_stock)
-
-              # Create audit record for product-level tracking
-              InventoryAudit.record_product_stock_change(
-                product: product,
-                previous_qty: previous_stock,
-                new_qty: new_stock,
-                reason: "Order ##{order.order_number} cancelled - stock restored",
-                audit_type: "order_cancelled",
-                order: order,
-                user: user
-              )
-            end
-          end
-        end
-
-        Rails.logger.info "📦 Inventory restored for cancelled order ##{order.order_number}"
+        Payments::RestoreInventory.call(order: order, user: user)
       end
 
       def order_json(order)
@@ -711,6 +646,7 @@ module Api
           order_number: order.order_number,
           status: order.status,
           payment_status: order.payment_status,
+          inventory_restoration_status: order.metadata.dig('inventory_restoration', 'status'),
           order_type: order.order_type,
           customer_name: order.name,
           customer_email: order.email,
@@ -756,6 +692,7 @@ module Api
           order_number: order.order_number,
           status: order.status,
           payment_status: order.payment_status,
+          inventory_restoration_status: order.metadata.dig('inventory_restoration', 'status'),
           order_type: order.order_type,
           customer_name: order.name,
           customer_email: order.email,
@@ -818,94 +755,11 @@ module Api
 
       # Restore inventory when a full refund is processed
       def restore_inventory_for_refund(order, user = nil)
-        order.order_items.includes(product_variant: :product).each do |item|
-          variant = item.product_variant
-          next unless variant
-
-          product = variant.product
-
-          case product.inventory_level
-          when "variant"
-            variant.with_lock do
-              previous_stock = variant.stock_quantity
-              new_stock = previous_stock + item.quantity
-              variant.update!(stock_quantity: new_stock)
-
-              InventoryAudit.record_order_refunded(
-                variant: variant,
-                quantity: item.quantity,
-                order: order,
-                user: user
-              )
-            end
-
-          when "product"
-            product.with_lock do
-              previous_stock = product.product_stock_quantity || 0
-              new_stock = previous_stock + item.quantity
-              product.update!(product_stock_quantity: new_stock)
-
-              InventoryAudit.record_product_stock_change(
-                product: product,
-                previous_qty: previous_stock,
-                new_qty: new_stock,
-                reason: "Order ##{order.order_number} refunded - stock restored",
-                audit_type: "order_refunded",
-                order: order,
-                user: user
-              )
-            end
-          end
-        end
-
-        Rails.logger.info "Inventory restored for refunded order ##{order.order_number}"
+        Payments::RestoreInventory.call(order: order, user: user)
       end
 
-      # Restore inventory for specific order items (for partial refunds)
       def restore_inventory_for_items(order, item_ids, user = nil)
-        items = order.order_items.where(id: item_ids).includes(product_variant: :product)
-
-        items.each do |item|
-          variant = item.product_variant
-          next unless variant
-
-          product = variant.product
-
-          case product.inventory_level
-          when "variant"
-            variant.with_lock do
-              previous_stock = variant.stock_quantity
-              new_stock = previous_stock + item.quantity
-              variant.update!(stock_quantity: new_stock)
-
-              InventoryAudit.record_order_refunded(
-                variant: variant,
-                quantity: item.quantity,
-                order: order,
-                user: user
-              )
-            end
-
-          when "product"
-            product.with_lock do
-              previous_stock = product.product_stock_quantity || 0
-              new_stock = previous_stock + item.quantity
-              product.update!(product_stock_quantity: new_stock)
-
-              InventoryAudit.record_product_stock_change(
-                product: product,
-                previous_qty: previous_stock,
-                new_qty: new_stock,
-                reason: "Partial refund for Order ##{order.order_number} - stock restored",
-                audit_type: "order_refunded",
-                order: order,
-                user: user
-              )
-            end
-          end
-        end
-
-        Rails.logger.info "Inventory restored for #{items.count} items from partial refund on order ##{order.order_number}"
+        Payments::RestoreInventory.call(order: order, item_ids: item_ids, user: user)
       end
 
       def order_params

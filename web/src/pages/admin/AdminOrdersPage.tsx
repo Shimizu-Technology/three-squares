@@ -28,6 +28,7 @@ interface OrdersIndexResponse {
 
 interface AdminOrderResponse {
   order: Order;
+  message?: string;
 }
 
 interface RefundResponse {
@@ -197,7 +198,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       const response = await authPatch<AdminOrderResponse>(`/admin/orders/${selectedOrder.id}`, { order: updates }, getToken);
       setOrders(orders.map((o) => (o.id === selectedOrder.id ? response.data.order : o)));
       setSelectedOrder(response.data.order);
-      toast.success('Order updated successfully!');
+      toast.success(response.data.message || 'Order updated successfully!');
     } catch (err) {
       toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update order' : 'Failed to update order');
     } finally {

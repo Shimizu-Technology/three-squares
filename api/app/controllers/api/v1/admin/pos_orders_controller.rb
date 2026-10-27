@@ -9,60 +9,92 @@ module Api
         before_action :authenticate_request
         before_action :require_admin!
 
-        # POST /api/v1/admin/pos/orders/:id/confirm_terminal_payment
-        # Called after Stripe Terminal SDK successfully processes a card_present payment
         def confirm_terminal_payment
           order = Order.find(params[:id])
-
-          unless order.staff_created? && order.source == "pos"
-            return render json: { error: "Not a POS order" }, status: :forbidden
+          if current_user.location_scoped? && order.location_id != current_user.assigned_location_id
+            return render json: { error: "Order not found" }, status: :not_found
           end
-
-          unless order.payment_method == "card_present" && order.payment_intent_id.present?
-            return render json: { error: "Order is not a terminal payment" }, status: :unprocessable_entity
+          unless order.source == "pos" && order.staff_created? && order.payment_attempt_id
+            return render json: { error: "This payment requires reconciliation" }, status: :conflict
           end
-
-          # Verify the PaymentIntent status with Stripe
-          Stripe.api_key = ENV["STRIPE_SECRET_KEY"]
-          intent = Stripe::PaymentIntent.retrieve(order.payment_intent_id)
-
-          if intent.status == "succeeded"
-            order.update!(status: "confirmed", payment_status: "paid")
-            render json: pos_order_json(order)
-          elsif intent.status == "requires_capture"
-            intent.capture
-            order.update!(status: "confirmed", payment_status: "paid")
-            render json: pos_order_json(order)
-          else
-            render json: { error: "Payment not completed. Status: #{intent.status}" }, status: :unprocessable_entity
-          end
-        rescue Stripe::StripeError => e
+          Payments::ReconcileAttempt.call(attempt: PaymentAttempt.find(order.payment_attempt_id))
+          order.reload
+          render json: pos_order_json(order), status: order.payment_status == "paid" ? :ok : :accepted
+        rescue Payments::Error, Payments::FulfillmentError, Payments::ReserveInventory::Unavailable, Payments::Configuration::UnsafeConfiguration, Stripe::StripeError => e
           render json: { error: e.message }, status: :unprocessable_entity
         end
 
-        # POST /api/v1/admin/pos/orders
-        # Create a POS order (staff-created, in-person)
         def create
+          key = request.headers["Idempotency-Key"].to_s
+          raise Payments::Error, "Idempotency-Key is required" unless key.match?(/\A[a-zA-Z0-9_-]{16,100}\z/)
+          attrs = pos_params.to_h.merge("fulfillment_type" => "pickup", "location_id" => current_user.location_scoped? ? current_user.assigned_location_id : pos_params[:location_id])
+          attrs["payment_method"] ||= "cash"
+          owner = "user:#{current_user.id}"
+          rejected = nil
           ActiveRecord::Base.transaction do
-            @order = build_pos_order
-            @order.save!
-
-            build_order_items(@order, pos_params[:items])
-            @order.save! # persist items so calculate_totals! can query them
-            @order.calculate_totals!
-
-            process_payment(@order)
-
-            @order.save!
-            deduct_inventory(@order)
+            lock_number = Digest::SHA256.hexdigest("pos:#{current_user.id}:#{key}")[0,15].to_i(16)
+            ActiveRecord::Base.connection.execute("SELECT pg_advisory_xact_lock(#{lock_number})")
+            refused = RejectedPaymentRequest.find_by(owner_key: owner, caller_idempotency_key: key)
+            if refused
+              rejected = refused.reason
+              next
+            end
+            begin
+              Order.transaction(requires_new: true) do
+                cash_key = "#{current_user.id}:#{key}"
+                @order = if attrs["payment_method"] == "cash"
+                  Order.where(source: "pos", payment_method: "cash").find_by("metadata ->> 'cash_request_key' = ?", cash_key)
+                else
+                  CheckoutSession.find_by(owner_key: owner, caller_idempotency_key: key)&.order
+                end
+                if @order
+                  digest = @order.cash_payment? ? @order.metadata["request_digest"] : CheckoutSession.find(@order.checkout_session_id).snapshot["request_digest"]
+                  raise Payments::Conflict, "Idempotency key was reused for different order details" unless digest == Payments::Snapshot.digest(attrs)
+                else
+                  @order = build_pos_order
+                  @order.save!
+                  build_order_items(@order, pos_params[:items])
+                  @order.save!
+                  @order.calculate_totals!
+                  @order.save!
+                  Payments::Eligibility.validate_order!(@order)
+                  if @order.payment_method == "cash"
+                    process_cash_payment(@order)
+                    @order.payment_environment = Payments::Configuration.production? ? "production" : "sandbox"
+                    @order.payment_status = "pending"
+                    @order.status = "pending"
+                    @order.metadata = @order.metadata.merge("cash_request_key" => cash_key, "request_digest" => Payments::Snapshot.digest(attrs))
+                    @order.save!
+                    Payments::ReserveInventory.call(order: @order, expires_at: 30.minutes.from_now)
+                    Payments::FinalizeOrder.call_cash(order: @order)
+                  else
+                    session = Payments::CreateCheckout.call(user: current_user, capability: nil, idempotency_key: key,
+                      cart_items: @order.order_items.to_a, attributes: attrs, channel: "pos", existing_order: @order)
+                    @order = session.order
+                  end
+                end
+              end
+            rescue Payments::Conflict
+              raise
+            rescue Payments::Error, Payments::FulfillmentError, Payments::ReserveInventory::Unavailable, ActiveRecord::RecordInvalid, CheckoutPricingService::PricingError => error
+              # This savepoint contains no processor I/O. A persisted refusal
+              # prevents a delayed duplicate request from ever using this key.
+              rejected = error.message
+              RejectedPaymentRequest.create!(owner_key: owner, caller_idempotency_key: key,
+                payload_digest: Payments::Snapshot.digest(attrs), reason: rejected)
+            end
           end
-
-          render json: pos_order_json(@order), status: :created
-        rescue ActiveRecord::RecordInvalid => e
-          render json: { error: e.message }, status: :unprocessable_entity
-        rescue StandardError => e
-          Rails.logger.error "POS order creation failed: #{e.message}"
-          render json: { error: e.message }, status: :unprocessable_entity
+          return render json: { error: rejected, outcome: "rejected", no_attempt: true }, status: :unprocessable_entity if rejected
+          if @order.payment_attempt_id
+            attempt = PaymentAttempt.find(@order.payment_attempt_id)
+            Payments::SetupAttempt.call(attempt: attempt)
+            @client_secret = attempt.reload.collection_config["client_secret"] if attempt.state == "collecting"
+          end
+          render json: pos_order_json(@order.reload), status: :created
+        rescue Payments::Conflict => error
+          render json: { error: error.message, outcome: "unknown" }, status: :conflict
+        rescue Payments::Error, Payments::FulfillmentError, Payments::ReserveInventory::Unavailable, Payments::Configuration::UnsafeConfiguration, ActiveRecord::RecordInvalid, CheckoutPricingService::PricingError, Stripe::StripeError => error
+          render json: { error: error.message, outcome: "unknown" }, status: :unprocessable_entity
         end
 
         private
@@ -97,12 +129,9 @@ module Api
             product = variant.product
             quantity = (item_data[:quantity] || 1).to_i
 
-            # Check availability
-            unless product.published?
-              raise StandardError, "#{product.name} is not available"
-            end
+            Payments::Eligibility.validate_product!(variant: variant, location_id: order.location_id, online: false)
 
-            unit_price_cents = variant.price_cents
+            unit_price_cents = variant.effective_unit_price_cents
 
             order.order_items.build(
               product_variant: variant,
@@ -117,24 +146,11 @@ module Api
           end
         end
 
-        def process_payment(order)
-          case order.payment_method
-          when "cash"
-            process_cash_payment(order)
-          when "stripe"
-            process_stripe_payment(order)
-          when "card_present"
-            process_terminal_payment(order)
-          else
-            raise StandardError, "Unknown payment method: #{order.payment_method}"
-          end
-        end
-
         def process_cash_payment(order)
           cash_received = pos_params[:cash_received_cents]&.to_i || order.total_cents
 
           if cash_received < order.total_cents
-            raise StandardError, "Cash received ($#{cash_received / 100.0}) is less than total ($#{order.total_cents / 100.0})"
+            raise Payments::Error, "Cash received ($#{cash_received / 100.0}) is less than total ($#{order.total_cents / 100.0})"
           end
 
           order.cash_received_cents = cash_received
@@ -143,113 +159,16 @@ module Api
           order.payment_status = "paid"
         end
 
-        def process_terminal_payment(order)
-          # Terminal payments use card_present — the frontend SDK handles
-          # card collection and processing. We create the PaymentIntent with
-          # card_present payment method type and automatic capture.
-          order.status = "pending"
-          order.payment_status = "pending"
-
-          order.save! unless order.persisted?
-
-          stripe_key = ENV["STRIPE_SECRET_KEY"]
-          if stripe_key.present?
-            Stripe.api_key = stripe_key
-            intent = Stripe::PaymentIntent.create(
-              amount: order.total_cents,
-              currency: "usd",
-              payment_method_types: [ "card_present" ],
-              capture_method: "automatic",
-              metadata: {
-                order_id: order.id,
-                order_number: order.order_number,
-                source: "pos_terminal"
-              }
-            )
-            order.payment_intent_id = intent.id
-            @client_secret = intent.client_secret
-          else
-            raise StandardError, "Stripe is not configured"
-          end
-        end
-
-        def process_stripe_payment(order)
-          # Create a Stripe PaymentIntent — frontend will complete payment
-          # For now, order stays pending until webhook confirms
-          order.status = "pending"
-          order.payment_status = "pending"
-
-          # Save order first so order.id is available for metadata
-          order.save! unless order.persisted?
-
-          # If Stripe is configured, create a PaymentIntent
-          stripe_key = ENV["STRIPE_SECRET_KEY"]
-          if stripe_key.present?
-            Stripe.api_key = stripe_key
-            intent = Stripe::PaymentIntent.create(
-              amount: order.total_cents,
-              currency: "usd",
-              metadata: {
-                order_id: order.id,
-                source: "pos"
-              }
-            )
-            order.payment_intent_id = intent.id
-            @client_secret = intent.client_secret
-          end
-        end
-
-        def deduct_inventory(order)
-          order.order_items.includes(product_variant: :product).each do |item|
-            variant = item.product_variant
-            product = variant.product
-
-            case product.inventory_level
-            when "variant"
-              variant.with_lock do
-                previous_stock = variant.stock_quantity
-                if previous_stock < item.quantity
-                  raise StandardError, "#{item.product_name} — only #{previous_stock} in stock"
-                end
-                new_stock = previous_stock - item.quantity
-                variant.update!(stock_quantity: new_stock)
-
-                InventoryAudit.record_order_placed(
-                  variant: variant,
-                  quantity: item.quantity,
-                  order: order,
-                  previous_qty: previous_stock
-                )
-              end
-
-            when "product"
-              product.with_lock do
-                previous_stock = product.product_stock_quantity || 0
-                if previous_stock < item.quantity
-                  raise StandardError, "#{item.product_name} — only #{previous_stock} in stock"
-                end
-                new_stock = previous_stock - item.quantity
-                product.update!(product_stock_quantity: new_stock)
-
-                InventoryAudit.record_product_stock_change(
-                  product: product,
-                  previous_qty: previous_stock,
-                  new_qty: new_stock,
-                  reason: "POS Order ##{order.order_number} placed",
-                  audit_type: "order_placed",
-                  order: order
-                )
-              end
-            end
-          end
-        end
-
         def pos_order_json(order)
           json = {
             id: order.id,
             order_number: order.order_number,
             status: order.status,
             payment_status: order.payment_status,
+            payment_environment: order.payment_environment,
+            checkout_session_id: order.checkout_session_id,
+            payment_state: order.payment_attempt_id ? PaymentAttempt.find(order.payment_attempt_id).state : nil,
+            inventory_committed: order.inventory_committed_at.present?,
             source: order.source,
             order_type: order.order_type,
             payment_method: order.payment_method,
