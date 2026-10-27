@@ -7,7 +7,7 @@ import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 import { homepageApi, type HomepageSection } from '../services/api';
 import useAppConfig from '../hooks/useAppConfig';
-import { getStorefrontEnabledMap } from '../utils/storefronts';
+import { getStorefrontEnabledMap, inferStorefrontFromLink } from '../utils/storefronts';
 
 // Strip emoji characters from text (replace with empty string)
 const stripEmoji = (text: string): string =>
@@ -87,9 +87,13 @@ export default function HomePage() {
   // Use dynamic or fallback content
   const isHeroReady = !loading;
   const heroContent = isHeroReady ? (hero || defaultHero) : null;
-  const cookiesEnabled = config ? getStorefrontEnabledMap(config).latte_stone !== false : false;
+  const enabledStorefronts = getStorefrontEnabledMap(config);
   const cardsContent = (categoryCards.length > 0 ? categoryCards : defaultCategoryCards)
-    .filter((card) => cookiesEnabled || !/cookie/i.test(`${card.title} ${card.button_link}`));
+    .filter((card) => {
+      const storefront = inferStorefrontFromLink(card.button_link);
+      return (!storefront || enabledStorefronts[storefront]) &&
+        (enabledStorefronts.latte_stone || !/cookie/i.test(`${card.title} ${card.button_link}`));
+    });
   const heroImageUrl = isHeroReady
     ? heroContent?.background_image_url || defaultHero.background_image_url
     : null;

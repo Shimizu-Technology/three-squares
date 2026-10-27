@@ -66,3 +66,22 @@ test('a homepage card without a photo does not borrow another dish image', async
   await expect(card.locator('[data-photo-state="unavailable"]')).toBeVisible();
   await expect(card.locator('img[src="/images/Cheeseburger.jpg"]')).toHaveCount(0);
 });
+
+test('homepage hides cards for disabled storefront destinations', async ({ page }) => {
+  await page.route('**/api/v1/config*', route => route.fulfill({ json: {
+    enable_storefront_three_squares: true,
+    enable_storefront_catering: false,
+    enable_storefront_latte_stone: false,
+  } }));
+  await page.route('**/api/v1/homepage_sections*', route => route.fulfill({ json: {
+    grouped: { hero: [], category_card: [
+      { id: 1, title: 'Three Squares', button_link: '/products?business_line=three_squares' },
+      { id: 2, title: 'Latte Stone', button_link: '/products?business_line=latte_stone' },
+      { id: 3, title: 'Events', button_link: '/products?business_line=catering' },
+    ] },
+  } }));
+  await page.goto('/');
+  await expect(page.getByRole('link', { name: /Three Squares/ }).filter({ has: page.getByRole('heading', { name: 'Three Squares' }) })).toBeVisible();
+  await expect(page.getByRole('link', { name: /Latte Stone/ })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: /Events/ })).toHaveCount(0);
+});

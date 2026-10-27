@@ -5,6 +5,7 @@ import FadeIn from '../components/animations/FadeIn';
 import Breadcrumbs from '../components/Breadcrumbs';
 import api from '../services/api';
 import Dialog from '../components/ui/Dialog';
+import { minCateringEventDate } from '../utils/cateringDate';
 
 // Event types and budget ranges (should match API)
 const EVENT_TYPES = [
@@ -97,10 +98,7 @@ export default function CateringPage() {
     }
   };
 
-  // Calculate minimum date (3 days from now)
-  const minDate = new Date();
-  minDate.setDate(minDate.getDate() + 3);
-  const minDateStr = minDate.toISOString().split('T')[0];
+  const minDateStr = minCateringEventDate();
 
   return (
     <div className="min-h-screen bg-warm-50">
