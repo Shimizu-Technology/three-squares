@@ -98,6 +98,7 @@ Rails.application.routes.draw do
             post :duplicate
             post :archive
             post :unarchive
+            patch :availability
           end
           collection do
             post :import_csv

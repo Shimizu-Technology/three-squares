@@ -93,7 +93,7 @@ function CustomUserButton({ isAdmin }: { isAdmin: boolean }) {
         {/* Admin Dashboard - only for admins */}
         {isAdmin && (
           <UserButton.Action
-            label="Admin Dashboard"
+            label="Staff workspace"
             labelIcon={
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
@@ -179,7 +179,7 @@ function AppContent() {
           },
         });
         
-        setIsAdmin(response.data.admin || false);
+        setIsAdmin(Array.isArray(response.data.capabilities) && response.data.capabilities.includes('orders.read'));
       } catch (error) {
         console.error('Error checking admin status:', error);
         if (axios.isAxiosError(error)) {
@@ -538,6 +538,7 @@ function AppContent() {
             <Route path="devices" element={<AdminDevicesPage />} />
             <Route path="catering" element={<AdminCateringPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
+            <Route path="homepage" element={<AdminSettingsPage homepageOnly />} />
             <Route path="settings/variant-presets" element={<AdminVariantPresetsPage />} />
           </Route>
           

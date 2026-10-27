@@ -31,7 +31,7 @@ RSpec.describe AdminPushNotificationService, type: :service do
   end
 
   it "excludes devices whose owners have since been scoped to another location or demoted" do
-    north_subscription.admin_device.user.update!(assigned_location: south)
+    north_subscription.admin_device.user.update!(role: "manager", assigned_location: south)
     described_class.send_new_order(order)
     expect(WebPush).not_to have_received(:payload_send)
     north_subscription.admin_device.user.update!(assigned_location: nil, role: "customer")

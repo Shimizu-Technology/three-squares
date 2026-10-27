@@ -39,6 +39,7 @@ RSpec.describe "Admin devices", type: :request do
   end
 
   it "rejects customers" do
+    create(:user, :owner) # A customer denial is independent of last-owner protection.
     admin_user.update!(role: "customer")
     register
     expect(response).to have_http_status(:forbidden)
@@ -98,16 +99,19 @@ RSpec.describe "Admin devices", type: :request do
     expect(sub.reload).not_to be_active
   end
 
-  context "with a location-scoped admin" do
-    before { admin_user.update!(assigned_location: location) }
+  context "with a location-scoped manager" do
+    let(:admin_user) { create(:user, :manager, assigned_location: location) }
 
-    it "forces their location on registration and current-device updates with blank or foreign assignments" do
-      [nil, other_location.id, ""].each do |submitted_location|
+    it "forces their location on registration and current-device updates with blank assignments and rejects foreign assignments" do
+      [nil, ""].each do |submitted_location|
         register(submitted_location)
         expect(response).to have_http_status(:ok)
         expect(AdminDevice.find_by!(device_uuid: "device-under-test").location).to eq(location)
         expect(response.parsed_body.dig("device", "location_locked")).to be(true)
       end
+      register(other_location.id)
+      expect(response).to have_http_status(:unprocessable_entity)
+      expect(AdminDevice.find_by!(device_uuid: "device-under-test").location).to eq(location)
     end
 
     it "forces their location on managed updates and preserves false active values" do
@@ -150,7 +154,8 @@ RSpec.describe "Admin devices", type: :request do
     register
     device = AdminDevice.find_by!(device_uuid: "device-under-test")
     old = create(:admin_push_subscription, admin_device: device)
-    admin_user.update!(assigned_location: other_location)
+    create(:user, :owner)
+    admin_user.update!(role: "manager", assigned_location: other_location)
     post "/api/v1/admin/devices/current/push_subscription", params: {
       subscription: { endpoint: "https://localhost/invalid", keys: subscription_attributes[:keys] }
     }, headers: headers

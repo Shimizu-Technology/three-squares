@@ -35,7 +35,7 @@ module Api
 
           ActiveRecord::Base.transaction do
             @product.save!
-            sync_product_locations(@product, permitted_location_ids)
+            sync_product_locations(@product, permitted_location_ids, new_product: true)
             ensure_pickup_location_if_required!(@product)
           end
 
@@ -48,6 +48,7 @@ module Api
         # PATCH/PUT /api/v1/admin/products/:id
         def update
           ActiveRecord::Base.transaction do
+            @product.lock!
             @product.update!(product_attributes)
             sync_product_locations(@product, permitted_location_ids)
             ensure_pickup_location_if_required!(@product)
@@ -101,12 +102,14 @@ module Api
           new_product.name = "#{@product.name} (Copy)"
           new_product.slug = nil
           new_product.published = false
+          new_product.product_stock_quantity = 0 unless staff_access_policy.allowed?("stock.manage")
 
           if new_product.save
             @product.product_variants.each do |variant|
               new_variant = variant.dup
               new_variant.product = new_product
               new_variant.sku = nil
+              new_variant.stock_quantity = 0 unless staff_access_policy.allowed?("stock.manage")
               new_variant.save
             end
 
@@ -117,7 +120,8 @@ module Api
             end
 
             new_product.collection_ids = @product.collection_ids
-            sync_product_locations(new_product, @product.product_locations.available.pluck(:location_id))
+            source_ids = @product.product_locations.exists? ? @product.product_locations.available.pluck(:location_id) : Location.ids
+            sync_product_locations(new_product, source_ids & staff_access_policy.authorized_location_ids, new_product: true)
 
             render_created(serialize_product_full(new_product), message: "Product duplicated successfully")
           else
@@ -201,7 +205,7 @@ module Api
                   published: wants_published && pickup_location_ids.any?,
                   allow_pickup: true, allow_shipping: false, inventory_level: "none"
                 )
-                sync_product_locations(product, pickup_location_ids) if pickup_location_ids.any?
+                sync_product_locations(product, pickup_location_ids, new_product: true) if pickup_location_ids.any?
                 unless product.product_variants.exists?
                   product.errors.add(:base, "Default variant could not be created")
                   raise ActiveRecord::RecordInvalid, product
@@ -229,6 +233,31 @@ module Api
           render json: { error: "Invalid CSV format" }, status: :unprocessable_entity
         end
 
+        # A deliberately narrow local86 operation, separate from catalog editing
+        # and shared stock. The later packing/POS slice supplies its fast UI.
+        def availability
+          attrs = params.require(:availability)
+          unless (attrs.keys - %w[location_id available]).empty? && [ true, false ].include?(attrs[:available])
+            return render_error("Supply only a location and a boolean available value", status: :unprocessable_entity)
+          end
+          return staff_record_missing! unless staff_access_policy.location_allowed?(attrs[:location_id])
+
+          product = Product.find(params[:id])
+          product.with_lock do
+            # No rows means available everywhere. Materialize that existing
+            # meaning first so the first local86 cannot hide another location.
+            unless product.product_locations.exists?
+              Location.find_each { |location| product.product_locations.create!(location: location, available: true) }
+            end
+            record = product.product_locations.find_or_initialize_by(location_id: attrs[:location_id])
+            record.available = attrs[:available]
+            record.save!
+          end
+          render_success({ product_id: product.id, location_id: attrs[:location_id].to_i, available: attrs[:available] })
+        rescue ActiveRecord::RecordNotFound
+          render_not_found("Product not found")
+        end
+
         private
 
         def set_product
@@ -250,12 +279,28 @@ module Api
           raw_ids.map(&:to_i).uniq
         end
 
-        def sync_product_locations(product, location_ids)
+        def sync_product_locations(product, location_ids, new_product: false)
           return unless location_ids
 
+          authorized_ids = staff_access_policy.authorized_location_ids
+          had_rows = product.product_locations.exists?
+          existing_ids = had_rows ? product.product_locations.available.pluck(:location_id) : Location.ids
+          # Catalog editing is global; local availability is scoped separately.
+          # A full editor payload may retain other locations, but cannot change them.
+          changed_ids = (location_ids - existing_ids) + (existing_ids - location_ids)
+          unauthorized_changes = new_product ? (location_ids - authorized_ids) : (changed_ids - authorized_ids)
+          if unauthorized_changes.any?
+            product.errors.add(:base, "Pickup availability changes are outside your authorized locations")
+            raise ActiveRecord::RecordInvalid, product
+          end
           Location.find_each do |location|
+            next if had_rows && !authorized_ids.include?(location.id)
             record = product.product_locations.find_or_initialize_by(location_id: location.id)
-            record.available = location_ids.include?(location.id)
+            record.available = if !new_product && !had_rows && !authorized_ids.include?(location.id)
+              true
+            else
+              location_ids.include?(location.id)
+            end
             record.save!
           end
         end
@@ -317,7 +362,7 @@ module Api
             inventory_level: product.inventory_level,
             allow_pickup: product.allow_pickup,
             allow_shipping: product.allow_shipping,
-            location_ids: product.product_locations.available.pluck(:location_id),
+            location_ids: product.product_locations.exists? ? product.product_locations.available.pluck(:location_id) : Location.ids,
             product_stock_quantity: product.product_stock_quantity,
             product_low_stock_threshold: product.product_low_stock_threshold,
             product_stock_status: product.product_stock_status,

@@ -5,12 +5,14 @@ module Authenticatable
 
   included do
     before_action :authenticate_request
+    include StaffAuthorization
     attr_reader :current_user
   end
 
   private
 
   def authenticate_request
+    return if current_user
     token = extract_token
     return render_unauthorized unless token
 
@@ -67,7 +69,7 @@ module Authenticatable
 
   ADMIN_EMAILS = ENV.fetch("ADMIN_EMAILS", DEFAULT_ADMIN_EMAILS.join(","))
                     .split(",")
-                    .map(&:strip)
+                    .map { |email| email.strip.downcase }
                     .reject(&:blank?)
                     .freeze
 
@@ -81,11 +83,11 @@ module Authenticatable
   def find_or_create_user(clerk_id, email)
     user = User.find_or_create_by!(clerk_id: clerk_id) do |u|
       u.email = email
-      u.role = ADMIN_EMAILS.include?(email) ? "admin" : "customer"
+      u.role = ADMIN_EMAILS.include?(email.downcase) ? "owner" : "customer"
     end
 
-    # Always sync admin status on login (handles users created before admin list was updated)
-    expected_role = ADMIN_EMAILS.include?(email) ? "admin" : user.role
+    # Bootstrap only unclassified accounts. An owner-set role survives login.
+    expected_role = user.role.presence || (ADMIN_EMAILS.include?(email.downcase) ? "owner" : "customer")
     user.update!(role: expected_role, email: email) if user.role != expected_role || user.email != email
 
     user
@@ -97,11 +99,12 @@ module Authenticatable
 
   # Helper to check if user is admin
   def require_admin!
-    render json: { error: "Forbidden" }, status: :forbidden unless current_user&.admin?
+    authorize_staff_route!(explicit: true)
   end
 
   # Helper to make authentication optional
   def authenticate_optional
+    return if current_user
     token = extract_token
     return unless token
 

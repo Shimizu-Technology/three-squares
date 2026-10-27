@@ -31,7 +31,8 @@ module Api
 
         # GET /api/v1/admin/devices/current
         def current
-          device = scoped_devices.includes(:location, :user, :admin_push_subscriptions).find_by(device_uuid: admin_device_uuid)
+          device = AdminDevice.includes(:location, :user, :admin_push_subscriptions).find_by(device_uuid: admin_device_uuid)
+          return render json: { error: "Device not found" }, status: :not_found if device && !accessible_current_device?(device)
 
           render json: {
             device: device ? device_json(device) : unregistered_device_json,
@@ -123,7 +124,8 @@ module Api
 
         # DELETE /api/v1/admin/devices/current/push_subscription
         def unsubscribe_current
-          device = scoped_devices.find_by(device_uuid: admin_device_uuid)
+          device = AdminDevice.find_by(device_uuid: admin_device_uuid)
+          return render json: { error: "Device not found" }, status: :not_found if device && !accessible_current_device?(device)
           return render json: { message: "Push notifications disabled" } unless device
 
           subscriptions = device.admin_push_subscriptions
@@ -138,11 +140,7 @@ module Api
         def scoped_devices
           return AdminDevice.none unless current_user
 
-          if current_user.location_scoped?
-            AdminDevice.where(location_id: current_user.assigned_location_id)
-          else
-            AdminDevice.all
-          end
+          staff_scope(AdminDevice.all)
         end
 
         def set_device
@@ -174,6 +172,10 @@ module Api
         end
 
         def assign_device_attributes(device, attrs)
+          if attrs[:location_id].present? && !staff_access_policy.location_allowed?(attrs[:location_id])
+            device.errors.add(:location_id, "is outside your authorized locations")
+            raise ActiveRecord::RecordInvalid, device
+          end
           location_id = if current_user.location_scoped?
             current_user.assigned_location_id
           elsif attrs.key?(:location_id)
@@ -192,8 +194,7 @@ module Api
         end
 
         def accessible_current_device?(device)
-          device.new_record? || current_user.global_admin? || device.user_id == current_user.id ||
-            device.location_id == current_user.assigned_location_id
+          device.new_record? || device.user_id == current_user.id
         end
 
         def default_device_name

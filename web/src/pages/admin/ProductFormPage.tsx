@@ -2,6 +2,7 @@ import axios from 'axios';
 import { useRef, useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
+import { useStaffAccess } from '../../components/admin/StaffAccess.tsx';
 import toast from 'react-hot-toast';
 import { ArrowLeft, Save, X, Archive, AlertTriangle, History } from 'lucide-react';
 import ImageUpload from '../../components/ImageUpload';
@@ -103,6 +104,8 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
   const navigate = useNavigate();
   const location = useLocation();
   const { getToken } = useAuth();
+  const access = useStaffAccess();
+  const canManageStock = access.can('stock.manage');
   const isEditMode = !!id;
   const draftId = id || 'new';
   const returnTo = safeProductReturnTo(new URLSearchParams(location.search).get('returnTo'));
@@ -352,9 +355,13 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
     try {
       setSaving(true);
       
-      const payload = {
-        product: formData,
-      };
+      const productPayload: Partial<ProductFormData> = { ...formData };
+      if (!canManageStock) {
+        delete productPayload.inventory_level;
+        delete productPayload.product_stock_quantity;
+        delete productPayload.product_low_stock_threshold;
+      }
+      const payload = { product: productPayload };
 
       if (isEditMode) {
         const response = await authPut<ProductDetailsResponse>(`/admin/products/${id}`, payload, getToken);
@@ -524,7 +531,15 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
             <p>A draft from this tab is available. {isEditMode ? 'Fresh product data is loaded.' : 'The new product form is ready.'} Restore the main form fields or discard the draft. Images and variants save separately.</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button type="button" className="btn-secondary min-h-[44px]" onClick={() => {
-                setFormData(draftOffer.data);
+                const allowed = new Set(access.user?.authorized_locations.map(location => location.id) || []);
+                const location_ids = access.user?.operational_scope === 'all' ? draftOffer.data.location_ids : [
+                  ...draftOffer.data.location_ids.filter(id => allowed.has(id)),
+                  ...formData.location_ids.filter(id => !allowed.has(id)),
+                ];
+                setFormData({ ...draftOffer.data, location_ids, ...(!canManageStock ? {
+                  inventory_level: formData.inventory_level, product_stock_quantity: formData.product_stock_quantity,
+                  product_low_stock_threshold: formData.product_low_stock_threshold,
+                } : {}) });
                 setDraftOffer(null);
                 setDraftMessage('Draft restored to the main form. Review it before saving. Images and variants were not restored.');
               }}>Restore draft</button>
@@ -792,8 +807,9 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
         </div>
 
         {/* Inventory Tracking */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <fieldset disabled={!canManageStock} className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Inventory Tracking</h2>
+          {!canManageStock && <p className="mb-3 text-sm text-gray-700">Shared stock is read only. An owner or an all-locations manager can change it.</p>}
           <p className="text-sm text-gray-600 mb-4">
             Choose how to track inventory for this product
           </p>
@@ -913,7 +929,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
               </div>
             )}
           </div>
-        </div>
+        </fieldset>
 
         {/* Collections */}
         <div className="bg-white rounded-lg shadow p-6">
@@ -995,6 +1011,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
             productId={parseInt(id)}
             basePriceCents={formData.base_price_cents}
             inventoryLevel={formData.inventory_level}
+            canManageStock={canManageStock}
           />
         )}
 

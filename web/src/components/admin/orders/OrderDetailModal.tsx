@@ -8,10 +8,14 @@ interface OrderDetailModalProps {
   order: Order;
   saving: boolean;
   onClose: () => void;
-  onUpdateOrder: (updates: { status: string; tracking_number: string | null; admin_notes: string | null }) => Promise<boolean>;
+  onUpdateOrder: (updates: { status: string; tracking_number?: string | null; admin_notes?: string | null }) => Promise<boolean>;
   onQuickUpdateStatus: (orderId: number, newStatus: string) => void;
   onResendNotification: (orderId: number) => void;
   onOpenRefundModal: () => void;
+  canManageOrder?: boolean;
+  canChangeStatus?: boolean;
+  canRefund?: boolean;
+  canNotify?: boolean;
   hasSavedRefund?: boolean;
   checkingRefund?: boolean;
   onCheckRefund: (operationId: string) => void;
@@ -30,6 +34,7 @@ export default function OrderDetailModal({
   checkingRefund,
   onCheckRefund,
   storeEmail = 'sales@bgpacific.com',
+  canManageOrder = true, canChangeStatus = true, canRefund = true, canNotify = true,
 }: OrderDetailModalProps) {
   useLockBodyScroll(true);
 
@@ -51,8 +56,7 @@ export default function OrderDetailModal({
   const handleSave = async () => {
     const saved = await onUpdateOrder({
       status: editStatus,
-      tracking_number: editTracking || null,
-      admin_notes: editAdminNotes || null,
+      ...(canManageOrder ? { tracking_number: editTracking || null, admin_notes: editAdminNotes || null } : {}),
     });
     if (saved) setIsEditing(false);
   };
@@ -130,7 +134,7 @@ export default function OrderDetailModal({
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
               <h3 className="font-semibold text-gray-900">Order Management</h3>
               <div className="flex gap-2 w-full sm:w-auto">
-                {!isEditing && nextAction && (
+                {!isEditing && canChangeStatus && nextAction && (
                   <button
                     type="button"
                     disabled={saving}
@@ -140,14 +144,14 @@ export default function OrderDetailModal({
                     {nextAction.label}
                   </button>
                 )}
-                {!isEditing && (
+                {!isEditing && canChangeStatus && (
                   <button
                     type="button"
                     disabled={saving}
                     onClick={handleEdit}
                     className="flex-1 sm:flex-none px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition text-sm font-medium"
                   >
-                    Edit Details
+                    {canManageOrder ? 'Edit Details' : 'Change status'}
                   </button>
                 )}
               </div>
@@ -168,7 +172,7 @@ export default function OrderDetailModal({
                   </select>
                 </div>
 
-                {order.fulfillment_type === 'shipping' && (
+                {canManageOrder && order.fulfillment_type === 'shipping' && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Tracking Number</label>
                   <input
@@ -181,7 +185,7 @@ export default function OrderDetailModal({
                 </div>
                 )}
 
-                <div>
+                {canManageOrder && <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Admin Notes (Internal)</label>
                   <textarea
                     value={editAdminNotes}
@@ -190,7 +194,7 @@ export default function OrderDetailModal({
                     rows={3}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent resize-none"
                   />
-                </div>
+                </div>}
 
                 <div className="flex gap-3 pt-2">
                   <button
@@ -219,7 +223,7 @@ export default function OrderDetailModal({
                     {formatStatus(order.status)}
                   </span>
                 </div>
-                {order.fulfillment_type === 'shipping' && (
+                {canManageOrder && order.fulfillment_type === 'shipping' && (
                   <div>
                     <p className="text-gray-600 mb-1">Tracking Number</p>
                     <p className="font-medium">{order.tracking_number || 'Not added yet'}</p>
@@ -364,7 +368,7 @@ export default function OrderDetailModal({
                         </span>
                       </div>
                       {refund.restoration_status === 'manual_review_required' && <p className="text-sm text-amber-800">Inventory restoration requires manual review.</p>}
-                      {refund.operation_uuid && !['succeeded', 'failed'].includes(refund.operation_status || refund.status) && <button type="button" disabled={checkingRefund} className="mt-2 text-sm underline disabled:opacity-50" onClick={() => onCheckRefund(refund.operation_uuid!)}>Check refund status</button>}
+                      {canRefund && refund.operation_uuid && !['succeeded', 'failed'].includes(refund.operation_status || refund.status) && <button type="button" disabled={checkingRefund} className="mt-2 text-sm underline disabled:opacity-50" onClick={() => onCheckRefund(refund.operation_uuid!)}>Check refund status</button>}
                       {refund.reason && <p className="text-sm text-gray-600 mt-1">{refund.reason}</p>}
                       {refund.admin_user && <p className="text-xs text-gray-500 mt-1">By: {refund.admin_user}</p>}
                     </div>
@@ -384,7 +388,7 @@ export default function OrderDetailModal({
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-3 pt-4 border-t print-hide">
-            {(order.status === 'ready' || order.status === 'shipped') && (
+            {canNotify && (order.status === 'ready' || order.status === 'shipped') && (
               <button
                 type="button"
                 onClick={() => onResendNotification(order.id)}
@@ -400,7 +404,7 @@ export default function OrderDetailModal({
             >
               Print Packing Slip
             </button>
-            <button
+            {canNotify && <button
               type="button"
               onClick={() => window.open(`mailto:${order.customer_email}`, '_blank')}
               className="flex-1 min-w-[140px] px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium inline-flex items-center justify-center gap-2"
@@ -409,8 +413,8 @@ export default function OrderDetailModal({
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8.25l7.485 4.99a2.75 2.75 0 003.03 0L21 8.25M4.5 6.75h15A1.5 1.5 0 0121 8.25v7.5a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 15.75v-7.5a1.5 1.5 0 011.5-1.5z" />
               </svg>
               Email Customer
-            </button>
-            {(order.payment_status === 'paid' || hasSavedRefund) && (
+            </button>}
+            {canRefund && (order.payment_status === 'paid' || hasSavedRefund) && (
               <button
                 type="button"
                 onClick={onOpenRefundModal}

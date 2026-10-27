@@ -27,9 +27,12 @@ module Api
 
           render json: {
             users: users.map { |user| user_json(user) },
+            locations: staff_access_policy.location_choices,
             stats: {
               total: User.count,
-              admins: User.admins.count,
+              owners: User.where(role: "owner").count,
+              managers: User.where(role: "manager").count,
+              staff: User.where(role: "staff").count,
               customers: User.customers.count
             }
           }
@@ -42,11 +45,8 @@ module Api
 
         # PATCH /api/v1/admin/users/:id
         def update
-          # Prevent removing your own admin access
-          if @user.id == current_user.id && params[:user][:role] == "customer"
-            return render json: { error: "You cannot remove your own admin access" }, status: :unprocessable_entity
-          end
-
+          # User's transaction-level guard protects the final owner, including
+          # concurrent demotions. Only owners reach this action at all.
           if @user.update(user_params)
             render json: {
               user: user_json(@user),

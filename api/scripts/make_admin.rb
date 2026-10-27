@@ -11,7 +11,7 @@ if email.blank?
   puts ""
   puts "Current users:"
   User.order(:email).each do |user|
-    role_badge = user.admin? ? "👑 ADMIN" : "👤 customer"
+    role_badge = user.admin? ? "👑 OWNER" : "👤 customer"
     puts "  #{role_badge} - #{user.email}"
   end
   exit 1
@@ -28,21 +28,21 @@ if user.nil?
   puts ""
   puts "Current users in database:"
   User.order(:email).each do |user|
-    role_badge = user.admin? ? "👑 ADMIN" : "👤 customer"
+    role_badge = user.admin? ? "👑 OWNER" : "👤 customer"
     puts "  #{role_badge} - #{user.email}"
   end
   exit 1
 end
 
 if user.admin?
-  puts "ℹ️  #{user.email} is already an admin!"
+  puts "ℹ️  #{user.email} is already an owner!"
 else
-  user.update!(role: 'admin')
-  puts "✅ #{user.email} is now an admin!"
+  user.update!(role: 'owner')
+  puts "✅ #{user.email} is now an owner!"
 end
 
 puts ""
-puts "Current admins:"
+puts "Current owners:"
 User.admins.order(:email).each do |admin|
   puts "  👑 #{admin.email}"
 end
