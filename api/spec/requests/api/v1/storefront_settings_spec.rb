@@ -4,12 +4,12 @@ RSpec.describe "Storefront settings", type: :request do
   let(:admin) { create(:user, :admin) }
   let(:controller) { Api::V1::Admin::SiteSettingsController }
 
-  it "enables the existing storefronts by default" do
+  it "keeps Cookies off by default for launch" do
     get "/api/v1/config"
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body).to include(
       "enable_storefront_three_squares" => true,
-      "enable_storefront_latte_stone" => true,
+      "enable_storefront_latte_stone" => false,
       "enable_storefront_catering" => true
     )
   end

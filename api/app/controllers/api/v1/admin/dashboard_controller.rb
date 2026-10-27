@@ -40,19 +40,19 @@ module Api
           base_scope = current_user.location_scoped? ? Order.where(location_id: current_user.assigned_location_id) : Order.all
 
           days = (params[:days] || 30).to_i.clamp(7, 90)
-          start_date = days.days.ago.beginning_of_day
+          start_date = Time.current.in_time_zone("Pacific/Guam").beginning_of_day - (days - 1).days
 
           # Orders per day
           orders_by_day = base_scope
             .where("created_at >= ?", start_date)
-            .group("DATE(created_at)")
+            .group("DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Pacific/Guam')")
             .count
 
           # Revenue per day (paid orders only)
           revenue_by_day = base_scope
             .where("created_at >= ?", start_date)
             .where(payment_status: "paid")
-            .group("DATE(created_at)")
+            .group("DATE(created_at AT TIME ZONE 'UTC' AT TIME ZONE 'Pacific/Guam')")
             .sum(:total_cents)
 
           # Build complete series (fill in zero days)

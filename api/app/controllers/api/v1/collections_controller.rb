@@ -5,7 +5,7 @@ module Api
 
       # GET /api/v1/collections
       def index
-        @collections = Collection.published
+        @collections = Collection.published.for_enabled_storefronts
                                  .includes(:products)
 
         # Search by name or description
@@ -42,7 +42,7 @@ module Api
         page = params[:page]&.to_i || 1
         per_page = [ params[:per_page]&.to_i || 12, 50 ].min
 
-        products = @collection.products.published.active
+        products = StorefrontEligibility.scope(@collection.products.published.active)
                              .includes(:product_variants, :product_images)
                              .order(featured: :desc, created_at: :desc)
 
@@ -80,10 +80,10 @@ module Api
       private
 
       def set_collection
-        @collection = Collection.published
+        @collection = Collection.published.for_enabled_storefronts
                                 .includes(:products)
                                 .find_by(id: params[:id]) ||
-                      Collection.published
+                      Collection.published.for_enabled_storefronts
                                 .includes(:products)
                                 .find_by(slug: params[:id])
 
@@ -92,17 +92,19 @@ module Api
 
       def serialize_collection(collection)
         # Get first product's primary image as thumbnail
-        first_product = collection.products.published.includes(:product_images).first
+        visible_products = StorefrontEligibility.scope(collection.products.published.active)
+        first_product = visible_products.includes(:product_images).first
         thumbnail_url = first_product&.primary_image&.signed_url
 
         {
           id: collection.id,
           name: collection.name,
           slug: collection.slug,
+          business_line: collection.storefront_key,
           description: collection.description,
           image_url: collection.image_url,
           featured: collection.featured,
-          product_count: collection.products.published.active.count,
+          product_count: visible_products.count,
           thumbnail_url: thumbnail_url
         }
       end
