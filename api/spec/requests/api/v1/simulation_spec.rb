@@ -74,5 +74,9 @@ RSpec.describe 'Local simulated payment journeys', type: :request do
     terminal.with_lock { terminal.release_resolved! }
     expect(terminal.reload.status).to eq('offline')
     expect { terminal.reserve!(PaymentAttempt.find(attempts.last)) }.to raise_error(Payments::BindingError)
+    post "/api/v1/admin/payment_terminals/#{terminal.id}/simulate", params: {command:'reconnect',attempt_id:nil}
+    expect(response).to have_http_status(:ok)
+    expect(terminal.reload.status).to eq('ready')
+    expect(terminal.leased_attempt_id).to be_nil
   end
 end

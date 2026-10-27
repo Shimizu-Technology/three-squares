@@ -43,6 +43,7 @@ module Api
           terminal = scope.find(params[:id])
           Payments::Simulation::Guard.validate!(terminal.payment_identity)
           terminal.with_lock do
+            terminal.release_resolved!
             action = params.require(:command)
             if action == 'reconnect' && terminal.leased_attempt_id.nil?
               terminal.update!(status: 'ready')

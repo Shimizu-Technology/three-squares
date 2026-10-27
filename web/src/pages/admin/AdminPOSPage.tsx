@@ -312,7 +312,12 @@ export default function AdminPOSPage() {
   // Filters
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedLocation, setSelectedLocation] = useState<number | undefined>();
+  const [selectedLocation, setSelectedLocation] = useState<number | undefined>(() => {
+    try {
+      const id = JSON.parse(localStorage.getItem(POS_PENDING_TERMINAL_KEY) || 'null')?.order_data?.location_id;
+      return Number.isInteger(id) && id > 0 ? id : undefined;
+    } catch { return undefined; }
+  });
 
   const selectedLocationRef = useRef(selectedLocation);
   selectedLocationRef.current = selectedLocation;
@@ -513,7 +518,7 @@ export default function AdminPOSPage() {
     () => cart.reduce((sum, c) => sum + c.quantity, 0),
     [cart]
   );
-  const terminalLabel = terminalReader ? 'Connected' : 'Offline';
+  const terminalLabel = simulationActive ? 'Simulated reader' : terminalReader ? 'Connected' : 'Offline';
   const connectedReaderName = terminalReader
     ? (getReaderMeta(terminalReader).label || getReaderMeta(terminalReader).serial_number || 'Unknown Reader')
     : null;
@@ -637,7 +642,10 @@ export default function AdminPOSPage() {
       if (!token) return;
       // Replaying creation uses the saved payload and original request key.
       const order = pending.order_data ? await createPOSOrder(token, pending.order_data, userId) : pending;
-      if (order.payment_environment === 'simulated' && order.payment_attempt_id) setSimulatedAttempt(order.payment_attempt_id);
+      if (order.payment_environment === 'simulated' && order.payment_attempt_id) {
+        setSimulatedAttempt(order.payment_attempt_id);
+        setSelectedLocation(order.location_id);
+      }
       const confirmed = order.payment_method === 'cash' && order.payment_status === 'paid' && order.inventory_committed
         ? order : await confirmTerminalPayment(token, order.id || order.order_id, true);
       if (['failed', 'cancelled', 'compensated'].includes(confirmed.payment_state)) {
@@ -1367,7 +1375,7 @@ export default function AdminPOSPage() {
             </button>
             <button
               onClick={handleCardAction}
-              disabled={!canSubmitPayment || !terminalReader || !terminalLocationReady}
+              disabled={!canSubmitPayment || (!terminalReader && !simulationActive) || !terminalLocationReady}
               className="flex items-center justify-center gap-2 py-3 text-white rounded-xl font-medium bg-tsNavy hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {terminalCollecting ? (
@@ -1377,7 +1385,7 @@ export default function AdminPOSPage() {
               ) : (
                 <WifiOff className="w-5 h-5" />
               )}
-              {terminalCollecting ? 'Tap Card...' : terminalReader ? 'Tap Card' : 'Connect Reader'}
+              {terminalCollecting ? 'Tap Card...' : simulationActive ? 'Card (simulated)' : terminalReader ? 'Tap Card' : 'Connect Reader'}
             </button>
           </div>
 
