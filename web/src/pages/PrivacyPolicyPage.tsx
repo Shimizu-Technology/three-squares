@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import FadeIn from '../components/animations/FadeIn';
 import Breadcrumbs from '../components/Breadcrumbs';
 import { configApi } from '../services/api';
+import { getStorePhone, getStorePhoneTel, STORE_ADDRESS, STORE_WHATSAPP, STORE_WHATSAPP_URL } from '../utils/storeContact';
 import type { AppConfig } from '../types/order';
 
 export default function PrivacyPolicyPage() {
@@ -12,8 +13,8 @@ export default function PrivacyPolicyPage() {
   }, []);
 
   const storeEmail = appConfig?.store_info?.email || 'sales@bgpacific.com';
-  const storePhone = appConfig?.store_info?.phone || '671-777-1234';
-  const storePhoneTel = `tel:${storePhone.replace(/[^\d+]/g, '')}`;
+  const storePhone = getStorePhone(appConfig?.store_info?.phone);
+  const storePhoneTel = getStorePhoneTel(storePhone);
 
   return (
     <div className="min-h-screen bg-white">
@@ -238,6 +239,11 @@ export default function PrivacyPolicyPage() {
             </p>
             <div className="space-y-2 text-warm-600">
               <p>
+                <a href={STORE_WHATSAPP_URL} className="text-tsPrimary hover:text-red-700 transition">
+                  WhatsApp: {STORE_WHATSAPP}
+                </a>
+              </p>
+              <p>
                 <span className="font-medium text-warm-900">Email:</span>{' '}
                 <a href={`mailto:${storeEmail}`} className="text-tsPrimary hover:text-red-700 transition">
                   {storeEmail}
@@ -251,7 +257,7 @@ export default function PrivacyPolicyPage() {
               </p>
               <p>
                 <span className="font-medium text-warm-900">Address:</span>{' '}
-                121 E. Marine Corps Dr, Suite 1-103 & Suite 1-104, Hagåtña, Guam 96910
+                {STORE_ADDRESS}
               </p>
             </div>
           </section>

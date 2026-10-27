@@ -133,7 +133,7 @@ export default function OrderConfirmationPage() {
 
   const isPickupOrder = order.shipping_method === 'pickup';
 
-  const storePhone = appConfig?.store_info?.phone || '671-777-1234';
+  const storePhone = !appConfig?.store_info?.phone?.trim() || /^(1)?671(?:7771234|6462652)$/.test(appConfig.store_info.phone.replace(/\D/g, '')) ? '+1 (671) 646-2652' : appConfig.store_info.phone;
   const storePhoneTel = `tel:${storePhone.replace(/[^\d+]/g, '')}`;
 
   return (
