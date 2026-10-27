@@ -4,7 +4,7 @@ export const STAFF_CAPABILITIES = [
   'pos.sell', 'payments.collect', 'payments.refund', 'analytics.read', 'devices.self', 'devices.manage',
   'locations.read', 'locations.qr', 'locations.manage', 'locations.update', 'availability.manage',
   'catalog.manage', 'catalog.import', 'stock.read', 'stock.manage', 'seasonal.manage', 'catering.manage',
-  'users.manage', 'settings.manage', 'payment_settings.manage', 'homepage.manage', 'payments.simulate',
+  'users.manage', 'settings.manage', 'ordering.manage', 'payment_settings.manage', 'homepage.manage', 'payments.simulate',
   'payments.terminals.manage', 'payments.terminals.discover', 'payments.reconcile',
 ] as const;
 export type StaffCapability = typeof STAFF_CAPABILITIES[number];

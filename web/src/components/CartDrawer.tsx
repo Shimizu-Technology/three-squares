@@ -1,4 +1,5 @@
 import { useLocationStore } from '../store/locationStore';
+import { useOrderingAvailability } from '../hooks/useOrderingAvailability';
 import useAppConfig from '../hooks/useAppConfig';
 import { useEffect, useId } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -12,6 +13,7 @@ export default function CartDrawer() {
   const navigate = useNavigate();
   const location = useLocationStore((state) => state.selectedLocation);
   const config = useAppConfig();
+  const { blocked: orderingBlocked, message: orderingMessage } = useOrderingAvailability('checkout');
   const {
     cart,
     isOpen,
@@ -276,14 +278,17 @@ export default function CartDrawer() {
             </p>
 
             {cart.items.some((item) => item.pricing?.purchasable === false) && <p role="alert" className="text-sm text-warm-700">Remove inquiry-only items before checking out. <a href="/catering" className="underline">Start a catering inquiry</a>.</p>}
+            {orderingBlocked && <p id="cart-ordering-status" role="status" className="mb-3 text-sm text-warm-700">{orderingMessage}</p>}
             {/* Checkout Button */}
             <button
               onClick={() => {
+                if (orderingBlocked) return;
                 closeCart();
                 navigate('/checkout');
               }}
-              className="w-full bg-tsPrimary text-white py-4 rounded-xl font-bold text-lg hover:bg-primary-dark transition shadow-lg shadow-tsPrimary/25 flex items-center justify-center gap-2"
-              disabled={isLoading || cart.items.some((item) => item.pricing?.purchasable === false)}
+              className="w-full bg-tsPrimary text-white py-4 rounded-xl font-bold text-lg enabled:hover:bg-primary-dark transition shadow-lg shadow-tsPrimary/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+              aria-describedby={orderingBlocked ? "cart-ordering-status" : undefined}
+              disabled={orderingBlocked || isLoading || cart.items.some((item) => item.pricing?.purchasable === false)}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />

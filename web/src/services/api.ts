@@ -271,7 +271,7 @@ export const homepageApi = {
 export const configApi = {
   // Get app configuration
   getConfig: async (locationId?: number | null): Promise<AppConfig> => {
-    const response = await api.get('/config', { params: { location_id: locationId || undefined } });
+    const response = await api.get('/config', { timeout: 7_000, params: { location_id: locationId || undefined } });
     return response.data;
   },
 };

@@ -17,7 +17,7 @@ class StaffAccessPolicy
     stock.manage homepage.manage payments.terminals.manage payments.reconcile
   ].freeze
   OWNER_CAPABILITIES = %w[
-    users.manage settings.manage payment_settings.manage locations.manage
+    users.manage settings.manage payment_settings.manage ordering.manage locations.manage
     payments.simulate payments.terminals.discover
   ].freeze
   CAPABILITIES = ([ "account.self" ] + MANAGER_OPERATIONAL_CAPABILITIES +

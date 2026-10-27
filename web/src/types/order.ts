@@ -74,6 +74,8 @@ export interface CreateOrderResponse {
 }
 
 export interface AppConfig {
+  online_ordering_paused?: boolean;
+  online_ordering_pause_message?: string;
   payment_presentation?: string;
   payment_environment?: 'simulated' | 'sandbox' | 'production';
   app_mode: 'test' | 'production';

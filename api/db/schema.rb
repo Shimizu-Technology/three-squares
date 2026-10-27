@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_28_100000) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_28_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -555,6 +555,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_100000) do
     t.datetime "updated_at", null: false
     t.index ["active"], name: "index_locations_on_active"
     t.index ["slug"], name: "index_locations_on_slug", unique: true
+  end
+
+  create_table "online_ordering_changes", force: :cascade do |t|
+    t.bigint "actor_id"
+    t.string "actor_label", null: false
+    t.datetime "created_at", null: false
+    t.string "customer_message", limit: 240
+    t.boolean "paused", null: false
+    t.index ["actor_id"], name: "index_online_ordering_changes_on_actor_id"
   end
 
   create_table "order_items", force: :cascade do |t|
@@ -1253,6 +1262,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_100000) do
     t.boolean "enable_storefront_latte_stone", default: false, null: false
     t.boolean "enable_storefront_three_squares", default: true, null: false
     t.jsonb "fallback_shipping_rates", default: {"domestic"=>[{"rate_cents"=>800, "max_weight_oz"=>16}, {"rate_cents"=>1500, "max_weight_oz"=>48}, {"rate_cents"=>2000, "max_weight_oz"=>80}, {"rate_cents"=>3000, "max_weight_oz"=>160}, {"rate_cents"=>5000, "max_weight_oz"=>nil}], "international"=>[{"rate_cents"=>2500, "max_weight_oz"=>16}, {"rate_cents"=>4000, "max_weight_oz"=>48}, {"rate_cents"=>6000, "max_weight_oz"=>80}, {"rate_cents"=>9000, "max_weight_oz"=>160}, {"rate_cents"=>15000, "max_weight_oz"=>nil}]}, null: false
+    t.string "online_ordering_pause_message", limit: 240
+    t.boolean "online_ordering_paused", default: false, null: false
     t.text "order_notification_emails", default: [], array: true
     t.string "payment_processor", default: "stripe", null: false
     t.boolean "payment_test_mode", default: true, null: false
@@ -1362,6 +1373,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_28_100000) do
   add_foreign_key "inventory_reservations", "orders"
   add_foreign_key "legacy_capture_bindings", "orders"
   add_foreign_key "legacy_capture_bindings", "payment_identities"
+  add_foreign_key "online_ordering_changes", "users", column: "actor_id", on_delete: :nullify
   add_foreign_key "order_items", "orders"
   add_foreign_key "order_items", "product_variants"
   add_foreign_key "order_items", "products"

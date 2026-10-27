@@ -14,6 +14,11 @@ module Payments
       return PrepareTerminalAttempt.call(attempt: attempt, provider: provider) if provider.respond_to?(:async_terminal?) && provider.async_terminal?
       dispatch = false
       attempt.with_lock do
+        if attempt.checkout_session.channel == "online" && attempt.dispatched_at.nil? && attempt.raw_provider_id.blank? && attempt.setup_id.blank?
+          # Serialize the first dispatch decision with an owner's pause save.
+          settings = SiteSetting.lock("FOR SHARE").find(SiteSetting.instance.id)
+          raise FulfillmentError, OnlineOrderingAvailability.message(settings) if settings.online_ordering_paused?
+        end
         return attempt if (attempt.raw_provider_id.present? || attempt.setup_id.present?) && attempt.collection_config.present?
         if attempt.raw_provider_id.present? || attempt.setup_id.present?
           dispatch = :recover
@@ -60,14 +65,18 @@ module Payments
         next false unless session.channel == "online" && %w[created unknown].include?(current.state)
         next false if current.raw_provider_id.present? || current.setup_id.present? || current.dispatched_at || charge ||
           current.approved_cents.positive? || current.captured_cents.positive? || current.compensation_claimed_at
-        next false if StorefrontEligibility.online_ordering_enabled_for_order?(order)
+        settings = SiteSetting.instance
+        paused = settings.online_ordering_paused?
+        next false if !paused && StorefrontEligibility.online_ordering_enabled_for_order?(order)
+        reason = paused ? "online_ordering_paused" : "catering_inquiry_required"
+        message = paused ? OnlineOrderingAvailability.message(settings) : StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE
 
         UpdateOrder.call(order: order, attributes: {
           status: "cancelled",
-          metadata: order.metadata.merge("system_cancellation" => { "actor" => "system", "reason" => "catering_inquiry_required" })
+          metadata: order.metadata.merge("system_cancellation" => { "actor" => "system", "reason" => reason })
         }, user: nil, notify: false)
-        current.update!(state: "cancelled", error_classification: "catering_inquiry_required",
-          last_error: StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE, next_recovery_at: nil)
+        current.update!(state: "cancelled", error_classification: reason,
+          last_error: message, next_recovery_at: nil)
         session.update!(state: "cancelled")
         true
       end

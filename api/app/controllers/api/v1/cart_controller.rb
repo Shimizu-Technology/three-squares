@@ -21,6 +21,7 @@ module Api
 
       # POST /api/v1/cart/items
       def add_item
+        OnlineOrderingAvailability.validate!
         Rails.logger.info "🟢 API: add_item called"
         Rails.logger.info "  - variant_id: #{params[:product_variant_id]}"
         Rails.logger.info "  - product_id: #{params[:product_id]}"

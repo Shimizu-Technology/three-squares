@@ -16,6 +16,8 @@ module Api
           ENV[environment == "production" ? "STRIPE_PUBLISHABLE_KEY" : "STRIPE_PUBLISHABLE_KEY_TEST"]
         end
         render json: {
+          online_ordering_paused: settings.online_ordering_paused,
+          online_ordering_pause_message: OnlineOrderingAvailability.message(settings),
           app_mode: environment == "production" ? "production" : "test",
           payment_test_mode: environment != "production",
           payment_environment: environment,

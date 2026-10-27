@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import api, { collectionsApi, type Collection } from '../services/api';
 import { invalidateAppConfig } from '../hooks/useAppConfig';
 
+import OnlineOrderingSection from '../components/admin/OnlineOrderingSection';
 import { API_BASE_URL } from '../config';
 import { ANNOUNCEMENT_STYLE_HEX } from '../constants/announcementStyles';
 import PaymentStatusPanel from '../components/payment/PaymentStatusPanel';
@@ -521,32 +522,6 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
   // RENDER
   // ============================================================================
 
-  if (!homepageOnly && loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading settings...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!homepageOnly && !settings) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">Failed to load settings</p>
-          <button
-            onClick={fetchSettings}
-            className="bg-tsPrimary text-white px-4 py-2 rounded-lg hover:bg-primary-dark"
-          >
-            Retry
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -585,8 +560,18 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
           </nav>
         </div>
 
+        {activeTab === 'general' && <OnlineOrderingSection />}
+        {activeTab === 'general' && loading && (
+          <p role="status" className="py-8 text-gray-600">Loading settings...</p>
+        )}
+        {activeTab === 'general' && !loading && !settings && (
+          <div role="alert" className="py-8">
+            <p className="text-red-600 mb-4">Failed to load settings</p>
+            <button onClick={fetchSettings} className="bg-tsPrimary text-white px-4 py-2 rounded-lg hover:bg-primary-dark">Retry</button>
+          </div>
+        )}
         {/* Tab Content */}
-        {activeTab === 'general' && settings && (
+        {activeTab === 'general' && !loading && settings && (
           <GeneralSettingsTab
             settings={settings}
             saving={saving}

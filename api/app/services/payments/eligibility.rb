@@ -2,7 +2,8 @@
 
 module Payments
   class Eligibility
-    def self.validate_product!(variant:, location_id: nil, online: true, at: Time.current)
+    def self.validate_product!(variant:, location_id: nil, online: true, enforce_ordering_pause: true, at: Time.current)
+      OnlineOrderingAvailability.validate! if online && enforce_ordering_pause
       product = variant.product
       if online && !StorefrontEligibility.online_ordering_enabled?(product)
         raise FulfillmentError, "#{product.name}: #{StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE}"
@@ -24,12 +25,12 @@ module Payments
       true
     end
 
-    def self.validate!(items:, fulfillment_type:, location_id:, online: true, at: Time.current)
+    def self.validate!(items:, fulfillment_type:, location_id:, online: true, enforce_ordering_pause: true, at: Time.current)
       raise FulfillmentError, "Cart is empty" if items.empty?
       validate_complimentary!(items, location_id: location_id)
       issues = FulfillmentValidator.validate_cart(cart_items: items, fulfillment_type: fulfillment_type, location_id: location_id)
       raise FulfillmentError, issues.first[:message] if issues.any?
-      items.each { |item| validate_product!(variant: item.product_variant, location_id: fulfillment_type == "pickup" ? location_id : nil, online: online, at: at) }
+      items.each { |item| validate_product!(variant: item.product_variant, location_id: fulfillment_type == "pickup" ? location_id : nil, online: online, enforce_ordering_pause: enforce_ordering_pause, at: at) }
       true
     end
 
@@ -45,7 +46,7 @@ module Payments
 
     def self.validate_order!(order)
       validate!(items: order.order_items.includes(product_variant: { product: :collections }).to_a,
-        fulfillment_type: order.fulfillment_type, location_id: order.location_id, online: order.source == "online", at: order.created_at)
+        fulfillment_type: order.fulfillment_type, location_id: order.location_id, online: order.source == "online", enforce_ordering_pause: false, at: order.created_at)
     end
   end
 end
