@@ -1,42 +1,7 @@
-import { useState, useEffect } from 'react';
+import { Suspense, lazy, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser, useAuth } from '@clerk/clerk-react';
-import ProductsPage from './pages/ProductsPage';
-import BusinessLineEntryPage from './pages/BusinessLineEntryPage';
-import ProductDetailPage from './pages/ProductDetailPage';
-import HomePage from './pages/HomePage';
-import AboutPage from './pages/AboutPage';
-import CollectionsPage from './pages/CollectionsPage';
-import CollectionDetailPage from './pages/CollectionDetailPage';
-import AdminSettingsPage from './pages/AdminSettingsPage';
-import AdminLayout from './layouts/AdminLayout';
-import AdminDashboardPage from './pages/admin/AdminDashboardPage';
-import AdminAnalyticsPage from './pages/admin/AdminAnalyticsPage';
-import AdminOrdersPage from './pages/admin/AdminOrdersPage';
-import AdminPickupQueuePage from './pages/admin/AdminPickupQueuePage';
-import AdminShippingQueuePage from './pages/admin/AdminShippingQueuePage';
-import AdminProductsPage from './pages/admin/AdminProductsPage';
-import AdminCollectionsPage from './pages/admin/AdminCollectionsPage';
-import AdminImportPage from './pages/admin/AdminImportPage';
-import ProductFormPage from './pages/admin/ProductFormPage';
-import AdminInventoryPage from './pages/admin/AdminInventoryPage';
-import AdminUsersPage from './pages/admin/AdminUsersPage';
-import AdminVariantPresetsPage from './pages/admin/AdminVariantPresetsPage';
-import AdminCateringPage from './pages/admin/AdminCateringPage';
 import LocationPicker from './components/LocationPicker';
-import AdminLocationsPage from './pages/admin/AdminLocationsPage';
-import AdminPOSPage from './pages/admin/AdminPOSPage';
-import CheckoutPage from './pages/CheckoutPage';
-import OrderConfirmationPage from './pages/OrderConfirmationPage';
-import OrderHistoryPage from './pages/OrderHistoryPage';
-import AccountPage from './pages/AccountPage';
-import NotFoundPage from './pages/NotFoundPage';
-import ContactPage from './pages/ContactPage';
-import ShippingInfoPage from './pages/ShippingInfoPage';
-import ReturnsPage from './pages/ReturnsPage';
-import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
-import CateringPage from './pages/CateringPage';
-import LocationsPage from './pages/LocationsPage';
 import axios from 'axios';
 import { Toaster } from 'react-hot-toast';
 import CartIcon from './components/CartIcon'; // Import CartIcon
@@ -50,6 +15,51 @@ import LocationPill from './components/LocationPill'; // Import LocationPill
 import { useCartStore } from './store/cartStore'; // Import cart store
 import { API_BASE_URL } from './config';
 import AnnouncementBanner from './components/AnnouncementBanner';
+import RouteErrorBoundary from './components/RouteErrorBoundary';
+
+const ProductsPage = lazy(() => import('./pages/ProductsPage'));
+const BusinessLineEntryPage = lazy(() => import('./pages/BusinessLineEntryPage'));
+const ProductDetailPage = lazy(() => import('./pages/ProductDetailPage'));
+const HomePage = lazy(() => import('./pages/HomePage'));
+const AboutPage = lazy(() => import('./pages/AboutPage'));
+const CollectionsPage = lazy(() => import('./pages/CollectionsPage'));
+const CollectionDetailPage = lazy(() => import('./pages/CollectionDetailPage'));
+const AdminSettingsPage = lazy(() => import('./pages/AdminSettingsPage'));
+const AdminLayout = lazy(() => import('./layouts/AdminLayout'));
+const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage'));
+const AdminAnalyticsPage = lazy(() => import('./pages/admin/AdminAnalyticsPage'));
+const AdminOrdersPage = lazy(() => import('./pages/admin/AdminOrdersPage'));
+const AdminPickupQueuePage = lazy(() => import('./pages/admin/AdminPickupQueuePage'));
+const AdminShippingQueuePage = lazy(() => import('./pages/admin/AdminShippingQueuePage'));
+const AdminProductsPage = lazy(() => import('./pages/admin/AdminProductsPage'));
+const AdminCollectionsPage = lazy(() => import('./pages/admin/AdminCollectionsPage'));
+const AdminImportPage = lazy(() => import('./pages/admin/AdminImportPage'));
+const ProductFormPage = lazy(() => import('./pages/admin/ProductFormPage'));
+const AdminInventoryPage = lazy(() => import('./pages/admin/AdminInventoryPage'));
+const AdminUsersPage = lazy(() => import('./pages/admin/AdminUsersPage'));
+const AdminVariantPresetsPage = lazy(() => import('./pages/admin/AdminVariantPresetsPage'));
+const AdminCateringPage = lazy(() => import('./pages/admin/AdminCateringPage'));
+const AdminLocationsPage = lazy(() => import('./pages/admin/AdminLocationsPage'));
+const AdminPOSPage = lazy(() => import('./pages/admin/AdminPOSPage'));
+const CheckoutPage = lazy(() => import('./pages/CheckoutPage'));
+const OrderConfirmationPage = lazy(() => import('./pages/OrderConfirmationPage'));
+const OrderHistoryPage = lazy(() => import('./pages/OrderHistoryPage'));
+const AccountPage = lazy(() => import('./pages/AccountPage'));
+const NotFoundPage = lazy(() => import('./pages/NotFoundPage'));
+const ContactPage = lazy(() => import('./pages/ContactPage'));
+const ShippingInfoPage = lazy(() => import('./pages/ShippingInfoPage'));
+const ReturnsPage = lazy(() => import('./pages/ReturnsPage'));
+const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
+const CateringPage = lazy(() => import('./pages/CateringPage'));
+const LocationsPage = lazy(() => import('./pages/LocationsPage'));
+
+function RouteFallback() {
+  return (
+    <div className="min-h-[40vh] flex items-center justify-center px-4" role="status">
+      <p className="text-sm font-medium text-warm-600">Loading page…</p>
+    </div>
+  );
+}
 
 // Custom UserButton with Admin Dashboard Link and My Orders
 function CustomUserButton({ isAdmin }: { isAdmin: boolean }) {
@@ -473,6 +483,8 @@ function AppContent() {
         {!isAdminPage && isOrderingPage && <LocationPicker />}
 
         {/* Routes with page transitions */}
+        <RouteErrorBoundary key={routeTransitionKey}>
+        <Suspense fallback={<RouteFallback />}>
         <AnimatePresence mode="wait">
         <Routes location={location} key={routeTransitionKey}>
           <Route path="/" element={<HomePage />} />
@@ -522,6 +534,8 @@ function AppContent() {
           <Route path="*" element={<NotFoundPage />} />
         </Routes>
         </AnimatePresence>
+        </Suspense>
+        </RouteErrorBoundary>
 
         {/* Footer - Hidden when printing and on admin pages */}
         {!isAdminPage && (
