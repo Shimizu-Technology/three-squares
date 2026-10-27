@@ -271,6 +271,63 @@ RSpec.describe "Staff authorization attack boundaries", type: :request do
       expect(product.reload.product_stock_quantity).to eq(99)
     end
 
+    it "does not overwrite stock changed between catalog authorization and the handler" do
+      @actor = manager
+      ProductLocation.create!(product: product, location: main, available: true)
+      variant
+      allow_any_instance_of(Api::V1::Admin::ProductsController).to receive(:authorize_shared_stock_write!).and_wrap_original do |original|
+        permitted = original.call
+        product.update_columns(product_stock_quantity: 11)
+        permitted
+      end
+      request_as(:patch, "/api/v1/admin/products/#{product.id}", params: { product: { description: "Catalog edit", product_stock_quantity: 12 } })
+      expect(response).to have_http_status(:ok)
+      expect(product.reload.product_stock_quantity).to eq(11)
+      expect(product.description).to eq("Catalog edit")
+
+      allow_any_instance_of(Api::V1::Admin::ProductVariantsController).to receive(:authorize_shared_stock_write!).and_wrap_original do |original|
+        permitted = original.call
+        variant.update_columns(stock_quantity: 7)
+        permitted
+      end
+      request_as(:patch, "/api/v1/admin/products/#{product.id}/variants/#{variant.id}", params: { variant: { variant_name: "Catalog variant", stock_quantity: 8 } })
+      expect(response).to have_http_status(:ok)
+      expect(variant.reload.stock_quantity).to eq(7)
+      expect(variant.variant_name).to eq("Catalog variant")
+    end
+
+    it "rechecks a restocked variant under lock before a scoped manager deletes it" do
+      @actor = manager
+      variant.update!(stock_quantity: 0)
+      allow_any_instance_of(Api::V1::Admin::ProductVariantsController).to receive(:authorize_shared_stock_write!).and_wrap_original do |original|
+        permitted = original.call
+        variant.update_columns(stock_quantity: 4)
+        permitted
+      end
+      request_as(:delete, "/api/v1/admin/products/#{product.id}/variants/#{variant.id}")
+      expect(response).to have_http_status(:forbidden)
+      expect(variant.reload.stock_quantity).to eq(4)
+    end
+
+    it "never copies newly restocked inventory into a scoped manager's catalog duplicate" do
+      @actor = manager
+      product.update!(product_stock_quantity: 0)
+      variant.update!(stock_quantity: 0)
+      allow_any_instance_of(Api::V1::Admin::ProductsController).to receive(:authorize_shared_stock_write!).and_wrap_original do |original|
+        permitted = original.call
+        product.update_columns(product_stock_quantity: 4)
+        variant.update_columns(stock_quantity: 4)
+        permitted
+      end
+      request_as(:post, "/api/v1/admin/products/#{product.id}/duplicate")
+      expect(response).to have_http_status(:created)
+      copy = Product.find(response.parsed_body.fetch("data").fetch("id"))
+      expect(copy.product_stock_quantity).to eq(0)
+      expect(copy.product_variants.pluck(:stock_quantity)).to all(eq(0))
+      expect(product.reload.product_stock_quantity).to eq(4)
+      expect(variant.reload.stock_quantity).to eq(4)
+    end
+
     it "hides stock audits linked to another location's orders while retaining global stock read" do
       @actor = manager
       mine = pickup(main)

@@ -78,7 +78,12 @@ module StaffAuthorization
     changed = keys.any? do |key|
       attrs.key?(key) && record.class.type_for_attribute(key).cast(attrs[key]) != record.public_send(key)
     end
-    changed ? require_staff_capability!("stock.manage") : true
+    return require_staff_capability!("stock.manage") if changed
+
+    # Compatibility with catalog clients sending unchanged fields must not let
+    # those values overwrite inventory changed after this authorization read.
+    keys.each { |key| attrs.delete(key) }
+    true
   end
 
   def authorize_staff_record_scope!

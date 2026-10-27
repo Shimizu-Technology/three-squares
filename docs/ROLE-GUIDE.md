@@ -33,3 +33,5 @@ Menu CSV import is available to managers. The legacy Shopify importer also write
 Existing legacy administrators migrate to owners. Allowlisted login bootstraps a new/unclassified account only; it never reverses an owner-set role. This guide supersedes the earlier role implementation/training proposals in PRs #33/#34 and staging TSQ-20. Assign actual people according to the business's acceptance decision; the guide intentionally names no individuals.
 
 Production remains paused during restart work. A deployed frontend does not mean production ordering or payment acceptance is enabled. Physical iPad/Safari/PWA rehearsal and operator acceptance remain required before launch.
+
+All-location managers open **Homepage** in the workspace navigation to edit banners and featured content. General **Settings** stays owner-only. Older homepage-tab links redirect to the dedicated editor.

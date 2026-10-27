@@ -54,10 +54,14 @@ module Api
 
         # DELETE /api/v1/admin/products/:product_id/variants/:id
         def destroy
-          if @variant.destroy
-            render_success(nil, message: "Variant deleted successfully")
-          else
-            render_error("Failed to delete variant", errors: @variant.errors.full_messages)
+          @variant.with_lock do
+            return unless @variant.stock_quantity.to_i.zero? || require_staff_capability!("stock.manage")
+
+            if @variant.destroy
+              render_success(nil, message: "Variant deleted successfully")
+            else
+              render_error("Failed to delete variant", errors: @variant.errors.full_messages)
+            end
           end
         end
 

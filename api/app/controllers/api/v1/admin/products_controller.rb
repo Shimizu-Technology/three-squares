@@ -102,12 +102,14 @@ module Api
           new_product.name = "#{@product.name} (Copy)"
           new_product.slug = nil
           new_product.published = false
+          new_product.product_stock_quantity = 0 unless staff_access_policy.allowed?("stock.manage")
 
           if new_product.save
             @product.product_variants.each do |variant|
               new_variant = variant.dup
               new_variant.product = new_product
               new_variant.sku = nil
+              new_variant.stock_quantity = 0 unless staff_access_policy.allowed?("stock.manage")
               new_variant.save
             end
 
