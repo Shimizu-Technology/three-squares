@@ -538,6 +538,7 @@ function AppContent() {
             <Route path="devices" element={<AdminDevicesPage />} />
             <Route path="catering" element={<AdminCateringPage />} />
             <Route path="settings" element={<AdminSettingsPage />} />
+            <Route path="homepage" element={<AdminSettingsPage homepageOnly />} />
             <Route path="settings/variant-presets" element={<AdminVariantPresetsPage />} />
           </Route>
           

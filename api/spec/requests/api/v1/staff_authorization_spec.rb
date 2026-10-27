@@ -254,6 +254,10 @@ RSpec.describe "Staff authorization attack boundaries", type: :request do
         end
         request_as(:patch, "/api/v1/admin/products/#{product.id}/variants/#{variant.id}", params: { product_variant: { stock_quantity: 999 } })
         expect(response).to have_http_status(:forbidden)
+        request_as(:patch, "/api/v1/admin/products/#{product.id}/variants/#{variant.id}", params: { product_variant: {}, variant: { stock_quantity: 999 } })
+        expect(response).to have_http_status(:forbidden)
+        request_as(:post, "/api/v1/admin/products/#{product.id}/variants/generate", params: { product_variant: {}, sizes: [ "Unique size" ], stock_quantity: 999 })
+        expect(response).to have_http_status(:forbidden)
         request_as(:post, "/api/v1/admin/products/#{product.id}/variants/#{variant.id}/adjust_stock", params: { adjustment: 1 })
         expect(response).to have_http_status(:forbidden)
         request_as(:delete, "/api/v1/admin/products/#{product.id}/variants/#{variant.id}")

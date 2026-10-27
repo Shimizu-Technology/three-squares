@@ -70,7 +70,7 @@ const ROUTE_CAPABILITIES: Record<string, StaffCapability[]> = {
   '/admin/products': ['catalog.manage'], '/admin/products/new': ['catalog.manage'], '/admin/collections': ['catalog.manage'],
   '/admin/settings/variant-presets': ['catalog.manage'], '/admin/locations': ['locations.read'], '/admin/inventory': ['stock.read'],
   '/admin/pos': ['pos.sell'], '/admin/catering': ['catering.manage'], '/admin/devices': ['devices.self', 'devices.manage'],
-  '/admin/users': ['users.manage'], '/admin/import': ['catalog.import'], '/admin/settings': ['settings.manage'],
+  '/admin/homepage': ['homepage.manage'], '/admin/users': ['users.manage'], '/admin/import': ['catalog.import'], '/admin/settings': ['settings.manage'],
 };
 
 export function canAccessStaffRoute(user: StaffAccessUser | null, pathname: string): boolean {

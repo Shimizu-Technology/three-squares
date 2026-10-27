@@ -34,6 +34,7 @@ const ROUTE_META: Record<string, RouteMeta> = {
   '/admin/devices':                  { title: 'Devices',          parent: '/admin' },
   '/admin/users':                    { title: 'Users',            parent: '/admin' },
   '/admin/import':                   { title: 'CSV Import',       parent: '/admin' },
+  '/admin/homepage':                 { title: 'Homepage',         parent: '/admin' },
   '/admin/settings':                 { title: 'Settings',         parent: '/admin' },
   '/admin/settings/variant-presets': { title: 'Variant Presets',   parent: '/admin/settings' },
 };
@@ -96,6 +97,7 @@ const NAVIGATION: { title: string; items: NavItem[] }[] = [
     { name: 'Devices', path: '/admin/devices', icon: 'devices' },
     { name: 'Users', path: '/admin/users', icon: 'users' },
     { name: 'Import', path: '/admin/import', icon: 'import' },
+    { name: 'Homepage', path: '/admin/homepage', icon: 'settings' },
     { name: 'Settings', path: '/admin/settings', icon: 'settings' },
     { name: 'Variant Presets', path: '/admin/settings/variant-presets', icon: 'presets' },
   ] },
@@ -159,6 +161,8 @@ function AdminShell() {
   if (access.loading) return <div role="status" className="min-h-dvh bg-gray-50 p-6">Checking staff access…</div>;
   const redirect = staffRootRedirect(access.user, location.pathname);
   if (redirect) return <Navigate to={{ pathname: redirect, search: location.search, hash: location.hash }} replace />;
+  if (location.pathname === '/admin/settings' && new URLSearchParams(location.search).get('tab') === 'homepage' &&
+      !access.can('settings.manage') && access.can('homepage.manage')) return <Navigate to="/admin/homepage" replace />;
   const routeAllowed = canAccessStaffRoute(access.user, location.pathname);
   const navigation = NAVIGATION.map(group => ({ ...group, items: group.items.filter(item => canAccessStaffRoute(access.user, item.path)) })).filter(group => group.items.length > 0);
 

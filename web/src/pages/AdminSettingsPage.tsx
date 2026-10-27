@@ -99,13 +99,13 @@ const TABS: { id: TabType; label: string }[] = [
 // MAIN COMPONENT
 // ============================================================================
 
-export default function AdminSettingsPage() {
+export default function AdminSettingsPage({ homepageOnly = false }: { homepageOnly?: boolean }) {
   const { getToken } = useAuth();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Get active tab from URL or default to 'general'
-  const activeTab = (searchParams.get('tab') as TabType) || 'general';
+  const activeTab = homepageOnly ? 'homepage' : (searchParams.get('tab') as TabType) || 'general';
 
   // General settings state
   const [settings, setSettings] = useState<SiteSettings | null>(null);
@@ -123,8 +123,8 @@ export default function AdminSettingsPage() {
 
   // Fetch general settings
   useEffect(() => {
-    fetchSettings();
-  }, []);
+    if (!homepageOnly) fetchSettings();
+  }, [homepageOnly]);
 
   // Fetch homepage sections when tab changes
   useEffect(() => {
@@ -503,7 +503,7 @@ export default function AdminSettingsPage() {
   // RENDER
   // ============================================================================
 
-  if (loading) {
+  if (!homepageOnly && loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -514,7 +514,7 @@ export default function AdminSettingsPage() {
     );
   }
 
-  if (!settings) {
+  if (!homepageOnly && !settings) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -544,14 +544,14 @@ export default function AdminSettingsPage() {
             </svg>
             Back to Admin Dashboard
           </button>
-          <h1 className="text-3xl font-bold text-gray-900">Store Settings</h1>
-          <p className="text-gray-600 mt-2">Manage global settings for your Three Squares store</p>
+          <h1 className="text-3xl font-bold text-gray-900">{homepageOnly ? 'Homepage' : 'Store Settings'}</h1>
+          <p className="text-gray-600 mt-2">{homepageOnly ? 'Manage homepage banners and featured content' : 'Manage global settings for your Three Squares store'}</p>
         </div>
 
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-6">
           <nav className="flex space-x-8">
-            {TABS.map((tab) => (
+            {TABS.filter(tab => !homepageOnly || tab.id === 'homepage').map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
@@ -568,7 +568,7 @@ export default function AdminSettingsPage() {
         </div>
 
         {/* Tab Content */}
-        {activeTab === 'general' && (
+        {activeTab === 'general' && settings && (
           <GeneralSettingsTab
             settings={settings}
             saving={saving}

@@ -1,5 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+
+test('homepage merchandising has a separate global-manager destination', () => {
+  assert.equal(canAccessStaffRoute(manager(), '/admin/homepage'), true);
+  assert.equal(canAccessStaffRoute(manager(), '/admin/settings'), false);
+  assert.equal(canAccessStaffRoute(manager({ capabilities: ['catalog.manage'] }), '/admin/homepage'), false);
+  assert.equal(canAccessStaffRoute(staff(), '/admin/homepage'), false);
+});
 import {
   STAFF_CAPABILITIES, normalizeStaffAccess, hasStaffCapability, needsLocationAssignment,
   staffScopeLabel, canAccessStaffRoute, staffRootRedirect, deviceLocations,

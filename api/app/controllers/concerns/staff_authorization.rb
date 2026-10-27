@@ -64,7 +64,9 @@ module StaffAuthorization
       record = action_name == "update" ? (Product.find_by(id: params[:id]) || Product.find_by(slug: params[:id])) : Product.new
       keys = %w[inventory_level product_stock_quantity product_low_stock_threshold track_inventory]
     elsif controller_path == "api/v1/admin/product_variants" && %w[create update destroy generate].include?(action_name)
-      attrs = params[:product_variant] || params[:variant] || params
+      # Generation consumes top-level stock; create/update use variant_params'
+      # non-empty alias precedence. Authorize exactly the payload written.
+      attrs = action_name == "generate" ? params : (params[:product_variant].presence || params[:variant].presence)
       record = %w[update destroy].include?(action_name) ? ProductVariant.find_by(id: params[:id]) : ProductVariant.new(stock_quantity: 0)
       return require_staff_capability!("stock.manage") if action_name == "destroy" && record&.stock_quantity.to_i != 0
       keys = %w[stock_quantity low_stock_threshold]

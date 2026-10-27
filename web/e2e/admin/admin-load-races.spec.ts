@@ -35,19 +35,20 @@ test('successful role update reconciles the active search after a filter read ov
       patchStarted = true;
       await gate;
       isAdmin = true;
-      await route.fulfill({ json: { user: { ...user, role: 'admin', is_admin: true }, message: 'Updated test fixture' } });
-    } else await route.fulfill({ json: { users: [{ ...user, role: isAdmin ? 'admin' : 'customer', is_admin: isAdmin }], stats: { total: 1, admins: isAdmin ? 1 : 0, customers: isAdmin ? 0 : 1 } } });
+      await route.fulfill({ json: { user: { ...user, role: 'manager', assigned_location_id: null }, message: 'Updated test fixture' } });
+    } else await route.fulfill({ json: { users: [{ ...user, role: isAdmin ? 'manager' : 'customer', assigned_location_id: null }], stats: { total: 1, owners: 0, managers: isAdmin ? 1 : 0, staff: 0, customers: isAdmin ? 0 : 1 } } });
   });
   page.on('dialog', dialog => dialog.accept());
   await page.goto('/admin/users');
-  await page.getByRole('button', { name: 'Make Admin', exact: true }).filter({ visible: true }).click();
+  await page.getByLabel('Role for '+user.email, { exact: true }).filter({ visible: true }).selectOption('manager');
+  await page.getByRole('button', { name: 'Save access', exact: true }).filter({ visible: true }).click();
   await expect.poll(() => patchStarted).toBe(true);
   await page.getByPlaceholder('Search by email or name...').fill(user.email);
   const read = page.waitForResponse(response => response.request().method() === 'GET' && response.url().includes('/admin/users?search='));
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await read;
   release();
-  await expect(page.getByRole('button', { name: /^Remove Admin(?: Access)?$/ }).filter({ visible: true })).toBeVisible();
+  await expect(page.getByLabel('Role for '+user.email, { exact: true }).filter({ visible: true })).toHaveValue('manager');
   await expect(page.getByPlaceholder('Search by email or name...')).toHaveValue(user.email);
 });
 
