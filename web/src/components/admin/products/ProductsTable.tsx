@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Eye, Edit, MoreVertical, Archive, ArchiveRestore, Copy, Globe, GlobeLock, ArrowUpDown, AlertTriangle } from 'lucide-react';
 import type { Product } from './productUtils';
 import { formatCurrency, getStockDisplay } from './productUtils';
@@ -16,6 +15,7 @@ interface ProductsTableProps {
   onSort: (column: 'name' | 'price' | 'stock' | 'created') => void;
   onPageChange: (page: number) => void;
   onView: (product: Product) => void;
+  onEdit: (product: Product) => void;
   onTogglePublished: (product: Product) => void;
   onArchive: (product: Product) => void;
   onUnarchive: (product: Product) => void;
@@ -33,12 +33,12 @@ export default function ProductsTable({
   onSort,
   onPageChange,
   onView,
+  onEdit,
   onTogglePublished,
   onArchive,
   onUnarchive,
   onDuplicate,
 }: ProductsTableProps) {
-  const navigate = useNavigate();
   const [actionMenuOpen, setActionMenuOpen] = useState<number | null>(null);
 
   const ActionMenu = ({ product }: { product: Product }) => (
@@ -171,7 +171,7 @@ export default function ProductsTable({
                     <button onClick={() => onView(product)} className="text-tsPrimary hover:text-red-700 font-medium inline-flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 rounded">
                       <Eye className="w-4 h-4 mr-1" /> View
                     </button>
-                    <button onClick={() => navigate(`/admin/products/${product.id}/edit`)} className="text-blue-600 hover:text-blue-900 font-medium inline-flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 rounded">
+                    <button onClick={() => onEdit(product)} className="text-blue-600 hover:text-blue-900 font-medium inline-flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 rounded">
                       <Edit className="w-4 h-4 mr-1" /> Edit
                     </button>
                     <ActionMenu product={product} />
@@ -217,7 +217,7 @@ export default function ProductsTable({
               <button onClick={() => onView(product)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-center inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
                 <Eye className="w-4 h-4 mr-1" /> View
               </button>
-              <button onClick={() => navigate(`/admin/products/${product.id}/edit`)} className="flex-1 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
+              <button onClick={() => onEdit(product)} className="flex-1 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
                 <Edit className="w-4 h-4 mr-1" /> Edit
               </button>
               <ActionMenu product={product} />
