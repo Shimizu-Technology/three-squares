@@ -1,6 +1,6 @@
-import { useRef, useState } from 'react';
-import useLockBodyScroll from '../../../hooks/useLockBodyScroll';
-import { X, Edit, AlertTriangle } from 'lucide-react';
+import { useState, type RefObject } from 'react';
+import AdminModal from '../AdminModal';
+import { Edit, AlertTriangle } from 'lucide-react';
 import type { DetailedProduct } from './productUtils';
 import { formatCurrency, getVariantStatus } from './productUtils';
 import PlaceholderImage from '../../ui/PlaceholderImage';
@@ -10,53 +10,32 @@ interface ProductDetailModalProps {
   loading: boolean;
   onClose: () => void;
   onEdit: (product: DetailedProduct) => void;
+  returnFocusRef?: RefObject<HTMLElement | null>;
 }
 
-export default function ProductDetailModal({ product, loading, onClose, onEdit }: ProductDetailModalProps) {
-  useLockBodyScroll(true);
-
+export default function ProductDetailModal({ product, loading, onClose, onEdit, returnFocusRef }: ProductDetailModalProps) {
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const modalContentRef = useRef<HTMLDivElement | null>(null);
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-sm bg-black/10"
-      onClick={onClose}
+    <AdminModal
+      open
+      onClose={onClose}
+      title={product.name}
+      maxWidth="max-w-4xl"
+      returnFocusRef={returnFocusRef}
+      footer={!loading && (
+        <div className="flex gap-3">
+          <button type="button" onClick={() => onEdit(product)} className="btn-primary min-h-[44px] flex-1 inline-flex items-center justify-center">
+            <Edit className="w-5 h-5 mr-2" /> Edit Product
+          </button>
+          <button type="button" onClick={onClose} className="btn-secondary min-h-[44px]">Close</button>
+        </div>
+      )}
     >
-      <div
-        className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col min-h-0 shadow-2xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {loading ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary mx-auto" />
-            <p className="mt-4 text-gray-600">Loading product details...</p>
-          </div>
-        ) : (
-          <>
-            {/* Header */}
-            <div className="flex justify-between items-center p-6 border-b border-gray-200 shrink-0">
-              <h2 className="text-2xl font-bold text-gray-900">{product.name}</h2>
-              <button
-                onClick={onClose}
-                className="btn-icon min-w-[44px] min-h-[44px] p-2 text-gray-400 hover:text-gray-600 transition"
-                aria-label="Close product details"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
-
-            <div
-              ref={modalContentRef}
-              className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6 overscroll-contain"
-              onWheel={(event) => {
-                if (modalContentRef.current) {
-                  modalContentRef.current.scrollTop += event.deltaY;
-                }
-                event.stopPropagation();
-                event.preventDefault();
-              }}
-            >
+      {loading ? (
+        <p role="status" className="p-8 text-center text-gray-600">Loading product details...</p>
+      ) : (
+        <div className="space-y-6">
               {/* Needs Attention Banner */}
               {product.needs_attention && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start gap-3">
@@ -94,8 +73,11 @@ export default function ProductDetailModal({ product, loading, onClose, onEdit }
                           {product.images.map((image, index) => (
                             <button
                               key={image.id}
+                              type="button"
+                              aria-label={`View image ${index + 1} of ${product.name}`}
+                              aria-pressed={selectedImageIndex === index}
                               onClick={() => setSelectedImageIndex(index)}
-                              className={`bg-white rounded-lg overflow-hidden border-2 transition ${
+                              className={`min-h-[44px] min-w-[44px] bg-white rounded-lg overflow-hidden border-2 transition ${
                                 selectedImageIndex === index ? 'border-tsPrimary' : 'border-gray-200 hover:border-gray-300'
                               }`}
                               style={{ aspectRatio: '1/1' }}
@@ -263,26 +245,8 @@ export default function ProductDetailModal({ product, loading, onClose, onEdit }
                 </div>
               )}
 
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex gap-3 p-6 border-t border-gray-200 shrink-0">
-              <button
-                onClick={() => { onEdit(product); }}
-                className="btn-primary flex-1 inline-flex items-center justify-center"
-              >
-                <Edit className="w-5 h-5 mr-2" /> Edit Product
-              </button>
-              <button
-                onClick={onClose}
-                className="btn-secondary"
-              >
-                Close
-              </button>
-            </div>
-          </>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </AdminModal>
   );
 }

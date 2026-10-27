@@ -1,7 +1,7 @@
-import { useRef } from 'react';
-import type { ReactNode } from 'react';
+import { useId } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import { X } from 'lucide-react';
-import useLockBodyScroll from '../../hooks/useLockBodyScroll';
+import Dialog from '../ui/Dialog';
 
 interface AdminModalProps {
   open: boolean;
@@ -14,6 +14,9 @@ interface AdminModalProps {
   footer?: ReactNode;
   /** Enable print-friendly styling */
   printable?: boolean;
+  dismissible?: boolean;
+  initialFocusRef?: RefObject<HTMLElement | null>;
+  returnFocusRef?: RefObject<HTMLElement | null>;
   children: ReactNode;
 }
 
@@ -25,21 +28,29 @@ export default function AdminModal({
   maxWidth = 'max-w-2xl',
   footer,
   printable = false,
+  dismissible = true,
+  initialFocusRef,
+  returnFocusRef,
   children,
 }: AdminModalProps) {
-  useLockBodyScroll(open);
-  const modalContentRef = useRef<HTMLDivElement | null>(null);
-
-  if (!open) return null;
+  const titleId = useId();
+  const subtitleId = useId();
+  const requestClose = () => { if (dismissible) onClose(); };
 
   return (
-    <div
-      className={`fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-white/30 ${
-        printable ? 'print:bg-white print:p-0 print:block' : ''
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => { if (!nextOpen) requestClose(); }}
+      labelledBy={titleId}
+      describedBy={subtitle ? subtitleId : undefined}
+      dismissible={dismissible}
+      initialFocusRef={initialFocusRef}
+      returnFocusRef={returnFocusRef}
+      className={`rounded-xl ${maxWidth} w-full flex flex-col min-h-0 ${
+        printable ? 'print:shadow-none print:max-h-none print:overflow-visible print-content' : ''
       }`}
-      onClick={onClose}
     >
-      {printable && (
+      {printable && open && (
         <style>{`
           @media print {
             body * { visibility: hidden; }
@@ -62,53 +73,40 @@ export default function AdminModal({
           }
         `}</style>
       )}
-      <div
-        className={`bg-white rounded-xl ${maxWidth} w-full max-h-[90vh] flex flex-col min-h-0 shadow-2xl ${
-          printable ? 'print:shadow-none print:max-h-none print:overflow-visible print-content' : ''
-        }`}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div className="bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center rounded-t-xl shrink-0">
-          <div>
-            <h2 className="text-xl font-bold text-gray-900">{title}</h2>
-            {subtitle && (
-              <p className="text-sm text-gray-500 mt-0.5">{subtitle}</p>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition min-w-[44px] min-h-[44px] p-2 rounded-lg hover:bg-gray-100 print-hide"
-            aria-label="Close modal"
-          >
-            <X className="w-5 h-5" />
-          </button>
+      {/* Header */}
+      <div className="bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center rounded-t-xl shrink-0">
+        <div className="min-w-0">
+          <h2 id={titleId} className="text-xl font-bold text-gray-900 break-words">{title}</h2>
+          {subtitle && (
+            <p id={subtitleId} className="text-sm text-gray-500 mt-0.5 break-words">{subtitle}</p>
+          )}
         </div>
-
-        {/* Body */}
-        <div
-          ref={modalContentRef}
-          className={`flex-1 min-h-0 overflow-y-auto p-6 overscroll-contain ${
-            printable ? 'print:overflow-visible' : ''
-          }`}
-          onWheel={(event) => {
-            if (modalContentRef.current) {
-              modalContentRef.current.scrollTop += event.deltaY;
-            }
-            event.stopPropagation();
-            event.preventDefault();
-          }}
+        <button
+          type="button"
+          onClick={requestClose}
+          disabled={!dismissible}
+          className="text-gray-400 hover:text-gray-600 transition shrink-0 min-w-[44px] min-h-[44px] p-2 rounded-lg hover:bg-gray-100 print-hide"
+          aria-label={`Close ${title}`}
         >
-          {children}
-        </div>
-
-        {/* Footer */}
-        {footer && (
-          <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl print-hide shrink-0">
-            {footer}
-          </div>
-        )}
+          <X className="w-5 h-5" />
+        </button>
       </div>
-    </div>
+
+      {/* Body */}
+      <div
+        className={`flex-1 min-h-0 overflow-y-auto p-6 overscroll-contain ${
+          printable ? 'print:overflow-visible' : ''
+        }`}
+      >
+        {children}
+      </div>
+
+      {/* Footer */}
+      {footer && (
+        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl print-hide shrink-0">
+          {footer}
+        </div>
+      )}
+    </Dialog>
   );
 }

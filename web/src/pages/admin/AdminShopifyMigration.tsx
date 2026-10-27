@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { Upload, FileText, AlertCircle, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
-import useLockBodyScroll from '../../hooks/useLockBodyScroll';
+import AdminModal from '../../components/admin/AdminModal';
 import { authGet, authPost } from '../../services/authApi';
 
 // Collapsible section for import log
@@ -231,7 +231,7 @@ export default function AdminShopifyMigration() {
   const [imports, setImports] = useState<Import[]>([]);
   const [selectedImport, setSelectedImport] = useState<ImportDetails | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const modalContentRef = useRef<HTMLDivElement | null>(null);
+  const importReturnFocusRef = useRef<HTMLElement | null>(null);
 
   const formatEta = (seconds: number | null) => {
     if (!seconds || seconds <= 0) return 'Calculating...';
@@ -244,8 +244,6 @@ export default function AdminShopifyMigration() {
   useEffect(() => {
     fetchImports();
   }, []);
-
-  useLockBodyScroll(!!selectedImport);
 
   // Poll for current import status
   useEffect(() => {
@@ -370,7 +368,8 @@ export default function AdminShopifyMigration() {
     }
   };
 
-  const viewImportDetails = async (importId: number) => {
+  const viewImportDetails = async (importId: number, opener: HTMLElement) => {
+    importReturnFocusRef.current = opener;
     try {
       const response = await authGet<AdminImportResponse>(`/admin/imports/${importId}`, getToken);
       setSelectedImport(response.data.data);
@@ -666,8 +665,8 @@ export default function AdminShopifyMigration() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
                         <button
-                          onClick={() => viewImportDetails(imp.id)}
-                          className="link-primary"
+                          onClick={(event) => viewImportDetails(imp.id, event.currentTarget)}
+                          className="link-primary min-h-[44px] inline-flex items-center"
                         >
                           View Details
                         </button>
@@ -681,44 +680,19 @@ export default function AdminShopifyMigration() {
         </div>
 
         {/* Import Details Modal */}
-        {selectedImport && (
-          <div
-            className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
-            onClick={() => setSelectedImport(null)}
-          >
-            <div
-              className="bg-white rounded-lg w-full max-w-2xl max-h-[85vh] flex flex-col min-h-0 shadow-xl"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header - fixed at top */}
-              <div className="p-6 border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">Import Details</h3>
-                  <button
-                    onClick={() => setSelectedImport(null)}
-                    className="btn-icon text-gray-400 hover:text-gray-600"
-                  >
-                    <XCircle className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Content - scrollable */}
-              <div
-                ref={modalContentRef}
-                className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 overscroll-contain"
-                onWheel={(event) => {
-                  // Force wheel/trackpad scrolling to target this container
-                  if (modalContentRef.current) {
-                    modalContentRef.current.scrollTop += event.deltaY;
-                  }
-                  event.stopPropagation();
-                  event.preventDefault();
-                }}
-              >
+        <AdminModal
+          open={!!selectedImport}
+          onClose={() => setSelectedImport(null)}
+          title="Import Details"
+          returnFocusRef={importReturnFocusRef}
+          footer={(
+            <button type="button" onClick={() => setSelectedImport(null)} className="btn-secondary min-h-[44px] w-full">Close</button>
+          )}
+        >
+          {selectedImport && <div className="space-y-4">
                   {/* Status */}
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Status</label>
+                    <p className="text-sm font-medium text-gray-500">Status</p>
                     <div className="flex items-center mt-1">
                       {getStatusIcon(selectedImport.status)}
                       <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(selectedImport.status)}`}>
@@ -730,7 +704,7 @@ export default function AdminShopifyMigration() {
                   {/* Progress (for pending/processing imports) */}
                   {['pending', 'processing'].includes(selectedImport.status) && selectedImport.total_products > 0 && (
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Progress</label>
+                      <p className="text-sm font-medium text-gray-500">Progress</p>
                       <div className="mt-2">
                         <div className="flex items-center justify-between text-xs text-gray-600 mb-2">
                           <span>
@@ -756,18 +730,18 @@ export default function AdminShopifyMigration() {
 
                   {/* Files */}
                   <div>
-                    <label className="text-sm font-medium text-gray-500">File</label>
+                    <p className="text-sm font-medium text-gray-500">File</p>
                     <p className="mt-1 text-gray-900">{selectedImport.filename}</p>
                   </div>
 
                   {/* Stats */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Products</label>
+                      <p className="text-sm font-medium text-gray-500">Products</p>
                       <p className="mt-1 text-2xl font-semibold text-gray-900">{selectedImport.products_count}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Variants</label>
+                      <p className="text-sm font-medium text-gray-500">Variants</p>
                       <p className="mt-1 text-2xl font-semibold text-gray-900">
                         {selectedImport.variants_count}
                         {selectedImport.variants_skipped_count > 0 && (
@@ -778,11 +752,11 @@ export default function AdminShopifyMigration() {
                       </p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Images</label>
+                      <p className="text-sm font-medium text-gray-500">Images</p>
                       <p className="mt-1 text-2xl font-semibold text-gray-900">{selectedImport.images_count}</p>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Collections</label>
+                      <p className="text-sm font-medium text-gray-500">Collections</p>
                       <p className="mt-1 text-2xl font-semibold text-gray-900">{selectedImport.collections_count}</p>
                     </div>
                   </div>
@@ -840,10 +814,10 @@ export default function AdminShopifyMigration() {
                   {/* Errors */}
                   {selectedImport.error_messages && (
                     <div>
-                      <label className="text-sm font-medium text-gray-500 flex items-center">
+                      <p className="text-sm font-medium text-gray-500 flex items-center">
                         <XCircle className="w-4 h-4 mr-1 text-red-600" />
                         Errors
-                      </label>
+                      </p>
                       <p className="mt-2 text-sm text-red-700 bg-red-50 p-3 rounded">{selectedImport.error_messages}</p>
                     </div>
                   )}
@@ -851,30 +825,18 @@ export default function AdminShopifyMigration() {
                   {/* Timing */}
                   {selectedImport.duration && (
                     <div>
-                      <label className="text-sm font-medium text-gray-500">Duration</label>
+                      <p className="text-sm font-medium text-gray-500">Duration</p>
                       <p className="mt-1 text-gray-900">{selectedImport.duration.toFixed(2)} seconds</p>
                     </div>
                   )}
 
                   {/* User */}
                   <div>
-                    <label className="text-sm font-medium text-gray-500">Imported By</label>
+                    <p className="text-sm font-medium text-gray-500">Imported By</p>
                     <p className="mt-1 text-gray-900">{selectedImport.user.name} ({selectedImport.user.email})</p>
                   </div>
-                </div>
-
-              {/* Footer - fixed at bottom */}
-              <div className="p-6 border-t border-gray-200">
-                <button
-                  onClick={() => setSelectedImport(null)}
-                  className="btn-secondary w-full"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+          </div>}
+        </AdminModal>
       </div>
     </div>
   );
