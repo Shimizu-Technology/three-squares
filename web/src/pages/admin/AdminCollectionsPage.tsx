@@ -174,6 +174,13 @@ export default function AdminCollectionsPage() {
     return () => { if (previous?.isConnected) previous.focus(); };
   }, [showEditModal]);
 
+  useEffect(() => {
+    if (showEditModal && formError && !saving) {
+      editModalContentRef.current?.scrollTo({ top: 0 });
+      editModalRef.current?.querySelector<HTMLInputElement>('input')?.focus();
+    }
+  }, [formError, saving, showEditModal]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -326,6 +333,7 @@ export default function AdminCollectionsPage() {
 
             <div
               ref={editModalContentRef}
+              data-lenis-prevent
               className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 overscroll-contain"
             >
               <fieldset disabled={saving} className="space-y-4 min-w-0">
