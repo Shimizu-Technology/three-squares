@@ -141,7 +141,7 @@ RSpec.describe "Product CSV import", type: :request do
     upload_csv("name,price,locations\nGhost,5.00,main;tumon\nReal,6.00,main\n")
     data = response.parsed_body.fetch("data")
     expect(data).to include("imported" => 1, "skipped" => 1)
-    expect(data.fetch("errors").sole).to include("row" => 2, "error" => "Unknown location: tumon")
+    expect(data.fetch("errors").sole).to include("row" => 2, "error" => "Unknown or ambiguous location: tumon. Use the location slug.")
     expect(Product.pluck(:name)).to eq(["Real"])
   end
 
@@ -153,5 +153,29 @@ RSpec.describe "Product CSV import", type: :request do
     expect(data).to include("imported" => 2, "skipped" => 1, "total" => 3)
     expect(data.fetch("errors").sole).to include("row" => 3, "error" => "Row contains an invalid null character")
     expect(Collection.pluck(:name)).to eq(["Lunch"])
+  end
+
+  it "prefers slugs over names and rejects names shared by several locations" do
+    sign_in(admin)
+    named_main = Location.create!(name: "main", slug: "other-site")
+    Location.create!(name: "Pop-Up", slug: "pop-up-a")
+    Location.create!(name: "Pop-Up", slug: "pop-up-b")
+    upload_csv("name,price,locations\nBy Slug,5.00,main\nBy Name,6.00,Three Squares Main\nAmbiguous,7.00,pop-up\n")
+    data = response.parsed_body.fetch("data")
+    expect(data).to include("imported" => 2, "skipped" => 1)
+    expect(data.fetch("errors").sole).to include("row" => 4, "name" => "Ambiguous")
+    by_slug = Product.find_by!(name: "By Slug")
+    expect(by_slug.product_locations.available.pluck(:location_id)).to eq([main_location.id])
+    expect(by_slug.available_for_location?(named_main.id)).to be(false)
+    expect(Product.find_by!(name: "By Name").product_locations.available.pluck(:location_id)).to eq([main_location.id])
+  end
+
+  it "skips rows with null characters in name, description or price" do
+    sign_in(admin)
+    upload_csv("name,description,price,locations\nNa\u0000me,Tasty,5.00,main\nOkay,Ta\u0000sty,5.00,main\nPricey,Tasty,5.0\u00000,main\n")
+    data = response.parsed_body.fetch("data")
+    expect(data).to include("imported" => 0, "skipped" => 3, "total" => 3)
+    expect(data.fetch("errors").map { |error| error["error"] }.uniq).to eq(["Row contains an invalid null character"])
+    expect(Product.count).to eq(0)
   end
 end

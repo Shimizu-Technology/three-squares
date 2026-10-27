@@ -329,7 +329,7 @@ export default function AdminProductsPage() {
             onKeyDown={(event) => {
               if (event.key === 'Escape' && !isImporting) setShowImportModal(false);
               if (event.key !== 'Tab') return;
-              const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), a[href]'));
+              const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), a[href], [tabindex="0"]'));
               const first = controls[0];
               const last = controls[controls.length - 1];
               if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) {
@@ -420,7 +420,7 @@ export default function AdminProductsPage() {
                       <div className="bg-blue-50 px-4 py-2">
                         <p className="text-sm font-medium text-blue-800">{importResult.notices.length} draft{importResult.notices.length > 1 ? 's' : ''} need pickup locations</p>
                       </div>
-                      <ul className="divide-y divide-blue-100 max-h-40 overflow-y-auto">
+                      <ul tabIndex={0} aria-label="Imported drafts that need pickup locations" className="divide-y divide-blue-100 max-h-40 overflow-y-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
                         {importResult.notices.map((notice, i) => (
                           <li key={i} className="px-4 py-2 text-sm text-blue-800">
                             <span className="font-medium">Row {notice.row}{notice.name ? ` (${notice.name})` : ''}:</span> {notice.message}
@@ -434,7 +434,7 @@ export default function AdminProductsPage() {
                       <div className="bg-orange-50 px-4 py-2">
                         <p className="text-sm font-medium text-orange-800">{importResult.errors.length} row{importResult.errors.length > 1 ? 's' : ''} with errors</p>
                       </div>
-                      <ul className="divide-y divide-orange-100 max-h-40 overflow-y-auto">
+                      <ul tabIndex={0} aria-label="Rows skipped with errors" className="divide-y divide-orange-100 max-h-40 overflow-y-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500">
                         {importResult.errors.map((err, i) => (
                           <li key={i} className="px-4 py-2 text-sm text-orange-700">
                             <span className="font-medium">Row {err.row}{err.name ? ` (${err.name})` : ''}:</span> {err.error}

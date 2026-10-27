@@ -154,16 +154,20 @@ module Api
           imported = 0
           errors = []
           notices = []
-          locations_by_key = Location.all.each_with_object({}) do |location, map|
-            map[location.slug.to_s.downcase] = location
-            map[location.name.to_s.downcase] = location
-          end
+          # Slugs are unique and take precedence; a name only resolves when it
+          # identifies exactly one location.
+          all_locations = Location.all.to_a
+          locations_by_slug = all_locations.index_by { |location| location.slug.to_s.downcase }
+          locations_by_name = all_locations.group_by { |location| location.name.to_s.downcase }
           rows.each_with_index do |row, index|
             name = row["name"]&.strip
             price = row["price"]&.strip
             active = row["active"]&.strip&.downcase
             location_keys = row["locations"].to_s.split(/[;|]/).map { |key| key.strip.downcase }.reject(&:empty?)
-            unknown_locations = location_keys.reject { |key| locations_by_key.key?(key) }
+            resolved_locations = location_keys.map do |key|
+              locations_by_slug[key] || (locations_by_name[key]&.one? ? locations_by_name[key].first : nil)
+            end
+            unknown_locations = location_keys.zip(resolved_locations).filter_map { |key, location| key if location.nil? }
             error = if row.fields.any? { |value| value.to_s.include?("\u0000") }
               "Row contains an invalid null character"
             elsif name.blank?
@@ -173,7 +177,7 @@ module Api
             elsif active.present? && !%w[true 1 yes false 0 no].include?(active)
               "Active must be true or false (yes/no and 1/0 are also accepted)"
             elsif unknown_locations.any?
-              "Unknown location: #{unknown_locations.join(', ')}"
+              "Unknown or ambiguous location: #{unknown_locations.join(', ')}. Use the location slug."
             end
             if error
               errors << { row: index + 2, name: name, error: error }
@@ -181,7 +185,7 @@ module Api
             end
 
             begin
-              pickup_location_ids = location_keys.map { |key| locations_by_key[key].id }.uniq
+              pickup_location_ids = resolved_locations.map(&:id).uniq
               wants_published = !%w[false 0 no].include?(active)
               Product.transaction(requires_new: true) do
                 # A pickup product with no location rows counts as available everywhere,
