@@ -8,6 +8,7 @@ import {
 import { StatCard, SkeletonDashboard } from '../../components/admin';
 import AdminRequestState from '../../components/admin/AdminRequestState';
 import { authGet } from '../../services/authApi';
+import { useStaffAccess } from '../../components/admin/StaffAccess.tsx';
 
 interface DashboardStats {
   total_orders: number;
@@ -57,6 +58,7 @@ const BUSINESS_LINE_LABELS: Record<string, string> = {
 
 export default function AdminDashboardPage() {
   const { getToken } = useAuth();
+  const { scopeLabel } = useStaffAccess();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -105,7 +107,8 @@ export default function AdminDashboardPage() {
       {/* Welcome Header */}
       <div className="rounded-2xl p-6 sm:p-8 shadow-lg bg-tsPrimary">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#ffffff' }}>Welcome back!</h1>
-        <p style={{ color: '#ffffff', opacity: 0.9 }}>Here's what's happening with your store today.</p>
+        <p style={{ color: '#ffffff', opacity: 0.9 }}>All-time order totals · {scopeLabel} · All business lines</p>
+        <p className="mt-2 text-sm text-white">Production, non-simulated orders only. Revenue includes paid orders only. Published products are counted across all locations.</p>
         <button type="button" onClick={fetchDashboardData} disabled={loading} className="mt-4 min-h-[44px] rounded-lg border border-white px-4 text-white focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60">Refresh dashboard</button>
       </div>
 
@@ -114,20 +117,20 @@ export default function AdminDashboardPage() {
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
         <StatCard
-          label="Total Orders"
+          label="All-time orders"
           value={stats.total_orders}
           icon={ShoppingCart}
           iconColor="bg-blue-50 text-blue-600"
         />
         <StatCard
-          label="Revenue"
+          label="All-time paid revenue"
           value={formatCurrency(stats.total_revenue_cents)}
           icon={DollarSign}
           iconColor="bg-green-50 text-green-600"
           valueColor="text-green-600"
         />
         <StatCard
-          label="Pending"
+          label="Pending orders"
           value={stats.pending_orders}
           icon={Clock}
           iconColor="bg-orange-50 text-orange-600"
@@ -139,7 +142,7 @@ export default function AdminDashboardPage() {
           }
         />
         <StatCard
-          label="Products"
+          label="Published products (global)"
           value={stats.total_products}
           icon={Package}
           iconColor="bg-purple-50 text-purple-600"
@@ -183,7 +186,7 @@ export default function AdminDashboardPage() {
       {/* Recent Orders */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
-          <h2 className="text-lg font-bold text-gray-900">Recent Orders</h2>
+          <div><h2 className="text-lg font-bold text-gray-900">Recent Orders</h2><p className="text-sm text-gray-600">{scopeLabel} · All business lines · Includes test and simulated orders</p></div>
           <Link to="/admin/orders" className="text-sm link-primary flex items-center gap-1">
             View All
             <ArrowRight className="w-4 h-4" />
@@ -227,6 +230,7 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
+      <p className="text-sm text-gray-700">Breakdowns: all time · {scopeLabel} · All business lines · Production, non-simulated orders. Revenue includes paid orders only.</p>
       {/* Phase 2 Segmentation Snapshot */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">

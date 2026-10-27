@@ -7,6 +7,7 @@ import { SkeletonBar, SkeletonStatCard } from '../../components/admin';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import AdminRequestState from '../../components/admin/AdminRequestState';
 import { authGet } from '../../services/authApi';
+import { useStaffAccess } from '../../components/admin/StaffAccess.tsx';
 
 interface ChartPoint {
   date: string;
@@ -23,10 +24,25 @@ interface ChartData {
   };
 }
 
+const compareWeek = (current: number, previous: number) => {
+  if (previous === 0) return { change: null, label: current === 0 ? 'No activity in either week' : 'New activity this week · None last week' };
+  const change = ((current - previous) / previous) * 100;
+  return { change, label: `${change > 0 ? '+' : ''}${change.toFixed(0)}% vs last week` };
+};
+
+function WeekComparison({ current, previous }: { current: number; previous: number }) {
+  const { change, label } = compareWeek(current, previous);
+  const Icon = change === null || change === 0 ? Minus : change > 0 ? TrendingUp : TrendingDown;
+  return <div className={`flex items-center gap-1 mt-2 text-sm font-medium ${change === null || change === 0 ? 'text-gray-700' : change > 0 ? 'text-green-700' : 'text-red-700'}`}>
+    <Icon className="w-4 h-4 shrink-0" aria-hidden="true" />{label}
+  </div>;
+}
+
 const formatCurrency = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
 export default function AdminAnalyticsPage() {
   const { getToken } = useAuth();
+  const { scopeLabel } = useStaffAccess();
   const [chartMode, setChartMode] = useState<'revenue' | 'orders'>('revenue');
   const [days, setDays] = useState(14);
 
@@ -72,16 +88,6 @@ export default function AdminAnalyticsPage() {
   const loadError = result.days === days && result.error;
 
   const comp = chartData?.comparison;
-  const revenueChange = comp
-    ? comp.last_week.revenue_cents > 0
-      ? ((comp.this_week.revenue_cents - comp.last_week.revenue_cents) / comp.last_week.revenue_cents) * 100
-      : comp.this_week.revenue_cents > 0 ? 100 : 0
-    : null;
-  const ordersChange = comp
-    ? comp.last_week.orders > 0
-      ? ((comp.this_week.orders - comp.last_week.orders) / comp.last_week.orders) * 100
-      : comp.this_week.orders > 0 ? 100 : 0
-    : null;
 
   return (
     <div className="space-y-8">
@@ -89,26 +95,10 @@ export default function AdminAnalyticsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-sm text-gray-500 mt-1">Revenue and order trends over time</p>
+          <p className="text-sm text-gray-500 mt-1">{scopeLabel} · All business lines · Production, non-simulated orders</p>
         </div>
         <div className="flex flex-wrap gap-2 items-center">
           <button type="button" onClick={refreshChartData} disabled={loading} className="btn-secondary min-h-[44px] disabled:opacity-60">Refresh analytics</button>
-        <div className="flex bg-gray-100 rounded-lg p-1">
-          {[7, 14, 30].map((d) => (
-            <button
-              key={d}
-              onClick={() => selectDays(d)}
-              aria-pressed={days === d}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                days === d
-                  ? 'bg-white shadow-sm text-gray-900'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {d}d
-            </button>
-          ))}
-        </div>
         </div>
       </div>
 
@@ -120,119 +110,133 @@ export default function AdminAnalyticsPage() {
         <SkeletonBar className="h-96 rounded-xl" />
       </div>}
 
-      {/* Week-over-Week Summary Cards */}
-      {comp && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <p className="text-sm font-medium text-gray-500">This Week Revenue</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
-              {formatCurrency(comp.this_week.revenue_cents)}
-            </p>
-            {revenueChange !== null && revenueChange !== 0 && (
-              <div className={`flex items-center gap-1 mt-2 text-sm font-medium ${
-                revenueChange > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {revenueChange > 0 ? <TrendingUp className="w-4 h-4" /> :
-                 revenueChange < 0 ? <TrendingDown className="w-4 h-4" /> :
-                 <Minus className="w-4 h-4" />}
-                {revenueChange > 0 ? '+' : ''}{revenueChange.toFixed(0)}% vs last week
-              </div>
-            )}
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <p className="text-sm font-medium text-gray-500">Last Week Revenue</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
-              {formatCurrency(comp.last_week.revenue_cents)}
-            </p>
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <p className="text-sm font-medium text-gray-500">This Week Orders</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{comp.this_week.orders}</p>
-            {ordersChange !== null && ordersChange !== 0 && (
-              <div className={`flex items-center gap-1 mt-2 text-sm font-medium ${
-                ordersChange > 0 ? 'text-green-600' : 'text-red-600'
-              }`}>
-                {ordersChange > 0 ? <TrendingUp className="w-4 h-4" /> :
-                 ordersChange < 0 ? <TrendingDown className="w-4 h-4" /> :
-                 <Minus className="w-4 h-4" />}
-                {ordersChange > 0 ? '+' : ''}{ordersChange.toFixed(0)}% vs last week
-              </div>
-            )}
-          </div>
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <p className="text-sm font-medium text-gray-500">Last Week Orders</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">{comp.last_week.orders}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Main Chart */}
-      {chartData && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-gray-900">Overview</h2>
-            <div className="flex bg-gray-100 rounded-lg p-1">
-              <button
-                onClick={() => setChartMode('revenue')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                  chartMode === 'revenue'
-                    ? 'bg-white shadow-sm text-gray-900'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Revenue
-              </button>
-              <button
-                onClick={() => setChartMode('orders')}
-                className={`px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                  chartMode === 'orders'
-                    ? 'bg-white shadow-sm text-gray-900'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Orders
-              </button>
+      <section aria-labelledby="weekly-summary-title" className="space-y-3">
+        <h2 id="weekly-summary-title" className="text-lg font-bold text-gray-900">This week so far vs last week</h2>
+        <p className="text-sm text-gray-700">Calendar weeks: this week so far compared with all of last week. Revenue includes paid orders only. The daily chart range does not change these cards.</p>
+        {/* Week-over-Week Summary Cards */}
+        {comp && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <p className="text-sm font-medium text-gray-500">This week so far · Revenue</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {formatCurrency(comp.this_week.revenue_cents)}
+              </p>
+              <WeekComparison current={comp.this_week.revenue_cents} previous={comp.last_week.revenue_cents} />
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <p className="text-sm font-medium text-gray-500">Last week · Revenue</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {formatCurrency(comp.last_week.revenue_cents)}
+              </p>
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <p className="text-sm font-medium text-gray-500">This week so far · Orders</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{comp.this_week.orders}</p>
+              <WeekComparison current={comp.this_week.orders} previous={comp.last_week.orders} />
+            </div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+              <p className="text-sm font-medium text-gray-500">Last week · Orders</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{comp.last_week.orders}</p>
             </div>
           </div>
-          {chartData.series.length === 0 ? (
-            !loading && !loadError && <p className="py-12 text-center text-gray-600">No chart data for the last {days} days.</p>
-          ) : <ResponsiveContainer width="100%" height={360}>
-            <BarChart data={chartData.series} barCategoryGap="20%">
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-              <XAxis
-                dataKey="label"
-                tick={{ fontSize: 12, fill: '#9ca3af' }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fontSize: 12, fill: '#9ca3af' }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={chartMode === 'revenue' ? (v) => `$${(v / 100).toFixed(0)}` : undefined}
-              />
-              <Tooltip
-                formatter={(value) => {
-                  const v = Number(value);
-                  return chartMode === 'revenue'
-                    ? [formatCurrency(v), 'Revenue']
-                    : [v, 'Orders'];
-                }}
-                contentStyle={{
-                  borderRadius: '8px',
-                  border: '1px solid #e5e7eb',
-                  boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
-                }}
-              />
-              <Bar
-                dataKey={chartMode === 'revenue' ? 'revenue_cents' : 'orders'}
-                fill={chartMode === 'revenue' ? '#16a34a' : '#C1191F'}
-                radius={[4, 4, 0, 0]}
-              />
-            </BarChart>
-          </ResponsiveContainer>}
+        )}
+      </section>
+
+      <section aria-labelledby="daily-chart-title" className="space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div><h2 id="daily-chart-title" className="text-lg font-bold text-gray-900">Daily chart · Last {days} days</h2><p className="text-sm text-gray-700">Guam dates · Includes today so far</p></div>
+          <div role="group" aria-label="Daily chart range" className="flex bg-gray-100 rounded-lg p-1">
+            {[7, 14, 30].map((d) => (
+              <button
+                type="button"
+                key={d}
+                onClick={() => selectDays(d)}
+                aria-pressed={days === d}
+                aria-label={`Last ${d} days`}
+                className={`min-h-[44px] min-w-[44px] px-3 py-1.5 rounded-md text-xs font-medium transition ${
+                  days === d
+                    ? 'bg-white shadow-sm text-gray-900'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {d}d
+              </button>
+            ))}
+          </div>
         </div>
-      )}
+        {/* Main Chart */}
+        {chartData && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+              <h3 className="text-lg font-bold text-gray-900">{chartMode === 'revenue' ? 'Paid revenue per day' : 'Orders per day'}</h3>
+              <div role="group" aria-label="Daily chart measure" className="flex bg-gray-100 rounded-lg p-1">
+                <button
+                  type="button"
+                  aria-pressed={chartMode === 'revenue'}
+                  onClick={() => setChartMode('revenue')}
+                  className={`min-h-[44px] min-w-[44px] px-3 py-1.5 rounded-md text-xs font-medium transition ${
+                    chartMode === 'revenue'
+                      ? 'bg-white shadow-sm text-gray-900'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Revenue
+                </button>
+                <button
+                  type="button"
+                  aria-pressed={chartMode === 'orders'}
+                  onClick={() => setChartMode('orders')}
+                  className={`min-h-[44px] min-w-[44px] px-3 py-1.5 rounded-md text-xs font-medium transition ${
+                    chartMode === 'orders'
+                      ? 'bg-white shadow-sm text-gray-900'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Orders
+                </button>
+              </div>
+            </div>
+            {chartData.series.length === 0 ? (
+              !loading && !loadError && <p className="py-12 text-center text-gray-600">No chart data for the last {days} days.</p>
+            ) : <ResponsiveContainer width="100%" height={360}>
+              <BarChart data={chartData.series} barCategoryGap="20%">
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 12, fill: '#4b5563' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 12, fill: '#4b5563' }}
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={chartMode === 'revenue' ? (v) => `$${(v / 100).toFixed(0)}` : undefined}
+                />
+                <Tooltip
+                  formatter={(value) => {
+                    const v = Number(value);
+                    return chartMode === 'revenue'
+                      ? [formatCurrency(v), 'Revenue']
+                      : [v, 'Orders'];
+                  }}
+                  contentStyle={{
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)',
+                  }}
+                />
+                <Bar
+                  isAnimationActive={false}
+                  dataKey={chartMode === 'revenue' ? 'revenue_cents' : 'orders'}
+                  fill={chartMode === 'revenue' ? '#16a34a' : '#C1191F'}
+                  radius={[4, 4, 0, 0]}
+                />
+              </BarChart>
+            </ResponsiveContainer>}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
