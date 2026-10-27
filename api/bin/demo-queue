@@ -1,0 +1,30 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+abort 'Use bin/demo to run this development-only worker' unless ENV['RAILS_ENV'] == 'development' && ENV['DEMO_QUEUE'] == '1'
+require_relative '../config/environment'
+Rails.application.eager_load!
+
+# Run the same Solid Queue components without forking a multithreaded Rails
+# process. This avoids native pg fork crashes on macOS during scheduled work.
+configuration = SolidQueue::Configuration.new
+abort configuration.errors.full_messages.join('\n') unless configuration.valid?
+components = configuration.configured_processes.map(&:instantiate)
+threads = []
+stopping = false
+trap('INT') { stopping = true }
+trap('TERM') { stopping = true }
+begin
+  components.each do |component|
+    component.mode = :async
+    threads << component.start
+  end
+  puts 'Demo Solid Queue worker, dispatcher and recurring scheduler ready.'
+  $stdout.flush
+  until stopping
+    raise 'A demo queue component exited' unless threads.all?(&:alive?)
+    sleep 0.25
+  end
+ensure
+  components.reverse_each(&:stop)
+end

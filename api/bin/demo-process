@@ -1,0 +1,15 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+abort 'Use bin/demo to run this development-only process' unless ENV['RAILS_ENV'] == 'development' && ENV['DEMO_QUEUE'] == '1'
+require_relative '../config/boot'
+require 'rails'
+require 'active_support'
+require 'active_support/notifications'
+require 'dotenv/rails'
+# The launcher has already read its small allowlist. Rails must not reload the
+# developer's full .env (provider, notification and cloud-storage credentials).
+Dotenv::Railtie.instance.define_singleton_method(:load) {}
+entry = ARGV.shift
+abort 'Unknown demo entry point' unless %w[rails demo-queue].include?(entry)
+load File.expand_path(entry, __dir__)
