@@ -104,7 +104,8 @@ function CheckoutForm() {
   }> | null>(null);
 
   // Environment labels never grant payment authority.
-  const isSandbox = appConfig?.payment_environment === 'sandbox';
+  const activeClientConfig = savedClientConfig || locationClientConfig;
+  const isSandbox = activeClientConfig?.payment_environment === 'sandbox';
   const submitting = useRef(false);
   const creationKey = useRef(crypto.randomUUID());
   const capability = useRef(checkoutCapability());
@@ -882,7 +883,7 @@ function CheckoutForm() {
               <PaymentForm
                 ref={paymentForm}
                 configuration={savedClientConfig || locationClientConfig}
-                available={appConfig?.features.payments === true}
+                available={!!activeClientConfig?.stripe_publishable_key && !!activeClientConfig?.stripe_account_id}
                 onPaymentReady={handlePaymentReady}
               />
 

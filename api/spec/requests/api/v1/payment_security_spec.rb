@@ -207,13 +207,15 @@ RSpec.describe 'Payment ingress controls', type: :request do
     allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
     allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
     location = Location.create!(name: 'POS fixture', slug: SecureRandom.hex(6), active: true, hours_json: { 'Daily' => '00:00-23:59' })
-    product = create(:product, published: true, allow_pickup: true, inventory_level: 'variant')
+    product = create(:product, published: true, allow_pickup: true, inventory_level: 'variant', sale_price_cents: 900)
     variant = create(:product_variant, product: product, available: true, stock_quantity: 5, price_cents: 1000)
     post '/api/v1/admin/pos/orders', params: { order: { payment_method: 'card_present', location_id: location.id, items: [{ product_variant_id: variant.id, quantity: 2 }] } }, headers: { 'Idempotency-Key' => SecureRandom.uuid }
     expect(response).to have_http_status(:created), response.body
     order = Order.find(response.parsed_body['id'])
     attempt = PaymentAttempt.find(order.payment_attempt_id)
     expect(order.payment_status).to eq('pending')
+    expect(order.total_cents).to eq(1800)
+    expect(attempt.requested_cents).to eq(1800)
     expect(variant.reload.stock_quantity).to eq(5)
     secret = 'fixture_webhook_secret'
     allow(ENV).to receive(:[]).and_call_original
@@ -239,14 +241,14 @@ RSpec.describe 'Payment ingress controls', type: :request do
     allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
     allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
     location = Location.create!(name: 'Cash fixture', slug: SecureRandom.hex(6), active: true, hours_json: { 'Daily' => '00:00-23:59' })
-    product = create(:product, published: true, allow_pickup: true, inventory_level: 'variant')
+    product = create(:product, published: true, allow_pickup: true, inventory_level: 'variant', sale_price_cents: 900)
     variant = create(:product_variant, product: product, available: true, stock_quantity: 5, price_cents: 1000)
     key = SecureRandom.uuid
     payload = { order: { payment_method: 'cash', cash_received_cents: 2500, location_id: location.id, items: [{ product_variant_id: variant.id, quantity: 2 }] } }
     2.times do
       post '/api/v1/admin/pos/orders', params: payload, headers: { 'Idempotency-Key' => key }
       expect(response).to have_http_status(:created), response.body
-      expect(response.parsed_body).to include('payment_status' => 'paid', 'cash_change_cents' => 500)
+      expect(response.parsed_body).to include('payment_status' => 'paid', 'cash_change_cents' => 700)
     end
     expect(variant.reload.stock_quantity).to eq(3)
     expect(Order.where(payment_method: 'cash').count).to eq(1)

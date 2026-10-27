@@ -79,7 +79,7 @@ module Api
         order = session.order.reload
         identity = session.payment_identity
         client_config = identity.provider == 'stripe' ? {
-          'payment_identity_id' => identity.id, 'stripe_account_id' => identity.external_account_id,
+          'payment_identity_id' => identity.id, 'payment_environment' => identity.environment, 'stripe_account_id' => identity.external_account_id,
           'stripe_publishable_key' => ENV[identity.environment == 'production' ? 'STRIPE_PUBLISHABLE_KEY' : 'STRIPE_PUBLISHABLE_KEY_TEST']
         } : {}
         { id: session.id, attempt_id: attempt.id, state: session.state, payment_state: attempt.state, amount_cents: session.amount_cents, currency: session.currency,

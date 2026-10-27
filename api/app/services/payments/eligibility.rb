@@ -6,10 +6,8 @@ module Payments
       product = variant.product
       raise FulfillmentError, "#{product.name} is not available" unless product.published? && !product.archived? && variant.available?
       raise FulfillmentError, "This menu is not accepting orders" unless MenuEligibility.enabled?(product, at: at)
-      if online
-        enabled = StorefrontEligibility.enabled?(product, settings: SiteSetting.instance)
-        raise FulfillmentError, "This storefront is not accepting orders" unless enabled
-      end
+      enabled = StorefrontEligibility.enabled?(product, settings: SiteSetting.instance)
+      raise FulfillmentError, "This storefront is not accepting orders" unless enabled
       if location_id.present? && product.allow_pickup?
         location = Location.active.find_by(id: location_id)
         raise FulfillmentError, "Selected pickup location is unavailable" unless location

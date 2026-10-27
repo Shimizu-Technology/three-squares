@@ -358,7 +358,7 @@ export default function AdminPOSPage() {
     setAvailableReaders([]);
     void setTerminalLocation(selectedLocation).then(() => {
       if (active) setTerminalLocationReady(!!selectedLocation);
-    });
+    }).catch(error => { if (active) setTerminalError(error instanceof Error ? error.message : 'Reader credentials could not be reset.'); });
     return () => { active = false; };
   }, [selectedLocation]);
 
@@ -629,16 +629,19 @@ export default function AdminPOSPage() {
   const handleResetReaderSession = useCallback(async () => {
     try {
       setTerminalError(null);
+      setTerminalLocationReady(false);
       await resetTerminalSession();
+      await setTerminalLocation(selectedLocation);
+      setTerminalLocationReady(!!selectedLocation);
       setTerminalReader(null);
       setAvailableReaders([]);
       setShowReaderPicker(false);
-      setTerminalError('Reader reset. The saved payment still requires a status check.');
+      setTerminalError(localStorage.getItem(POS_PENDING_TERMINAL_KEY) ? 'Reader reset. The saved payment still requires a status check.' : 'Reader reset. Connect a reader before taking card payments.');
       setTerminalCollecting(false);
     } catch (err) {
       setTerminalError(err instanceof Error ? err.message : 'Failed to reset reader session');
     }
-  }, []);
+  }, [selectedLocation]);
 
   const handleTerminalPayment = useCallback(async () => {
     if (cart.length === 0 || terminalCollecting || hasPendingTerminalSession || localStorage.getItem(POS_PENDING_TERMINAL_KEY)) return;
@@ -1273,7 +1276,7 @@ export default function AdminPOSPage() {
             </div>
           )}
 
-          {(terminalReader || hasPendingTerminalSession || terminalCollecting) && (
+          {(terminalReader || hasPendingTerminalSession || terminalCollecting || terminalError) && (
             <button
               onClick={handleResetReaderSession}
               className="w-full mb-2 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium hover:bg-slate-100 transition-colors"
@@ -1293,7 +1296,7 @@ export default function AdminPOSPage() {
             </button>
             <button
               onClick={handleCardAction}
-              disabled={!canSubmitPayment || !terminalReader}
+              disabled={!canSubmitPayment || !terminalReader || !terminalLocationReady}
               className="flex items-center justify-center gap-2 py-3 text-white rounded-xl font-medium bg-tsNavy hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {terminalCollecting ? (

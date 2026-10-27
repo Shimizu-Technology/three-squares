@@ -4,6 +4,7 @@ import { loadStripe } from '@stripe/stripe-js';
 
 export interface StripeClientConfiguration {
   payment_identity_id?: string;
+  payment_environment?: string;
   stripe_account_id?: string;
   stripe_publishable_key?: string;
 }

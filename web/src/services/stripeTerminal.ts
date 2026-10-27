@@ -14,7 +14,7 @@ let locationChange = Promise.resolve();
 
 // POS chooses its own location. Storefront browsing state never supplies account authority.
 export async function setTerminalLocation(locationId: number | undefined): Promise<void> {
-  locationChange = locationChange.then(async () => {
+  locationChange = locationChange.catch(() => {}).then(async () => {
     if (terminalLocationId === locationId) return;
     terminalLocationId = undefined;
     if (terminal) await resetTerminalSession();
@@ -245,21 +245,17 @@ export async function resetTerminalSession(): Promise<void> {
     // ignore
   }
 
+  let resetError: unknown;
   try {
-    if (connectedReader) {
-      await t.disconnectReader();
-    }
-  } catch {
-    // ignore
-  }
-
-  try {
-    await clearCachedCredentialsSafe(t);
-  } catch {
-    // ignore
-  }
-
+    if (connectedReader) await t.disconnectReader();
+  } catch (error) { resetError = error; }
+  try { await clearCachedCredentialsSafe(t); }
+  catch (error) { resetError = error; }
   connectedReader = null;
+  if (resetError) {
+    updateStatus('error');
+    throw resetError;
+  }
   updateStatus('initialized');
 }
 
