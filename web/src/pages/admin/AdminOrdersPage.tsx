@@ -98,6 +98,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
 
   // Selected order
   const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const detailReturnRef = useRef<{ x: number; y: number; trigger: HTMLElement | null } | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Ship modal
@@ -226,6 +227,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
 
   // ── Fetch single order details ────────────────────────────────
   const fetchOrderDetails = async (orderId: number) => {
+    detailReturnRef.current = { x: window.scrollX, y: window.scrollY, trigger: document.activeElement instanceof HTMLElement ? document.activeElement : null };
     try {
       const response = await authGet<AdminOrderResponse>(`/admin/orders/${orderId}`, getToken);
       setSelectedOrder(response.data.order);
@@ -233,6 +235,18 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       console.error('Failed to fetch order details:', err);
       toast.error('Failed to load order details');
     }
+  };
+
+  const closeOrderDetails = () => {
+    const position = detailReturnRef.current;
+    setSelectedOrder(null);
+    // Restore after the modal releases its body lock. Keep keyboard focus on
+    // the original control without letting focus itself scroll the queue.
+    requestAnimationFrame(() => {
+      if (!position) return;
+      if (position.trigger?.isConnected) position.trigger.focus({ preventScroll: true });
+      window.scrollTo({ left: position.x, top: position.y, behavior: 'instant' });
+    });
   };
 
   // ── Update order (from detail modal edit form) ────────────────
@@ -595,7 +609,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
         <OrderDetailModal
           order={selectedOrder}
           saving={saving}
-          onClose={() => setSelectedOrder(null)}
+          onClose={closeOrderDetails}
           onUpdateOrder={updateOrder}
           onQuickUpdateStatus={quickUpdateStatus}
           onResendNotification={resendNotification}
