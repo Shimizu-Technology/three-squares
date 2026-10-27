@@ -74,3 +74,16 @@ test('history return metadata must match the validated destination and an actual
   assert.deepEqual(readProductListReturn(source, path), source);
   for (const invalid of [null, {}, { ...source, index: -1 }, { ...source, index: 1.5 }, { ...source, path: '/admin/orders' }, { ...source, entryKey: 5 }]) assert.equal(readProductListReturn(invalid, path), null);
 });
+
+test('import batch context and pickup-recovery filters survive canonical editor return paths', () => {
+  const batch = '4ba7a24e-98f5-4373-bc02-b51d7acd9fb1';
+  const path = productListPath({ ...parseProductQuery(''), batch, published: 'pickup_locations', page: 2 });
+  assert.equal(path, `/admin/products?published=pickup_locations&batch=${batch}&page=2`);
+  assert.equal(parseProductQuery(path.split('?')[1]).batch, batch);
+  assert.equal(safeProductReturnTo(`/admin/products?batch=${batch}&published=pickup_locations&page=2`), path);
+  for (const value of ['other-account', '../products', '4ba7a24e-98f5-4373-bc02-b51d7acd9fb1<script>', '1,2,3', '']) {
+    assert.equal(parseProductQuery(`?batch=${encodeURIComponent(value)}`).batch, undefined);
+    assert.equal(safeProductReturnTo(`/admin/products?batch=${encodeURIComponent(value)}`), '/admin/products');
+  }
+  assert.equal(safeProductReturnTo(`/admin/products?batch=${batch}&batch=${batch}`), '/admin/products');
+});

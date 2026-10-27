@@ -10,6 +10,7 @@ const modules = {
   '@clerk/clerk-react': dataModule(`const getToken = async () => 'synthetic'; export const useAuth = () => ({ getToken, userId: 'list-test' });`),
   'react-router-dom': dataModule(`export const useLocation = () => ${ctx}.location; export const useNavigate = () => ${ctx}.navigate; export const useNavigationType = () => ${ctx}.navigationType;`),
   '../../components/admin/StaffAccess.tsx': dataModule("export const useStaffAccess = () => ({user:{authorized_locations:[]},can:()=>false});"),
+  '../../components/admin/import/menuImportReceipt': dataModule('export const readMenuImportReceipt = () => null;'),
   '../../components/admin/LocalAvailabilityToggle': dataModule('export default function LocalAvailabilityToggle() {}'),
   'react-hot-toast': dataModule('export default { success() {}, error() {} };'),
   '../../components/admin/products': dataModule('export function ProductFilters() {} export function ProductsTable() {} export function ProductDetailModal() {}'),

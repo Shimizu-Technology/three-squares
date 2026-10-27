@@ -89,12 +89,15 @@ export default function ProductsTable({
   );
 
   const StatusBadge = ({ product }: { product: Product }) => (
+    <div className="flex shrink-0 flex-col items-start gap-1">
     <span className={`self-start shrink-0 px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
       product.archived ? 'bg-orange-100 text-orange-800' :
       product.published ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
     }`}>
       {product.archived ? 'Archived' : product.published ? 'Published' : 'Draft'}
     </span>
+    {product.needs_pickup_locations && <span className="max-w-36 text-sm font-semibold text-amber-900">Needs pickup locations</span>}
+    </div>
   );
 
   const ProductImage = ({ product, size = 'w-12 h-12' }: { product: Product; size?: string }) => (
