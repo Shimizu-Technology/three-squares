@@ -113,6 +113,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   const [refreshVersion, setRefreshVersion] = useState(0);
   const loadedKeyRef = useRef('');
   const requestRef = useRef(0);
+  const pendingKeyRef = useRef<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const buildFilterParams = useCallback((): Record<string, unknown> => {
@@ -136,7 +137,9 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
 
   // Keep list and counts as one successful snapshot. Older filter responses
   // cannot replace a newer request; refreshes preserve rendered rows and focus.
-  const fetchOrders = useCallback(async () => {
+  const fetchOrders = useCallback(async (background = false) => {
+    if (background && pendingKeyRef.current === queryKey) return;
+    pendingKeyRef.current = queryKey;
     abortRef.current?.abort();
     const controller = new AbortController();
     abortRef.current = controller;
@@ -146,10 +149,12 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
     try {
       const params = buildFilterParams();
       const [listing, counts] = await Promise.all([
-        authGet<OrdersIndexResponse>('/admin/orders', getToken, { params: { page, per_page: 25, ...params }, signal: controller.signal }),
-        authGet<OrdersSummaryResponse>('/admin/orders/summary', getToken, { params, signal: controller.signal }),
+        authGet<OrdersIndexResponse>('/admin/orders', getToken, { params: { page, per_page: 25, ...params }, signal: controller.signal, timeout: 20_000 }),
+        authGet<OrdersSummaryResponse>('/admin/orders/summary', getToken, { params, signal: controller.signal, timeout: 20_000 }),
       ]);
       if (requestRef.current !== requestId || controller.signal.aborted) return;
+      const lastPage = Math.max(1, listing.data.pagination.total_pages);
+      if (page > lastPage) { setPage(lastPage); return; }
       setOrders(listing.data.orders);
       setTotalPages(listing.data.pagination.total_pages);
       setTotalCount(listing.data.pagination.total_count);
@@ -163,6 +168,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       setLoadError(axios.isAxiosError(error) ? error.response?.data?.error || 'Could not refresh orders. Check the connection and try again.' : 'Could not refresh orders. Try again.');
     } finally {
       if (requestRef.current === requestId) {
+        pendingKeyRef.current = null;
         setLoading(false);
         setRefreshing(false);
       }
@@ -176,7 +182,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
 
   useEffect(() => {
     if (mode === 'default') return;
-    const refreshVisible = () => { if (!document.hidden) { setClock(Date.now()); void fetchOrders(); } };
+    const refreshVisible = () => { if (!document.hidden) { setClock(Date.now()); void fetchOrders(true); } };
     const interval = window.setInterval(refreshVisible, 10_000);
     document.addEventListener('visibilitychange', refreshVisible);
     return () => { window.clearInterval(interval); document.removeEventListener('visibilitychange', refreshVisible); };
