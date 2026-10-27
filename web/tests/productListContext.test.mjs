@@ -30,7 +30,7 @@ function harness(search = '?q=Adobo&published=true&type=local&sort=price&dir=des
   const state = [], effects = [], layoutEffects = [], events = new Map(), values = new Map(), history = [], future = [];
   let cursor = 0, tree;
   const h = {
-    location: { pathname: '/admin/products', search, key: `initial-${++entry}`, state: null }, navigationType: 'POP', calls: [],
+    location: { pathname: '/admin/products', search, key: `initial-${++entry}`, state: null }, navigationType: 'POP', calls: [], values,
     get: async path => ({ data: { data: path === '/admin/products' ? products : { ...products[0], images: [], variants: [], collections: [] } } }),
     navigate(path, options = {}) {
       h.calls.push([path, options]);
@@ -54,7 +54,7 @@ function harness(search = '?q=Adobo&published=true&type=local&sort=price&dir=des
     unmount() { state.forEach(value => value?.cleanup?.()); },
     scroll(y) { window.scrollY = y; events.get('scroll')?.(); },
   };
-  globalThis.window = { scrollY: 0, history: { state: { idx: 2 } }, scrollTo: ({ top }) => { window.scrollY = top; }, addEventListener: (name, callback) => events.set(name, callback), removeEventListener: name => events.delete(name) };
+  globalThis.window = { get location() { return h.location; }, scrollY: 0, history: { state: { idx: 2 } }, scrollTo: ({ top }) => { window.scrollY = top; }, addEventListener: (name, callback) => events.set(name, callback), removeEventListener: name => events.delete(name) };
   globalThis.document = { body: { style: {} }, activeElement: null };
   globalThis.sessionStorage = { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value) };
   return h;
@@ -129,5 +129,18 @@ test('search edits coalesce within a focus session but POP ends the session so s
   await h.flush();
   h.component('ProductFilters').onSearchChange('B');
   assert.equal(h.calls.at(-1)[1].replace, false);
+  h.unmount();
+});
+
+test('a scroll event from the departing editor cannot overwrite the saved list position before cleanup', async () => {
+  const h = harness();
+  await h.flush();
+  h.scroll(2755);
+  h.component('ProductsTable').onEdit(products[0]);
+  // Simulate the DOM shrinking after pushState while the old callback still exists.
+  h.scroll(0);
+  const saved = [...h.values.entries()].filter(([key]) => key.includes('product-scroll'));
+  assert.equal(saved.length, 1);
+  assert.equal(saved[0][1], '2755');
   h.unmount();
 });

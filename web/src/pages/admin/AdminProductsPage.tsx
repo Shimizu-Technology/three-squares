@@ -303,16 +303,22 @@ export default function AdminProductsPage() {
     if (y !== null) window.scrollTo({ top: y, behavior: 'instant' });
   }, [hasLoaded, loading, scrollKey]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!hasLoaded || loading) return;
-    const save = () => writeProductScroll(scrollKey, window.scrollY);
+    const save = () => {
+      // Route removal can clamp the page before passive effect cleanup. Never
+      // let that editor/filter scroll overwrite the departing list's position.
+      if (window.location.pathname !== '/admin/products' ||
+          productListPath(parseProductQuery(window.location.search)) !== listPath) return;
+      writeProductScroll(scrollKey, window.scrollY);
+    };
     window.addEventListener('scroll', save, { passive: true });
     window.addEventListener('pagehide', save);
     return () => {
       window.removeEventListener('scroll', save);
       window.removeEventListener('pagehide', save);
     };
-  }, [hasLoaded, loading, scrollKey]);
+  }, [hasLoaded, loading, scrollKey, listPath]);
 
   // ── Render ─────────────────────────────────────────────
   return (
