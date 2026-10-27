@@ -5,29 +5,25 @@ module Api
     module Admin
       # Admin endpoint for managing catering inquiries.
       class CateringController < BaseController
-        before_action :set_inquiry, only: [:show, :update, :destroy]
+        before_action :set_inquiry, only: [ :show, :update, :destroy, :quote, :status ]
 
         # GET /api/v1/admin/catering
         def index
-          inquiries = CateringInquiry.order(created_at: :desc)
-          
-          # Filter by status
-          if params[:status].present?
-            inquiries = inquiries.where(status: params[:status])
+          filter = params[:status].presence || "all"
+          unless ([ "active", "all" ] + CateringInquiry::STATUSES).include?(filter)
+            return render json: { error: "Invalid status" }, status: :unprocessable_entity
           end
 
-          # Filter by date range
-          if params[:from_date].present?
-            inquiries = inquiries.where("event_date >= ?", params[:from_date])
-          end
-          if params[:to_date].present?
-            inquiries = inquiries.where("event_date <= ?", params[:to_date])
-          end
+          inquiries = CateringInquiry.order(event_date: :asc, created_at: :asc, id: :asc)
+          inquiries = inquiries.active if filter == "active"
+          inquiries = inquiries.where(status: filter) if CateringInquiry::STATUSES.include?(filter)
+          inquiries = inquiries.where("event_date >= ?", params[:from_date]) if params[:from_date].present?
+          inquiries = inquiries.where("event_date <= ?", params[:to_date]) if params[:to_date].present?
 
-          # Pagination
-          page = (params[:page] || 1).to_i
-          per_page = (params[:per_page] || 20).to_i.clamp(1, 100)
+          per_page = 20
           total = inquiries.count
+          total_pages = (total.to_f / per_page).ceil
+          page = (Integer(params[:page], exception: false) || 1).clamp(1, [ total_pages, 1 ].max)
           inquiries = inquiries.offset((page - 1) * per_page).limit(per_page)
 
           render json: {
@@ -36,7 +32,7 @@ module Api
               page: page,
               per_page: per_page,
               total: total,
-              total_pages: (total.to_f / per_page).ceil
+              total_pages: total_pages
             }
           }
         end
@@ -48,10 +44,16 @@ module Api
 
         # PATCH /api/v1/admin/catering/:id
         def update
-          if @inquiry.update(inquiry_params)
+          attributes = params[:inquiry]
+          unless attributes.is_a?(ActionController::Parameters) &&
+              (attributes.keys - [ "admin_notes" ]).empty? &&
+              !params.key?(:status) && !params.key?(:quoted_amount)
+            return render json: { error: "Only admin_notes may be updated" }, status: :unprocessable_entity
+          end
+
+          with_current_inquiry do
+            @inquiry.update!(attributes.permit(:admin_notes))
             render json: { inquiry: serialize_inquiry(@inquiry, full: true) }
-          else
-            render json: { errors: @inquiry.errors.full_messages }, status: :unprocessable_entity
           end
         end
 
@@ -63,41 +65,24 @@ module Api
 
         # POST /api/v1/admin/catering/:id/quote
         def quote
-          @inquiry = CateringInquiry.find(params[:id])
-          
-          unless params[:quoted_amount].present?
-            return render json: { error: "quoted_amount is required" }, status: :unprocessable_entity
+          with_current_inquiry do
+            options = { amount: params[:quoted_amount], admin: current_user }
+            options[:notes] = params[:admin_notes] if params.key?(:admin_notes)
+            @inquiry.mark_quoted!(**options)
+
+            render json: {
+              inquiry: serialize_inquiry(@inquiry, full: true),
+              message: "Quote recorded. No email was sent by this app."
+            }
           end
-
-          @inquiry.mark_quoted!(
-            amount: params[:quoted_amount].to_d,
-            admin: current_user,
-            notes: params[:admin_notes]
-          )
-
-          # TODO: Send quote email to customer
-
-          render json: { inquiry: serialize_inquiry(@inquiry, full: true) }
         end
 
         # POST /api/v1/admin/catering/:id/status
         def status
-          @inquiry = CateringInquiry.find(params[:id])
-          
-          case params[:status]
-          when "accepted"
-            @inquiry.mark_accepted!
-          when "declined"
-            @inquiry.mark_declined!
-          when "completed"
-            @inquiry.mark_completed!
-          when "cancelled"
-            @inquiry.update!(status: "cancelled")
-          else
-            return render json: { error: "Invalid status" }, status: :unprocessable_entity
+          with_current_inquiry do
+            @inquiry.transition_to!(params[:status])
+            render json: { inquiry: serialize_inquiry(@inquiry, full: true) }
           end
-
-          render json: { inquiry: serialize_inquiry(@inquiry, full: true) }
         end
 
         # GET /api/v1/admin/catering/stats
@@ -107,8 +92,8 @@ module Api
             pending: CateringInquiry.pending.count,
             quoted: CateringInquiry.quoted.count,
             active: CateringInquiry.active.count,
-            upcoming_this_week: CateringInquiry.upcoming.where("event_date <= ?", 1.week.from_now).count,
-            urgent: CateringInquiry.active.select(&:urgent?).count
+            upcoming_this_week: CateringInquiry.urgent.count,
+            urgent: CateringInquiry.urgent.count
           }
         end
 
@@ -118,10 +103,31 @@ module Api
           @inquiry = CateringInquiry.find(params[:id])
         end
 
-        def inquiry_params
-          params.require(:inquiry).permit(
-            :status, :admin_notes, :quoted_amount
-          )
+        # Compare after reloading under the row lock so concurrent edits cannot
+        # overwrite a newer quote, status, or note with a stale detail version.
+        def with_current_inquiry
+          @inquiry.with_lock do
+            version = params[:expected_updated_at]
+            unless version.is_a?(String) &&
+                version.match?(/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})\z/)
+              return render json: { error: "expected_updated_at must be an ISO 8601 timestamp string" }, status: :unprocessable_entity
+            end
+
+            begin
+              Date.iso8601(version[0, 10])
+              expected = Time.iso8601(version)
+            rescue ArgumentError
+              return render json: { error: "expected_updated_at must be a valid timestamp" }, status: :unprocessable_entity
+            end
+
+            unless expected == @inquiry.updated_at
+              return render json: { error: "This inquiry has changed. Reload it before saving again." }, status: :conflict
+            end
+
+            yield
+          end
+        rescue ActiveRecord::RecordInvalid => e
+          render json: { errors: e.record.errors.full_messages }, status: :unprocessable_entity
         end
 
         def serialize_inquiry(inquiry, full: false)
@@ -152,7 +158,7 @@ module Api
               quoted_amount: inquiry.quoted_amount&.to_f,
               quoted_at: inquiry.quoted_at&.iso8601,
               responded_by_id: inquiry.responded_by_id,
-              updated_at: inquiry.updated_at.iso8601
+              updated_at: inquiry.updated_at.iso8601(6)
             )
           end
 
