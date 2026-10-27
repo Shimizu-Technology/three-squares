@@ -26,6 +26,10 @@ async function load(relative, extra = '') {
       mocks[name] = dataModule(ts.transpileModule(helper, { compilerOptions: { module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText);
       continue;
     }
+    if (name.endsWith('/usePaymentTerminal')) {
+      mocks[name] = dataModule(`export const usePaymentTerminal = () => ({ terminals: [], selected: { id:1, provider:'stripe', environment:'sandbox', terminal_id:'tmr_fixture', label:'Fixture reader', status:'ready', collectable:true }, selectedId:1, select(){}, reload:async()=>{}, loading:false, error:null });`);
+      continue;
+    }
     if (name.includes('StaffAccess')) {
       mocks[name] = dataModule(`export const useStaffAccess = () => ${stateKey}; export const StaffAccessProvider = () => null; export const StaffAccessDenied = () => null;`);
       continue;
@@ -59,7 +63,7 @@ for (const [role, names] of Object.entries(roles)) test(`${role} sees only permi
     user: { role, operational_scope: role === 'staff' || role === 'scoped_manager' ? 'specific' : 'all' },
     loading: false, error: false, roleLabel: role, scopeLabel: 'Fixture scope', can: name => names.includes(name),
   };
-  const panel = Panel({ locationId: 1, attemptId: 'attempt-fixture', getToken: async () => null, onChange: async () => {} });
+  const panel = Panel({ locationId: 1, attemptId: 'attempt-fixture', terminalId: 1, onSelect() {}, getToken: async () => null, onChange: async () => {} });
   const buttons = elements(panel).filter(node => node.type === 'button').map(text);
   assert.equal(buttons.includes('Take card payment'), names.includes('payments.collect'));
   for (const command of ['Tap card', 'Approve', 'Decline', 'Enter wrong PIN', 'Disconnect', 'Reconnect', 'Lose response']) {

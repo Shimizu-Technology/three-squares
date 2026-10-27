@@ -60,6 +60,7 @@ export interface TerminalPaymentResponse {
   inventory_committed?: boolean;
   checkout_session_id?: string;
   payment_receipt?: PaymentReceiptFacts | null;
+  terminal_resume?: { provider_state?: string; client_secret?: string };
   pending?: boolean;
 }
 type Auth = { token: string };

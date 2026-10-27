@@ -174,6 +174,54 @@ RSpec.describe 'Bound terminal collection and administration', type: :request do
     expect(attempt.order.reload.payment_status).to eq('pending')
   end
 
+  it 'blocks another manager renaming an unresolved re-pair and recovers its original saved payload' do
+    key = SecureRandom.uuid
+    post "/api/v1/admin/payment_terminals/#{terminal.id}/pair", params: {activation_code: 'SIM-TIMEOUT'}, headers: {'Idempotency-Key' => key}, as: :json
+    expect(response).to have_http_status(:accepted), response.body
+    expect(TerminalAdministration.last.state).to eq('unknown')
+    original_label = terminal.label
+    acting(create(:user, role: 'manager', assigned_location: nil))
+    patch "/api/v1/admin/payment_terminals/#{terminal.id}", params: {label: 'Changed during pairing'}, as: :json
+    expect(response).to have_http_status(:conflict)
+    expect(terminal.reload.label).to eq(original_label)
+    acting(owner)
+    post "/api/v1/admin/payment_terminals/#{terminal.id}/pair", headers: {'Idempotency-Key' => key}, as: :json
+    expect(response).to have_http_status(:ok), response.body
+    expect(TerminalAdministration.last.state).to eq('succeeded')
+    expect(terminal.reload.label).to eq(original_label)
+  end
+
+  it 'returns only a freshly verified original Stripe intent state for SDK resume' do
+    stripe_identity = PaymentIdentity.create!(provider: 'stripe', environment: 'sandbox', external_account_id: 'acct_fixture', profile_key: SecureRandom.uuid, credential_reference: 'stripe_default')
+    stripe_profile = PaymentProfile.create!(payment_identity: stripe_identity, provider: 'stripe', channel: 'pos', presentation: 'stripe_terminal', enabled: true)
+    reader = PaymentTerminal.create!(payment_identity: stripe_identity, payment_profile: stripe_profile, location: location, lane_id: 'stripe-fixture', terminal_id: 'tmr_fixture', label: 'Stripe fixture')
+    SiteSetting.instance.update!(payment_processor: 'stripe')
+    allow(ENV).to receive(:[]).with('STRIPE_SECRET_KEY_TEST').and_return('sk_test_fictional_local')
+    intents = double('offline intent API')
+    client = double(v1: double(payment_intents: intents))
+    allow(Stripe::StripeClient).to receive(:new).and_return(client)
+    intent = nil
+    expect(intents).to receive(:create).once do |payload, _|
+      intent = Stripe::PaymentIntent.construct_from(payload.merge(id: 'pi_fixture', client_secret: 'pi_fixture_secret', status: 'requires_payment_method', livemode: false, amount_received: 0))
+    end
+    allow(intents).to receive(:retrieve) { |id| expect(id).to eq('pi_fixture'); intent }
+    key = SecureRandom.uuid
+    post '/api/v1/admin/pos/orders', params: {order: {payment_method: 'card_present', location_id: location.id,
+      payment_terminal_id: reader.id, items: [{product_variant_id: variant.id, quantity: 1}]}}, headers: {'Idempotency-Key' => key}, as: :json
+    expect(response).to have_http_status(:created), response.body
+    order_id = response.parsed_body.fetch('id')
+    post "/api/v1/admin/pos/orders/#{order_id}/payments", params: {payment_terminal_id: reader.id}, headers: {'Idempotency-Key' => key}, as: :json
+    expect(response).to have_http_status(:accepted), response.body
+    expect(response.parsed_body.fetch('terminal_resume')).to include('provider_state' => 'requires_payment_method', 'client_secret' => 'pi_fixture_secret')
+    intent.status = 'processing'
+    post "/api/v1/admin/pos/orders/#{order_id}/payments", params: {payment_terminal_id: reader.id}, headers: {'Idempotency-Key' => key}, as: :json
+    expect(response.parsed_body.fetch('terminal_resume').fetch('provider_state')).to eq('processing')
+    intent.metadata['order_id'] = 'another-order'
+    post "/api/v1/admin/pos/orders/#{order_id}/payments", params: {payment_terminal_id: reader.id}, headers: {'Idempotency-Key' => key}, as: :json
+    expect(response).to have_http_status(:not_found)
+    expect(response.parsed_body).not_to have_key('terminal_resume')
+  end
+
   it 'does not re-pair or retire a lane with unresolved money' do
     attempt = saved_order
     start(attempt)

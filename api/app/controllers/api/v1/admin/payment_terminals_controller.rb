@@ -46,7 +46,12 @@ module Api
 
         def update
           terminal = scope.find(params[:id])
-          terminal.with_lock do
+          PaymentTerminal.transaction do
+            Payments::TerminalLease.lock_lane!(identity_id: terminal.payment_identity_id, lane_id: terminal.lane_id)
+            terminal.lock!
+            if TerminalAdministration.active.exists?(payment_identity_id: terminal.payment_identity_id, lane_id: terminal.lane_id)
+              raise Payments::Conflict, 'Resolve the saved reader administration before changing its settings'
+            end
             terminal.update!(params.permit(:label, :enabled).to_h)
           end
           render json: representation(terminal)

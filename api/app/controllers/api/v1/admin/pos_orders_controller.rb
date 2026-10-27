@@ -42,6 +42,11 @@ module Api
           rescue StandardError => error
             Rails.logger.error("Terminal enqueue attempt=#{attempt.id} error=#{error.class}")
           end
+          if attempt.payment_identity.provider == 'stripe' && attempt.payment_identity.environment != 'simulated'
+            # Authenticated original-intent lookup; never construct an SDK intent
+            # from browser hints or persist encrypted SDK payment details.
+            @terminal_resume = Payments::ProviderResolver.for_attempt(attempt.reload).collection(attempt: attempt).slice(:provider_state, :client_secret)
+          end
           render json: pos_order_json(order.reload), status: :accepted
         rescue Payments::Conflict => error
           render json: {error: error.message}, status: :conflict
@@ -235,6 +240,7 @@ module Api
 
           # Stripe client secret for card payments
           json[:client_secret] = @client_secret if @client_secret.present?
+          json[:terminal_resume] = @terminal_resume if @terminal_resume
           if order.payment_attempt_id
             attempt = PaymentAttempt.find(order.payment_attempt_id)
             json.merge!(collection_mode: attempt.collection_mode, payment_terminal_id: attempt.payment_terminal_id,

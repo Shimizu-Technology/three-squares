@@ -33,7 +33,7 @@ module Payments
       end
       intent = client.v1.payment_intents.create(params, { idempotency_key: attempt.operation_key })
       validate_binding!(intent, attempt)
-      { raw_id: intent.id, flow: attempt.collection_mode == 'terminal' ? "stripe_terminal" : "stripe_embedded", client_secret: intent.client_secret }
+      { raw_id: intent.id, flow: attempt.collection_mode == 'terminal' ? "stripe_terminal" : "stripe_embedded", client_secret: intent.client_secret, provider_state: intent.status }
     end
 
     def query(attempt:)
@@ -82,7 +82,7 @@ module Payments
       validate_attempt_identity!(attempt)
       intent = client.v1.payment_intents.retrieve(attempt.raw_provider_id)
       validate_binding!(intent, attempt)
-      { raw_id: intent.id, flow: attempt.collection_mode == 'terminal' ? "stripe_terminal" : "stripe_embedded", client_secret: intent.client_secret }
+      { raw_id: intent.id, flow: attempt.collection_mode == 'terminal' ? "stripe_terminal" : "stripe_embedded", client_secret: intent.client_secret, provider_state: intent.status }
     end
 
     def cancel(attempt:)
