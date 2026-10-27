@@ -175,7 +175,7 @@ RSpec.describe "Catering online ordering gate", type: :request do
     session = create_undispatched_checkout
     attempt = session.payment_attempts.last
     provider = PaymentFoundationHelpers::Provider.new(session.payment_identity)
-    allow(provider).to receive(:preflight).and_raise(Payments::Configuration::UnsafeConfiguration, "Fixture transport disabled")
+    provider.define_singleton_method(:preflight) { |attempt:| raise Payments::Configuration::UnsafeConfiguration, "Fixture transport disabled" }
     allow(Payments::ProviderResolver).to receive(:for_attempt).and_return(provider)
     expect { Payments::SetupAttempt.call(attempt: attempt) }.to raise_error(Payments::Configuration::UnsafeConfiguration)
     expect(attempt.reload).to have_attributes(state: "unknown", dispatched_at: nil, raw_provider_id: nil, setup_id: nil)
