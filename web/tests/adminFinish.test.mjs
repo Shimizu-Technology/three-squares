@@ -8,6 +8,7 @@ const url = source => `data:text/javascript;base64,${Buffer.from(source).toStrin
 const ctx = 'globalThis.__adminFinish';
 const stubs = names => url(names.map(name => `export function ${name}() { return null; }`).join('\n'));
 const mocks = {
+  '../components/admin/OnlineOrderingSection': url('export default function OnlineOrderingSection() {}'),
   react: url(['useState', 'useEffect', 'useCallback', 'useRef'].map(name => `export const ${name} = (...args) => ${ctx}.${name}(...args);`).join('\n')),
   '@clerk/clerk-react': url(`export const useAuth = () => ({ getToken: ${ctx}.getToken });`),
   'react-router-dom': url(`export function Link() {}\nexport const useNavigate = () => () => {};\nexport const useSearchParams = () => [new URLSearchParams(), () => {}];`),

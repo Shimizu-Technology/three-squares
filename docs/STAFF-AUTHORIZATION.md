@@ -36,7 +36,7 @@ A capability check admits the action category; pair it with scoped record lookup
 | `locations.read`, `locations.update`, `locations.qr` | Scoped location operations; manager update permits hours/active only |
 | `locations.manage` | Owner location creation/deletion and full location settings |
 | `homepage.manage` | Owner/all-locations manager merchandising |
-| `users.manage`, `settings.manage`, `payment_settings.manage` | Owner-only account/site/storefront/payment administration |
+| `users.manage`, `settings.manage`, `payment_settings.manage`, `ordering.manage` | Owner-only account/site/storefront/payment administration |
 
 `GET /api/v1/me` returns `role`, `capabilities`, `operational_scope` (`all`, `specific`, `none`), assignment fields, and minimal `authorized_locations: [{id,name,slug}]`. Notification contacts are excluded from these choices. The frontend shares this response through `StaffAccessProvider` / `useStaffAccess().can(capability)`; standalone POS has its own provider. UI hiding supplements server enforcement.
 
@@ -56,3 +56,4 @@ Role writes/deletions must use model callbacks. A transaction advisory lock prot
 
 
 Payment configuration status (`GET /api/v1/admin/site_settings/payment_status`) is read-only and requires owner capability `payment_settings.manage`. It uses the selected provider, enabled effective location/channel profiles, immutable identities and server gates; it never sends provider requests or returns credentials. Both manager scopes remain denied by the existing settings policy. Legacy `payment_test_mode` remains readable for operational compatibility, but both settings update endpoints ignore it; only deployment preparation may reconcile that field. Profile/provider assignment stays in the existing operator/API workflow.
+`GET/PUT /api/v1/admin/online_ordering` maps to owner-only `ordering.manage`. It controls the explicit public ordering pause and optional message; changes retain actor, state, message and time. It grants no payment capture or recovery authority.

@@ -1,4 +1,7 @@
 class SiteSetting < ApplicationRecord
+  validates :online_ordering_paused, inclusion: { in: [true, false] }
+  validates :online_ordering_pause_message, length: { maximum: 240 }
+
   VALID_ANNOUNCEMENT_STYLES = %w[gold info success warning danger].freeze
 
   # Singleton pattern - only one record should ever exist

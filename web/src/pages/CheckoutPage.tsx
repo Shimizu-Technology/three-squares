@@ -14,10 +14,14 @@ import type { ShippingAddress, ShippingMethod, AppConfig } from '../types/order'
 import type { Location } from '../services/api';
 import PlaceholderImage from '../components/ui/PlaceholderImage';
 import OptimizedImage from '../components/ui/OptimizedImage';
+import { useBackendAvailability } from '../hooks/useBackendAvailability';
 import { useLocationStore } from '../store/locationStore';
 
 function CheckoutForm() {
   const navigate = useNavigate();
+  const { status: connectionStatus, config: orderingConfig } = useBackendAvailability();
+  const orderingBlocked = connectionStatus !== 'available' || orderingConfig?.online_ordering_paused !== false;
+  const orderingMessage = orderingConfig?.online_ordering_paused ? orderingConfig.online_ordering_pause_message : 'We can’t reach ordering right now. Please retry the connection before starting payment.';
   const { getToken, isSignedIn, isLoaded: authLoaded, userId } = useAuth();
   const { cart, sessionId, fetchCart, validateCart, removeItem, isLoading: cartLoading, isRepricing, pricingError } = useCartStore();
   const { selectedLocation: storedLocation, setSelectedLocation } = useLocationStore();
@@ -396,7 +400,7 @@ function CheckoutForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitting.current || pendingPayment || creationPending || pricePending || pricingError || !reviewed) return;
+    if (orderingBlocked || submitting.current || pendingPayment || creationPending || pricePending || pricingError || !reviewed) return;
     submitting.current = true;
     setError(null);
     setValidationIssues(null);
@@ -1061,10 +1065,11 @@ function CheckoutForm() {
               {pricePending && !pricingError && <p role="status" className="mb-3 text-sm text-warm-700">Updating your total for {deliveryMethod === 'pickup' ? storedLocation?.name || 'pickup' : 'shipping'}…</p>}
               {pricingError && <div role="alert" className="mb-3 text-sm text-red-700">{pricingError} <button type="button" className="underline min-h-11" onClick={() => void fetchCart({ fulfillment_type: deliveryMethod, location_id: deliveryMethod === 'pickup' ? pickupLocationId : null })}>Refresh price</button></div>}
               <label className="mb-4 flex items-start gap-3 text-sm text-warm-900"><input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={reviewed} onChange={event => setReviewed(event.target.checked)} /><span>I have reviewed my items, {deliveryMethod === 'pickup' ? `pickup at ${storedLocation?.name || 'the selected location'}` : 'shipping address'}, and total of {formatPrice(totalCents)}.</span></label>
+              {orderingBlocked && !pendingPayment && <p role="status" className="mb-3 text-sm text-warm-700">{orderingMessage}</p>}
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || !isFormValid() || !!pendingPayment || !reviewed}
+                disabled={orderingBlocked || loading || !isFormValid() || !!pendingPayment || !reviewed}
                 className="w-full bg-tsPrimary text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 {loading ? (

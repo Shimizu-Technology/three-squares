@@ -13,6 +13,7 @@ import LocationContextBar from './components/LocationContextBar';
 import StorefrontGate from './components/StorefrontGate';
 import { useCartStore } from './store/cartStore'; // Import cart store
 import { API_BASE_URL } from './config';
+import CustomerAvailability from './components/CustomerAvailability';
 import AnnouncementBanner from './components/AnnouncementBanner';
 import RouteErrorBoundary from './components/RouteErrorBoundary';
 
@@ -244,7 +245,7 @@ function AppContent() {
       />
       <div className={`min-h-screen bg-warm-50 ${isAdminPage ? '' : 'public-site'}`}>
         {/* Cart Drawer */}
-        <CartDrawer />
+        {!isAdminPage && <CartDrawer />}
 
         {/* Announcement Banner - Above nav, customer-facing only */}
         {!isAdminPage && <AnnouncementBanner />}
@@ -706,7 +707,7 @@ function AppContent() {
 function App() {
   return (
     <BrowserRouter>
-      <AppContent />
+      <CustomerAvailability><AppContent /></CustomerAvailability>
     </BrowserRouter>
   );
 }

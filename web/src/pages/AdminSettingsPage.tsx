@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 import api, { collectionsApi, type Collection } from '../services/api';
 import { invalidateAppConfig } from '../hooks/useAppConfig';
 
+import OnlineOrderingSection from '../components/admin/OnlineOrderingSection';
 import { API_BASE_URL } from '../config';
 import { ANNOUNCEMENT_STYLE_HEX } from '../constants/announcementStyles';
 import PaymentStatusPanel from '../components/payment/PaymentStatusPanel';
@@ -585,6 +586,7 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
           </nav>
         </div>
 
+        {activeTab === 'general' && <OnlineOrderingSection />}
         {/* Tab Content */}
         {activeTab === 'general' && settings && (
           <GeneralSettingsTab

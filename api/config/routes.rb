@@ -79,6 +79,7 @@ Rails.application.routes.draw do
         end
 
         # Site Settings (singleton resource)
+        resource :online_ordering, only: [ :show, :update ], controller: "online_ordering"
         resource :site_settings, only: [ :show, :update ] do
           get :payment_status
         end
