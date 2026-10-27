@@ -14,6 +14,19 @@ module Payments
       end
       return unless stored
       return CompensateAttempt.call(attempt: stored) if stored.compensation_claimed_at
+      if stored.raw_provider_id.blank? && stored.dispatched_at.nil?
+        if stored.checkout_session.expires_at.past?
+          AttemptLock.call(stored) do |session, current, _, _|
+            if current.dispatched_at.nil? && current.raw_provider_id.blank?
+              current.update!(state: 'cancelled', next_recovery_at: nil)
+              session.update!(state: 'cancelled')
+              InventoryReservation.where(order_id: current.order_id, state: 'held').update_all(state: 'released', updated_at: Time.current)
+            end
+          end
+          return stored.order
+        end
+        SetupAttempt.call(attempt: stored)
+      end
       provider = ProviderResolver.for_identity(stored.payment_identity)
       result = provider.query(attempt: stored)
       if result.status == 'unknown' && result.raw_id.blank? && stored.raw_provider_id.blank? &&

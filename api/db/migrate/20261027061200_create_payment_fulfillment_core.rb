@@ -46,6 +46,11 @@ class CreatePaymentFulfillmentCore < ActiveRecord::Migration[8.1]
     end
     add_index :payment_outboxes, :effect_key, unique: true, if_not_exists: true
     add_index :payment_outboxes, [:state, :next_attempt_at], if_not_exists: true
+    create_table :rejected_payment_requests, if_not_exists: true do |t|
+      t.string :owner_key, :caller_idempotency_key, :payload_digest, :reason, null: false
+      t.timestamps
+    end
+    add_index :rejected_payment_requests, [:owner_key, :caller_idempotency_key], unique: true, name: 'unique_rejected_payment_request', if_not_exists: true
     # Backfill only durable snapshots already stored by the application.
     execute "UPDATE payment_attempts a SET snapshot = s.snapshot FROM checkout_sessions s WHERE a.checkout_session_id = s.id AND a.snapshot = '{}'::jsonb"
     execute "UPDATE orders o SET payment_snapshot = s.snapshot FROM checkout_sessions s WHERE s.order_id = o.id AND o.payment_snapshot = '{}'::jsonb"

@@ -4,6 +4,9 @@ module Payments
   class SetupAttempt
     def self.call(attempt:)
       Configuration.validate_identity!(attempt.payment_identity)
+      if attempt.raw_provider_id.blank? && attempt.dispatched_at.nil? && attempt.checkout_session.expires_at.past?
+        raise Conflict, 'Collection expired; check the saved payment before starting again'
+      end
       dispatch = false
       attempt.with_lock do
         return attempt if attempt.raw_provider_id.present? && attempt.collection_config.present?
@@ -12,7 +15,7 @@ module Payments
           next
         end
         # A dispatch interrupted by a crash is recovered by the same immutable operation key.
-        if attempt.state == "created" || (%w[dispatching unknown].include?(attempt.state) && attempt.raw_provider_id.blank? &&
+        if (%w[created unknown].include?(attempt.state) && attempt.dispatched_at.nil?) || (%w[dispatching unknown].include?(attempt.state) && attempt.raw_provider_id.blank? &&
             attempt.dispatched_at && attempt.dispatched_at > 23.hours.ago && (attempt.next_recovery_at.nil? || attempt.next_recovery_at <= Time.current))
           attempt.update!(state: "dispatching", dispatched_at: attempt.dispatched_at || Time.current, next_recovery_at: 1.minute.from_now)
           dispatch = true

@@ -14,7 +14,12 @@ module Payments
         payload = outbox.payload
         raise BindingError, 'Unknown notification consumer' unless NOTIFICATION_JOBS.include?(payload['job'])
         # Notification jobs own the delivery lease and acknowledgement themselves.
-        return payload['job'].constantize.new.perform(*payload.fetch('args'))
+        result = payload['job'].constantize.new.perform(*payload.fetch('args'))
+        # Status intents and consumer delivery rows have separate identities.
+        # Acknowledge the originating intent as well as the consumer's lease.
+        outbox.update!(state: result.is_a?(Hash) && result[:skipped] ? 'skipped' : 'delivered',
+          delivered_at: result.is_a?(Hash) && result[:skipped] ? nil : Time.current, lease_until: nil, lease_token: nil, last_error: nil)
+        return result
       end
       token = SecureRandom.uuid
       claimed = outbox.with_lock do

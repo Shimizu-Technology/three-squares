@@ -11,7 +11,8 @@ module Payments
         current.update!(attrs)
         if current.saved_change_to_status?
           if current.status == 'cancelled'
-            RestoreInventory.call(order: current, user: user)
+            restoration = RestoreInventory.call(order: current, user: user)
+            current.update!(metadata: current.metadata.merge('inventory_restoration' => restoration.stringify_keys))
             # No commitment means no deduction to restore. A late capture is
             # compensated by the finalizer, which observes this locked status.
           end

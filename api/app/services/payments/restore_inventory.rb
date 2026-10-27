@@ -7,7 +7,10 @@ module Payments
     def self.call(order:, item_ids: nil, user: nil)
       Order.transaction do
         order = Order.lock.find(order.id)
-        return { restored: false, status: 'not_committed' } unless InventoryCommitment.exists?(order_id: order.id)
+        unless InventoryCommitment.exists?(order_id: order.id)
+          foundation = order.checkout_session_id || order.payment_attempt_id || order.metadata['cash_request_key']
+          return { restored: false, status: foundation ? 'not_committed' : 'manual_review_required' }
+        end
         rows = InventoryReservation.where(order_id: order.id, state: 'committed').order(:id).to_a
         return { restored: false, status: 'manual_review_required' } if rows.any? { |row| row.item_quantities.blank? }
         variant_ids = rows.select { |r| r.pool_type == 'ProductVariant' }.map(&:pool_id)

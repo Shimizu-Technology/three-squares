@@ -76,7 +76,8 @@ module Api
       # Update order (status, tracking, notes)
       def update
         @order = Payments::UpdateOrder.call(order: @order, attributes: order_update_params, user: current_user)
-        render json: { order: detailed_order_json(@order), message: "Order updated successfully" }
+        render json: { order: detailed_order_json(@order), message: @order.metadata.dig('inventory_restoration', 'status') == 'manual_review_required' ?
+          "Order updated. Inventory restoration requires manual review; no stock was changed." : "Order updated successfully" }
       rescue Payments::Error, ActiveRecord::RecordInvalid => error
         render json: { error: error.message }, status: :unprocessable_entity
       end
@@ -644,6 +645,7 @@ module Api
           order_number: order.order_number,
           status: order.status,
           payment_status: order.payment_status,
+          inventory_restoration_status: order.metadata.dig('inventory_restoration', 'status'),
           order_type: order.order_type,
           customer_name: order.name,
           customer_email: order.email,
@@ -689,6 +691,7 @@ module Api
           order_number: order.order_number,
           status: order.status,
           payment_status: order.payment_status,
+          inventory_restoration_status: order.metadata.dig('inventory_restoration', 'status'),
           order_type: order.order_type,
           customer_name: order.name,
           customer_email: order.email,

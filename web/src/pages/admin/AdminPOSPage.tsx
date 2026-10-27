@@ -109,7 +109,13 @@ async function createPOSOrder(token: string, orderData: Record<string, unknown>,
     body: JSON.stringify({ order: orderData }),
   });
   const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Failed to create order');
+  if (!res.ok) {
+    if (data.outcome === 'rejected' && data.no_attempt === true) {
+      clearPOSRequest();
+      localStorage.removeItem(POS_PENDING_TERMINAL_KEY);
+    }
+    throw new Error(data.error || 'Failed to create order');
+  }
   return data;
 }
 
@@ -564,6 +570,7 @@ export default function AdminPOSPage() {
       clearCart();
       clearPendingTerminalSession();
     } catch (error) {
+      setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
       setTerminalError(error instanceof Error ? error.message : 'Payment remains unresolved.');
     }
   }, [getToken, userId, clearCart, clearPendingTerminalSession]);
@@ -588,7 +595,10 @@ export default function AdminPOSPage() {
         clearPendingTerminalSession();
         setTerminalError('Saved payment is closed. Review the cart before taking payment.');
       } else throw new Error('Payment remains unresolved. Do not take another payment.');
-    } catch (error) { setTerminalError(error instanceof Error ? error.message : 'Cancellation is unresolved.'); }
+    } catch (error) {
+      setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
+      setTerminalError(error instanceof Error ? error.message : 'Cancellation is unresolved.');
+    }
   }, [getToken, userId, clearCart, clearPendingTerminalSession]);
 
   const handleResetReaderSession = useCallback(async () => {
@@ -677,6 +687,7 @@ export default function AdminPOSPage() {
       setTerminalError(message);
       alert(message);
     } finally {
+      setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
       setTerminalCollecting(false);
     }
   }, [cart, customerName, orderType, selectedLocation, getToken, clearCart, terminalCollecting, cartTotal, userId, hasPendingTerminalSession, clearPendingTerminalSession]);

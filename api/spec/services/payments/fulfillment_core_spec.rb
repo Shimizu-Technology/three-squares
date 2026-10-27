@@ -243,6 +243,7 @@ RSpec.describe 'Durable payment fulfillment core' do
 
   it 'saves a raw-less query ID outside locks and finalizes without a browser' do
     attempt, order = fixture(raw_id: nil)
+    attempt.update!(state: 'dispatching', dispatched_at: 1.minute.ago)
     provider = instance_double(Payments::StripeProvider)
     allow(Payments::ProviderResolver).to receive(:for_identity).and_return(provider)
     expect(provider).to receive(:query) do |attempt:|
@@ -474,6 +475,46 @@ RSpec.describe 'Durable payment fulfillment core' do
     allow(Payments::ProviderResolver).to receive(:for_identity).and_return(provider)
     2.times { Payments::ReconcileAttempt.call(attempt: attempt) }
     expect(provider).to have_received(:query).once
+  end
+
+  it 'acknowledges the status intent and consumer delivery without starving later outbox work' do
+    _, order = fixture
+    allow(EmailService).to receive(:send_order_confirmed_email).and_return(success: true)
+    Payments::UpdateOrder.call(order: order, attributes: { status: 'confirmed' }, user: nil)
+    intent = PaymentOutbox.find_by!(kind: 'notification', effect_key: PaymentOutbox.where("effect_key LIKE ?", "status:#{order.id}:%:SendOrderStatusEmailJob").pick(:effect_key))
+    2.times { Payments::DispatchOutbox.call(outbox: intent.reload) }
+    expect(intent.reload.state).to eq('delivered')
+    expect(PaymentOutbox.due).not_to include(intent)
+    expect(EmailService).to have_received(:send_order_confirmed_email).once
+  end
+
+  it 'bootstraps an intent committed before setup began using its original operation' do
+    attempt, order = fixture(raw_id: nil)
+    provider = double('provider')
+    allow(Payments::ProviderResolver).to receive(:for_identity).and_return(provider)
+    expect(provider).to receive(:setup) do |attempt:|
+      expect(ActiveRecord::Base.connection.transaction_open?).to be(false)
+      { raw_id: 'pi_bootstrap', flow: 'stripe_embedded', client_secret: 'fixture' }
+    end
+    expect(provider).to receive(:query) { |attempt:| result(attempt) }
+    Payments::ReconcileAttempt.call(attempt: attempt)
+    expect(order.reload.payment_status).to eq('paid')
+  end
+
+  it 'closes an expired never-dispatched intent without contacting a processor' do
+    attempt, = fixture(raw_id: nil)
+    attempt.checkout_session.update!(expires_at: 1.minute.ago)
+    expect(Payments::ProviderResolver).not_to receive(:for_identity)
+    Payments::ReconcileAttempt.call(attempt: attempt)
+    expect(attempt.reload.state).to eq('cancelled')
+  end
+
+  it 'surfaces manual restoration for legacy cancellation without guessing historical stock pools' do
+    _, order, product = fixture
+    order.update!(payment_status: 'paid', checkout_session_id: nil, payment_attempt_id: nil)
+    Payments::UpdateOrder.call(order: order, attributes: { status: 'cancelled' }, user: nil)
+    expect(order.reload.metadata.dig('inventory_restoration', 'status')).to eq('manual_review_required')
+    expect(product.reload.product_stock_quantity).to eq(5)
   end
 
 end

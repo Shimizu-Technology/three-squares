@@ -208,4 +208,27 @@ RSpec.describe 'Payment ingress controls', type: :request do
     expect(response).to have_http_status(:unprocessable_entity), response.body
     expect(variant.reload.stock_quantity).to eq(3)
   end
+  it 'persists a definitive POS refusal so the rejected key can never dispatch a delayed payment' do
+    configure_payment_fixture!
+    location = Location.create!(name: 'Refusal fixture', slug: SecureRandom.hex(6), active: true, hours_json: { 'Daily' => '00:00-23:59' })
+    product = create(:product, published: true, allow_pickup: true, inventory_level: 'variant')
+    variant = create(:product_variant, product: product, available: true, stock_quantity: 5, price_cents: 1000)
+    admin = create(:user, :admin)
+    controller = Api::V1::Admin::PosOrdersController
+    allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
+    allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
+    key = SecureRandom.uuid
+    payload = { order: { payment_method: 'card_present', location_id: location.id,
+      items: [{ product_variant_id: variant.id, quantity: 999 }] } }
+    post '/api/v1/admin/pos/orders', params: payload, headers: { 'Idempotency-Key' => key }
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(response.parsed_body).to include('outcome' => 'rejected', 'no_attempt' => true)
+    expect(RejectedPaymentRequest.count).to eq(1)
+    expect(PaymentAttempt.count).to eq(0)
+    payload[:order][:items][0][:quantity] = 1
+    post '/api/v1/admin/pos/orders', params: payload, headers: { 'Idempotency-Key' => key }
+    expect(response.parsed_body).to include('outcome' => 'rejected', 'no_attempt' => true)
+    expect(PaymentAttempt.count).to eq(0)
+  end
+
 end
