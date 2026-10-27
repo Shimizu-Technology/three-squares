@@ -6,8 +6,7 @@ module Api
 
       # GET /api/v1/products
       def index
-        @products = Product.published.active  # Only show active (non-archived) products
-                          .includes(:product_variants, :product_images, :collections, :product_locations)
+        @products = public_products_scope
 
         # Base ordering (will be overridden by sort param if present)
         @products = @products.order(featured: :desc, created_at: :desc) unless params[:sort].present?
@@ -96,14 +95,15 @@ module Api
       private
 
       def set_product
-        @product = Product.published
-                         .includes(:product_variants, :product_images, :collections, :product_locations)
-                         .find_by(id: params[:id]) ||
-                   Product.published
-                         .includes(:product_variants, :product_images, :collections, :product_locations)
-                         .find_by(slug: params[:id])
+        @product = public_products_scope.find_by(id: params[:id]) ||
+                   public_products_scope.find_by(slug: params[:id])
 
         render json: { error: "Product not found" }, status: :not_found unless @product
+      end
+
+      def public_products_scope
+        StorefrontEligibility.scope(Product.published.active)
+          .includes(:product_variants, :product_images, :collections, :product_locations)
       end
 
       def serialize_product(product)

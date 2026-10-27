@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Products business line filters', type: :request do
+  before { SiteSetting.instance.update!(enable_storefront_latte_stone: true) }
+
   let!(:cookies_collection) { Collection.find_or_create_by!(slug: 'cookies') { |c| c.name = 'Cookies' } }
   let!(:catering_collection) { Collection.find_or_create_by!(slug: 'catering-platters') { |c| c.name = 'Catering Platters' } }
   let!(:main_collection) { Collection.find_or_create_by!(slug: 'mains') { |c| c.name = 'Mains' } }
