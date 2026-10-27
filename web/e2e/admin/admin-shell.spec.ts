@@ -9,6 +9,8 @@ test('closed phone navigation is unreachable; open navigation contains focus and
   await menu.focus();
   await page.keyboard.press('Shift+Tab');
   expect(await page.evaluate(() => !!document.activeElement?.closest('aside, dialog'))).toBe(false);
+  // Leave the focused skip link before switching to pointer activation.
+  await menu.focus();
   await menu.click();
   const dialog = page.getByRole('dialog', { name: 'Three Squares Admin', exact: true });
   await expect(dialog).toBeVisible();
