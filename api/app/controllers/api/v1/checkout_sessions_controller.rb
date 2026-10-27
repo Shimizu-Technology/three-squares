@@ -18,7 +18,7 @@ module Api
         attempt = session.payment_attempts.order(:created_at).last
         begin
           Payments::SetupAttempt.call(attempt: attempt)
-        rescue Payments::UnsupportedCapability, Payments::Configuration::UnsafeConfiguration, Stripe::StripeError
+        rescue Payments::UnsupportedCapability, Payments::Configuration::UnsafeConfiguration, Payments::Conflict, Stripe::StripeError
           # Return the durable intent even when setup is unavailable/unknown,
           # so reload recovery retains its owner and idempotency key.
           return render json: session_json(session, attempt.reload), status: :accepted

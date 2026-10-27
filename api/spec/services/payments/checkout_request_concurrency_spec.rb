@@ -7,9 +7,12 @@ RSpec.describe 'Durable checkout creation decisions' do
   self.use_transactional_tests = false
 
   before do
+    @dedicated = false
+    @threads = []
+    @release = Queue.new
     c = ActiveRecord::Base.connection
     name = c.select_value('SELECT current_database()')
-    raise 'Dedicated test database required' unless Rails.env.test? && name == ActiveRecord::Base.connection_db_config.database && name.end_with?('_test') && !%w[three_squares_test three_squares_development].include?(name)
+    skip 'Requires a dedicated disposable test database' unless Rails.env.test? && name == ActiveRecord::Base.connection_db_config.database && name.end_with?('_test') && !%w[three_squares_test three_squares_development].include?(name)
     @dedicated = true
     configure_payment_fixture!
     @location = Location.create!(name: 'Decision fixture', slug: SecureRandom.hex(6), active: true, hours_json: { 'Daily' => '00:00-23:59' })
@@ -17,8 +20,6 @@ RSpec.describe 'Durable checkout creation decisions' do
     @variant = create(:product_variant, product: @product, stock_quantity: 5, price_cents: 1250, available: true)
     @cart = CartItem.create!(session_id: SecureRandom.uuid, product_variant: @variant, quantity: 1)
     @attrs = { customer_name: 'Fixture', customer_email: 'fixture@example.test', customer_phone: '6715550100', fulfillment_type: 'pickup', location_id: @location.id }
-    @threads = []
-    @release = Queue.new
   end
 
   after do

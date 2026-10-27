@@ -386,6 +386,38 @@ RSpec.describe 'Worldpay hosted checkout contracts', type: :request do
     expect(calls).to be_empty
   end
 
+  it 'returns the durable expired session on an accepted replay without dispatching another setup' do
+    env.delete('WORLDPAY_EXPRESS_ACCOUNT_TOKEN')
+    payload = { order: { customer_name: 'Fixture', customer_email: 'fixture@example.test', customer_phone: '6715550100', fulfillment_type: 'pickup', location_id: location.id } }
+    post '/api/v1/checkout_sessions', params: payload, headers: headers
+    expect(response).to have_http_status(:accepted)
+    saved = response.parsed_body
+    attempt = PaymentAttempt.last
+    expect(attempt.dispatched_at).to be_nil
+    expect(attempt.raw_provider_id).to be_nil
+    travel 31.minutes do
+      post '/api/v1/checkout_sessions', params: payload, headers: headers
+      expect(response).to have_http_status(:accepted)
+      expect(response.parsed_body).to include('id' => saved['id'], 'attempt_id' => saved['attempt_id'], 'collection_config' => {})
+    end
+    expect(CheckoutSession.count).to eq(1)
+    expect(Order.count).to eq(1)
+    expect(calls).to be_empty
+    expect(attempt.reload.dispatched_at).to be_nil
+  end
+
+  it 'keeps setup binding failures on accepted replays opaque with a 404' do
+    env.delete('WORLDPAY_EXPRESS_ACCOUNT_TOKEN')
+    payload = { order: { customer_name: 'Fixture', customer_email: 'fixture@example.test', customer_phone: '6715550100', fulfillment_type: 'pickup', location_id: location.id } }
+    post '/api/v1/checkout_sessions', params: payload, headers: headers
+    expect(response).to have_http_status(:accepted)
+    allow(Payments::SetupAttempt).to receive(:call).and_raise(Payments::BindingError, 'Foreign setup')
+    post '/api/v1/checkout_sessions', params: payload, headers: headers
+    expect(response).to have_http_status(:not_found)
+    expect(response.parsed_body).to eq('error' => 'Checkout session not found')
+    expect(calls).to be_empty
+  end
+
   it 'preserves a lost setup response and never blindly redispatches' do
     allow(transport).to receive(:call).and_raise(Timeout::Error)
     post '/api/v1/checkout_sessions', params: { order: { customer_name: 'Fixture', customer_email: 'fixture@example.test', customer_phone: '6715550100', fulfillment_type: 'pickup', location_id: location.id } }, headers: headers
