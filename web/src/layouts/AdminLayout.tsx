@@ -211,7 +211,7 @@ export default function AdminLayout() {
   </div>;
 
   return <div className="admin-scope min-h-dvh bg-gray-100">
-    <a href="#admin-main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-60 focus:rounded focus:bg-white focus:p-3">Skip to content</a>
+    <a href="#admin-main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-20 focus:z-60 focus:rounded focus:bg-white focus:p-3">Skip to content</a>
     <aside id="admin-sidebar" aria-label="Admin sidebar" className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-gray-200 bg-white md:flex ${collapsed ? 'w-20' : 'w-64'}`}>
       <Link to="/admin" aria-label="Three Squares Admin" className="flex h-16 shrink-0 items-center justify-center bg-tsPrimary px-3 text-lg font-bold text-white">{collapsed ? 'TS' : 'Three Squares Admin'}</Link>
       <nav aria-label="Admin navigation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3" onScroll={event => {
