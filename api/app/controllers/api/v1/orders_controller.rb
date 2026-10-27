@@ -3,6 +3,7 @@
 module Api
   module V1
     class OrdersController < ApplicationController
+      before_action { Payments::Configuration.validate_database! }
       class CheckoutValidationError < StandardError
         attr_reader :captured
 

@@ -2,8 +2,11 @@ class SiteSetting < ApplicationRecord
   VALID_ANNOUNCEMENT_STYLES = %w[gold info success warning danger].freeze
 
   # Singleton pattern - only one record should ever exist
-  validates :payment_processor, presence: true, inclusion: { in: %w[stripe paypal] }
+  validates :payment_processor, presence: true, inclusion: { in: %w[stripe worldpay] }
   validates :payment_test_mode, inclusion: { in: [ true, false ] }
+  validate do
+    errors.add(:payment_test_mode, "cannot be enabled in production") if payment_test_mode && Payments::Configuration.production?
+  end
   validates :announcement_style, inclusion: { in: VALID_ANNOUNCEMENT_STYLES }, allow_nil: true
   validate :validate_shipping_origin_address
 

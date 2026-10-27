@@ -2,6 +2,7 @@
 
 module Webhooks
   class StripeController < ApplicationController
+    before_action { Payments::Configuration.validate_database! }
     # Stripe sends raw JSON — we need the raw body for signature verification.
     # No authentication needed — webhooks come from Stripe, not users.
     # CSRF is already disabled (Rails API-only app).
