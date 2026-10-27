@@ -77,7 +77,9 @@ RSpec.describe "Payment foundation" do
   it "never silently falls back to simulation" do
     expect { Payments::ProviderResolver.profile!(location_id: nil, channel: "online") }.to raise_error(Payments::Configuration::UnsafeConfiguration)
     identity = PaymentIdentity.create!(provider: "worldpay", environment: "simulated", external_account_id: "fixture", profile_key: "sim", credential_reference: "none")
-    expect { Payments::ProviderResolver.for_identity(identity) }.to raise_error(Payments::UnsupportedCapability)
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with('PAYMENTS_SIMULATION_ENABLED').and_return(nil)
+    expect { Payments::ProviderResolver.for_identity(identity) }.to raise_error(Payments::Configuration::UnsafeConfiguration)
   end
 
   it "fails the production boot configuration in a subprocess" do

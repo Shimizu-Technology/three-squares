@@ -3,12 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { useCartStore } from '../store/cartStore';
 import { configApi, locationsApi, shippingApi, formatPrice } from '../services/api';
-import { checkoutApi, checkoutCapability, pendingCheckout, saveCheckout, clearPendingCheckout } from '../services/checkout';
+import { checkoutApi, checkoutClientConfiguration, checkoutCapability, pendingCheckout, saveCheckout, clearPendingCheckout } from '../services/checkout';
 import { authGet } from '../services/authApi';
 import { checkoutContactReducer, emptyCheckoutContact } from '../lib/checkoutContact';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { StripeClientConfiguration } from '../components/payment/StripeProvider';
-import PaymentForm, { type CardPaymentHandle } from '../components/payment/PaymentForm';
+import { type CardPaymentHandle } from '../components/payment/PaymentForm';
+import PaymentForm, { type CollectionConfiguration } from '../components/payment/PaymentCollectionForm';
 import type { ShippingAddress, ShippingMethod, AppConfig } from '../types/order';
 import type { Location } from '../services/api';
 import PlaceholderImage from '../components/ui/PlaceholderImage';
@@ -21,8 +21,9 @@ function CheckoutForm() {
   const { cart, sessionId, fetchCart, validateCart, removeItem, isLoading: cartLoading, isRepricing, pricingError } = useCartStore();
   const { selectedLocation: storedLocation, setSelectedLocation } = useLocationStore();
   const paymentForm = useRef<CardPaymentHandle>(null);
-  const [savedClientConfig, setSavedClientConfig] = useState<StripeClientConfiguration | null>(null);
-  const [locationClientConfig, setLocationClientConfig] = useState<StripeClientConfiguration | null>(null);
+  const checkoutCompleted = useRef(false);
+  const [savedClientConfig, setSavedClientConfig] = useState<CollectionConfiguration | null>(null);
+  const [locationClientConfig, setLocationClientConfig] = useState<CollectionConfiguration | null>(null);
 
   // Get items from cart (with fallback to empty array)
   const items = cart?.items || [];
@@ -48,6 +49,8 @@ function CheckoutForm() {
     }).catch(() => {});
     return () => { active = false; };
   }, [deliveryMethod, pickupLocationId]);
+  const [draftLoaded, setDraftLoaded] = useState(false);
+  const [reviewed, setReviewed] = useState(false);
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     name: '',
     street1: '',
@@ -92,6 +95,24 @@ function CheckoutForm() {
     });
   }, [cart?.items]);
 
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('tsq-checkout-draft') || 'null');
+      if (saved && saved.expires > Date.now()) {
+        for (const field of ['name', 'email', 'phone'] as const) updateContact({ type: 'edit', field, value: saved.contact[field] || '' });
+        setOrderNotes(saved.orderNotes || '');
+        setSpecialInstructions(saved.instructions || {});
+        setShippingAddress(saved.shippingAddress);
+        setDeliveryMethod(saved.deliveryMethod === 'shipping' ? 'shipping' : 'pickup');
+      }
+    } catch { sessionStorage.removeItem('tsq-checkout-draft'); }
+    setDraftLoaded(true);
+  }, []);
+  useEffect(() => {
+    if (draftLoaded && !checkoutCompleted.current) sessionStorage.setItem('tsq-checkout-draft', JSON.stringify({ expires: Date.now() + 2 * 60 * 60 * 1000, contact: contact.values, orderNotes, instructions: specialInstructions, shippingAddress, deliveryMethod }));
+    setReviewed(false);
+  }, [draftLoaded, contact.values, orderNotes, specialInstructions, shippingAddress, deliveryMethod, pickupLocationId, subtotalCents]);
+
   // Loading/error states
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +137,8 @@ function CheckoutForm() {
   const finishCheckout = useCallback(async (state: Awaited<ReturnType<typeof checkoutApi.show>>) => {
     if (state.order.payment_status === 'paid' && state.order.inventory_committed) {
       clearPendingCheckout();
+      checkoutCompleted.current = true;
+      sessionStorage.removeItem('tsq-checkout-draft');
       await fetchCart();
       navigate(`/orders/${state.order.id}`);
       return true;
@@ -133,10 +156,10 @@ function CheckoutForm() {
         const token = isSignedIn ? await getToken() : null;
         const state = await checkoutApi.confirm(pendingPayment.id, token, pendingPayment.capability);
         if (stopped || await finishCheckout(state)) return;
-        setSavedClientConfig(state.collection_config);
+        setSavedClientConfig(checkoutClientConfiguration(state));
         setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
         setCanRetryCollection(state.payment_state === 'collecting' && !!state.collection_config.client_secret);
-        setError(`Payment status is being checked for order ${state.order.order_number}. Your order is saved. Keep this page or check your order before paying again.`);
+        setError(['failed', 'cancelled', 'compensated'].includes(state.payment_state) ? `Payment closed for order ${state.order.order_number}. No payment is due on this saved attempt. Review your cart before starting again.` : `Payment status is being checked for order ${state.order.order_number}. Your order is saved. Keep this page or check your order before paying again.`);
         if (Date.now() - started < 90000) timer = setTimeout(poll, Date.now() - started < 10000 ? 2000 : 10000);
       } catch {
         if (!stopped) {
@@ -340,7 +363,7 @@ function CheckoutForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitting.current || pendingPayment || pricePending || pricingError) return;
+    if (submitting.current || pendingPayment || pricePending || pricingError || !reviewed) return;
     submitting.current = true;
     setError(null);
     setValidationIssues(null);
@@ -425,8 +448,8 @@ function CheckoutForm() {
       };
       const state = await checkoutApi.create(orderData, token, capability.current, creationKey.current, sessionId);
       saveCheckout(state, capability.current, creationKey.current);
-      setSavedClientConfig(state.collection_config);
-      if (state.flow !== 'stripe_embedded' || !state.collection_config.client_secret) {
+      setSavedClientConfig(checkoutClientConfiguration(state));
+      if (!['stripe_embedded', 'simulated_fields'].includes(state.flow || '') || !state.collection_config.client_secret) {
         setPendingPayment(pendingCheckout());
         throw new Error('Your order is saved. Payment collection is being prepared; check its status before starting again.');
       }
@@ -502,7 +525,7 @@ function CheckoutForm() {
           {/* Left Column - Forms */}
           <div className="lg:col-span-2">
             {pendingPayment && <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4" role="status">
-              <p className="font-semibold">Your order {pendingPayment.orderNumber || pendingPayment.orderId} is saved{pendingPayment.amountCents !== undefined ? ` for $${(pendingPayment.amountCents / 100).toFixed(2)}` : ''}. Payment status is being checked.</p>
+              <p className="font-semibold">Your order {pendingPayment.orderNumber || pendingPayment.orderId} is saved{pendingPayment.amountCents !== undefined ? ` for $${(pendingPayment.amountCents / 100).toFixed(2)}` : ''}. {resolvedWithoutPayment ? 'Payment is closed. Review your cart before starting again.' : 'Payment status is being checked.'}</p>
               <button type="button" className="mt-3 underline" onClick={async () => {
                 try {
                   const token = isSignedIn ? await getToken() : null;
@@ -522,7 +545,7 @@ function CheckoutForm() {
                   const token = isSignedIn ? await getToken() : null;
                   const state = await checkoutApi.show(pendingPayment.id, token, pendingPayment.capability);
                   if (!state.collection_config.client_secret || state.payment_state !== 'collecting') throw new Error('Payment status changed. Check the saved order.');
-                  setSavedClientConfig(state.collection_config);
+                  setSavedClientConfig(checkoutClientConfiguration(state));
                   const result = await paymentForm.current.confirm(state.collection_config.client_secret, state.collection_config.payment_identity_id, { name, email, phone });
                   if (result.error) setError(result.error.message || 'Card payment could not complete.');
                   const confirmed = await checkoutApi.confirm(state.id, token, pendingPayment.capability);
@@ -895,7 +918,7 @@ function CheckoutForm() {
               <PaymentForm
                 ref={paymentForm}
                 configuration={savedClientConfig || locationClientConfig}
-                available={!!activeClientConfig?.stripe_publishable_key && !!activeClientConfig?.stripe_account_id}
+                available={activeClientConfig?.payment_environment === 'simulated' || (!!activeClientConfig?.stripe_publishable_key && !!activeClientConfig?.stripe_account_id)}
                 onPaymentReady={handlePaymentReady}
               />
 
@@ -979,10 +1002,11 @@ function CheckoutForm() {
 
               {pricePending && !pricingError && <p role="status" className="mb-3 text-sm text-warm-700">Updating your total for {deliveryMethod === 'pickup' ? storedLocation?.name || 'pickup' : 'shipping'}…</p>}
               {pricingError && <div role="alert" className="mb-3 text-sm text-red-700">{pricingError} <button type="button" className="underline min-h-11" onClick={() => void fetchCart({ fulfillment_type: deliveryMethod, location_id: deliveryMethod === 'pickup' ? pickupLocationId : null })}>Refresh price</button></div>}
+              <label className="mb-4 flex items-start gap-3 text-sm text-warm-900"><input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={reviewed} onChange={event => setReviewed(event.target.checked)} /><span>I have reviewed my items, {deliveryMethod === 'pickup' ? `pickup at ${storedLocation?.name || 'the selected location'}` : 'shipping address'}, and total of {formatPrice(totalCents)}.</span></label>
               {/* Submit Button */}
               <button
                 type="submit"
-                disabled={loading || !isFormValid() || !!pendingPayment}
+                disabled={loading || !isFormValid() || !!pendingPayment || !reviewed}
                 className="w-full bg-tsPrimary text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               >
                 {loading ? (

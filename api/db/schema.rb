@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_070100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -460,7 +460,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
     t.index ["order_id", "pool_type", "pool_id"], name: "unique_order_inventory_pool", unique: true
     t.index ["order_id"], name: "index_inventory_reservations_on_order_id"
     t.index ["pool_type", "pool_id", "state", "expires_at"], name: "active_inventory_reservations"
-    t.check_constraint "quantity > 0 AND (pool_type::text = ANY (ARRAY['Product'::character varying, 'ProductVariant'::character varying]::text[])) AND (state::text = ANY (ARRAY['held'::character varying, 'committed'::character varying, 'released'::character varying]::text[]))", name: "valid_inventory_reservation"
+    t.check_constraint "quantity > 0 AND (pool_type::text = ANY (ARRAY['Product'::character varying::text, 'ProductVariant'::character varying::text])) AND (state::text = ANY (ARRAY['held'::character varying::text, 'committed'::character varying::text, 'released'::character varying::text]))", name: "valid_inventory_reservation"
   end
 
   create_table "legacy_capture_bindings", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -658,7 +658,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
     t.string "state", default: "created", null: false
     t.datetime "updated_at", null: false
     t.index ["checkout_session_id"], name: "index_payment_attempts_on_checkout_session_id"
-    t.index ["checkout_session_id"], name: "one_active_collection_per_session", unique: true, where: "(((operation)::text = 'sale'::text) AND ((state)::text <> ALL ((ARRAY['failed'::character varying, 'cancelled'::character varying, 'compensated'::character varying])::text[])))"
+    t.index ["checkout_session_id"], name: "one_active_collection_per_session", unique: true, where: "(((operation)::text = 'sale'::text) AND ((state)::text <> ALL (ARRAY[('failed'::character varying)::text, ('cancelled'::character varying)::text, ('compensated'::character varying)::text])))"
     t.index ["id", "order_id"], name: "index_payment_attempts_on_id_and_order_id", unique: true
     t.index ["next_recovery_at"], name: "index_payment_attempts_on_next_recovery_at"
     t.index ["order_id"], name: "index_payment_attempts_on_order_id"
@@ -693,7 +693,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
     t.string "provider", null: false
     t.datetime "updated_at", null: false
     t.index ["profile_key"], name: "index_payment_identities_on_profile_key", unique: true
-    t.check_constraint "(provider::text = ANY (ARRAY['stripe'::character varying, 'worldpay'::character varying]::text[])) AND (environment::text = ANY (ARRAY['simulated'::character varying, 'sandbox'::character varying, 'production'::character varying]::text[])) AND currency::text = 'USD'::text", name: "valid_payment_identity"
+    t.check_constraint "(provider::text = ANY (ARRAY['stripe'::character varying::text, 'worldpay'::character varying::text])) AND (environment::text = ANY (ARRAY['simulated'::character varying::text, 'sandbox'::character varying::text, 'production'::character varying::text])) AND currency::text = 'USD'::text", name: "valid_payment_identity"
   end
 
   create_table "payment_operation_numbers", force: :cascade do |t|
@@ -732,6 +732,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
     t.index ["location_id", "channel", "provider"], name: "one_enabled_payment_profile_per_location_channel", unique: true, where: "enabled"
     t.index ["location_id"], name: "index_payment_profiles_on_location_id"
     t.index ["payment_identity_id"], name: "index_payment_profiles_on_payment_identity_id"
+  end
+
+  create_table "payment_terminals", force: :cascade do |t|
+    t.jsonb "configuration", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.string "label", null: false
+    t.string "lane_id", null: false
+    t.datetime "leased_at"
+    t.uuid "leased_attempt_id"
+    t.bigint "location_id", null: false
+    t.uuid "payment_identity_id", null: false
+    t.datetime "retired_at"
+    t.string "status", default: "ready", null: false
+    t.string "terminal_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["leased_attempt_id"], name: "index_payment_terminals_on_leased_attempt_id"
+    t.index ["location_id"], name: "index_payment_terminals_on_location_id"
+    t.index ["payment_identity_id", "lane_id"], name: "index_payment_terminals_on_payment_identity_id_and_lane_id", unique: true
+    t.index ["payment_identity_id"], name: "index_payment_terminals_on_payment_identity_id"
   end
 
   create_table "payment_transactions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -917,9 +936,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
     t.index ["payment_identity_id"], name: "index_refund_operations_on_payment_identity_id"
     t.index ["state", "next_recovery_at"], name: "index_refund_operations_on_state_and_next_recovery_at"
     t.index ["user_id"], name: "index_refund_operations_on_user_id"
-    t.check_constraint "(kind::text = ANY (ARRAY['return'::character varying, 'void'::character varying, 'reversal'::character varying]::text[])) AND (state::text = ANY (ARRAY['reserved'::character varying, 'dispatching'::character varying, 'pending'::character varying, 'unknown'::character varying, 'succeeded'::character varying, 'failed'::character varying]::text[]))", name: "refund_valid_state_kind"
+    t.check_constraint "(kind::text = ANY (ARRAY['return'::character varying::text, 'void'::character varying::text, 'reversal'::character varying::text])) AND (state::text = ANY (ARRAY['reserved'::character varying::text, 'dispatching'::character varying::text, 'pending'::character varying::text, 'unknown'::character varying::text, 'succeeded'::character varying::text, 'failed'::character varying::text]))", name: "refund_valid_state_kind"
     t.check_constraint "amount_cents > 0 AND captured_cents >= amount_cents", name: "refund_positive_bounded_amount"
-    t.check_constraint "currency::text = 'USD'::text AND (environment::text = ANY (ARRAY['simulated'::character varying, 'sandbox'::character varying, 'production'::character varying]::text[])) AND (provider::text = 'cash'::text AND payment_identity_id IS NULL AND payment_attempt_id IS NULL AND original_charge_id IS NULL OR (provider::text = ANY (ARRAY['stripe'::character varying, 'worldpay'::character varying]::text[])) AND payment_identity_id IS NOT NULL)", name: "refund_identity_authority"
+    t.check_constraint "currency::text = 'USD'::text AND (environment::text = ANY (ARRAY['simulated'::character varying::text, 'sandbox'::character varying::text, 'production'::character varying::text])) AND (provider::text = 'cash'::text AND payment_identity_id IS NULL AND payment_attempt_id IS NULL AND original_charge_id IS NULL OR (provider::text = ANY (ARRAY['stripe'::character varying::text, 'worldpay'::character varying::text])) AND payment_identity_id IS NOT NULL)", name: "refund_identity_authority"
   end
 
   create_table "refunds", force: :cascade do |t|
@@ -951,6 +970,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
     t.string "reason", null: false
     t.datetime "updated_at", null: false
     t.index ["owner_key", "caller_idempotency_key"], name: "unique_rejected_payment_request", unique: true
+  end
+
+  create_table "simulated_payment_records", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.integer "amount_cents", null: false
+    t.datetime "created_at", null: false
+    t.datetime "expires_at"
+    t.jsonb "facts", default: {}, null: false
+    t.string "handle_digest"
+    t.string "kind", null: false
+    t.string "operation_key", null: false
+    t.string "original_reference"
+    t.string "payload_digest", null: false
+    t.uuid "payment_attempt_id"
+    t.uuid "payment_identity_id", null: false
+    t.string "raw_id", null: false
+    t.datetime "redeemed_at"
+    t.string "scenario", default: "approve", null: false
+    t.string "state", default: "collecting", null: false
+    t.datetime "updated_at", null: false
+    t.index ["payment_attempt_id"], name: "index_simulated_payment_records_on_payment_attempt_id"
+    t.index ["payment_identity_id", "operation_key"], name: "simulation_operation_identity", unique: true
+    t.index ["payment_identity_id", "raw_id"], name: "simulation_raw_identity", unique: true
+    t.index ["payment_identity_id"], name: "index_simulated_payment_records_on_payment_identity_id"
+  end
+
+  create_table "simulation_clocks", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "now", null: false
+    t.uuid "payment_identity_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["payment_identity_id"], name: "index_simulation_clocks_on_payment_identity_id", unique: true
   end
 
   create_table "site_settings", force: :cascade do |t|
@@ -1060,6 +1110,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
   add_foreign_key "payment_events", "payment_identities"
   add_foreign_key "payment_profiles", "locations"
   add_foreign_key "payment_profiles", "payment_identities"
+  add_foreign_key "payment_terminals", "locations"
+  add_foreign_key "payment_terminals", "payment_attempts", column: "leased_attempt_id"
+  add_foreign_key "payment_terminals", "payment_identities"
   add_foreign_key "payment_transactions", "orders"
   add_foreign_key "payment_transactions", "payment_attempts"
   add_foreign_key "payment_transactions", "payment_attempts", column: ["payment_attempt_id", "order_id"], primary_key: ["id", "order_id"], name: "charge_consumption_matches_original_order"
@@ -1080,5 +1133,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_062500) do
   add_foreign_key "refunds", "orders"
   add_foreign_key "refunds", "refund_operations"
   add_foreign_key "refunds", "users"
+  add_foreign_key "simulated_payment_records", "payment_attempts"
+  add_foreign_key "simulated_payment_records", "payment_identities"
+  add_foreign_key "simulation_clocks", "payment_identities"
   add_foreign_key "users", "locations", column: "assigned_location_id"
 end

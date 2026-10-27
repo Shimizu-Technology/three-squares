@@ -27,6 +27,7 @@ RSpec.describe 'Admin orders reporting', type: :request do
       order_type: 'retail',
       fulfillment_type: fulfillment_type,
       payment_status: 'paid',
+      payment_environment: 'production',
       total_cents: total_cents,
       subtotal_cents: total_cents,
       shipping_cost_cents: 0,

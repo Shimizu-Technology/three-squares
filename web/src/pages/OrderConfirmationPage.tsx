@@ -100,7 +100,7 @@ export default function OrderConfirmationPage() {
       month: 'long',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit', timeZone: 'Pacific/Guam'
     });
   };
 
@@ -185,23 +185,7 @@ export default function OrderConfirmationPage() {
           <div className="absolute inset-0 bg-linear-to-br from-green-50 via-white to-green-50 opacity-50"></div>
           
           <div className="relative">
-            {/* Animated Success icon */}
-            <motion.div
-              initial={{ scale: 0, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 300, damping: 20, delay: 0.2 }}
-              className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6"
-            >
-              <motion.svg
-                initial={{ pathLength: 0 }}
-                animate={{ pathLength: 1 }}
-                transition={{ duration: 0.4, delay: 0.5, ease: "easeOut" }}
-                className="w-10 h-10 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </motion.svg>
-            </motion.div>
-            
+            <div className="w-16 h-16 bg-warm-100 rounded-full flex items-center justify-center mx-auto mb-6" aria-hidden="true"><span className="text-2xl">{order.payment_status === 'paid' ? '✓' : '•'}</span></div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">
               {order.payment_status === 'paid' && order.inventory_committed ? 'Order Confirmed!' : order.payment_status === 'refunded' ? 'Payment Refunded' : 'Your order is saved'}
             </h1>
@@ -223,6 +207,12 @@ export default function OrderConfirmationPage() {
           </div>
         </div>
 
+        <section className="bg-white rounded-xl border border-gray-100 p-6 mb-6 space-y-2" aria-label="What happens next">
+          <h2 className="text-xl font-bold">{isPickupOrder ? `Pickup at ${order.location?.name || 'your selected location'}` : 'Delivery updates'}</h2>
+          <p className="font-semibold">Status: {order.status_display || order.status.replaceAll('_', ' ')}</p>
+          <p>{order.status === 'cancelled' ? 'This order is cancelled. Check the payment status above for refund progress.' : order.payment_status === 'pending' ? 'We are checking your payment. Do not pay again while its outcome is unknown.' : order.status === 'picked_up' || order.status === 'delivered' ? 'Your order is complete. Keep this receipt for your records.' : isPickupOrder ? 'Wait until your order is ready for pickup, then bring your order number to this location.' : 'Keep this order link to check shipping and tracking updates.'}</p>
+          {order.payment_environment === 'simulated' && <p className="text-sm">This simulated order does not send customer notifications or real fulfillment instructions.</p>}
+        </section>
         {/* Order Details */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-6 print:shadow-none print:border print:p-4 print:mb-4 print:break-inside-avoid">
           <h2 className="text-xl font-bold text-gray-900 mb-4 pb-4 border-b border-gray-100 flex items-center">

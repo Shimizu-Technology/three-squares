@@ -52,6 +52,10 @@ module Payments
           end
           next order
         end
+        if result.metadata[:compensation_required]
+          mark_compensation!(session, stored, 'fraud_policy')
+          next order
+        end
         if collection_closed
           mark_compensation!(session, stored, 'capture_after_collection_closed')
           next order

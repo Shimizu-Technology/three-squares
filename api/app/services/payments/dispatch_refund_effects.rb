@@ -12,6 +12,10 @@ module Payments
           refund = effect.refund_operation.refund
           kind = effect.kind
           raise BindingError, 'Unknown refund effect' unless %w[refund_notification refund_inventory].include?(kind)
+          if kind == 'refund_notification' && effect.refund_operation.environment == 'simulated'
+            effect.update!(delivered_at: Time.current) # local simulation: no external delivery intent
+            next
+          end
           suffix = kind == 'refund_inventory' ? 'inventory' : 'notification'
           PaymentOutbox.record!(effect_key: "refund:#{refund.id}:#{suffix}", kind: kind,
             payload: kind == 'refund_inventory' ? { 'operation_id' => effect.refund_operation_id } : { 'refund_id' => refund.id })

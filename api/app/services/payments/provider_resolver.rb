@@ -14,7 +14,7 @@ module Payments
 
     def self.for_identity(identity)
       Configuration.validate_identity!(identity)
-      raise UnsupportedCapability, "Simulation adapter is not installed" if identity.environment == "simulated"
+      return Simulation::Provider.new(identity) if identity.environment == "simulated"
       case identity.provider
       when "stripe" then StripeProvider.new(identity)
       else raise UnsupportedCapability, "Worldpay collection is not installed yet"

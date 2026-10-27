@@ -16,6 +16,13 @@ Rails.application.routes.draw do
 
       # Admin routes (require admin authentication)
       namespace :admin do
+        resources :payment_terminals, only: [:index, :create] do
+          member do
+            get :status
+            post :collect
+            post :simulate unless Rails.env.production? || ENV['APP_DEPLOYMENT_ENV'] == 'production'
+          end
+        end
         # Dashboard
         get "dashboard/stats", to: "dashboard#stats"
         get "dashboard/chart_data", to: "dashboard#chart_data"
@@ -184,6 +191,7 @@ Rails.application.routes.draw do
       post "contact", to: "contact_submissions#create"
 
       resources :checkout_sessions, only: [:create, :show] do
+        post :simulate, on: :member unless Rails.env.production? || ENV["APP_DEPLOYMENT_ENV"] == "production"
         member do
           post :confirm
           post :cancel

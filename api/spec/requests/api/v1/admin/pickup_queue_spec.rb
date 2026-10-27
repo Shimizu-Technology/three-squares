@@ -10,10 +10,10 @@ RSpec.describe 'Live pickup stage queries', type: :request do
     allow_any_instance_of(controller).to receive(:require_admin!).and_return(true)
     allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
     [['pending','paid'],['pending','pending'],['pending','failed'],['confirmed','paid'],['processing','paid'],['ready','paid'],['picked_up','paid'],['cancelled','paid']].each do |status,payment|
-      create(:order, fulfillment_type:'pickup', location:main, status:status, payment_status:payment)
+      create(:order, payment_environment:'production', fulfillment_type:'pickup', location:main, status:status, payment_status:payment)
     end
-    create(:order, fulfillment_type:'pickup', location:donki, payment_status:'paid')
-    create(:order, fulfillment_type:'shipping', payment_status:'paid')
+    create(:order, payment_environment:'production', fulfillment_type:'pickup', location:donki, payment_status:'paid')
+    create(:order, payment_environment:'production', fulfillment_type:'shipping', payment_status:'paid')
   end
 
   it 'counts every paid pickup stage and waiting payment independently of selected stage, within location context' do
