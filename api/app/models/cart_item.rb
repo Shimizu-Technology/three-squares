@@ -62,8 +62,8 @@ class CartItem < ApplicationRecord
   end
 
   # Calculate subtotal for this cart item
-  def subtotal_cents
-    quantity * product_variant.effective_unit_price_cents
+  def subtotal_cents(location_id: nil)
+    quantity * product_variant.effective_unit_price_cents(location_id: location_id)
   end
 
   def subtotal

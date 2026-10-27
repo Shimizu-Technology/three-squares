@@ -150,7 +150,7 @@ def create_product(attrs)
   product = Product.find_or_create_by!(slug: attrs[:slug]) do |p|
     p.name = attrs[:name]
     p.description = attrs[:description] || ""
-    p.base_price_cents = attrs[:price] ? (attrs[:price] * 100).to_i : 0
+    p.base_price_cents = attrs[:price] ? (BigDecimal(attrs[:price].to_s) * 100).round.to_i : 0
     p.featured = attrs[:featured] || false
     p.published = true
     p.product_type = product_type
@@ -180,7 +180,7 @@ def create_product(attrs)
   product.update!(
     name: attrs[:name],
     description: attrs[:description] || "",
-    base_price_cents: attrs[:price] ? (attrs[:price] * 100).to_i : 0,
+    base_price_cents: attrs[:price] ? (BigDecimal(attrs[:price].to_s) * 100).round.to_i : 0,
     featured: attrs[:featured] || false,
     published: true,
     product_type: product_type,
@@ -295,7 +295,7 @@ desserts_items = [
 drinks_items = [
   { name: "House Cocktails", slug: "house-cocktails", price: 10.00, description: "Seasonal specialty drinks", collection_slug: "drinks" },
   { name: "Draft Beer", slug: "draft-beer", price: 6.00, description: "Selection of local and imported beers", collection_slug: "drinks" },
-  { name: "Calamansi Tea", slug: "calamansi-tea", price: 0.00, description: "Complimentary with meal", collection_slug: "drinks" }
+  { name: "Calamansi Tea", slug: "calamansi-tea", product_type: "complimentary_with_meal", price: 0.00, description: "Complimentary with meal", collection_slug: "drinks" }
 ]
 
 # GRAB & GO (Sold by weight at Donki location)
@@ -400,8 +400,8 @@ cocktail_items = [
 special_items = [
   { name: "Latiya Cake", slug: "catering-latiya", price: 65.00, description: "Traditional Chamorro dessert - requires 2-3 days notice", collection_slug: "catering-special" },
   { name: "Banana Donuts - Platter", slug: "catering-banana-donuts", price: 35.00, description: "24 pieces - requires 2-3 days notice", collection_slug: "catering-special" },
-  { name: "Roast Pig Carving", slug: "catering-roast-pig", price: 0.00, description: "Market price - contact for quote", collection_slug: "catering-special" },
-  { name: "Shish Kabobs", slug: "catering-shish-kabobs", price: 0.00, description: "Custom order - contact for quote", collection_slug: "catering-special" }
+  { name: "Roast Pig Carving", slug: "catering-roast-pig", product_type: "quote_only", price: 0.00, description: "Market price - contact for quote", collection_slug: "catering-special" },
+  { name: "Shish Kabobs", slug: "catering-shish-kabobs", product_type: "quote_only", price: 0.00, description: "Custom order - contact for quote", collection_slug: "catering-special" }
 ]
 
 catering_items = platters_items + bentos_items + cocktail_items + special_items

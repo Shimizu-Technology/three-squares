@@ -35,8 +35,19 @@ const attachAuthErrorInterceptor = (instance: typeof axios | typeof api) => {
 attachAuthErrorInterceptor(api);
 attachAuthErrorInterceptor(axios);
 
+// Server-resolved catalog contract; do not infer sale/override precedence in UI.
+export interface CatalogPricing {
+  unit_price_cents: number | null;
+  compare_at_price_cents: number | null;
+  purchasable: boolean;
+  reason: string | null;
+  price_varies: boolean;
+  location_id: number | null;
+}
+
 // Types
 export interface Product {
+  pricing?: CatalogPricing;
   id: number;
   name: string;
   slug: string;
@@ -76,6 +87,7 @@ export interface ProductFull extends Product {
 }
 
 export interface ProductVariant {
+  pricing?: CatalogPricing;
   id: number;
   // Flexible options (new system)
   options?: Record<string, string>;
@@ -174,8 +186,8 @@ export const productsApi = {
   },
 
   // Get single product
-  getProduct: async (idOrSlug: string | number): Promise<ProductFull> => {
-    const response = await api.get(`/products/${idOrSlug}`);
+  getProduct: async (idOrSlug: string | number, locationId?: number): Promise<ProductFull> => {
+    const response = await api.get(`/products/${idOrSlug}`, { params: { location_id: locationId } });
     return response.data;
   },
 };

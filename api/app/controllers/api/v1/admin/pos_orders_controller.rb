@@ -131,7 +131,7 @@ module Api
 
             Payments::Eligibility.validate_product!(variant: variant, location_id: order.location_id, online: false)
 
-            unit_price_cents = variant.effective_unit_price_cents
+            unit_price_cents = variant.effective_unit_price_cents(location_id: order.location_id)
 
             order.order_items.build(
               product_variant: variant,

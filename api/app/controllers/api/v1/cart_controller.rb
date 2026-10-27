@@ -10,7 +10,7 @@ module Api
         cart_items = get_cart_items.to_a
         render json: {
           items: cart_items.map { |item| cart_item_json(item) },
-          subtotal_cents: cart_items.sum(&:subtotal_cents),
+          subtotal_cents: cart_items.sum { |item| cart_price(item).unit_price_cents.to_i * item.quantity },
           item_count: cart_items.sum(&:quantity)
         }
       end
@@ -28,6 +28,10 @@ module Api
 
         product = variant.product
         Payments::Eligibility.validate_product!(variant: variant, location_id: cart_pickup_location(variant))
+        if product.product_type == "complimentary_with_meal"
+          candidate = CartItem.new(product_variant: variant, quantity: 1)
+          Payments::Eligibility.validate_complimentary!(get_cart_items.to_a + [ candidate ], location_id: cart_pickup_location(variant))
+        end
         quantity = params[:quantity].to_i
 
         # Validate quantity
@@ -221,9 +225,20 @@ module Api
           }
         end
 
+        begin
+          Payments::Eligibility.validate_complimentary!(cart_items.to_a, location_id: params[:location_id].presence || request.headers["X-Location-ID"].presence)
+        rescue Payments::FulfillmentError => error
+          issues << { cart_item_id: 0, type: "meal_required", message: error.message, item_name: "Complimentary tea", action: "review" }
+        end
+
         cart_items.each do |item|
           variant = item.product_variant
           product = variant.product
+
+          unless cart_price(item).purchasable
+            issues << { cart_item_id: item.id, type: "quote_required", message: "#{product.name}: contact us for a price before ordering", item_name: product.name, action: "remove" }
+            next
+          end
 
           # Check if product/variant is still available
           unless product.published?
@@ -383,18 +398,24 @@ module Api
         params[:location_id].presence || request.headers["X-Location-ID"].presence
       end
 
+      def cart_price(item)
+        CatalogPrice.resolve(product: item.product_variant.product, variant: item.product_variant,
+          location_id: cart_pickup_location(item.product_variant))
+      end
+
       def cart_item_json(item)
         variant = item.product_variant
         product = variant.product
         {
           id: item.id,
           quantity: item.quantity,
-          subtotal_cents: item.subtotal_cents,
+          subtotal_cents: cart_price(item).unit_price_cents.to_i * item.quantity,
+          pricing: cart_price(item).as_json,
           product_variant: {
             id: variant.id,
             sku: variant.sku,
             display_name: variant.variant_name || variant.display_name,
-            price_cents: variant.effective_unit_price_cents,
+            price_cents: cart_price(item).unit_price_cents,
             stock_quantity: variant.stock_quantity,
             in_stock: variant.in_stock?,
             size: variant.size,
@@ -414,7 +435,7 @@ module Api
             product_stock_quantity: product.product_stock_quantity
           },
           availability: {
-            available: item.available?,
+            available: item.available? && cart_price(item).purchasable,
             quantity_exceeds_stock: item.quantity_exceeds_stock?,
             available_quantity: item.available_quantity,
             max_available: item.max_available_quantity

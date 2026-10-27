@@ -1,3 +1,5 @@
+import type { CatalogPricing } from '../services/api';
+
 // Cart-related TypeScript interfaces
 
 export interface ProductVariant {
@@ -37,6 +39,7 @@ export interface CartItemAvailability {
 }
 
 export interface CartItem {
+  pricing?: CatalogPricing;
   id: number;
   quantity: number;
   subtotal_cents: number;

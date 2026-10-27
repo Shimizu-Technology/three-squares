@@ -44,7 +44,7 @@ module Api
         per_page = [ params[:per_page]&.to_i || 12, 50 ].min
 
         products = orderable_products(@collection)
-                             .includes(:product_variants, :product_images)
+                             .preload(:product_variants, :product_images, :product_locations)
                              .order(featured: :desc, created_at: :desc)
 
         # Filter by location if provided
@@ -145,6 +145,7 @@ module Api
           name: product.name,
           slug: product.slug,
           description: product.description&.truncate(200),
+          pricing: CatalogPrice.resolve(product: product, location_id: params[:location_id]).as_json,
           base_price_cents: product.base_price_cents,
           sale_price_cents: product.sale_price_cents,
           new_product: product.new_product,

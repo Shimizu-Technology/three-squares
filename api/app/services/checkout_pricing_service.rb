@@ -15,8 +15,8 @@ class CheckoutPricingService
   )
 
   class << self
-    def resolve!(cart_items:, fulfillment_type:, shipping_address: nil, shipping_method: nil)
-      subtotal_cents = cart_items.sum { |item| item.product_variant.effective_unit_price_cents * item.quantity }
+    def resolve!(cart_items:, fulfillment_type:, shipping_address: nil, shipping_method: nil, location_id: nil)
+      subtotal_cents = cart_items.sum { |item| item.product_variant.effective_unit_price_cents(location_id: fulfillment_type == "pickup" ? location_id : nil) * item.quantity }
 
       if fulfillment_type == "pickup"
         return Result.new(

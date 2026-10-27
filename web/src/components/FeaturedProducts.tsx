@@ -1,6 +1,8 @@
+import CatalogPrice from './CatalogPrice';
+import { useLocationStore } from '../store/locationStore';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { productsApi, formatPrice, locationsApi } from '../services/api';
+import { productsApi, locationsApi } from '../services/api';
 import type { Product } from '../services/api';
 import { useCartStore } from '../store/cartStore';
 import { evaluateCartCompatibility } from '../utils/cartCompatibility';
@@ -14,6 +16,7 @@ import OptimizedImage from './ui/OptimizedImage';
 const EMPTY_CART_ITEMS: Array<{ product: { allow_pickup?: boolean; allow_shipping?: boolean; available_location_ids?: number[] } }> = [];
 
 export default function FeaturedProducts() {
+  const locationId = useLocationStore((state) => state.selectedLocation?.id);
   const [products, setProducts] = useState<Product[]>([]);
   const [locationNameById, setLocationNameById] = useState<Record<number, string>>({});
   const [isLoading, setIsLoading] = useState(true);
@@ -27,6 +30,7 @@ export default function FeaturedProducts() {
         // Fetch featured products, limit to 8 for homepage
         const response = await productsApi.getProducts({
           featured: true,
+          location_id: locationId,
           per_page: 8
         });
 
@@ -36,7 +40,8 @@ export default function FeaturedProducts() {
         if (featuredProducts.length < 6) {
           const newestResponse = await productsApi.getProducts({
             per_page: 8 - featuredProducts.length,
-            sort: 'newest'
+            sort: 'newest',
+            location_id: locationId
           });
 
           // Combine featured + newest, remove duplicates
@@ -57,7 +62,7 @@ export default function FeaturedProducts() {
     };
 
     fetchFeaturedProducts();
-  }, []);
+  }, [locationId]);
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -109,7 +114,7 @@ export default function FeaturedProducts() {
         staggerDelay={0.06}
       >
         {products.map((product) => {
-          const isOnSale = product.sale_price_cents && product.sale_price_cents < product.base_price_cents;
+          const isOnSale = product.pricing?.compare_at_price_cents != null;
           const cartCompatibility = evaluateCartCompatibility(cartItems, product);
           const relevantLocationNames = cartCompatibility.relevantPickupLocationIds
             .map((id) => locationNameById[id])
@@ -151,20 +156,7 @@ export default function FeaturedProducts() {
                   </h3>
 
                   <div className="mt-auto">
-                    {isOnSale ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-base font-medium text-warm-900">
-                          {formatPrice(product.sale_price_cents!)}
-                        </span>
-                        <span className="text-sm text-warm-400 line-through">
-                          {formatPrice(product.base_price_cents)}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-base font-medium text-warm-900">
-                        {formatPrice(product.base_price_cents)}
-                      </span>
-                    )}
+                    <CatalogPrice pricing={product.pricing} productType={product.product_type} />
                     {cartCompatibility.reason === 'pickup_location' && (
                       <p className="mt-2 text-xs font-medium text-amber-700">
                         {conflictText}

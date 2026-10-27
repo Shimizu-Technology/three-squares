@@ -185,9 +185,9 @@ export default function CartDrawer() {
                     {/* Price */}
                     <div className="text-right">
                       <p className="text-base font-bold text-warm-900">
-                        ${((item.product_variant.price_cents * item.quantity) / 100).toFixed(2)}
+                        {item.pricing?.purchasable === false ? 'Price by request' : `$${(item.subtotal_cents / 100).toFixed(2)}`}
                       </p>
-                      {item.quantity > 1 && (
+                      {item.quantity > 1 && item.pricing?.purchasable !== false && (
                         <p className="text-xs text-warm-400">
                           ${(item.product_variant.price_cents / 100).toFixed(2)} each
                         </p>
@@ -274,6 +274,7 @@ export default function CartDrawer() {
               Shipping calculated at checkout
             </p>
 
+            {cart.items.some((item) => item.pricing?.purchasable === false) && <p role="alert" className="text-sm text-warm-700">Remove items priced by request before checking out. Contact us to confirm their price.</p>}
             {/* Checkout Button */}
             <button
               onClick={() => {
@@ -281,7 +282,7 @@ export default function CartDrawer() {
                 navigate('/checkout');
               }}
               className="w-full bg-tsPrimary text-white py-4 rounded-xl font-bold text-lg hover:bg-primary-dark transition shadow-lg shadow-tsPrimary/25 flex items-center justify-center gap-2"
-              disabled={isLoading}
+              disabled={isLoading || cart.items.some((item) => item.pricing?.purchasable === false)}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />

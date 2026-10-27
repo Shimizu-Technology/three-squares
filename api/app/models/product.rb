@@ -53,7 +53,7 @@ class Product < ApplicationRecord
   end
 
   def base_price=(amount)
-    self.base_price_cents = (amount.to_f * 100).to_i
+    self.base_price_cents = (BigDecimal(amount.to_s) * 100).round.to_i
   end
 
   # Instance methods
