@@ -71,16 +71,17 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   const navigate = useNavigate();
   const [clock, setClock] = useState(Date.now);
   const businessDay = orderBusinessDate(new Date(clock));
-  const queryState = useMemo(() => parseOrderQuery(location.search, mode, new Date(`${businessDay}T12:00:00+10:00`)), [location.search, mode, businessDay]);
+  const businessNow = useMemo(() => new Date(`${businessDay}T12:00:00+10:00`), [businessDay]);
+  const queryState = useMemo(() => parseOrderQuery(location.search, mode, businessNow), [location.search, mode, businessNow]);
   const canonicalSearch = serializeOrderQuery(queryState);
   const queryStateRef = useRef(queryState);
   useLayoutEffect(() => { queryStateRef.current = queryState; }, [queryState]);
   const changeQuery = useCallback((changes: Partial<OrderQueryState>, replace = false) => {
-    const next = updateOrderQuery(queryStateRef.current, changes, mode);
+    const next = updateOrderQuery(queryStateRef.current, changes, mode, businessNow);
     if (serializeOrderQuery(next) === serializeOrderQuery(queryStateRef.current)) return;
     queryStateRef.current = next;
     void navigate({ search: `?${serializeOrderQuery(next)}` }, { replace, preventScrollReset: true });
-  }, [mode, navigate]);
+  }, [mode, navigate, businessNow]);
   useEffect(() => {
     if (location.search.slice(1) !== canonicalSearch) {
       void navigate({ search: `?${canonicalSearch}` }, { replace: true, preventScrollReset: true });
