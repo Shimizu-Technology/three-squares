@@ -460,6 +460,8 @@ function CheckoutForm() {
       const confirmed = await checkoutApi.confirm(state.id, token, capability.current);
       if (!(await finishCheckout(confirmed))) setPendingPayment(pendingCheckout());
     } catch (err: unknown) {
+      const saved = pendingCheckout();
+      if (saved) setPendingPayment(saved);
       console.error('Checkout error:', err);
       const axiosErr = err as { response?: { data?: { error?: string; issues?: Array<{ message: string }> } } };
       if (axiosErr.response?.data?.issues && axiosErr.response.data.issues.length > 0) {
