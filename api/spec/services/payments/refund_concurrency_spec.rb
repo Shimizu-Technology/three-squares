@@ -24,20 +24,18 @@ RSpec.describe "Refund database concurrency" do
     threads&.each { |thread| thread.join(1) }
   end
 
-  before { @fixture = captured_order }
+  before do
+    configured = ActiveRecord::Base.connection_db_config.database
+    actual = ActiveRecord::Base.connection.select_value('SELECT current_database()')
+    raise 'Dedicated test DB required' unless Rails.env.test? && actual == configured && actual.end_with?('_test') && !%w[three_squares_test three_squares_development].include?(actual)
+    @dedicated_database_verified = true
+    @fixture = captured_order
+  end
   after do
-    order, identity, attempt = @fixture
-    operations = RefundOperation.where(order_id: order.id)
-    RefundEffect.where(refund_operation_id: operations.select(:id)).delete_all
-    RefundObservation.where(refund_operation_id: operations.select(:id)).delete_all
-    Refund.where(order_id: order.id).delete_all
-    operations.delete_all
-    PaymentTransaction.where(order_id: order.id).delete_all
-    Order.where(id: order.id).update_all(checkout_session_id: nil, payment_attempt_id: nil)
-    PaymentAttempt.where(id: attempt.id).delete_all
-    CheckoutSession.where(order_id: order.id).delete_all
-    Order.where(id: order.id).delete_all
-    PaymentIdentity.where(id: identity.id).delete_all
+    next unless @dedicated_database_verified
+    connection = ActiveRecord::Base.connection
+    tables = connection.tables - %w[schema_migrations ar_internal_metadata]
+    connection.execute("TRUNCATE #{tables.map { |name| connection.quote_table_name(name) }.join(', ')} RESTART IDENTITY CASCADE")
   end
 
   it "serializes distinct keys so succeeded plus pending/unknown can never overreserve captured cents" do
@@ -90,4 +88,47 @@ RSpec.describe "Refund database concurrency" do
     result = Payments::RefundPayment.call(order: order, amount_cents: 500, request_key: "unlocked")
     expect(result).to include(success: true)
   end
+  it 'serializes a confirmed refund restoration against cancellation without adding the same units twice' do
+    order = @fixture.first
+    product = create(:product, inventory_level: 'variant')
+    variant = create(:product_variant, product: product, stock_quantity: 5)
+    create(:order_item, order: order, product: product, product_variant: variant, quantity: 2, unit_price_cents: 500)
+    Order.transaction { Order.lock.find(order.id); Payments::ReserveInventory.commit!(order: order, snapshot_digest: 'snapshot') }
+    provider = Object.new
+    provider.define_singleton_method(:refund) { |**| { raw_id: 're_stock_race', status: 'succeeded', amount_cents: 500 } }
+    allow(Payments::ProviderResolver).to receive(:for_identity).and_return(provider)
+    race do |index|
+      current = Order.find(order.id)
+      if index.zero?
+        Payments::RefundPayment.call(order: current, amount_cents: 500, request_key: 'stock-race', restoration_request: { restock_items: true })
+      else
+        Payments::UpdateOrder.call(order: current, attributes: { status: 'cancelled' }, user: nil)
+      end
+    end
+    expect(variant.reload.stock_quantity).to eq(5)
+    expect(order.reload.status).to eq('cancelled')
+    expect(InventoryReservation.find_by!(order_id: order.id).restored_quantities.values.sum).to eq(2)
+    expect(RefundOperation.count).to eq(1)
+  end
+
+  it 'claims a verified legacy capture for one order across simultaneous foreign-order refund requests' do
+    identity = @fixture[1]
+    orders = 2.times.map { create(:order, payment_status: 'paid', payment_method: 'stripe', payment_identity_id: identity.id, payment_intent_id: 'pi_sharedLegacy') }
+    calls = Queue.new
+    provider = Object.new
+    provider.define_singleton_method(:query_original_charge) do |**|
+      { identity_id: identity.id, raw_id: 'pi_sharedLegacy', status: 'captured', amount_cents: 1500, currency: 'USD' }
+    end
+    provider.define_singleton_method(:refund) do |**args|
+      calls << args
+      { raw_id: 're_legacyOwner', status: 'pending', amount_cents: 500 }
+    end
+    allow(Payments::ProviderResolver).to receive(:for_identity).and_return(provider)
+    results = race { |index| Payments::RefundPayment.call(order: orders[index], amount_cents: 500, request_key: "legacy-#{index}") }
+    expect(results.map { |result| result[:status] }.sort).to eq(%w[pending rejected])
+    expect(calls.size).to eq(1)
+    expect(LegacyCaptureBinding.count).to eq(1)
+    expect(LegacyCaptureBinding.last.order_id).to eq(RefundOperation.last.order_id)
+  end
+
 end

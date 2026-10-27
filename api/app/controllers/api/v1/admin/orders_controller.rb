@@ -9,7 +9,7 @@ module Api
       include Authenticatable
         before_action :authenticate_request
         before_action :require_admin!
-        before_action :set_order, only: [ :show, :update, :notify, :refund ]
+        before_action :set_order, only: [ :show, :update, :notify, :refund, :reconcile_refund ]
 
       # GET /api/v1/admin/orders
       # List all orders (admin only)
@@ -170,23 +170,55 @@ module Api
         result = PaymentService.refund_payment(order: @order, amount_cents: raw_amount.to_i,
           reason: params[:reason], admin_user: current_user, request_key: request_key,
           metadata: metadata, restoration_request: restoration_request)
-        refund = result[:refund]
-        operation = refund&.refund_operation
-        restoration_required = operation.present? && operation.restoration_request["restock_items"].present?
-        render json: {
-          message: result[:success] ? "Refund confirmed" : "Refund #{result[:status]}",
-          error: result[:error], status: result[:status],
-          refund: refund && refund_json(refund), operation_uuid: operation&.id,
-          inventory_restored: false,
-          restoration_requested: operation&.restoration_request || restoration_request,
-          inventory_restoration_required: restoration_required,
-          restoration_status: restoration_required ? "manual_review_required" : "not_requested",
-          order: detailed_order_json(@order.reload)
-        }, status: result[:http_status]
+        render_refund_result(result, restoration_request)
+      end
+
+      def reconcile_refund
+        operation = RefundOperation.find_by!(id: params[:operation_id], order: @order)
+        service = Payments::RefundPayment.new
+        result = if operation.state == 'reserved'
+          service.call(order: @order, amount_cents: operation.amount_cents, request_key: operation.caller_idempotency_key,
+            reason: operation.reason, admin_user: operation.user, metadata: operation.metadata, restoration_request: operation.restoration_request)
+        else
+          service.reconcile(operation: operation)
+        end
+        render_refund_result(result, operation.restoration_request)
+      rescue ActiveRecord::RecordNotFound
+        render json: { error: 'Refund operation not found' }, status: :not_found
       end
 
 
       private
+
+      def render_refund_result(result, restoration_request)
+        refund = result[:refund]
+        operation = refund&.refund_operation
+        restoration = refund&.reload&.metadata&.dig('inventory_restoration') || {}
+        requested = operation.present? && operation.restoration_request['restock_items'].present? && operation.restoration_request['restock_items'] != false
+        restoration_status = restoration['status'] || (requested ? 'pending' : 'not_requested')
+        restoration_required = restoration_status == 'manual_review_required'
+        message = if result[:success]
+          restoration_required ? 'Refund confirmed. Inventory restoration requires manual review; no stock was restored.' : 'Refund confirmed'
+        elsif result[:no_operation]
+          'Refund request rejected before dispatch. Review and correct it.'
+        elsif result[:status] == 'failed'
+          'Refund failed. Its reservation has been released.'
+        else
+          "Refund #{result[:status]}; its amount remains reserved until resolved"
+        end
+        render json: {
+          message: message,
+          success: result[:success], no_operation: result[:no_operation] == true,
+          error: result[:error], status: result[:status],
+          refund: refund && refund_json(refund), operation_uuid: operation&.id,
+          inventory_restored: restoration['restored'] == true,
+          restoration_requested: operation&.restoration_request || restoration_request,
+          inventory_restoration_required: restoration_required,
+          restoration_status: restoration_status, inventory_restoration_status: restoration_status,
+          order: detailed_order_json(@order.reload)
+        }, status: result[:http_status]
+      end
+
 
       # Send email + SMS notifications for the current order status.
       # Both channels are gated here before enqueueing:
@@ -439,7 +471,9 @@ module Api
       end
 
       def set_order
-        @order = Order.includes(:order_items, :user, :refunds).find(params[:id])
+        scope = Order.includes(:order_items, :user, :refunds)
+        scope = scope.where(location_id: current_user.assigned_location_id) if current_user.location_scoped?
+        @order = scope.find(params[:id])
       rescue ActiveRecord::RecordNotFound
         render json: { error: "Order not found" }, status: :not_found
       end
@@ -684,18 +718,13 @@ module Api
           status: refund.status,
           reason: refund.reason,
           stripe_refund_id: refund.stripe_refund_id,
+          operation_uuid: refund.refund_operation_id,
+          operation_status: refund.refund_operation&.state,
+          environment: refund.refund_operation&.environment,
+          restoration_status: refund.metadata.dig('inventory_restoration', 'status'),
           created_at: refund.created_at.iso8601,
           admin_user: refund.user&.name || refund.user&.email
         }
-      end
-
-      # Restore inventory when a full refund is processed
-      def restore_inventory_for_refund(order, user = nil)
-        Payments::RestoreInventory.call(order: order, user: user)
-      end
-
-      def restore_inventory_for_items(order, item_ids, user = nil)
-        Payments::RestoreInventory.call(order: order, item_ids: item_ids, user: user)
       end
 
       def order_params

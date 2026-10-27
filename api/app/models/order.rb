@@ -131,7 +131,7 @@ class Order < ApplicationRecord
   end
 
   def refundable_amount_cents
-    total_cents - total_refunded_cents
+    [total_cents - refunds.where(status: %w[pending unknown succeeded]).sum(:amount_cents), 0].max
   end
 
   def can_refund?

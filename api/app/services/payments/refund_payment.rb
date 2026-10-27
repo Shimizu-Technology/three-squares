@@ -18,11 +18,18 @@ module Payments
         operation = RefundOperation.lock.find(operation.id)
         next false unless operation.state == "reserved"
         ReserveRefund.validate_authority!(operation)
-        operation.update!(state: "dispatching", dispatched_at: Time.current)
+        operation.update!(state: "dispatching", dispatched_at: Time.current, next_recovery_at: 1.minute.from_now, recovery_deadline_at: 24.hours.from_now)
         true
       end
-      dispatch(operation) if claimed
+      if claimed
+        dispatch(operation)
+      elsif %w[dispatching pending unknown].include?(operation.state)
+        reconcile(operation: operation)
+      end
+      forward_success_effects(operation.reload)
       result(operation.reload)
+    rescue ReserveRefund::Rejected => e
+      { success: false, refund: nil, error: e.message, status: 'rejected', no_operation: true, http_status: e.http_status }
     rescue Conflict => e
       { success: false, refund: nil, error: e.message, status: "conflict", http_status: 409 }
     rescue Error, Configuration::UnsafeConfiguration, ActiveRecord::RecordInvalid => e
@@ -33,20 +40,42 @@ module Payments
     # It never creates a second operation or repeats a network mutation.
     def reconcile(operation:)
       ReserveRefund.validate_authority!(operation)
-      return result(operation) if %w[succeeded failed].include?(operation.state)
+      if %w[succeeded failed].include?(operation.state)
+        forward_success_effects(operation)
+        return result(operation)
+      end
       return result(operation) if operation.state == "reserved"
+      claimed = ReserveRefund.with_locks(operation.order_id) do
+        operation = RefundOperation.lock.find(operation.id)
+        next false if %w[succeeded failed reserved].include?(operation.state) || operation.next_recovery_at&.future?
+        operation.update!(last_queried_at: Time.current, retry_count: operation.retry_count + 1,
+          next_recovery_at: operation.recovery_deadline_at&.past? ? 1.hour.from_now : 1.minute.from_now)
+        true
+      end
+      return result(operation) unless claimed
       if operation.provider == "cash"
         apply(operation, { raw_id: nil, status: "succeeded", amount_cents: operation.amount_cents }, "cash:#{operation.id}")
       else
         provider = ProviderResolver.for_identity(operation.payment_identity)
         observation = provider.query_refund(reference: operation.raw_provider_id,
-          operation_key: operation.operation_key)
+          operation_key: operation.operation_key, original_reference: operation.original_reference)
         apply(operation, observation, "query:#{Digest::SHA256.hexdigest(observation.to_json)}")
       end
+      forward_success_effects(operation.reload)
+      result(operation.reload)
+    rescue Stripe::StripeError, Timeout::Error, Error, Configuration::UnsafeConfiguration => error
+      operation.update!(last_error: error.class.name, next_recovery_at: operation.recovery_deadline_at&.past? ? 1.hour.from_now : 1.minute.from_now)
       result(operation.reload)
     end
 
     private
+
+    def forward_success_effects(operation)
+      DispatchRefundEffects.call(operation: operation, restore_now: true) if operation.state == 'succeeded'
+    rescue StandardError => error
+      # Financial success is durable even when a local success effect must retry.
+      Rails.logger.error("Refund effect operation=#{operation.id} error=#{error.class}")
+    end
 
     def dispatch(operation)
       observation = if operation.provider == "cash"

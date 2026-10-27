@@ -11,6 +11,9 @@ interface OrderDetailModalProps {
   onQuickUpdateStatus: (orderId: number, newStatus: string) => void;
   onResendNotification: (orderId: number) => void;
   onOpenRefundModal: () => void;
+  hasSavedRefund?: boolean;
+  checkingRefund?: boolean;
+  onCheckRefund: (operationId: string) => void;
   storeEmail?: string;
 }
 
@@ -22,6 +25,9 @@ export default function OrderDetailModal({
   onQuickUpdateStatus,
   onResendNotification,
   onOpenRefundModal,
+  hasSavedRefund,
+  checkingRefund,
+  onCheckRefund,
   storeEmail = 'sales@bgpacific.com',
 }: OrderDetailModalProps) {
   useLockBodyScroll(true);
@@ -344,10 +350,10 @@ export default function OrderDetailModal({
                       <div className="flex items-center gap-2">
                         <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${
                           refund.status === 'succeeded' ? 'bg-green-100 text-green-700' :
-                          refund.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                          ['pending', 'unknown'].includes(refund.status) ? 'bg-yellow-100 text-yellow-700' :
                           'bg-red-100 text-red-700'
                         }`}>
-                          {refund.status}
+                          {refund.operation_status || refund.status}
                         </span>
                         <span className="text-sm text-gray-500">
                           {new Date(refund.created_at).toLocaleDateString('en-US', {
@@ -355,6 +361,8 @@ export default function OrderDetailModal({
                           })}
                         </span>
                       </div>
+                      {refund.restoration_status === 'manual_review_required' && <p className="text-sm text-amber-800">Inventory restoration requires manual review.</p>}
+                      {refund.operation_uuid && !['succeeded', 'failed'].includes(refund.operation_status || refund.status) && <button type="button" disabled={checkingRefund} className="mt-2 text-sm underline disabled:opacity-50" onClick={() => onCheckRefund(refund.operation_uuid!)}>Check refund status</button>}
                       {refund.reason && <p className="text-sm text-gray-600 mt-1">{refund.reason}</p>}
                       {refund.admin_user && <p className="text-xs text-gray-500 mt-1">By: {refund.admin_user}</p>}
                     </div>
@@ -400,13 +408,13 @@ export default function OrderDetailModal({
               </svg>
               Email Customer
             </button>
-            {order.payment_status === 'paid' && (
+            {(order.payment_status === 'paid' || hasSavedRefund) && (
               <button
                 type="button"
                 onClick={onOpenRefundModal}
                 className="flex-1 min-w-[140px] px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-primary-dark transition font-medium"
               >
-                Refund Order
+                {hasSavedRefund ? 'Check saved refund' : 'Refund Order'}
               </button>
             )}
           </div>

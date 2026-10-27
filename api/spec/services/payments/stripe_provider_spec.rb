@@ -59,4 +59,34 @@ RSpec.describe Payments::StripeProvider do
     expect { provider.query_reversal(attempt: attempt, operation_key: 'same_key') }.to raise_error(Payments::BindingError)
   end
 
+  it 'uses charge and PaymentIntent refund parameters correctly and binds the returned original reference' do
+    refunds = double('refunds')
+    allow(stripe_client.v1).to receive(:refunds).and_return(refunds)
+    { 'pi_legacy' => :payment_intent, 'ch_legacy' => :charge }.each do |reference, field|
+      response = Stripe::StripeObject.construct_from(id: "re_#{field}", status: 'pending', currency: 'usd', amount: 500,
+        field => reference, metadata: { operation_key: 'frozen_key' })
+      expect(refunds).to receive(:create).with({ field => reference, amount: 500, metadata: { operation_key: 'frozen_key' } }, { idempotency_key: 'frozen_key' }).and_return(response)
+      expect(provider.refund(attempt: nil, reference: reference, amount_cents: 500, operation_key: 'frozen_key', metadata: {})).to include(status: 'pending', amount_cents: 500)
+    end
+  end
+
+  it 'queries only the original charge refunds and preserves not-found as unknown' do
+    refunds = double('refunds')
+    allow(stripe_client.v1).to receive(:refunds).and_return(refunds)
+    expect(refunds).to receive(:list).with({ limit: 100, payment_intent: 'pi_original' }).and_return(Stripe::StripeObject.construct_from(data: [], has_more: false))
+    expect(provider.query_refund(reference: nil, operation_key: 'frozen', original_reference: 'pi_original')).to include(raw_id: nil, status: 'unknown')
+  end
+
+  it 'verifies legacy capture on the selected account without fabricating an attempt' do
+    expect(intents_api).to receive(:retrieve).with('pi_fixture').and_return(intent)
+    expect(provider.query_original_charge(reference: 'pi_fixture')).to include(identity_id: identity.id, status: 'captured', amount_cents: 1500, currency: 'USD')
+    charges = double('charges')
+    allow(stripe_client.v1).to receive(:charges).and_return(charges)
+    charge = Stripe::StripeObject.construct_from(id: 'ch_legacy', paid: true, captured: true, amount_captured: 1500, livemode: false, currency: 'usd')
+    allow(charges).to receive(:retrieve).with('ch_legacy').and_return(charge)
+    expect(provider.query_original_charge(reference: 'ch_legacy')).to include(raw_id: 'ch_legacy', amount_cents: 1500)
+    charge.livemode = true
+    expect { provider.query_original_charge(reference: 'ch_legacy') }.to raise_error(Payments::BindingError)
+  end
+
 end

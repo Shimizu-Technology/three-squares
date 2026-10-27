@@ -50,7 +50,7 @@ RSpec.describe "Admin refund requests", type: :request do
       "restoration_requested" => { "restock_items" => true })
     expect(variant.reload.stock_quantity).to eq(7)
     expect(RefundOperation.last.metadata).to eq("source" => "operator")
-    expect(RefundEffect.count).to eq(1)
+    expect(RefundEffect.count).to eq(2)
   end
 
   it "returns 202 for pending and unknown outcomes with no notification effect" do
@@ -71,4 +71,32 @@ RSpec.describe "Admin refund requests", type: :request do
     expect(response.parsed_body["inventory_restored"]).to be false
     expect(variant.reload.stock_quantity).to eq(9)
   end
+  it 'queries a saved operation by its bound order and keeps a replay from dispatching again' do
+    allow(provider).to receive(:refund).and_return(raw_id: 're_status', status: 'pending', amount_cents: 500)
+    submit
+    operation = RefundOperation.last
+    operation.update!(next_recovery_at: 1.second.ago)
+    expect(provider).to receive(:query_refund).with(reference: 're_status', operation_key: operation.operation_key, original_reference: operation.original_reference)
+      .and_return(raw_id: 're_status', status: 'succeeded', amount_cents: 500)
+    post "/api/v1/admin/orders/#{order.id}/refund_operations/#{operation.id}/reconcile"
+    expect(response).to have_http_status(:ok), response.body
+    expect(response.parsed_body).to include('status' => 'succeeded', 'success' => true)
+    expect(provider).to have_received(:refund).once
+    foreign = create(:order)
+    post "/api/v1/admin/orders/#{foreign.id}/refund_operations/#{operation.id}/reconcile"
+    expect(response).to have_http_status(:not_found)
+  end
+
+  it 'returns durable no-operation proof for a refused key, allowing a corrected new request only' do
+    submit({ amount_cents: 2000 }, key: 'rejected')
+    expect(response).to have_http_status(:conflict)
+    expect(response.parsed_body['no_operation']).to be true
+    submit({ amount_cents: 500 }, key: 'rejected')
+    expect(response.parsed_body['no_operation']).to be true
+    expect(provider).not_to have_received(:refund)
+    submit({ amount_cents: 500 }, key: 'corrected')
+    expect(response).to have_http_status(:ok)
+    expect(provider).to have_received(:refund).once
+  end
+
 end

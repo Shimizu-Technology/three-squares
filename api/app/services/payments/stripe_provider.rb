@@ -128,6 +128,7 @@ module Payments
         # the immutable operation metadata. Absence is unknown, never failure.
         matches = []
         params = { limit: 100 }
+        params[reference_key(original_reference)] = original_reference if original_reference
         20.times do
           page = client.v1.refunds.list(params)
           matches.concat(page.data.select { |row| row.metadata.to_h.stringify_keys["operation_key"] == operation_key })
@@ -146,7 +147,11 @@ module Payments
       live = object.livemode == (identity.environment == "production")
       captured = reference.start_with?("pi_") ? object.status == "succeeded" && object.amount_received.positive? : object.paid && object.captured
       raise BindingError, "Original charge is not captured in this identity" unless live && captured && object.currency == "usd" && object.id == reference
-      { identity_id: identity.id, raw_id: object.id, status: "captured", amount_cents: reference.start_with?("pi_") ? object.amount_received : object.amount_captured, currency: "USD" }
+      linked_intent = object.respond_to?(:payment_intent) ? object.payment_intent : nil
+      linked_intent = linked_intent.id if linked_intent.respond_to?(:id)
+      { identity_id: identity.id, raw_id: object.id, status: "captured", amount_cents: reference.start_with?("pi_") ? object.amount_received : object.amount_captured,
+        currency: "USD", consumption_reference: reference.start_with?('pi_') ? object.id : linked_intent.presence || object.id,
+        order_id: object.respond_to?(:metadata) ? object.metadata.to_h.stringify_keys['order_id'] : nil }
     end
 
     def reference_key(reference)

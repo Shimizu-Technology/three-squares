@@ -44,7 +44,8 @@ RSpec.describe Payments::RefundPayment do
     expect(refund(key: "another", amount: 301)).to include(http_status: 409)
     expect(provider).to have_received(:refund).once
     expect(RefundEffect.count).to eq(0)
-    expect(provider).to receive(:query_refund).with(reference: nil, operation_key: operation.operation_key)
+    operation.update!(next_recovery_at: 1.second.ago)
+    expect(provider).to receive(:query_refund).with(reference: nil, operation_key: operation.operation_key, original_reference: operation.original_reference)
       .and_return(raw_id: "re_recovered", status: "succeeded", amount_cents: 1200)
     expect(described_class.new.reconcile(operation: RefundOperation.find(operation.id))).to include(success: true)
     expect(RefundEffect.count).to eq(1)
@@ -71,7 +72,7 @@ RSpec.describe Payments::RefundPayment do
       .to include(success: false, status: "reconciliation_required")
     production_order = captured_order(environment: "production").first
     expect(PaymentService.refund_payment(order: production_order, amount_cents: 500, request_key: "live", test_mode: true))
-      .to include(success: false, status: "reconciliation_required")
+      .to include(success: false, status: "rejected", no_operation: true)
     expect(provider).not_to have_received(:refund)
     expect(RefundOperation.count).to eq(0)
   end
@@ -118,4 +119,25 @@ RSpec.describe Payments::RefundPayment do
     expect(described_class.call(order: legacy, amount_cents: 500, request_key: "uncaptured")).to include(success: false)
     expect(provider).not_to have_received(:refund)
   end
+  it 'normalizes a verified legacy canonical reference without deriving identity from its prefix' do
+    identity = fixture[1]
+    legacy = create(:order, payment_status: 'paid', payment_method: 'stripe', payment_identity_id: identity.id,
+      payment_intent_id: 'ch_canonical', payment_reference: identity.canonical_reference('ch_canonical'))
+    expect(provider).to receive(:query_original_charge).with(reference: 'ch_canonical')
+      .and_return(identity_id: identity.id, raw_id: 'ch_canonical', consumption_reference: 'pi_canonical', status: 'captured', amount_cents: 1500, currency: 'USD')
+    expect(provider).to receive(:refund).with(hash_including(reference: 'ch_canonical')).and_return(raw_id: 're_canonical', status: 'succeeded', amount_cents: 500)
+    expect(described_class.call(order: legacy, amount_cents: 500, request_key: 'canonical')).to include(success: true)
+    expect(LegacyCaptureBinding.last).to have_attributes(order_id: legacy.id, original_reference: 'ch_canonical', consumption_reference: 'pi_canonical')
+  end
+
+  it 'cannot refund a consumed modern capture through a foreign legacy order with the same amount' do
+    identity = fixture[1]
+    reference = fixture[3].raw_provider_id
+    legacy = create(:order, payment_status: 'paid', payment_method: 'stripe', payment_identity_id: identity.id, payment_intent_id: reference)
+    allow(provider).to receive(:query_original_charge).and_return(identity_id: identity.id, raw_id: reference, status: 'captured', amount_cents: 1500, currency: 'USD')
+    expect(described_class.call(order: legacy, amount_cents: 500, request_key: 'foreign')).to include(success: false, no_operation: true)
+    expect(provider).not_to have_received(:refund)
+    expect(LegacyCaptureBinding.count).to eq(0)
+  end
+
 end

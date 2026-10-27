@@ -45,10 +45,16 @@ module Payments
         operation.update!(state: next_state, raw_provider_id: operation.raw_provider_id.presence || raw_id,
           succeeded_at: operation.succeeded_at || (Time.current if next_state == "succeeded"))
         refund = operation.refund
+        operation.update!(next_recovery_at: nil, last_error: nil) if %w[succeeded failed].include?(next_state)
         refund.update!(status: next_state,
           stripe_refund_id: operation.provider == "stripe" ? operation.raw_provider_id : nil)
         if next_state == "succeeded"
           order.update!(payment_status: "refunded") if order.refunds.succeeded.sum(:amount_cents) >= operation.captured_cents
+          if operation.restoration_request['restock_items'].present? && operation.restoration_request['restock_items'] != false
+            operation.refund_effects.find_or_create_by!(kind: 'refund_inventory') do |effect|
+              effect.payload = { refund_id: refund.id, order_id: order.id }
+            end
+          end
           operation.refund_effects.find_or_create_by!(kind: "refund_notification") do |effect|
             effect.payload = { refund_id: refund.id, order_id: order.id, environment: operation.environment }
           end
