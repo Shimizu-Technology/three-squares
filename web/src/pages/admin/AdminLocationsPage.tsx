@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
+import LocationQrCode from '../../components/admin/LocationQrCode';
 import { authDelete, authGet, authPost, authPut } from '../../services/authApi';
 
 const WEEK_DAYS = [
@@ -476,6 +477,7 @@ export default function AdminLocationsPage() {
                     disabled={savingId === location.id}
                   />
                 </div>
+                <LocationQrCode key={`${location.id}-${location.slug}`} id={location.id} name={location.name} slug={location.slug} />
               </div>
             );
           })

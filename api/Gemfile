@@ -74,3 +74,6 @@ gem "jwt", "~> 2.5"
 gem "clerk-sdk-ruby", "~> 3.0"
 
 gem "money-rails", "~> 1.15"
+
+# Printable location menu QR codes.
+gem "rqrcode", "~> 2.2"

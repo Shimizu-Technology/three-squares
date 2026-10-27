@@ -54,6 +54,7 @@ const ReturnsPage = lazy(() => import('./pages/ReturnsPage'));
 const TermsOfServicePage = lazy(() => import('./pages/TermsOfServicePage'));
 const PrivacyPolicyPage = lazy(() => import('./pages/PrivacyPolicyPage'));
 const CateringPage = lazy(() => import('./pages/CateringPage'));
+const LocationMenuPage = lazy(() => import('./pages/LocationMenuPage'));
 const LocationsPage = lazy(() => import('./pages/LocationsPage'));
 
 function RouteFallback() {
@@ -495,6 +496,7 @@ function AppContent() {
         <Routes location={location} key={routeTransitionKey}>
           <Route path="/" element={<HomePage />} />
           <Route path="/products" element={<ProductsPage />} />
+          <Route path="/menu/:locationSlug" element={<LocationMenuPage />} />
           <Route path="/shop/three-squares" element={<StorefrontGate storefront="three_squares"><BusinessLineEntryPage businessLine="three_squares" /></StorefrontGate>} />
           <Route path="/shop/latte-stone-cookies" element={<StorefrontGate storefront="latte_stone"><BusinessLineEntryPage businessLine="latte_stone" /></StorefrontGate>} />
           <Route path="/shop/catering" element={<StorefrontGate storefront="catering"><BusinessLineEntryPage businessLine="catering" /></StorefrontGate>} />
