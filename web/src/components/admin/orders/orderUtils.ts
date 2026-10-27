@@ -122,3 +122,12 @@ export const getNextStatusAction = (order: Order): NextStatusAction | null => {
   const status = order.next_status_options?.find((option) => option !== 'cancelled');
   return status ? actions[status] ?? null : null;
 };
+
+export function pickupOrderAge(createdAt: string, now = Date.now()) {
+  const placed = new Date(createdAt).getTime();
+  if (!Number.isFinite(placed)) return 'Time unavailable';
+  const minutes = Math.max(0, Math.floor((now - placed) / 60_000));
+  if (minutes === 0) return 'Just placed';
+  if (minutes < 60) return `Placed ${minutes}m ago`;
+  return `Placed ${Math.floor(minutes / 60)}h ${minutes % 60}m ago`;
+}
