@@ -24,7 +24,7 @@ for (const resource of [
     await expect(alert).toBeVisible();
     await expect(page.getByText('No orders yet', { exact: true })).toHaveCount(0);
     await expect(page.getByText('No products found', { exact: true })).toHaveCount(0);
-    await expect(page.getByText('No collections found', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('No menus yet. Add a menu, choose its items and set a schedule.', { exact: true })).toHaveCount(0);
     await expect(page.getByText('No locations found.', { exact: true })).toHaveCount(0);
     await expect(page.getByText('No users found', { exact: true })).toHaveCount(0);
     await expect(page.getByText('No catering inquiries found', { exact: true })).toHaveCount(0);

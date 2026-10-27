@@ -14,9 +14,11 @@ export function moveMenuItem(ids: number[], id: number, offset: number) {
   return result;
 }
 
+const usd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+
 export function menuProductPrice(product: MenuProduct) {
   return product.base_price_cents > 0
-    ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(product.base_price_cents / 100)
+    ? usd.format(product.base_price_cents / 100)
     : 'Price requires setup';
 }
 

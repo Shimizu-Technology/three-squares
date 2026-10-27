@@ -319,7 +319,7 @@ export default function AdminLocationsPage() {
                 <LocationQrCode key={`${location.id}-${location.slug}`} id={location.id} name={location.name} slug={location.slug} />
                 <SavedHours hours={location.hours_json} />
                 <details className="border-t border-gray-100 pt-3">
-                  <summary className="min-h-11 py-3 cursor-pointer font-semibold text-tsPrimary" aria-label={`Edit ${location.name}`}>Edit location settings</summary>
+                  <summary className="min-h-11 py-3 cursor-pointer font-semibold text-tsPrimary" aria-label={`Edit location settings for ${location.name}`}>Edit location settings</summary>
                   <div className="space-y-5 pt-4">
                     <p className="text-sm text-gray-600">Changes below are drafts until saved. Menu links use saved details.</p>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -89,4 +89,38 @@ RSpec.describe "Admin menu membership", type: :request do
     get "/api/v1/collections/#{menu.slug}", params: { location_id: location.id }
     expect(response).to have_http_status(:not_found)
   end
+
+  it "batches membership writes and leaves unchanged links and original creation times intact" do
+    extra = create_list(:product, 5)
+    original = [ first, second, *extra ]
+    original.each_with_index { |product, position| menu.product_collections.create!(product: product, position: position) }
+    retained = menu.product_collections.find_by!(product: first)
+    created_at = retained.created_at
+    counts = []
+    [ original.map(&:id).reverse, original.map(&:id) ].each do |ids|
+      writes = []
+      subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |_name, _start, _finish, _id, payload|
+        sql = payload[:sql]
+        writes << sql if sql.match?(/\A(?:INSERT INTO|UPDATE|DELETE FROM) "product_collections"/)
+      end
+      begin
+        patch "/api/v1/admin/collections/#{menu.id}", params: { collection: { product_ids: ids } }, as: :json
+      ensure
+        ActiveSupport::Notifications.unsubscribe(subscriber)
+      end
+      expect(response).to have_http_status(:ok)
+      expect(menu.product_collections.order(:position).pluck(:product_id)).to eq(ids)
+      counts << writes.size
+    end
+    expect(counts).to all(be <= 3)
+    expect(retained.reload.created_at).to eq(created_at)
+    timestamp = retained.updated_at
+    patch "/api/v1/admin/collections/#{menu.id}", params: { collection: { description: "No item changes", product_ids: original.map(&:id) } }, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(retained.reload.updated_at).to eq(timestamp)
+    addition = create(:product)
+    patch "/api/v1/admin/collections/#{menu.id}", params: { collection: { product_ids: [ addition.id, first.id ] } }, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(menu.product_collections.order(:position).pluck(:product_id)).to eq([ addition.id, first.id ])
+  end
 end

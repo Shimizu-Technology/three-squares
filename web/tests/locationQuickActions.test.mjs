@@ -246,3 +246,11 @@ test('image load has the same bounded deadline and never prints after timeout', 
   assert.equal(h.popups[0].closed, true); assert.equal(h.printed, undefined);
   assert.equal(h.button(`Print QR for ${saved.name}`).props['aria-disabled'], false);
 });
+
+
+test('Edit location settings visible text is included in its accessible name', async t => {
+  const h = harness(t, Page); await h.flush();
+  const disclosure = h.find(node => node.type === 'summary' && node.props['aria-label']?.startsWith('Edit location settings'));
+  assert.equal(disclosure.props['aria-label'], `Edit location settings for ${saved.name}`);
+  assert.equal(text(disclosure), 'Edit location settings');
+});

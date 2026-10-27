@@ -62,11 +62,25 @@ module Api
             ids = requested_product_ids
             @collection.save!
             unless ids.nil?
-              @collection.product_collections.where.not(product_id: ids).destroy_all
+              # ProductCollection has no destroy/save callbacks. Batch membership
+              # changes under the parent lock; leave unchanged links untouched.
+              existing = @collection.product_collections.index_by(&:product_id)
+              @collection.product_collections.where.not(product_id: ids).delete_all
+              changed = []
+              added = []
+              now = Time.current
               ids.each_with_index do |id, position|
-                link = @collection.product_collections.find_or_initialize_by(product_id: id)
-                link.update!(position: position)
+                link = existing[id]
+                if link && link.position != position
+                  changed << { id: link.id, collection_id: @collection.id, product_id: id,
+                               position: position, created_at: link.created_at, updated_at: now }
+                elsif !link
+                  added << { collection_id: @collection.id, product_id: id, position: position,
+                             created_at: now, updated_at: now }
+                end
               end
+              ProductCollection.upsert_all(changed, unique_by: :id, update_only: [ :position, :updated_at ], record_timestamps: false) if changed.any?
+              ProductCollection.insert_all!(added, record_timestamps: false) if added.any?
             end
           end
           @collection.reload
