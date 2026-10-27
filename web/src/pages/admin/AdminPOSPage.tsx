@@ -24,6 +24,8 @@ import AdminRequestState from '../../components/admin/AdminRequestState';
 import { reconcilePOSCart, remainingPOSCapacity, type POSProduct, type POSVariant, type POSCategory, type CartItem } from '../../components/admin/posCart';
 import type { Reader } from '@stripe/terminal-js';
 
+const locationLabel = (name: string) => name.replace(/^Three Squares\s*(?:@\s*)?/i, '').trim() || name;
+
 const SimulatedTerminalPanel = import.meta.env.DEV ? lazy(() => import('../../components/payment/simulation/SimulatedTerminalPanel')) : null;
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -420,7 +422,7 @@ function AdminPOSWorkspace() {
 
   const categoryNames = useMemo(() => ['All', ...visibleCategories.map((c) => c.name)], [visibleCategories]);
   const selectedLocationName = useMemo(
-    () => locations.find((loc) => loc.id === selectedLocation)?.name ?? 'Select location',
+    () => { const location = locations.find(loc => loc.id === selectedLocation); return location ? locationLabel(location.name) : 'Select location'; },
     [locations, selectedLocation]
   );
 
@@ -1002,8 +1004,8 @@ function AdminPOSWorkspace() {
             <label className="block min-w-0 text-xs font-semibold text-slate-600">Sale location
               <span className="mt-1 flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3">
                 <MapPin aria-hidden="true" className="h-4 w-4 shrink-0" />
-                <select aria-label="Sale location" disabled={access.user?.operational_scope === 'specific' || hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)} value={selectedLocation || ''} onChange={event => setSelectedLocation(Number(event.target.value))} className="min-h-11 min-w-0 w-full bg-transparent text-base text-slate-900">
-                  {locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}
+                <select aria-label="Sale location" title={locations.find(location => location.id === selectedLocation)?.name} disabled={access.user?.operational_scope === 'specific' || hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)} value={selectedLocation || ''} onChange={event => setSelectedLocation(Number(event.target.value))} className="min-h-11 min-w-0 w-full bg-transparent text-base text-slate-900">
+                  {locations.map(location => <option key={location.id} value={location.id}>{locationLabel(location.name)}</option>)}
                 </select>
               </span>
             </label>
