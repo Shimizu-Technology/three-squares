@@ -106,7 +106,7 @@ export default function AdminAnalyticsPage() {
       <AdminRequestState resource={`Analytics for the last ${days} days`} loading={loading} error={loadError} hasData={chartData !== null} onRetry={refreshChartData} />
       {(chartData?.excluded_simulated_order_count ?? 0) > 0 && <aside role="note" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
         <p className="font-semibold">Simulated orders aren&apos;t counted in revenue</p>
-        <p className="mt-1 text-sm">{chartData?.excluded_simulated_order_count} simulated orders in your location scope (all time). The cards and chart remain production-only; no simulated money is included.</p>
+        <p className="mt-1 text-sm">{chartData?.excluded_simulated_order_count} simulated {chartData?.excluded_simulated_order_count === 1 ? 'order' : 'orders'} in your location scope (all time). The cards and chart remain production-only; no simulated money is included.</p>
       </aside>}
       {loading && !chartData && <div className="space-y-4" aria-hidden="true">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

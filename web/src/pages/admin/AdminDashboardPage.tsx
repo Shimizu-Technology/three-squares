@@ -117,7 +117,7 @@ export default function AdminDashboardPage() {
 
       {(stats.excluded_simulated_order_count ?? 0) > 0 && <aside role="note" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
         <p className="font-semibold">Simulated orders aren&apos;t counted in revenue</p>
-        <p className="mt-1 text-sm">{stats.excluded_simulated_order_count} simulated orders in your location scope (all time). The totals below remain production-only; no simulated money is included.</p>
+        <p className="mt-1 text-sm">{stats.excluded_simulated_order_count} simulated {stats.excluded_simulated_order_count === 1 ? 'order' : 'orders'} in your location scope (all time). The totals below remain production-only; no simulated money is included.</p>
       </aside>}
 
       {/* Stats Grid */}
