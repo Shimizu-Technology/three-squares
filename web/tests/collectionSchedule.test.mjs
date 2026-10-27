@@ -21,3 +21,11 @@ test('optional bounds remain empty, and invalid calendar values cannot silently 
     assert.throws(() => fromGuamDateInput(value), /valid Guam date/);
   }
 });
+
+
+test('editing unrelated fields preserves sub-minute boundaries until an operator changes the time', () => {
+  const original = '2026-11-26T20:00:45.123+10:00';
+  assert.equal(fromGuamDateInput(toGuamDateInput(original), original), original);
+  assert.equal(fromGuamDateInput('2026-11-26T20:01', original), '2026-11-26T20:01:00+10:00');
+  assert.equal(fromGuamDateInput('', original), null);
+});

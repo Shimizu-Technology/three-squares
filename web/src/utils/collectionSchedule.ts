@@ -22,8 +22,9 @@ export function toGuamDateInput(value?: string | null) {
   return `${parts.get('year')}-${parts.get('month')}-${parts.get('day')}T${parts.get('hour')}:${parts.get('minute')}`;
 }
 
-export function fromGuamDateInput(value: string) {
+export function fromGuamDateInput(value: string, original?: string | null) {
   if (!value) return null;
+  if (original && toGuamDateInput(original) === value) return original;
   if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(value)) throw new Error('Enter a valid Guam date and time.');
   const iso = `${value}:00+10:00`;
   if (toGuamDateInput(iso) !== value) throw new Error('Enter a valid Guam date and time.');

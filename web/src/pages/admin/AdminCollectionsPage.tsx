@@ -117,8 +117,8 @@ export default function AdminCollectionsPage() {
       const payload = {
         collection: {
           ...formData,
-          starts_at: fromGuamDateInput(formData.starts_at),
-          ends_at: fromGuamDateInput(formData.ends_at),
+          starts_at: fromGuamDateInput(formData.starts_at, selectedCollection?.starts_at),
+          ends_at: fromGuamDateInput(formData.ends_at, selectedCollection?.ends_at),
           slug: selectedCollection?.slug ?? formData.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
         },
       };

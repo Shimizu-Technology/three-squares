@@ -28,8 +28,10 @@ export default function CollectionsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchInput, setSearchInput] = useState(''); // For controlled input
   const didScrollRef = useRef(false);
+  const requestVersion = useRef(0);
 
   const fetchCollections = useCallback(async () => {
+    const version = ++requestVersion.current;
     try {
       setLoading(true);
       setError(null);
@@ -38,17 +40,20 @@ export default function CollectionsPage() {
         per_page: 12,
         search: searchQuery || undefined,
       });
+      if (version !== requestVersion.current) return;
       setCollections(data.collections);
       setMeta(data.meta);
     } catch (err) {
+      if (version !== requestVersion.current) return;
       console.error('Failed to fetch collections:', err);
       setError(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to load collections' : 'Failed to load collections');
     } finally {
-      setLoading(false);
+      if (version === requestVersion.current) setLoading(false);
     }
   }, [currentPage, searchQuery]);
 
   useCollectionBoundary(collections, fetchCollections);
+  useEffect(() => () => { requestVersion.current += 1; }, []);
 
   useEffect(() => {
     void fetchCollections();
