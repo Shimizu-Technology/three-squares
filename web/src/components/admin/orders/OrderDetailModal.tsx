@@ -135,6 +135,7 @@ export default function OrderDetailModal({
                 {!isEditing && (
                   <button
                     type="button"
+                    disabled={saving}
                     onClick={handleEdit}
                     className="flex-1 sm:flex-none px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition text-sm font-medium"
                   >
