@@ -36,14 +36,21 @@ test('opens a safe order URL and rejects foreign notification destinations', asy
   await w.click('https://evil.example/admin/orders');
   assert.deepEqual(w.opened,['https://orders.example.com/admin/orders?id=123','https://orders.example.com/admin/orders']);
 });
-test('focuses an existing admin window without navigating a storefront window', async()=>{
+test('reuses only an order-view window and preserves an active POS sale', async()=>{
   let focused=false;let navigated='';
   const w=worker([
     {url:'https://orders.example.com/menu',navigate:async()=>{throw new Error('storefront hijacked');}},
-    {url:'https://orders.example.com/admin/devices',navigate:async url=>{navigated=url;return {focus:()=>{focused=true;}};}},
+    {url:'https://orders.example.com/admin/pos',navigate:async()=>{throw new Error('POS sale discarded');}},
+    {url:'https://orders.example.com/admin/orders',navigate:async url=>{navigated=url;return {focus:()=>{focused=true;}};}},
   ]);
   await w.click('/admin/orders?id=123');
   assert.equal(navigated,'https://orders.example.com/admin/orders?id=123');
   assert.equal(focused,true);
   assert.equal(w.opened.length,0);
+});
+
+test('opens another window when only a POS window exists', async()=>{
+  const w=worker([{url:'https://orders.example.com/admin/pos',navigate:async()=>{throw new Error('POS sale discarded');}}]);
+  await w.click('/admin/orders?id=456');
+  assert.deepEqual(w.opened,['https://orders.example.com/admin/orders?id=456']);
 });

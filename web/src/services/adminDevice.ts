@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { authDelete, authGet, authPost } from './authApi';
 import type { GetTokenFn } from './authApi';
 
@@ -88,27 +89,31 @@ export async function enableAdminPushNotifications(getToken: GetTokenFn) {
   }
 
   const existingSubscription = await registration.pushManager.getSubscription();
-  const subscription =
-    existingSubscription ||
-    (await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(pushConfig.public_key),
-    }));
+  const subscribe = () => registration.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(pushConfig.public_key!),
+  });
+  let subscription = existingSubscription || await subscribe();
+  const save = async (candidate: PushSubscription) => {
+    const json = candidate.toJSON();
+    await authPost('/admin/devices/current/push_subscription', {
+      subscription: { endpoint: candidate.endpoint, keys: { p256dh: json.keys?.p256dh, auth: json.keys?.auth } },
+    }, getToken);
+  };
 
-  const json = subscription.toJSON();
-  await authPost(
-    '/admin/devices/current/push_subscription',
-    {
-      subscription: {
-        endpoint: subscription.endpoint,
-        keys: {
-          p256dh: json.keys?.p256dh,
-          auth: json.keys?.auth,
-        },
-      },
-    },
-    getToken
-  );
+  try {
+    await save(subscription);
+  } catch (error) {
+    // Storage may lose the UUID while the browser retains the old endpoint.
+    // Recreate our browser subscription; never transfer another device's record.
+    if (!existingSubscription || !axios.isAxiosError(error) ||
+        error.response?.data?.code !== 'push_endpoint_conflict') throw error;
+    if (!await existingSubscription.unsubscribe()) {
+      throw new Error('Could not reset this browser’s push subscription. Please try again.');
+    }
+    subscription = await subscribe();
+    await save(subscription);
+  }
 
   return subscription;
 }
