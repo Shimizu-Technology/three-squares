@@ -11,6 +11,9 @@ RSpec.describe Demo do
   end
 
   before do
+    # Keep checkout discovery independent of the host worktree's .git pointer.
+    allow(Open3).to receive(:capture2).with('git', '-C', described_class::ROOT, 'rev-parse', '--path-format=absolute', '--git-common-dir')
+      .and_return(["/fictional/.git\n", instance_double(Process::Status, success?: true)])
     # Never read developer keys in specs.
     allow(File).to receive(:file?).and_call_original
     allow(File).to receive(:file?).with(/\.env/).and_return(false)

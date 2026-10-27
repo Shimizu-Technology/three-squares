@@ -41,7 +41,7 @@ Say: “The kitchen sees the order at the right location and tells the customer 
 
 Say: “Staff can take walk-up orders here. This panel stands in for a card reader; it lets us rehearse approval and decline recovery before hardware is connected.” A disconnected reader or browser refresh does not prove cancellation. Use **Check saved payment** after uncertainty.
 
-**5:00–6:00 — Partial refund.** Open the original two-bowl order in **Orders**. Choose **Refund**, select one bowl (or a smaller amount if the screen offers amount entry), enter a reason and submit the simulated refund. Wait for success; show the remaining paid amount and refund history. Reload once to show the saved result. Choose restocking only when that is the intended stock outcome.
+**5:00–6:00 — Partial refund.** Open the original two-bowl order in **Orders**. Choose **Refund Order → Partial Refund**, enter **13.50** (half of the original $27.00 purchase), add a reason and press **Process Refund**. Wait for success; show the remaining paid amount and refund history. Reload once to show the saved result. Choose restocking only when that is the intended stock outcome.
 
 Say: “We can refund part of a sale and keep the original payment and refund history together.”
 
