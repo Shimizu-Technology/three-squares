@@ -13,6 +13,7 @@ const imports = {
   'react-router-dom': mockModule(`export const useParams = () => ({ id: ${context}.id }); export const useNavigate = () => ${context}.navigate; export const useLocation = () => ${context}.location;`),
   '@clerk/clerk-react': mockModule(`export const useAuth = () => ({ userId: ${context}.userId, getToken: async () => 'synthetic' });`),
   'react-hot-toast': mockModule('export default { success() {}, error() {} };'),
+  '../../components/admin/StaffAccess.tsx': mockModule("export const useStaffAccess = () => ({ can: () => true, user: { operational_scope: 'all', authorized_locations: [{id:1},{id:2}] } });"),
   '../../components/ImageUpload': mockModule('export default function ImageUpload() { return null; }'),
   '../../components/VariantManager': mockModule('export default function VariantManager() { return null; }'),
   '../../hooks/useLockBodyScroll': mockModule('export default function useLockBodyScroll() {}'),

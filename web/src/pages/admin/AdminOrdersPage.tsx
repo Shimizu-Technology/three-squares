@@ -15,13 +15,13 @@ import {
 } from '../../components/admin/orders';
 import PickupPackingList from '../../components/admin/orders/PickupPackingList';
 import ShippingPackingList from '../../components/admin/orders/ShippingPackingList';
+import { useStaffAccess } from '../../components/admin/StaffAccess.tsx';
 import { orderBusinessDate, orderDateRange, orderListContext, parseOrderQuery, serializeOrderQuery, updateOrderQuery, type OrderDatePreset, type OrderPageMode, type OrderQueryState } from '../../components/admin/orders/orderQueryState';
 import { SkeletonListPage } from '../../components/admin';
 
-import { configApi, locationsApi } from '../../services/api';
+import { configApi } from '../../services/api';
 import { authGet, authPatch, authPost } from '../../services/authApi';
 import type { AppConfig } from '../../types/order';
-import type { Location } from '../../services/api';
 
 interface OrdersIndexResponse {
   orders: Order[];
@@ -49,7 +49,7 @@ interface RefundResponse {
 interface OrdersSummaryResponse {
   total_orders: number;
   paid_orders: number;
-  total_revenue_cents: number;
+  total_revenue_cents?: number;
   status_counts: Record<string, number>;
   queue_stage_counts: Record<string, number>;
 }
@@ -64,6 +64,8 @@ interface AdminOrdersPageContentProps {
 }
 
 export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
+  const access = useStaffAccess();
+  const locations = access.user?.authorized_locations || [];
   const { getToken, userId } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
@@ -103,7 +105,6 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
-  const [locations, setLocations] = useState<Location[]>([]);
 
   // Selected order
   const detailSelection = useMemo(() => ({ orderId: selectedOrderId }), [selectedOrderId]);
@@ -234,15 +235,6 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
     configApi.getConfig().then(setAppConfig).catch(console.error);
   }, []);
 
-  useEffect(() => {
-    locationsApi
-      .getLocations()
-      .then((response) => setLocations(response.locations || []))
-      .catch((error) => {
-        console.error('Failed to load locations for filters:', error);
-      });
-  }, []);
-
   // ── Fetch single order details ────────────────────────────────
   const fetchOrderDetails = (orderId: number, trigger: HTMLButtonElement) => {
     detailReturnRef.current = { orderId, x: window.scrollX, y: window.scrollY, trigger };
@@ -290,8 +282,8 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   // ── Update order (from detail modal edit form) ────────────────
   const updateOrder = async (updates: {
     status: string;
-    tracking_number: string | null;
-    admin_notes: string | null;
+    tracking_number?: string | null;
+    admin_notes?: string | null;
   }) => {
     if (!selectedOrder) return false;
     try {
@@ -312,7 +304,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   // ── Quick status update ───────────────────────────────────────
   const quickUpdateStatus = async (orderId: number, newStatus: string) => {
     if (saving) return;
-    if (newStatus === 'shipped') {
+    if (newStatus === 'shipped' && access.can('orders.manage')) {
       setShipOrderId(orderId);
       setShipTrackingNumber('');
       setShipCarrier('');
@@ -508,14 +500,14 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
             )}
           </p>
         </div>
-        <button
+        {access.can('orders.export') && <button
           type="button"
           onClick={exportOrdersCsv}
           disabled={exporting}
           className="px-4 py-2.5 text-sm font-semibold border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50"
         >
           {exporting ? 'Exporting...' : 'Export CSV'}
-        </button>
+        </button>}
       </div>
 
       <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -630,6 +622,10 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
           hasSavedRefund={pendingRefundRequest?.orderId === selectedOrder.id}
           checkingRefund={processingRefund}
           onCheckRefund={checkRefund}
+          canManageOrder={access.can('orders.manage')}
+          canChangeStatus={access.can('orders.status')}
+          canRefund={access.can('payments.refund')}
+          canNotify={access.can('orders.notify')}
           storeEmail={storeEmail}
         />
       )}

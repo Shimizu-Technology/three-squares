@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
 import AdminRequestState from '../../components/admin/AdminRequestState';
+import { useStaffAccess } from '../../components/admin/StaffAccess.tsx';
 import { authGet, authPatch } from '../../services/authApi';
 
 interface User {
@@ -10,7 +11,9 @@ interface User {
   email: string;
   name: string | null;
   phone: string | null;
-  role: 'admin' | 'customer';
+  role: 'owner' | 'manager' | 'staff' | 'customer';
+  assigned_location_id: number | null;
+  assigned_location_name: string | null;
   is_admin: boolean;
   clerk_id: string;
   created_at: string;
@@ -19,13 +22,16 @@ interface User {
 
 interface Stats {
   total: number;
-  admins: number;
+  owners: number;
+  managers: number;
+  staff: number;
   customers: number;
 }
 
 interface UsersIndexResponse {
   users: User[];
   stats: Stats;
+  locations: { id: number; name: string }[];
 }
 
 interface AdminUserResponse {
@@ -34,6 +40,7 @@ interface AdminUserResponse {
 }
 
 export default function AdminUsersPage() {
+  const access = useStaffAccess();
   const { getToken } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
@@ -47,6 +54,8 @@ export default function AdminUsersPage() {
   const active = useRef(false);
   const [roleFilter, setRoleFilter] = useState('all');
   const [updatingUserId, setUpdatingUserId] = useState<number | null>(null);
+  const [locations, setLocations] = useState<{ id: number; name: string }[]>([]);
+  const [drafts, setDrafts] = useState<Record<number, { role: User['role']; assigned_location_id: number | null }>>({});
 
   const context = JSON.stringify([appliedSearch, roleFilter]);
   const hasData = loadedContext === context;
@@ -63,6 +72,7 @@ export default function AdminUsersPage() {
       if (id !== requestId.current) return;
       if (!Array.isArray(response.data.users) || !response.data.stats) throw new Error('Invalid users response');
       setUsers(response.data.users);
+      setLocations(response.data.locations || []);
       setStats(response.data.stats);
       setLoadedContext(context);
       setLoadError(false);
@@ -87,23 +97,24 @@ export default function AdminUsersPage() {
     else setAppliedSearch(searchQuery);
   };
 
-  // Toggle user role
-  const toggleUserRole = async (user: User) => {
-    const newRole = user.is_admin ? 'customer' : 'admin';
-    const action = user.is_admin ? 'remove admin access from' : 'make admin';
-    
-    if (!confirm(`Are you sure you want to ${action} ${user.email}?`)) {
+  const saveUserAccess = async (user: User) => {
+    const draft = drafts[user.id];
+    if (!draft || updatingUserId !== null) return;
+    if (draft.role === 'staff' && !draft.assigned_location_id) {
+      toast.error('Assign a location before granting staff access');
       return;
     }
 
     try {
       setUpdatingUserId(user.id);
-      const response = await authPatch<AdminUserResponse>(`/admin/users/${user.id}`, { user: { role: newRole } }, getToken);
+      const response = await authPatch<AdminUserResponse>(`/admin/users/${user.id}`, { user: draft }, getToken);
       
       if (!active.current) return;
       // Reconcile the currently selected context, even if filters changed
       // while the role update was pending. Counts come from the server.
+      setDrafts(current => { const next = { ...current }; delete next[user.id]; return next; });
       setRefreshVersion(version => version + 1);
+      if (user.id === access.user?.id) await access.reload();
 
       toast.success(response.data.message);
     } catch (err) {
@@ -112,6 +123,30 @@ export default function AdminUsersPage() {
     } finally {
       setUpdatingUserId(null);
     }
+  };
+
+  const renderAccessEditor = (user: User) => {
+    const draft = drafts[user.id] || { role: user.role, assigned_location_id: user.assigned_location_id };
+    const saving = updatingUserId === user.id;
+    const update = (changes: Partial<typeof draft>) => setDrafts(current => ({ ...current, [user.id]: { ...draft, ...changes } }));
+    return <form className="min-w-0 space-y-2" onSubmit={event => { event.preventDefault(); void saveUserAccess(user); }}>
+      <label className="block text-sm font-medium">Role
+        <select aria-label={`Role for ${user.email}`} value={draft.role} disabled={saving} onChange={event => {
+          const role = event.target.value as User['role'];
+          update({ role, assigned_location_id: role === 'owner' || role === 'customer' ? null : draft.assigned_location_id });
+        }} className="mt-1 min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-base">
+          <option value="customer">Customer</option><option value="staff">Staff</option><option value="manager">Manager</option><option value="owner">Owner</option>
+        </select>
+      </label>
+      {(draft.role === 'manager' || draft.role === 'staff') && <label className="block text-sm font-medium">Location
+        <select aria-label={`Location for ${user.email}`} value={draft.assigned_location_id ?? ''} disabled={saving} onChange={event => update({ assigned_location_id: event.target.value ? Number(event.target.value) : null })} className="mt-1 min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-base">
+          <option value="">{draft.role === 'manager' ? 'All locations' : 'Choose a required location'}</option>
+          {locations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}
+        </select>
+      </label>}
+      <p className="text-xs text-gray-600">{draft.role === 'owner' ? 'All locations, users and settings' : draft.role === 'customer' ? 'Own account and orders' : draft.assigned_location_id ? locations.find(location => location.id === draft.assigned_location_id)?.name : draft.role === 'manager' ? 'All locations' : 'Ask a manager to assign your location'}</p>
+      <button type="submit" disabled={!drafts[user.id] || updatingUserId !== null || (draft.role === 'staff' && !draft.assigned_location_id)} className="btn-primary min-h-11 w-full disabled:opacity-50">{saving ? 'Saving access…' : 'Save access'}</button>
+    </form>;
   };
 
   const formatDate = (dateString: string) => {
@@ -128,7 +163,7 @@ export default function AdminUsersPage() {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
-          <p className="text-gray-600 mt-1">Manage user accounts and admin access</p>
+          <p className="text-gray-600 mt-1">Only owners can change roles and account location assignments. The last owner is protected.</p>
           <button type="button" onClick={() => void fetchUsers()} disabled={loading} className="btn-secondary mt-3 min-h-11 disabled:opacity-60">Refresh users</button>
         </div>
       </div>
@@ -138,15 +173,17 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Stats Cards */}
-      {hasData && stats && <div className="grid grid-cols-3 gap-4 mb-6">
+      {hasData && stats && <div className="grid grid-cols-2 sm:grid-cols-5 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4 text-center">
           <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
           <p className="text-sm text-gray-500">Total Users</p>
         </div>
         <div className="bg-white rounded-lg shadow p-4 text-center">
-          <p className="text-3xl font-bold text-indigo-600">{stats.admins}</p>
-          <p className="text-sm text-gray-500">Admins</p>
+          <p className="text-3xl font-bold text-indigo-600">{stats.owners}</p>
+          <p className="text-sm text-gray-500">Owners</p>
         </div>
+        <div className="bg-white rounded-lg shadow p-4 text-center"><p className="text-3xl font-bold text-gray-900">{stats.managers}</p><p className="text-sm text-gray-500">Managers</p></div>
+        <div className="bg-white rounded-lg shadow p-4 text-center"><p className="text-3xl font-bold text-gray-900">{stats.staff}</p><p className="text-sm text-gray-500">Staff</p></div>
         <div className="bg-white rounded-lg shadow p-4 text-center">
           <p className="text-3xl font-bold text-gray-600">{stats.customers}</p>
           <p className="text-sm text-gray-500">Customers</p>
@@ -161,6 +198,7 @@ export default function AdminUsersPage() {
             <div className="flex gap-2">
               <input
                 type="text"
+                aria-label="Search users"
                 placeholder="Search by email or name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
@@ -178,12 +216,13 @@ export default function AdminUsersPage() {
 
           {/* Role Filter */}
           <select
+            aria-label="Filter users by role"
             value={roleFilter}
             onChange={(e) => setRoleFilter(e.target.value)}
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
           >
             <option value="all">All Roles</option>
-            <option value="admin">Admins Only</option>
+            <option value="owner">Owners</option><option value="manager">Managers</option><option value="staff">Staff</option>
             <option value="customer">Customers Only</option>
           </select>
         </div>
@@ -203,7 +242,7 @@ export default function AdminUsersPage() {
       ) : (
         <>
           {/* Desktop Table */}
-          <div className="hidden md:block bg-white rounded-lg shadow overflow-hidden">
+          <div className="hidden xl:block bg-white rounded-lg shadow overflow-hidden">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
                 <tr>
@@ -235,42 +274,18 @@ export default function AdminUsersPage() {
                         </div>
                         <div className="ml-4">
                           <div className="text-sm font-medium text-gray-900">{user.name || 'No name'}</div>
-                          <div className="text-sm text-gray-500">{user.email}</div>
+                          <div className="break-all text-sm text-gray-500">{user.email}</div>
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      {user.is_admin ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                          Admin
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                          Customer
-                        </span>
-                      )}
+                      <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium capitalize text-gray-900">{user.role}</span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {formatDate(user.created_at)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <button
-                        onClick={() => toggleUserRole(user)}
-                        disabled={updatingUserId === user.id}
-                        className={`inline-flex items-center px-3 py-1.5 text-xs font-semibold rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
-                          user.is_admin
-                            ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                            : 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-                        }`}
-                      >
-                        {updatingUserId === user.id ? (
-                          'Updating...'
-                        ) : user.is_admin ? (
-                          'Remove Admin'
-                        ) : (
-                          'Make Admin'
-                        )}
-                      </button>
+                      {renderAccessEditor(user)}
                     </td>
                   </tr>
                 ))}
@@ -279,53 +294,29 @@ export default function AdminUsersPage() {
           </div>
 
           {/* Mobile Cards */}
-          <div className="md:hidden space-y-4">
+          <div className="grid gap-4 md:grid-cols-2 xl:hidden">
             {users.map((user) => (
               <div key={user.id} className="bg-white rounded-lg shadow p-4">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center">
+                  <div className="flex min-w-0 items-center">
                     <div className={`h-12 w-12 rounded-full flex items-center justify-center text-white font-semibold text-lg ${
                       user.is_admin ? 'bg-indigo-500' : 'bg-gray-400'
                     }`}>
                       {(user.name || user.email).charAt(0).toUpperCase()}
                     </div>
-                    <div className="ml-3">
+                    <div className="ml-3 min-w-0">
                       <p className="font-semibold text-gray-900">{user.name || 'No name'}</p>
-                      <p className="text-sm text-gray-500">{user.email}</p>
+                      <p className="break-all text-sm text-gray-500">{user.email}</p>
                     </div>
                   </div>
-                  {user.is_admin ? (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                      Admin
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                      Customer
-                    </span>
-                  )}
+                  <span className="inline-flex rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium capitalize text-gray-900">{user.role}</span>
                 </div>
 
                 <div className="text-sm text-gray-500 mb-4">
                   Joined {formatDate(user.created_at)}
                 </div>
 
-                <button
-                  onClick={() => toggleUserRole(user)}
-                  disabled={updatingUserId === user.id}
-                  className={`w-full py-2.5 text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
-                    user.is_admin
-                      ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
-                  }`}
-                >
-                  {updatingUserId === user.id ? (
-                    'Updating...'
-                  ) : user.is_admin ? (
-                    'Remove Admin Access'
-                  ) : (
-                    'Make Admin'
-                  )}
-                </button>
+                {renderAccessEditor(user)}
               </div>
             ))}
           </div>
