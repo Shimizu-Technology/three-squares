@@ -37,13 +37,17 @@ module Payments
             source = entry.fetch(:source_facts, {})
             old = prior[entry[:operation_key]]
             if old
+              if entry[:import].nil? && (old.user_id != user.id || old.reason != entry[:reason] || old.reconciliation_import_id)
+                raise Conflict, "Allocation key belongs to a different saved decision"
+              end
               unless old.facts_digest == digest && (old.source_facts.empty? || source.empty? || old.source_facts == source)
                 raise Conflict, "Allocation identifier was reused for different facts"
               end
               next
             end
             other = prepared[entry[:operation_key]]
-            if other && (other[:digest] != digest || other[:entry].fetch(:source_facts, {}) != source)
+            if other && (other[:digest] != digest || other[:entry].fetch(:source_facts, {}) != source ||
+                (entry[:import].nil? && other[:entry][:reason] != entry[:reason]))
               raise Conflict, "Conflicting allocation identifiers in the same import"
             end
             prepared[entry[:operation_key]] ||= { entry: entry, digest: digest }

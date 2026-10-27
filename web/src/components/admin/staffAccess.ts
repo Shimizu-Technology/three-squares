@@ -5,7 +5,7 @@ export const STAFF_CAPABILITIES = [
   'locations.read', 'locations.qr', 'locations.manage', 'locations.update', 'availability.manage',
   'catalog.manage', 'catalog.import', 'stock.read', 'stock.manage', 'seasonal.manage', 'catering.manage',
   'users.manage', 'settings.manage', 'payment_settings.manage', 'homepage.manage', 'payments.simulate',
-  'payments.terminals.manage', 'payments.terminals.discover',
+  'payments.terminals.manage', 'payments.terminals.discover', 'payments.reconcile',
 ] as const;
 export type StaffCapability = typeof STAFF_CAPABILITIES[number];
 export type StaffRole = 'owner' | 'manager' | 'staff' | 'customer';
@@ -71,6 +71,7 @@ const ROUTE_CAPABILITIES: Record<string, StaffCapability[]> = {
   '/admin/settings/variant-presets': ['catalog.manage'], '/admin/locations': ['locations.read'], '/admin/inventory': ['stock.read'],
   '/admin/pos': ['pos.sell'], '/admin/catering': ['catering.manage'], '/admin/devices': ['devices.self', 'devices.manage'],
   '/admin/payment-terminals': ['payments.terminals.manage'],
+  '/admin/payment-reconciliation': ['payments.reconcile'],
   '/admin/homepage': ['homepage.manage'], '/admin/users': ['users.manage'], '/admin/import': ['catalog.import'], '/admin/settings': ['settings.manage'],
 };
 

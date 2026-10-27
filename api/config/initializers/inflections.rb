@@ -10,6 +10,10 @@
 #   inflect.uncountable %w( fish sheep )
 # end
 
+# This standalone port keeps its explicit acronym without changing unrelated
+# application constants (or requiring Rails from the standalone parser).
+Rails.autoloaders.each { |loader| loader.inflector.inflect("canonical_csv" => "CanonicalCSV") }
+
 # These inflection rules are supported but not enabled by default:
 # ActiveSupport::Inflector.inflections(:en) do |inflect|
 #   inflect.acronym "RESTful"

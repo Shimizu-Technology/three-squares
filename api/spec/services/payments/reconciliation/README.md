@@ -77,7 +77,7 @@ Other optional fields can accompany any type. These shape checks do not prove
 membership, matching, net calculations, or actual settlement/funding status.
 
 All IDs are 1–128 ASCII bytes, start with an ASCII letter or digit, and contain
-only letters, digits, underscore, dot, colon, or hyphen. `location_id` is an integer
+only letters, digits, underscore, dot, colon, slash, or hyphen. `location_id` is an integer
 from 1 through 2147483647. Cents are base-10 integers with optional minus sign and
 absolute value at most 2147483647; plus signs, whitespace, decimal points,
 scientific notation, and separators fail. Leading zeros parse as base 10. Amounts

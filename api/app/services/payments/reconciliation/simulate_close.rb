@@ -35,9 +35,10 @@ module Payments
             [ attempt.order.location_id, attempt.payment_terminal_id, attempt.checkout_session.channel, event_time(r).in_time_zone("Pacific/Guam").to_date.iso8601 ]
           end
           if scenario == "combined" && groups.size < 2
-            raise Error, "Combined funding needs at least two simulated transactions" if pending.size < 2
+            units = pending.group_by { |row| row.kind == "collection" ? row.raw_id : row.original_reference }.values
+            raise Error, "Combined funding needs at least two independent simulated payments" if units.size < 2
             origin = groups.keys.first
-            groups = pending.each_slice((pending.size / 2.0).ceil).each_with_index.to_h { |rows, index| [ [ origin[0], origin[1], index, origin[3] ], rows ] }
+            groups = units.each_slice((units.size / 2.0).ceil).each_with_index.to_h { |rows, index| [ [ origin[0], origin[1], index, origin[3] ], rows.flatten ] }
           end
           records, batches = [], []
           groups.each_with_index do |(group, rows), index|
@@ -91,6 +92,18 @@ module Payments
           end
           timeline = ReconciliationTimeline.find_or_create_by!(payment_identity: identity) { |t| t.now = Time.current }
           timeline.update!(now: timeline.now + seconds)
+          ReconciliationImport.where(payment_identity: identity, source: "simulator").where("source_parameters ->> 'scenario' = 'missing'").find_each do |saved|
+            next if Time.iso8601(saved.source_parameters.fetch("funding").fetch("visible_at")) > timeline.now
+            SettlementBatch.where(reconciliation_import: saved).find_each do |batch|
+              remaining = batch.amount_cents - batch.funding_allocations.sum(:amount_cents)
+              next if remaining.zero?
+              exception = Access.exception!(identity: identity, import: saved, batch: batch, category: "missing_funding",
+                facts: { "batch_id" => batch.external_id, "amount_cents" => remaining })
+              if exception.previously_new_record?
+                Access.audit!(identity: identity, user: user, subject: exception, event: "missing_funding_observed", reason: "Synthetic funding did not arrive by its planned accounting date")
+              end
+            end
+          end
           Access.audit!(identity: identity, user: user, subject: timeline, event: "accounting_clock_advanced", reason: "Advance isolated simulated accounting time", facts: { "operation_key" => operation_key, "seconds" => seconds })
           timeline
         end

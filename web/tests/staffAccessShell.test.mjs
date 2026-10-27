@@ -92,3 +92,12 @@ test('manager catalog preset access does not expose settings and unknown routes 
   assert.equal(render(manager, '/admin/settings/future').mounts, 0);
   assert.equal(render(me({ role: 'owner', operational_scope: 'all', capabilities: ['account.self'] }), '/admin/future').mounts, 1);
 });
+
+test('account-wide reconciliation nav and direct route obey the server capability', () => {
+  const path = '/admin/payment-reconciliation';
+  const allowed = me({ role: 'manager', assigned_location_id: null, operational_scope: 'all', capabilities: ['account.self', 'payments.reconcile'] });
+  assert.equal(render(allowed, path).mounts, 1);
+  assert.match(render(allowed, path).html, /href="\/admin\/payment-reconciliation"/);
+  assert.equal(render(me(), path).mounts, 0);
+  assert.doesNotMatch(render(me(), '/admin/orders').html, /href="\/admin\/payment-reconciliation"/);
+});

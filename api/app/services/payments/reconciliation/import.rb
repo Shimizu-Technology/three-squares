@@ -38,6 +38,7 @@ module Payments
           records.select { |r| r["record_type"] == "item" }.each { |row| item(row) }
           allocate(records.select { |r| r["record_type"] == "allocation" })
           check_membership
+          check_funding
           @import.update!(state: @counts["exceptions"].positive? ? "conflicted" : "succeeded", processed_at: Time.current, summary: @counts)
           Access.audit!(identity: identity, user: user, subject: @import, event: "imported", reason: "Imported #{source} observations", facts: @counts)
           @import
@@ -49,7 +50,7 @@ module Payments
       def conflict(category, row, batch: nil, deposit: nil)
         @counts["exceptions"] += 1
         Access.exception!(identity: @identity, import: @import, batch: batch, deposit: deposit,
-          category: category, facts: row.slice("record_type", "external_id", "batch_id", "deposit_id", "transaction_id", "original_reference", "amount_cents", "business_date"))
+          category: category, facts: row.slice("record_type", "external_id", "batch_id", "deposit_id", "transaction_id", "original_reference", "amount_cents", "business_date", "occurred_at", "provider_local_time", "provider_offset"))
       end
 
       def create_observation(model, row, attributes)
@@ -86,10 +87,17 @@ module Payments
         # A close observation freezes membership. Later imports may replay existing
         # items, but cannot append to a batch first observed in an earlier import.
         existing = SettlementItem.find_by(payment_identity: @identity, external_id: row["external_id"])
+        if !existing && row["transaction_id"].present? && %w[sale return void reversal].include?(row["entry_type"]) &&
+            SettlementItem.exists?(payment_identity: @identity, entry_type: row["entry_type"], transaction_id: row["transaction_id"])
+          return conflict("duplicate_financial_item", row, batch: batch)
+        end
         if batch.reconciliation_import_id != @import.id && !existing
           return conflict("closed_batch_membership", row, batch: batch)
         end
         time = Time.iso8601(row.fetch("occurred_at"))
+        if row["provider_local_time"] && Time.iso8601(row["provider_local_time"].tr(" ", "T") + row.fetch("provider_offset")).to_i != time.to_i
+          conflict("provider_time_mismatch", row, batch: batch)
+        end
         if time.in_time_zone("Pacific/Guam").to_date.iso8601 != row["business_date"] ||
             (row["location_id"] && !Location.exists?(row["location_id"])) ||
             (row["entry_type"] != "adjustment" && row["amount_cents"].negative?)
@@ -108,7 +116,7 @@ module Payments
             conflict("unassigned_transaction", row, batch: batch)
           end
         elsif row["entry_type"] == "return"
-          matches = RefundOperation.where(payment_identity: @identity, raw_provider_id: row["transaction_id"], original_reference: row["original_reference"], state: "succeeded", amount_cents: row["amount_cents"]).limit(2).to_a
+          matches = RefundOperation.where(payment_identity: @identity, raw_provider_id: row["transaction_id"], original_reference: row["original_reference"], kind: "return", state: "succeeded", amount_cents: row["amount_cents"]).limit(2).to_a
           if matches.one? && (transaction || legacy)
             attributes["refund_operation"] = matches.first
             attributes["payment_transaction"] = transaction
@@ -163,6 +171,24 @@ module Payments
         @counts["replayed"] += keys.size - (keys.uniq - before).size
       rescue Conflict, BindingError, Error
         entries.each { |entry| conflict("allocation_conflict", entry.fetch(:source_facts)) }
+      end
+
+      def check_funding
+        FundingDeposit.where(reconciliation_import: @import).find_each do |deposit|
+          allocated = deposit.funding_allocations.sum(:amount_cents)
+          if allocated != deposit.amount_cents
+            conflict("unallocated_deposit", { "record_type" => "deposit", "external_id" => deposit.external_id,
+              "amount_cents" => deposit.amount_cents - allocated }, deposit: deposit)
+          end
+        end
+        batch_ids = FundingAllocation.where(reconciliation_import: @import).select(:settlement_batch_id)
+        SettlementBatch.where(id: batch_ids).find_each do |batch|
+          allocated = batch.funding_allocations.sum(:amount_cents)
+          if allocated != batch.amount_cents
+            conflict("partial_funding", { "record_type" => "batch", "external_id" => batch.external_id,
+              "amount_cents" => batch.amount_cents - allocated }, batch: batch)
+          end
+        end
       end
     end
   end

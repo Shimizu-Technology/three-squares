@@ -7,6 +7,10 @@ module ReconciliationBoundRecord
     before_validation :stamp_reconciliation_identity, on: :create
     attr_readonly :payment_identity_id, :provider, :environment, :external_account_id, :currency
     validate :reconciliation_identity_matches
+    before_destroy do
+      errors.add(:base, "Accounting evidence is retained; record a correction instead")
+      throw :abort
+    end
   end
 
   private

@@ -129,6 +129,60 @@ RSpec.describe 'Payment reconciliation observations', type: :request do
     expect(attempt.order.reload.payment_status).to eq('paid')
     expect(product.reload.product_stock_quantity).to eq(19)
   end
+  it 'retains a mismatched deposit balance and binds manual decisions to the original actor, amount and reason' do
+    capture
+    saved = close(scenario: 'mismatch')
+    advance
+    csv_import(Payments::Reconciliation::SimulateClose.funding_export(identity: identity, user: owner, import: saved))
+    expect(ReconciliationException.pluck(:category)).to include('unallocated_deposit')
+    expect(FundingDeposit.sum(:amount_cents) - FundingAllocation.sum(:amount_cents)).to eq(17)
+    batch, deposit = SettlementBatch.first, FundingDeposit.first
+    post "#{base}/allocate", params: scope.merge(batch_id: batch.id, deposit_id: deposit.id, amount_cents: 17, reason: 'Cannot invent additional batch money'),
+      headers: { 'Idempotency-Key' => SecureRandom.uuid }, as: :json
+    expect(response).to have_http_status(:conflict)
+    expect(FundingAllocation.count).to eq(1)
+    # An unallocated source deposit can be matched manually by exact identifiers.
+    other = capture
+    close(scenario: 'missing')
+    unallocated = { 'record_type' => 'deposit', 'external_id' => 'manual-deposit', 'amount_cents' => 1250, 'deposit_date' => '2026-10-30' }
+    csv_import(Payments::Reconciliation::CanonicalCSV.dump(records: [ unallocated ], context: Payments::Reconciliation::Access.context(identity)))
+    batch = SettlementBatch.order(:created_at).last
+    deposit = FundingDeposit.find_by!(external_id: 'manual-deposit')
+    key = SecureRandom.uuid
+    payload = scope.merge(batch_id: batch.id, deposit_id: deposit.id, amount_cents: 1250, reason: 'Matched original batch and deposit references')
+    2.times do
+      post "#{base}/allocate", params: payload, headers: { 'Idempotency-Key' => key }, as: :json
+      expect(response).to have_http_status(:ok), response.body
+    end
+    post "#{base}/allocate", params: payload.merge(reason: 'Changed decision'), headers: { 'Idempotency-Key' => key }, as: :json
+    expect(response).to have_http_status(:conflict)
+    expect(FundingAllocation.count).to eq(2)
+    expect(other.order.reload.payment_status).to eq('paid')
+    advance
+    expect(ReconciliationException.where(category: 'missing_funding').count).to eq(0)
+    capture
+    close(scenario: 'missing')
+    advance
+    expect(ReconciliationException.where(category: 'missing_funding').count).to eq(1)
+  end
+
+  it 'keeps weekend deposit dates and production request guards separate from payment clocks' do
+    capture
+    include_time = Time.utc(2026, 10, 30, 2) # Friday in Guam; two-day release moves to Monday.
+    ReconciliationTimeline.create!(payment_identity: identity, now: include_time)
+    saved = close(scenario: 'weekend')
+    plan = saved.source_parameters.fetch('funding')
+    expect(plan.fetch('records').first.fetch('deposit_date')).to eq('2026-11-02')
+    allow(ENV).to receive(:[]).with('APP_DEPLOYMENT_ENV').and_return('production')
+    allow(ENV).to receive(:[]).with('PAYMENTS_SIMULATION_ENABLED').and_return('false')
+    allow(ENV).to receive(:[]).with('APP_MODE').and_return('production')
+    # Configuration uses ENV.fetch for APP_MODE, so set that exact test observation too.
+    allow(ENV).to receive(:fetch).and_call_original
+    allow(ENV).to receive(:fetch).with('APP_MODE', 'test').and_return('production')
+    post "#{base}/advance_simulation", params: scope.merge(seconds: 60), headers: { 'Idempotency-Key' => SecureRandom.uuid }, as: :json
+    expect(response).to have_http_status(:not_found)
+    expect(ReconciliationTimeline.first.now).to eq(include_time)
+  end
   it 'defaults to production and denies scoped roles and non-owner simulation' do
     capture
     close

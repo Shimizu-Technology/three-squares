@@ -15,7 +15,7 @@ module Api
           # Scope queries to assigned location for location-locked staff
           base_scope = staff_scope(Order.all)
 
-          base_scope = base_scope.where(simulated: false, payment_environment: 'production')
+          base_scope = base_scope.where(simulated: false, payment_environment: "production")
           total_orders = base_scope.count
           total_revenue_cents = Payments::Revenue.total(base_scope)
           pending_orders = base_scope.where(status: "pending").count
@@ -40,7 +40,7 @@ module Api
         def chart_data
           base_scope = staff_scope(Order.all)
 
-          base_scope = base_scope.where(simulated: false, payment_environment: 'production')
+          base_scope = base_scope.where(simulated: false, payment_environment: "production")
           days = (params[:days] || 30).to_i.clamp(7, 90)
           start_date = Time.current.in_time_zone("Pacific/Guam").beginning_of_day - (days - 1).days
 
@@ -65,8 +65,8 @@ module Api
           end
 
           # Period comparison: this week vs last week
-          this_week_start = Time.current.beginning_of_week
-          last_week_start = 1.week.ago.beginning_of_week
+          this_week_start = Time.current.in_time_zone("Pacific/Guam").beginning_of_week
+          last_week_start = this_week_start - 1.week
           last_week_end = this_week_start
 
           this_week_revenue = Payments::Revenue.total(base_scope.where("created_at >= ?", this_week_start))

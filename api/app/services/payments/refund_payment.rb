@@ -7,7 +7,7 @@ module Payments
     end
 
     def call(order:, amount_cents:, request_key:, reason: nil, admin_user: nil, metadata: {}, restoration_request: {}, kind: "return")
-      unless kind == "return" || (kind == "void" && order.payment_environment == 'simulated' && order.simulated?)
+      unless kind == "return" || (kind == "void" && order.payment_environment == "simulated" && order.simulated?)
         existing = RefundOperation.find_by(order_id: order.id, caller_idempotency_key: request_key)
         raise Conflict, "Idempotency-Key was already used with a different payload" if existing && existing.kind != kind
         raise UnsupportedCapability, "Only linked returns are enabled for admin refunds"
@@ -29,7 +29,7 @@ module Payments
       forward_success_effects(operation.reload)
       result(operation.reload)
     rescue ReserveRefund::Rejected => e
-      { success: false, refund: nil, error: e.message, status: 'rejected', no_operation: true, http_status: e.http_status }
+      { success: false, refund: nil, error: e.message, status: "rejected", no_operation: true, http_status: e.http_status }
     rescue Conflict => e
       { success: false, refund: nil, error: e.message, status: "conflict", http_status: 409 }
     rescue Error, Configuration::UnsafeConfiguration, ActiveRecord::RecordInvalid => e
@@ -77,7 +77,7 @@ module Payments
     end
 
     def forward_success_effects(operation)
-      DispatchRefundEffects.call(operation: operation, restore_now: true) if operation.state == 'succeeded'
+      DispatchRefundEffects.call(operation: operation, restore_now: true) if operation.state == "succeeded"
     rescue StandardError => error
       # Financial success is durable even when a local success effect must retry.
       Rails.logger.error("Refund effect operation=#{operation.id} error=#{error.class}")

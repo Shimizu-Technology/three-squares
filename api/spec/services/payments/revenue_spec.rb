@@ -33,4 +33,18 @@ RSpec.describe Payments::Revenue do
     expect(described_class.total(Order.all)).to eq(750)
     expect(PaymentTransaction.count).to eq(0)
   end
+  it 'reads consumed capture authority even after full refund and never counts an unconsumed authorization' do
+    order = create(:order, payment_identity_id: identity.id, payment_environment: 'production', payment_status: 'refunded', total_cents: 1000)
+    session = CheckoutSession.create!(order: order, payment_identity: identity, owner_key: SecureRandom.uuid,
+      guest_capability_digest: 'fixture', caller_idempotency_key: SecureRandom.uuid, snapshot: {}, snapshot_digest: 'fixture', amount_cents: 1000, expires_at: 1.hour.from_now)
+    attempt = PaymentAttempt.create!(order: order, checkout_session: session, payment_identity: identity, payload_digest: 'fixture', requested_cents: 1000)
+    charge = PaymentTransaction.create!(payment_attempt: attempt, payment_identity: identity, provider: 'stripe', raw_provider_id: 'verified-capture',
+      reference: identity.canonical_reference('verified-capture'), amount_cents: 1000, currency: 'USD', state: 'captured', first_observed_at: Time.current, last_observed_at: Time.current)
+    Refund.create!(order: order, amount_cents: 1000, status: 'succeeded')
+    expect(described_class.total(Order.all)).to eq(0)
+    charge.update!(order_id: order.id)
+    expect(described_class.by_order(Order.all)[order.id]).to eq(captured_cents: 1000, succeeded_refunds_cents: 1000, net_revenue_cents: 0)
+    charge.update!(state: 'authorized')
+    expect(described_class.by_order(Order.all)[order.id]).to eq(captured_cents: 0, succeeded_refunds_cents: 0, net_revenue_cents: 0)
+  end
 end

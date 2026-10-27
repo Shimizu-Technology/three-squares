@@ -106,7 +106,7 @@ RSpec.describe 'Admin orders reporting', type: :request do
 
   it 'includes only explicit production money in summary revenue and CSV' do
     production = create_retail_order_with_collection(collection: mains_collection, fulfillment_type: 'pickup', location: pickup_location, total_cents: 2200)
-    excluded = ['sandbox', 'simulated', nil].map do |environment|
+    excluded = [ 'sandbox', 'simulated', nil ].map do |environment|
       order = create_retail_order_with_collection(collection: mains_collection, fulfillment_type: 'pickup', location: pickup_location, total_cents: 9900)
       order.update_columns(payment_environment: environment, simulated: environment == 'simulated')
       order
@@ -117,7 +117,7 @@ RSpec.describe 'Admin orders reporting', type: :request do
     get '/api/v1/admin/orders/export'
     expect(response).to have_http_status(:ok)
     numbers = CSV.parse(response.body, headers: true).map { |row| row['order_number'] }
-    expect(numbers).to eq([production.order_number])
+    expect(numbers).to eq([ production.order_number ])
     expect(numbers & excluded.map(&:order_number)).to be_empty
   end
   it 'keeps admin listing query counts constant as independently associated products grow' do
@@ -172,6 +172,18 @@ RSpec.describe 'Admin orders reporting', type: :request do
     expect(response).to have_http_status(:ok)
     expect(JSON.parse(response.body).fetch('orders').map { |order| order.fetch('id') }).to match_array(matching.map(&:id))
   end
-
+  it 'reports partial and full returns consistently in summary and financial CSV columns' do
+    partial = create_retail_order_with_collection(collection: mains_collection, fulfillment_type: 'pickup', location: pickup_location, total_cents: 2200)
+    full = create_retail_order_with_collection(collection: cookies_collection, fulfillment_type: 'shipping', total_cents: 3100)
+    Refund.create!(order: partial, amount_cents: 500, status: 'succeeded')
+    Refund.create!(order: full, amount_cents: 3100, status: 'succeeded')
+    full.update!(payment_status: 'refunded')
+    Refund.create!(order: partial, amount_cents: 1700, status: 'unknown')
+    get '/api/v1/admin/orders/summary'
+    expect(response.parsed_body.fetch('total_revenue_cents')).to eq(1700)
+    get '/api/v1/admin/orders/export'
+    rows = CSV.parse(response.body, headers: true).index_by { |r| r['order_number'] }
+    expect(rows.fetch(partial.order_number).to_h).to include('captured_cents' => '2200', 'succeeded_refunds_cents' => '500', 'net_revenue_cents' => '1700')
+    expect(rows.fetch(full.order_number).to_h).to include('captured_cents' => '3100', 'succeeded_refunds_cents' => '3100', 'net_revenue_cents' => '0')
+  end
 end
-

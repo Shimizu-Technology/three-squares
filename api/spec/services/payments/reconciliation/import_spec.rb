@@ -74,7 +74,7 @@ RSpec.describe Payments::Reconciliation::Import do
     rows = [ batch('b1'), sale('s1', 'b1'), deposit('d1', 500), allocation('too-much', 'b1', 'd1'), allocation('missing', 'b2', 'd1', 500) ]
     expect(import(rows).state).to eq('conflicted')
     expect(FundingAllocation.count).to eq(0)
-    expect(ReconciliationException.pluck(:category)).to contain_exactly('allocation_conflict', 'unmatched_allocation')
+    expect(ReconciliationException.pluck(:category)).to contain_exactly('allocation_conflict', 'unmatched_allocation', 'unallocated_deposit')
   end
   it 'allocates a combined credit and debit deposit atomically regardless of row order' do
     debit = batch('debit', 0).merge('amount_cents' => -1000, 'adjustments_cents' => -1000)
@@ -95,10 +95,30 @@ RSpec.describe Payments::Reconciliation::Import do
     expect { described_class.call(identity: identity, user: user, operation_key: SecureRandom.uuid, input: foreign) }.to raise_error(Payments::Reconciliation::CanonicalCSV::Invalid)
     expect(ReconciliationImport.count).to eq(1)
   end
+  it 'does not settle the same financial transaction twice under different source item identifiers' do
+    original = sale('only-charge', 'b1')
+    import([ batch('b1'), original ])
+    duplicate = original.merge('external_id' => 'different-source-item', 'batch_id' => 'b2')
+    expect(import([ batch('b2'), duplicate ], SecureRandom.uuid).state).to eq('conflicted')
+    expect(SettlementItem.count).to eq(1)
+    expect(ReconciliationException.pluck(:category)).to contain_exactly('duplicate_financial_item', 'batch_items_mismatch')
+  end
   it 'requires whole-account manager access and denies managers the owner-only simulation view' do
     scoped = create(:user, role: 'manager', assigned_location: create(:location))
     expect { described_class.call(identity: identity, user: scoped, operation_key: key, input: 'anything') }.to raise_error(Payments::BindingError)
     manager = create(:user, role: 'manager')
     expect { described_class.call(identity: identity, user: manager, operation_key: key, input: 'anything') }.to raise_error(Payments::BindingError)
+  end
+  it 'retains two repeated provider local times with different offsets and their exact Guam business date' do
+    first = sale('before-dst', 'dst').merge('occurred_at' => '2026-11-01T01:30:00-05:00', 'provider_local_time' => '2026-11-01 01:30:00', 'provider_offset' => '-05:00', 'business_date' => '2026-11-01')
+    second = sale('after-dst', 'dst').merge('occurred_at' => '2026-11-01T01:30:00-06:00', 'provider_local_time' => '2026-11-01 01:30:00', 'provider_offset' => '-06:00', 'business_date' => '2026-11-01')
+    header = batch('dst', 2000).merge('business_date' => '2026-11-01', 'provider_batch_date' => '2026-11-01')
+    expect(import([ header, first, second ]).state).to eq('succeeded')
+    items = SettlementItem.order(:occurred_at).to_a
+    expect(items.map(&:provider_local_time).uniq).to eq([ '2026-11-01 01:30:00' ])
+    expect(items.map(&:provider_offset)).to eq([ '-05:00', '-06:00' ])
+    expect(items.last.occurred_at - items.first.occurred_at).to eq(3600)
+    expect(items.map { |i| i.business_date.iso8601 }.uniq).to eq([ '2026-11-01' ])
+    expect { SettlementBatch.first.destroy! }.to raise_error(ActiveRecord::RecordNotDestroyed)
   end
 end

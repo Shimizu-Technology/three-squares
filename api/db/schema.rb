@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_27_123100) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_27_140000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -249,6 +249,51 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_123100) do
     t.datetime "updated_at", null: false
     t.index ["created_at"], name: "index_contact_submissions_on_created_at"
     t.index ["status"], name: "index_contact_submissions_on_status"
+  end
+
+  create_table "funding_allocations", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.bigint "amount_cents", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.string "environment", null: false
+    t.string "external_account_id", null: false
+    t.string "external_id", null: false
+    t.string "facts_digest", null: false
+    t.uuid "funding_deposit_id", null: false
+    t.uuid "payment_identity_id", null: false
+    t.string "provider", null: false
+    t.string "reason", null: false
+    t.uuid "reconciliation_import_id"
+    t.uuid "settlement_batch_id", null: false
+    t.jsonb "source_facts", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["funding_deposit_id"], name: "index_funding_allocations_on_funding_deposit_id"
+    t.index ["payment_identity_id", "external_id"], name: "unique_identity_funding_allocation", unique: true
+    t.index ["payment_identity_id"], name: "index_funding_allocations_on_payment_identity_id"
+    t.index ["reconciliation_import_id"], name: "index_funding_allocations_on_reconciliation_import_id"
+    t.index ["settlement_batch_id"], name: "index_funding_allocations_on_settlement_batch_id"
+    t.index ["user_id"], name: "index_funding_allocations_on_user_id"
+    t.check_constraint "amount_cents <> 0 AND length(reason::text) >= 1 AND length(reason::text) <= 240", name: "valid_funding_allocation"
+  end
+
+  create_table "funding_deposits", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.bigint "amount_cents", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.date "deposit_date", null: false
+    t.string "environment", null: false
+    t.string "external_account_id", null: false
+    t.string "external_id", null: false
+    t.string "facts_digest", null: false
+    t.uuid "payment_identity_id", null: false
+    t.string "provider", null: false
+    t.uuid "reconciliation_import_id", null: false
+    t.jsonb "source_facts", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.index ["payment_identity_id", "external_id"], name: "unique_identity_funding_deposit", unique: true
+    t.index ["payment_identity_id"], name: "index_funding_deposits_on_payment_identity_id"
+    t.index ["reconciliation_import_id"], name: "index_funding_deposits_on_reconciliation_import_id"
   end
 
   create_table "fundraiser_order_items", force: :cascade do |t|
@@ -911,6 +956,86 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_123100) do
     t.index ["slug"], name: "index_products_on_slug", unique: true
   end
 
+  create_table "reconciliation_audits", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.string "environment", null: false
+    t.string "event", null: false
+    t.string "external_account_id", null: false
+    t.jsonb "facts", default: {}, null: false
+    t.uuid "payment_identity_id", null: false
+    t.string "provider", null: false
+    t.string "reason", null: false
+    t.uuid "subject_id", null: false
+    t.string "subject_type", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["payment_identity_id"], name: "index_reconciliation_audits_on_payment_identity_id"
+    t.index ["user_id"], name: "index_reconciliation_audits_on_user_id"
+    t.check_constraint "length(reason::text) >= 1 AND length(reason::text) <= 240", name: "reconciliation_audit_reason"
+  end
+
+  create_table "reconciliation_exceptions", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.string "category", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.string "environment", null: false
+    t.string "external_account_id", null: false
+    t.jsonb "facts", default: {}, null: false
+    t.string "fingerprint", null: false
+    t.uuid "funding_deposit_id"
+    t.uuid "payment_identity_id", null: false
+    t.string "provider", null: false
+    t.uuid "reconciliation_import_id"
+    t.string "review_reason"
+    t.datetime "reviewed_at"
+    t.bigint "reviewed_by_id"
+    t.uuid "settlement_batch_id"
+    t.string "state", default: "open", null: false
+    t.datetime "updated_at", null: false
+    t.index ["funding_deposit_id"], name: "index_reconciliation_exceptions_on_funding_deposit_id"
+    t.index ["payment_identity_id", "fingerprint"], name: "unique_reconciliation_exception", unique: true
+    t.index ["payment_identity_id"], name: "index_reconciliation_exceptions_on_payment_identity_id"
+    t.index ["reconciliation_import_id"], name: "index_reconciliation_exceptions_on_reconciliation_import_id"
+    t.index ["reviewed_by_id"], name: "index_reconciliation_exceptions_on_reviewed_by_id"
+    t.index ["settlement_batch_id"], name: "index_reconciliation_exceptions_on_settlement_batch_id"
+    t.check_constraint "(state::text = ANY (ARRAY['open'::character varying, 'reviewed'::character varying]::text[])) AND (state::text = 'open'::text OR reviewed_by_id IS NOT NULL AND reviewed_at IS NOT NULL AND length(review_reason::text) >= 1 AND length(review_reason::text) <= 240)", name: "valid_reconciliation_review"
+  end
+
+  create_table "reconciliation_imports", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.string "environment", null: false
+    t.string "external_account_id", null: false
+    t.string "operation_key", null: false
+    t.string "payload_digest", null: false
+    t.uuid "payment_identity_id", null: false
+    t.datetime "processed_at"
+    t.string "provider", null: false
+    t.string "request_digest"
+    t.string "schema_version", null: false
+    t.string "source", null: false
+    t.jsonb "source_parameters", default: {}, null: false
+    t.string "state", default: "processing", null: false
+    t.jsonb "summary", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["payment_identity_id", "operation_key"], name: "unique_reconciliation_import_key", unique: true
+    t.index ["payment_identity_id"], name: "index_reconciliation_imports_on_payment_identity_id"
+    t.index ["user_id"], name: "index_reconciliation_imports_on_user_id"
+    t.check_constraint "(state::text = ANY (ARRAY['processing'::character varying, 'succeeded'::character varying, 'conflicted'::character varying]::text[])) AND (source::text = ANY (ARRAY['canonical_csv'::character varying, 'simulator'::character varying]::text[]))", name: "valid_reconciliation_import"
+  end
+
+  create_table "reconciliation_timelines", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "now", null: false
+    t.uuid "payment_identity_id", null: false
+    t.integer "sequence", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["payment_identity_id"], name: "index_reconciliation_timelines_on_payment_identity_id", unique: true
+    t.check_constraint "sequence >= 0", name: "valid_reconciliation_sequence"
+  end
+
   create_table "refund_effects", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "delivered_at"
@@ -1008,6 +1133,72 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_123100) do
     t.string "reason", null: false
     t.datetime "updated_at", null: false
     t.index ["owner_key", "caller_idempotency_key"], name: "unique_rejected_payment_request", unique: true
+  end
+
+  create_table "settlement_batches", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.bigint "adjustments_cents", null: false
+    t.bigint "amount_cents", null: false
+    t.date "business_date", null: false
+    t.datetime "closed_at"
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.string "environment", null: false
+    t.string "external_account_id", null: false
+    t.string "external_id", null: false
+    t.string "facts_digest", null: false
+    t.bigint "fees_cents", null: false
+    t.bigint "location_id"
+    t.uuid "payment_identity_id", null: false
+    t.string "provider", null: false
+    t.date "provider_batch_date", null: false
+    t.uuid "reconciliation_import_id", null: false
+    t.bigint "returns_cents", null: false
+    t.bigint "sales_cents", null: false
+    t.jsonb "source_facts", default: {}, null: false
+    t.string "terminal_id"
+    t.datetime "updated_at", null: false
+    t.index ["location_id"], name: "index_settlement_batches_on_location_id"
+    t.index ["payment_identity_id", "external_id"], name: "unique_identity_settlement_batch", unique: true
+    t.index ["payment_identity_id"], name: "index_settlement_batches_on_payment_identity_id"
+    t.index ["reconciliation_import_id"], name: "index_settlement_batches_on_reconciliation_import_id"
+    t.check_constraint "sales_cents >= 0 AND returns_cents >= 0 AND fees_cents >= 0 AND amount_cents = (sales_cents - returns_cents - fees_cents + adjustments_cents)", name: "settlement_batch_exact_net"
+  end
+
+  create_table "settlement_items", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
+    t.bigint "amount_cents", null: false
+    t.date "business_date", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.string "entry_type", null: false
+    t.string "environment", null: false
+    t.string "external_account_id", null: false
+    t.string "external_id", null: false
+    t.string "facts_digest", null: false
+    t.uuid "legacy_capture_binding_id"
+    t.bigint "location_id"
+    t.datetime "occurred_at", null: false
+    t.string "original_reference"
+    t.uuid "payment_identity_id", null: false
+    t.uuid "payment_transaction_id"
+    t.string "provider", null: false
+    t.string "provider_local_time"
+    t.string "provider_offset"
+    t.uuid "reconciliation_import_id", null: false
+    t.uuid "refund_operation_id"
+    t.uuid "settlement_batch_id", null: false
+    t.jsonb "source_facts", default: {}, null: false
+    t.string "terminal_id"
+    t.string "transaction_id"
+    t.datetime "updated_at", null: false
+    t.index ["legacy_capture_binding_id"], name: "index_settlement_items_on_legacy_capture_binding_id"
+    t.index ["location_id"], name: "index_settlement_items_on_location_id"
+    t.index ["payment_identity_id", "external_id"], name: "unique_identity_settlement_item", unique: true
+    t.index ["payment_identity_id"], name: "index_settlement_items_on_payment_identity_id"
+    t.index ["payment_transaction_id"], name: "index_settlement_items_on_payment_transaction_id"
+    t.index ["reconciliation_import_id"], name: "index_settlement_items_on_reconciliation_import_id"
+    t.index ["refund_operation_id"], name: "index_settlement_items_on_refund_operation_id"
+    t.index ["settlement_batch_id"], name: "index_settlement_items_on_settlement_batch_id"
+    t.check_constraint "(entry_type::text = ANY (ARRAY['sale'::character varying, 'return'::character varying, 'void'::character varying, 'reversal'::character varying, 'fee'::character varying, 'adjustment'::character varying]::text[])) AND (entry_type::text = 'adjustment'::text OR amount_cents >= 0)", name: "valid_settlement_item"
   end
 
   create_table "simulated_payment_records", id: :uuid, default: -> { "gen_random_uuid()" }, force: :cascade do |t|
@@ -1146,6 +1337,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_123100) do
   add_foreign_key "checkout_sessions", "orders"
   add_foreign_key "checkout_sessions", "payment_identities"
   add_foreign_key "checkout_sessions", "users"
+  add_foreign_key "funding_allocations", "funding_deposits"
+  add_foreign_key "funding_allocations", "payment_identities"
+  add_foreign_key "funding_allocations", "reconciliation_imports"
+  add_foreign_key "funding_allocations", "settlement_batches"
+  add_foreign_key "funding_allocations", "users"
+  add_foreign_key "funding_deposits", "payment_identities"
+  add_foreign_key "funding_deposits", "reconciliation_imports"
   add_foreign_key "fundraiser_order_items", "fundraiser_orders"
   add_foreign_key "fundraiser_order_items", "fundraiser_product_variants"
   add_foreign_key "fundraiser_orders", "fundraisers"
@@ -1194,6 +1392,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_123100) do
   add_foreign_key "product_locations", "locations"
   add_foreign_key "product_locations", "products"
   add_foreign_key "product_variants", "products"
+  add_foreign_key "reconciliation_audits", "payment_identities"
+  add_foreign_key "reconciliation_audits", "users"
+  add_foreign_key "reconciliation_exceptions", "funding_deposits"
+  add_foreign_key "reconciliation_exceptions", "payment_identities"
+  add_foreign_key "reconciliation_exceptions", "reconciliation_imports"
+  add_foreign_key "reconciliation_exceptions", "settlement_batches"
+  add_foreign_key "reconciliation_exceptions", "users", column: "reviewed_by_id"
+  add_foreign_key "reconciliation_imports", "payment_identities"
+  add_foreign_key "reconciliation_imports", "users"
+  add_foreign_key "reconciliation_timelines", "payment_identities"
   add_foreign_key "refund_effects", "refund_operations"
   add_foreign_key "refund_observations", "refund_operations"
   add_foreign_key "refund_operations", "orders"
@@ -1204,6 +1412,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_27_123100) do
   add_foreign_key "refunds", "orders"
   add_foreign_key "refunds", "refund_operations"
   add_foreign_key "refunds", "users"
+  add_foreign_key "settlement_batches", "locations"
+  add_foreign_key "settlement_batches", "payment_identities"
+  add_foreign_key "settlement_batches", "reconciliation_imports"
+  add_foreign_key "settlement_items", "legacy_capture_bindings"
+  add_foreign_key "settlement_items", "locations"
+  add_foreign_key "settlement_items", "payment_identities"
+  add_foreign_key "settlement_items", "payment_transactions"
+  add_foreign_key "settlement_items", "reconciliation_imports"
+  add_foreign_key "settlement_items", "refund_operations"
+  add_foreign_key "settlement_items", "settlement_batches"
   add_foreign_key "simulated_payment_records", "payment_attempts"
   add_foreign_key "simulated_payment_records", "payment_identities"
   add_foreign_key "simulation_clocks", "payment_identities"
