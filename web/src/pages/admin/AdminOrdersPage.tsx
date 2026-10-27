@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { savedRefundRequest, prepareRefundRequest, clearRefundRequest, rememberRefundOperation, type SavedRefundRequest } from '../../lib/refundRequest';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
 import type { Order } from '../../components/admin/orders';
@@ -14,6 +15,7 @@ import {
 } from '../../components/admin/orders';
 import PickupPackingList from '../../components/admin/orders/PickupPackingList';
 import ShippingPackingList from '../../components/admin/orders/ShippingPackingList';
+import { orderBusinessDate, orderDateRange, orderListContext, parseOrderQuery, serializeOrderQuery, updateOrderQuery, type OrderDatePreset, type OrderPageMode, type OrderQueryState } from '../../components/admin/orders/orderQueryState';
 import { SkeletonListPage } from '../../components/admin';
 
 import { configApi, locationsApi } from '../../services/api';
@@ -58,48 +60,70 @@ export default function AdminOrdersPage() {
 }
 
 interface AdminOrdersPageContentProps {
-  mode: 'default' | 'pickup_queue' | 'shipping_queue';
+  mode: OrderPageMode;
 }
 
 export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   const { getToken, userId } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [clock, setClock] = useState(Date.now);
+  const businessDay = orderBusinessDate(new Date(clock));
+  const queryState = useMemo(() => parseOrderQuery(location.search, mode, new Date(`${businessDay}T12:00:00+10:00`)), [location.search, mode, businessDay]);
+  const canonicalSearch = serializeOrderQuery(queryState);
+  const queryStateRef = useRef(queryState);
+  useLayoutEffect(() => { queryStateRef.current = queryState; }, [queryState]);
+  const changeQuery = useCallback((changes: Partial<OrderQueryState>, replace = false) => {
+    const next = updateOrderQuery(queryStateRef.current, changes, mode);
+    if (serializeOrderQuery(next) === serializeOrderQuery(queryStateRef.current)) return;
+    queryStateRef.current = next;
+    void navigate({ search: `?${serializeOrderQuery(next)}` }, { replace, preventScrollReset: true });
+  }, [mode, navigate]);
+  useEffect(() => {
+    if (location.search.slice(1) !== canonicalSearch) {
+      void navigate({ search: `?${canonicalSearch}` }, { replace: true, preventScrollReset: true });
+    }
+  }, [canonicalSearch, location.search, navigate]);
+
+  const {
+    page, status: statusFilter, orderType: orderTypeFilter, businessLine: businessLineFilter,
+    fulfillment: fulfillmentFilter, location: locationFilter, search: appliedSearch,
+    datePreset, startDate, endDate, orderId: selectedOrderId,
+  } = queryState;
+  const setPage = useCallback((nextPage: number) => changeQuery({ page: nextPage }), [changeQuery]);
+  // Typing is local. Only Search applies a query; navigation restores its submitted value.
+  const [searchDraft, setSearchDraft] = useState({ key: location.key, value: appliedSearch });
+  if (searchDraft.key !== location.key) {
+    setSearchDraft({ key: location.key, value: appliedSearch });
+  }
+  const searchQuery = searchDraft.key === location.key ? searchDraft.value : appliedSearch;
+  const setSearchQuery = (value: string) => setSearchDraft({ key: location.key, value });
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
 
-  // Filters
-  const [statusFilter, setStatusFilter] = useState(
-    mode === 'pickup_queue' ? 'new_paid' : mode === 'shipping_queue' ? 'processing' : 'all'
-  );
-  const [orderTypeFilter, setOrderTypeFilter] = useState('all');
-  const [businessLineFilter, setBusinessLineFilter] = useState(mode === 'shipping_queue' ? 'latte_stone' : 'all');
-  const [fulfillmentFilter, setFulfillmentFilter] = useState(
-    mode === 'pickup_queue' ? 'pickup' : mode === 'shipping_queue' ? 'shipping' : 'all'
-  );
-  const [locationFilter, setLocationFilter] = useState('all');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [appliedSearch, setAppliedSearch] = useState('');
-  const [datePreset, setDatePreset] = useState('today');
-  const [startDate, setStartDate] = useState(() => {
-    const today = new Date();
-    const month = `${today.getMonth() + 1}`.padStart(2, '0');
-    const day = `${today.getDate()}`.padStart(2, '0');
-    return `${today.getFullYear()}-${month}-${day}`;
-  });
-  const [endDate, setEndDate] = useState(() => {
-    const today = new Date();
-    const month = `${today.getMonth() + 1}`.padStart(2, '0');
-    const day = `${today.getDate()}`.padStart(2, '0');
-    return `${today.getFullYear()}-${month}-${day}`;
-  });
-
   // Selected order
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const detailReturnRef = useRef<{ x: number; y: number; trigger: HTMLElement | null } | null>(null);
+  const detailSelection = useMemo(() => ({ orderId: selectedOrderId }), [selectedOrderId]);
+  const detailSelectionRef = useRef(detailSelection);
+  useLayoutEffect(() => { detailSelectionRef.current = detailSelection; }, [detailSelection]);
+  const [detailResult, setDetailResult] = useState<{ selection: typeof detailSelection; order: Order } | null>(null);
+  const selectedOrder = detailResult?.selection === detailSelection ? detailResult.order : null;
+  // Mutation responses may finish after navigation, too. They must never reopen
+  // a closed detail view or displace the order selected by the current URL.
+  const setSelectedOrder = (order: Order) => {
+    if (detailSelectionRef.current === detailSelection && queryStateRef.current.orderId === order.id) {
+      setDetailResult({ selection: detailSelection, order });
+    }
+  };
+  const headingRef = useRef<HTMLHeadingElement>(null);
+  const detailReturnRef = useRef<{ orderId: number; x: number; y: number; trigger: HTMLElement } | null>(null);
+  const previousOrderIdRef = useRef(selectedOrderId);
+  const [detailError, setDetailError] = useState<{ selection: typeof detailSelection; attempt: number; message: string } | null>(null);
+  const [detailAttempt, setDetailAttempt] = useState(0);
+  const currentDetailError = detailError?.selection === detailSelection && detailError.attempt === detailAttempt ? detailError.message : null;
   const [saving, setSaving] = useState(false);
 
   // Ship modal
@@ -118,7 +142,6 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   const [exporting, setExporting] = useState(false);
   const [summary, setSummary] = useState<OrdersSummaryResponse | null>(null);
 
-  const [clock, setClock] = useState(Date.now);
   const [refreshing, setRefreshing] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<number | null>(null);
@@ -145,6 +168,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
     return params;
   }, [mode, statusFilter, orderTypeFilter, businessLineFilter, fulfillmentFilter, locationFilter, appliedSearch, startDate, endDate]);
   const queryKey = JSON.stringify({ page, ...buildFilterParams() });
+  const queryContext = orderListContext(queryState, mode);
   const hasCurrentData = loadedKey === queryKey;
   const stale = lastUpdated !== null && clock - lastUpdated > 30_000;
 
@@ -165,9 +189,9 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
         authGet<OrdersIndexResponse>('/admin/orders', getToken, { params: { page, per_page: 25, ...params }, signal: controller.signal, timeout: 20_000 }),
         authGet<OrdersSummaryResponse>('/admin/orders/summary', getToken, { params, signal: controller.signal, timeout: 20_000 }),
       ]);
-      if (requestRef.current !== requestId || controller.signal.aborted) return;
+      if (requestRef.current !== requestId || controller.signal.aborted || orderListContext(queryStateRef.current, mode) !== queryContext) return;
       const lastPage = Math.max(1, listing.data.pagination.total_pages);
-      if (page > lastPage) { setPage(lastPage); return; }
+      if (page > lastPage) { changeQuery({ page: lastPage }, true); return; }
       setOrders(listing.data.orders);
       setTotalPages(listing.data.pagination.total_pages);
       setTotalCount(listing.data.pagination.total_count);
@@ -177,7 +201,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       setLastUpdated(Date.now());
       setLoadError(null);
     } catch (error) {
-      if (controller.signal.aborted || requestRef.current !== requestId) return;
+      if (controller.signal.aborted || requestRef.current !== requestId || orderListContext(queryStateRef.current, mode) !== queryContext) return;
       setLoadError(axios.isAxiosError(error) ? error.response?.data?.error || 'Could not refresh orders. Check the connection and try again.' : 'Could not refresh orders. Try again.');
     } finally {
       if (requestRef.current === requestId) {
@@ -186,7 +210,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
         setRefreshing(false);
       }
     }
-  }, [buildFilterParams, getToken, page, queryKey]);
+  }, [buildFilterParams, getToken, page, queryKey, queryContext, changeQuery, mode]);
 
   useEffect(() => {
     void fetchOrders();
@@ -194,14 +218,17 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   }, [fetchOrders, refreshVersion]);
 
   useEffect(() => {
-    if (mode === 'default') return;
-    const refreshVisible = () => { if (!document.hidden) { setClock(Date.now()); void fetchOrders(true); } };
+    const refreshVisible = () => {
+      if (document.hidden) return;
+      setClock(Date.now());
+      if (mode !== 'default') void fetchOrders(true);
+    };
     const interval = window.setInterval(refreshVisible, 10_000);
     document.addEventListener('visibilitychange', refreshVisible);
     return () => { window.clearInterval(interval); document.removeEventListener('visibilitychange', refreshVisible); };
   }, [fetchOrders, mode]);
 
-  const reconcileOrders = () => setRefreshVersion((version) => version + 1);
+  const reconcileOrders = () => { setClock(Date.now()); setRefreshVersion((version) => version + 1); };
 
   useEffect(() => {
     configApi.getConfig().then(setAppConfig).catch(console.error);
@@ -216,40 +243,49 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       });
   }, []);
 
-  useEffect(() => {
-    if (mode === 'pickup_queue') {
-      setFulfillmentFilter('pickup');
-      setStatusFilter('new_paid');
-    } else if (mode === 'shipping_queue') {
-      setFulfillmentFilter('shipping');
-      setStatusFilter('processing');
-    }
-  }, [mode]);
-
   // ── Fetch single order details ────────────────────────────────
-  const fetchOrderDetails = async (orderId: number, trigger: HTMLButtonElement) => {
-    detailReturnRef.current = { x: window.scrollX, y: window.scrollY, trigger };
-    try {
-      const response = await authGet<AdminOrderResponse>(`/admin/orders/${orderId}`, getToken);
-      setSelectedOrder(response.data.order);
-    } catch (err) {
-      console.error('Failed to fetch order details:', err);
-      toast.error('Failed to load order details');
-    }
+  const fetchOrderDetails = (orderId: number, trigger: HTMLButtonElement) => {
+    detailReturnRef.current = { orderId, x: window.scrollX, y: window.scrollY, trigger };
+    changeQuery({ orderId });
   };
 
-  const closeOrderDetails = () => {
+  useEffect(() => {
+    if (selectedOrderId === null) return;
+    const controller = new AbortController();
+    const loadDetails = async () => {
+      try {
+        const response = await authGet<AdminOrderResponse>(`/admin/orders/${selectedOrderId}`, getToken, { signal: controller.signal, timeout: 20_000 });
+        if (controller.signal.aborted || detailSelectionRef.current !== detailSelection || queryStateRef.current.orderId !== selectedOrderId) return;
+        if (response.data.order.id !== selectedOrderId) throw new Error('The requested order was not returned.');
+        setDetailResult({ selection: detailSelection, order: response.data.order });
+      } catch (error) {
+        if (controller.signal.aborted || detailSelectionRef.current !== detailSelection || queryStateRef.current.orderId !== selectedOrderId) return;
+        setDetailError({ selection: detailSelection, attempt: detailAttempt, message: axios.isAxiosError(error) ? error.response?.data?.error || 'Check the connection and try again.' : 'The requested order could not be loaded. Try again.' });
+      }
+    };
+    void loadDetails();
+    return () => controller.abort();
+  }, [selectedOrderId, detailSelection, getToken, detailAttempt]);
+
+  useEffect(() => {
+    const previousOrderId = previousOrderIdRef.current;
+    previousOrderIdRef.current = selectedOrderId;
+    if (selectedOrderId !== null || previousOrderId === null) return;
     const position = detailReturnRef.current;
     detailReturnRef.current = null;
-    setSelectedOrder(null);
-    // Restore after the modal releases its body lock. Keep keyboard focus on
-    // the original control without letting focus itself scroll the queue.
-    requestAnimationFrame(() => {
-      if (!position) return;
-      if (position.trigger?.isConnected) position.trigger.focus({ preventScroll: true });
-      window.scrollTo({ left: position.x, top: position.y, behavior: 'instant' });
+    // Also handles browser Back. Wait until the modal releases its body lock.
+    const frame = requestAnimationFrame(() => {
+      if (queryStateRef.current.orderId !== null) return;
+      if (position?.orderId === previousOrderId) {
+        if (position.trigger.isConnected) position.trigger.focus({ preventScroll: true });
+        else headingRef.current?.focus({ preventScroll: true });
+        window.scrollTo({ left: position.x, top: position.y, behavior: 'instant' });
+      } else headingRef.current?.focus({ preventScroll: true });
     });
-  };
+    return () => cancelAnimationFrame(frame);
+  }, [selectedOrderId]);
+
+  const closeOrderDetails = () => changeQuery({ orderId: null });
 
   // ── Update order (from detail modal edit form) ────────────────
   const updateOrder = async (updates: {
@@ -394,51 +430,16 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   };
 
   const handleSearch = () => {
-    setPage(1);
-    setAppliedSearch(searchQuery);
-    reconcileOrders();
+    // Invalidate the typing buffer on submit. A fast Back can skip React's
+    // intermediate navigation render and return to the same history key.
+    setSearchDraft({ key: '', value: searchQuery.trim() });
+    if (searchQuery.trim() === appliedSearch && page === 1) reconcileOrders();
+    else changeQuery({ search: searchQuery, page: 1 });
   };
 
   const updateDatePreset = (preset: string) => {
-    setDatePreset(preset);
-    const today = new Date();
-    const format = (date: Date) => {
-      const month = `${date.getMonth() + 1}`.padStart(2, '0');
-      const day = `${date.getDate()}`.padStart(2, '0');
-      return `${date.getFullYear()}-${month}-${day}`;
-    };
-
-    if (preset === 'today') {
-      const todayString = format(today);
-      setStartDate(todayString);
-      setEndDate(todayString);
-      setPage(1);
-      return;
-    }
-
-    if (preset === 'last_7_days') {
-      const start = new Date(today);
-      start.setDate(today.getDate() - 6);
-      setStartDate(format(start));
-      setEndDate(format(today));
-      setPage(1);
-      return;
-    }
-
-    if (preset === 'this_month') {
-      const start = new Date(today.getFullYear(), today.getMonth(), 1);
-      const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-      setStartDate(format(start));
-      setEndDate(format(end));
-      setPage(1);
-      return;
-    }
-
-    if (preset === 'all_time') {
-      setStartDate('');
-      setEndDate('');
-      setPage(1);
-    }
+    const datePreset = preset as OrderDatePreset;
+    changeQuery({ datePreset, page: 1, ...(datePreset === 'custom' ? {} : orderDateRange(datePreset)) });
   };
 
   const exportOrdersCsv = async () => {
@@ -496,7 +497,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
+          <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
           <p className="text-sm text-gray-500 mt-1">
             {mode === 'default' ? (
               <>
@@ -525,6 +526,13 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
         <p>{loadError}</p><p>{hasCurrentData ? 'Showing the last saved snapshot for these filters. It may be out of date.' : 'Orders for these filters have not loaded.'}</p>
         <button type="button" onClick={reconcileOrders} disabled={refreshing} className="min-h-11 underline font-semibold">Try again</button>
       </div>}
+      {selectedOrderId !== null && !selectedOrder && <div role={currentDetailError ? 'alert' : 'status'} className="border border-gray-300 bg-white p-4 rounded-lg">
+        {currentDetailError ? <>
+          <p>Could not load order #{selectedOrderId}. {currentDetailError}</p>
+          <button type="button" onClick={() => setDetailAttempt((attempt) => attempt + 1)} className="min-h-11 underline font-semibold mr-4">Retry order details</button>
+        </> : <p>Loading order #{selectedOrderId}…</p>}
+        <button type="button" onClick={closeOrderDetails} className="min-h-11 underline font-semibold">Close order details</button>
+      </div>}
       {mode === 'pickup_queue' && hasCurrentData && (summary?.queue_stage_counts?.new_paid || 0) > 0 && <p role="status" className="border-l-4 border-amber-500 bg-amber-50 p-3 text-amber-950 font-semibold">{summary?.queue_stage_counts.new_paid} paid orders need acknowledgment</p>}
       {queueStatusOptions.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap gap-3">
@@ -535,7 +543,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
               <button
                 key={status}
                 type="button"
-                onClick={() => { setStatusFilter(status); setPage(1); }}
+                onClick={() => changeQuery({ status, page: 1 })}
                 className={`px-3 py-2 rounded-lg text-sm border transition ${
                   statusFilter === status
                     ? 'bg-tsPrimary text-white border-tsPrimary'
@@ -560,22 +568,22 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
         onSearchChange={setSearchQuery}
         onSearch={handleSearch}
         statusFilter={statusFilter}
-        onStatusFilterChange={(v) => { setStatusFilter(v); setPage(1); }}
+        onStatusFilterChange={(status) => changeQuery({ status, page: 1 })}
         orderTypeFilter={orderTypeFilter}
-        onOrderTypeFilterChange={(v) => { setOrderTypeFilter(v); setPage(1); }}
+        onOrderTypeFilterChange={(orderType) => changeQuery({ orderType, page: 1 })}
         businessLineFilter={businessLineFilter}
-        onBusinessLineFilterChange={(v) => { setBusinessLineFilter(v); setPage(1); }}
+        onBusinessLineFilterChange={(businessLine) => changeQuery({ businessLine, page: 1 })}
         fulfillmentFilter={fulfillmentFilter}
-        onFulfillmentFilterChange={(v) => { setFulfillmentFilter(v); setPage(1); }}
+        onFulfillmentFilterChange={(fulfillment) => changeQuery({ fulfillment, page: 1 })}
         locationFilter={locationFilter}
-        onLocationFilterChange={(v) => { setLocationFilter(v); setPage(1); }}
+        onLocationFilterChange={(location) => changeQuery({ location, page: 1 })}
         locationOptions={locations.map((location) => ({ id: location.id, name: location.name }))}
         datePreset={datePreset}
         onDatePresetChange={updateDatePreset}
         startDate={startDate}
         endDate={endDate}
-        onStartDateChange={(value) => { setStartDate(value); setDatePreset('custom'); setPage(1); }}
-        onEndDateChange={(value) => { setEndDate(value); setDatePreset('custom'); setPage(1); }}
+        onStartDateChange={(startDate) => changeQuery({ startDate, datePreset: 'custom', page: 1 })}
+        onEndDateChange={(endDate) => changeQuery({ endDate, datePreset: 'custom', page: 1 })}
       />
 
       {/* Orders List */}
@@ -611,6 +619,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       {/* Order Detail Modal */}
       {selectedOrder && (
         <OrderDetailModal
+          key={selectedOrder.id}
           order={selectedOrder}
           saving={saving}
           onClose={closeOrderDetails}
