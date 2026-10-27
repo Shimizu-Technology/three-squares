@@ -172,7 +172,7 @@ class Product < ApplicationRecord
       price_cents: base_price_cents,
       available: true,
       stock_quantity: 0, # Not used for product-level or none
-      weight_oz: weight_oz || (allow_shipping? ? nil : 0),
+      weight_oz: weight_oz, # Pickup-only products may leave shipping weight unset.
       is_default: true
     )
     variant.skip_weight_validation = true unless allow_shipping?

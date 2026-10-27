@@ -1,3 +1,5 @@
+require "csv"
+
 module Api
   module V1
     module Admin
@@ -121,6 +123,110 @@ module Api
           else
             render_error("Failed to duplicate product", errors: new_product.errors.full_messages)
           end
+        end
+
+        # POST /api/v1/admin/products/import_csv
+        # Valid rows commit independently; invalid rows never leave partial products/categories.
+        def import_csv
+          file = params[:file]
+          unless file.is_a?(ActionDispatch::Http::UploadedFile)
+            return render json: { error: "CSV file is required" }, status: :unprocessable_entity
+          end
+
+          csv_text = file.read(2.megabytes + 1).force_encoding("UTF-8")
+          if csv_text.bytesize > 2.megabytes
+            return render json: { error: "CSV file must be 2 MB or smaller" }, status: :unprocessable_entity
+          end
+          unless csv_text.valid_encoding?
+            return render json: { error: "CSV file must use UTF-8 encoding" }, status: :unprocessable_entity
+          end
+          csv_text = csv_text.delete_prefix("\uFEFF")
+          rows = CSV.parse(csv_text, headers: true, skip_blanks: true,
+                           header_converters: ->(header) { header&.strip&.downcase })
+          headers = rows.headers
+          unless %w[name price].all? { |header| headers.include?(header) } && headers.compact.uniq.size == headers.size
+            return render json: { error: "CSV requires unique name and price headers" }, status: :unprocessable_entity
+          end
+          if rows.empty? || rows.size > 2000
+            return render json: { error: "CSV must contain 1 to 2000 product rows" }, status: :unprocessable_entity
+          end
+
+          imported = 0
+          errors = []
+          notices = []
+          # An exact slug wins; otherwise a case-insensitive slug or name only
+          # resolves when it identifies exactly one location.
+          all_locations = Location.all.to_a
+          locations_by_exact_slug = all_locations.index_by(&:slug)
+          locations_by_slug = all_locations.group_by { |location| location.slug.to_s.downcase }
+          locations_by_name = all_locations.group_by { |location| location.name.to_s.downcase }
+          unique_match = ->(matches) { matches&.one? ? matches.first : nil }
+          rows.each_with_index do |row, index|
+            name = row["name"]&.strip
+            price = row["price"]&.strip
+            active = row["active"]&.strip&.downcase
+            location_keys = row["locations"].to_s.split(/[;|]/).map(&:strip).reject(&:empty?)
+            resolved_locations = location_keys.map do |key|
+              folded = key.downcase
+              locations_by_exact_slug[key] ||
+                unique_match.call(locations_by_slug[folded]) ||
+                (locations_by_slug.key?(folded) ? nil : unique_match.call(locations_by_name[folded]))
+            end
+            unknown_locations = location_keys.zip(resolved_locations).filter_map { |key, location| key if location.nil? }
+            error = if row.fields.any? { |value| value.to_s.include?("\u0000") }
+              "Row contains an invalid null character"
+            elsif name.blank?
+              "Name is required"
+            elsif !price&.match?(/\A\d+(?:\.\d{1,2})?\z/) || BigDecimal(price) * 100 > 2_147_483_647
+              "Price must be a nonnegative amount with at most two decimal places"
+            elsif active.present? && !%w[true 1 yes false 0 no].include?(active)
+              "Active must be true or false (yes/no and 1/0 are also accepted)"
+            elsif unknown_locations.any?
+              "Unknown or ambiguous location: #{unknown_locations.join(', ')}. Use the location slug."
+            end
+            if error
+              errors << { row: index + 2, name: name, error: error }
+              next
+            end
+
+            begin
+              pickup_location_ids = resolved_locations.map(&:id).uniq
+              wants_published = !%w[false 0 no].include?(active)
+              Product.transaction(requires_new: true) do
+                # A pickup product with no location rows counts as available everywhere,
+                # so rows without locations are imported as unpublished drafts.
+                product = Product.create!(
+                  name: name, description: row["description"]&.strip.presence,
+                  base_price_cents: (BigDecimal(price) * 100).to_i,
+                  published: wants_published && pickup_location_ids.any?,
+                  allow_pickup: true, allow_shipping: false, inventory_level: "none"
+                )
+                sync_product_locations(product, pickup_location_ids) if pickup_location_ids.any?
+                unless product.product_variants.exists?
+                  product.errors.add(:base, "Default variant could not be created")
+                  raise ActiveRecord::RecordInvalid, product
+                end
+                category = row["category_name"]&.strip
+                if category.present?
+                  collection = Collection.find_or_create_by!(name: category) { |c| c.published = true }
+                  product.collections << collection
+                end
+              end
+              imported += 1
+              if wants_published && pickup_location_ids.empty?
+                notices << { row: index + 2, name: name,
+                             message: "Imported as a draft. Assign pickup locations, then publish it." }
+              end
+            rescue ActiveRecord::RecordInvalid => e
+              errors << { row: index + 2, name: name, error: e.record.errors.full_messages.join(", ") }
+            rescue ActiveRecord::RecordNotUnique
+              errors << { row: index + 2, name: name, error: "Product or category already exists" }
+            end
+          end
+
+          render_success({ imported: imported, skipped: errors.size, total: rows.size, errors: errors, notices: notices })
+        rescue CSV::MalformedCSVError
+          render json: { error: "Invalid CSV format" }, status: :unprocessable_entity
         end
 
         private

@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { Upload, X, AlertCircle, CheckCircle, Download } from 'lucide-react';
 import type { Product, DetailedProduct } from '../../components/admin/products';
 import {
   ProductFilters,
@@ -20,6 +21,36 @@ interface ProductDetailResponse {
   data: DetailedProduct;
 }
 
+interface ImportResult {
+  imported: number;
+  skipped: number;
+  total: number;
+  errors: { row: number; name?: string; error: string }[];
+  notices?: { row: number; name?: string; message: string }[];
+}
+
+interface ImportResultResponse {
+  data: ImportResult;
+}
+
+const CSV_TEMPLATE = `name,description,price,category_name,active,locations
+Beef Tapa,Marinated beef served with garlic rice and egg,12.99,Breakfast,true,three-squares-main
+Chicken Adobo,Classic Filipino chicken adobo with steamed rice,11.50,Lunch,true,three-squares-main;three-squares-donki
+Pancit Canton,Stir-fried noodles with vegetables and pork,9.99,Mains,true,three-squares-main
+Halo-Halo,Shaved ice dessert with mixed ingredients,7.50,Desserts,true,three-squares-donki
+Bottled Water,Cold bottled water 500ml,1.50,Drinks,true,three-squares-main;three-squares-donki
+`;
+
+function downloadTemplate() {
+  const blob = new Blob([CSV_TEMPLATE], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'products-import-template.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function AdminProductsPage() {
   const { getToken } = useAuth();
   const navigate = useNavigate();
@@ -27,6 +58,15 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedProduct, setSelectedProduct] = useState<DetailedProduct | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+
+  const importDialog = useRef<HTMLDivElement>(null);
+
+  // Import CSV state
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importResult, setImportResult] = useState<ImportResult | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
 
   // Pagination & Filters
   const [currentPage, setCurrentPage] = useState(1);
@@ -40,9 +80,16 @@ export default function AdminProductsPage() {
 
   // Lock body scroll when modal open
   useEffect(() => {
-    document.body.style.overflow = selectedProduct ? 'hidden' : 'unset';
+    document.body.style.overflow = selectedProduct || showImportModal ? 'hidden' : 'unset';
     return () => { document.body.style.overflow = 'unset'; };
-  }, [selectedProduct]);
+  }, [selectedProduct, showImportModal]);
+
+  useEffect(() => {
+    if (!showImportModal) return;
+    const previous = document.activeElement as HTMLElement | null;
+    importDialog.current?.focus();
+    return () => { if (previous?.isConnected) previous.focus(); };
+  }, [showImportModal]);
 
   useEffect(() => { fetchProducts(); }, []);
 
@@ -111,6 +158,33 @@ export default function AdminProductsPage() {
     } catch { toast.error('Failed to duplicate product'); }
   };
 
+  const handleImport = async () => {
+    if (!importFile) return;
+    importDialog.current?.focus();
+    setIsImporting(true);
+    setImportResult(null);
+    setImportError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', importFile);
+      const response = await authPost<ImportResultResponse>(
+        '/admin/products/import_csv',
+        formData,
+        getToken,
+        { headers: { 'Content-Type': 'multipart/form-data' } }
+      );
+      setImportResult(response.data.data);
+      if (response.data.data.imported > 0) {
+        fetchProducts();
+      }
+    } catch (err: unknown) {
+      const axiosErr = err as { response?: { data?: { error?: string } } };
+      setImportError(axiosErr?.response?.data?.error || 'Import failed');
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   const handleSort = (column: 'name' | 'price' | 'stock' | 'created') => {
     if (sortBy === column) {
       setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
@@ -169,12 +243,26 @@ export default function AdminProductsPage() {
             Showing <span className="font-semibold text-gray-700">{filteredProducts.length}</span> of {products.length} products
           </p>
         </div>
-        <button onClick={() => navigate('/admin/products/new')} className="btn-primary flex items-center gap-2">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Product
-        </button>
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => {
+              setShowImportModal(true);
+              setImportFile(null);
+              setImportResult(null);
+              setImportError(null);
+            }}
+            className="btn-secondary flex items-center gap-2"
+          >
+            <Upload className="w-4 h-4" />
+            Import CSV
+          </button>
+          <button onClick={() => navigate('/admin/products/new')} className="btn-primary flex items-center gap-2">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Product
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -223,6 +311,186 @@ export default function AdminProductsPage() {
           loading={loadingDetails}
           onClose={() => setSelectedProduct(null)}
         />
+      )}
+
+      {/* Import CSV Modal */}
+      {showImportModal && (
+        <div
+          className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4"
+          onClick={() => !isImporting && setShowImportModal(false)}
+        >
+          <div
+            ref={importDialog}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="csv-import-title"
+            tabIndex={-1}
+            className="bg-white rounded-lg w-full max-w-lg max-h-[90dvh] overflow-y-auto shadow-xl"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape' && !isImporting) setShowImportModal(false);
+              if (event.key !== 'Tab') return;
+              const controls = Array.from(event.currentTarget.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled), a[href], [tabindex="0"]'));
+              const first = controls[0];
+              const last = controls[controls.length - 1];
+              if (event.shiftKey && (document.activeElement === first || document.activeElement === event.currentTarget)) {
+                event.preventDefault(); last?.focus();
+              } else if (!event.shiftKey && document.activeElement === last) {
+                event.preventDefault(); first?.focus();
+              }
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
+              <h3 id="csv-import-title" className="text-lg font-semibold text-gray-900">Import Products from CSV</h3>
+              {!isImporting && (
+                <button aria-label="Close CSV import" onClick={() => setShowImportModal(false)} className="btn-icon text-gray-400 hover:text-gray-600">
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              {!importResult ? (
+                <>
+                  {/* Template download */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <p className="text-sm text-blue-800 font-medium">CSV Format</p>
+                    <p className="text-xs text-blue-700 mt-1">
+                      Required: <code>name, price</code>. Optional: <code>description, category_name, active, locations</code>. Prices use dollars with at most two decimal places; active defaults to true. List pickup locations by name or slug, separated by semicolons; rows without locations are imported as unpublished drafts. Maximum 2 MB / 2,000 rows. Imports create new pickup-only products; existing products are skipped.
+                    </p>
+                    <button
+                      onClick={downloadTemplate}
+                      className="mt-2 flex items-center gap-1 text-xs text-blue-700 hover:text-blue-900 font-medium"
+                    >
+                      <Download className="w-3 h-3" />
+                      Download template
+                    </button>
+                  </div>
+
+                  {/* File picker */}
+                  <div>
+                    <label htmlFor="csv-import-file" className="block text-sm font-medium text-gray-700 mb-2">
+                      Select CSV file
+                    </label>
+                    <input
+                      id="csv-import-file"
+                      type="file"
+                      disabled={isImporting}
+                      accept=".csv"
+                      onChange={(e) => setImportFile(e.target.files?.[0] || null)}
+                      className="block w-full text-sm text-gray-500 file:mr-3 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-medium file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200"
+                    />
+                    {importFile && (
+                      <p className="mt-1 text-xs text-gray-500">{importFile.name} ({(importFile.size / 1024).toFixed(1)} KB)</p>
+                    )}
+                  </div>
+
+                  {importError && (
+                    <div role="alert" className="flex items-start gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
+                      <AlertCircle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
+                      <p className="text-sm text-red-700">{importError}</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* Results */
+                <div role="status" className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    <span className="font-medium text-gray-900">Import Complete</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 text-center">
+                    <div className="bg-green-50 rounded-lg p-3">
+                      <p className="text-2xl font-bold text-green-700">{importResult.imported}</p>
+                      <p className="text-xs text-green-600">Imported</p>
+                    </div>
+                    <div className="bg-orange-50 rounded-lg p-3">
+                      <p className="text-2xl font-bold text-orange-700">{importResult.skipped}</p>
+                      <p className="text-xs text-orange-600">Skipped</p>
+                    </div>
+                    <div className="bg-gray-50 rounded-lg p-3">
+                      <p className="text-2xl font-bold text-gray-700">{importResult.total}</p>
+                      <p className="text-xs text-gray-500">Total rows</p>
+                    </div>
+                  </div>
+                  {importResult.notices && importResult.notices.length > 0 && (
+                    <div className="border border-blue-200 rounded-lg overflow-hidden">
+                      <div className="bg-blue-50 px-4 py-2">
+                        <p className="text-sm font-medium text-blue-800">{importResult.notices.length} draft{importResult.notices.length > 1 ? 's' : ''} need pickup locations</p>
+                      </div>
+                      <ul tabIndex={0} aria-label="Imported drafts that need pickup locations" className="divide-y divide-blue-100 max-h-40 overflow-y-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500">
+                        {importResult.notices.map((notice, i) => (
+                          <li key={i} className="px-4 py-2 text-sm text-blue-800">
+                            <span className="font-medium">Row {notice.row}{notice.name ? ` (${notice.name})` : ''}:</span> {notice.message}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {importResult.errors.length > 0 && (
+                    <div className="border border-orange-200 rounded-lg overflow-hidden">
+                      <div className="bg-orange-50 px-4 py-2">
+                        <p className="text-sm font-medium text-orange-800">{importResult.errors.length} row{importResult.errors.length > 1 ? 's' : ''} with errors</p>
+                      </div>
+                      <ul tabIndex={0} aria-label="Rows skipped with errors" className="divide-y divide-orange-100 max-h-40 overflow-y-auto focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500">
+                        {importResult.errors.map((err, i) => (
+                          <li key={i} className="px-4 py-2 text-sm text-orange-700">
+                            <span className="font-medium">Row {err.row}{err.name ? ` (${err.name})` : ''}:</span> {err.error}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div className="flex gap-3 p-6 border-t border-gray-200">
+              {!importResult ? (
+                <>
+                  <button
+                    onClick={() => setShowImportModal(false)}
+                    disabled={isImporting}
+                    className="btn-secondary flex-1"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleImport}
+                    disabled={!importFile || isImporting}
+                    className="btn-primary flex-1 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isImporting ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white" />
+                        Importing...
+                      </>
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        Import
+                      </>
+                    )}
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => {
+                    setShowImportModal(false);
+                    setImportResult(null);
+                    setImportFile(null);
+                  }}
+                  className="btn-primary flex-1"
+                >
+                  Done
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
