@@ -41,6 +41,19 @@ function WeekComparison({ current, previous }: { current: number; previous: numb
 
 const formatCurrency = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
+// Integer units (cents or orders) keep small ranges from producing duplicate
+// rounded labels. Include negative net revenue when refunds exceed captures.
+function chartScale(values: number[]) {
+  const min = Math.min(0, ...values);
+  const max = Math.max(0, ...values);
+  const rawStep = Math.max(1, (max - min) / 4);
+  const power = 10 ** Math.floor(Math.log10(rawStep));
+  const step = [1, 2, 5, 10].find(value => value * power >= rawStep)! * power;
+  const lower = Math.floor(min / step) * step;
+  const upper = Math.max(lower + step, Math.ceil(max / step) * step);
+  return { domain: [lower, upper], ticks: Array.from({ length: Math.round((upper - lower) / step) + 1 }, (_, i) => lower + i * step) };
+}
+
 export default function AdminAnalyticsPage() {
   const { getToken } = useAuth();
   const { scopeLabel } = useStaffAccess();
@@ -89,6 +102,9 @@ export default function AdminAnalyticsPage() {
   const loadError = result.days === days && result.error;
 
   const comp = chartData?.comparison;
+  const values = chartData?.series.map(point => chartMode === 'revenue' ? point.revenue_cents : point.orders) ?? [];
+  const emptyChart = values.every(value => value === 0);
+  const scale = chartScale(values);
 
   return (
     <div className="space-y-8">
@@ -201,8 +217,10 @@ export default function AdminAnalyticsPage() {
                 </button>
               </div>
             </div>
-            {chartData.series.length === 0 ? (
-              !loading && !loadError && <p className="py-12 text-center text-gray-600">No chart data for the last {days} days.</p>
+            {emptyChart ? (
+              <div className="flex min-h-[360px] items-center justify-center text-center" role="status">
+                <p className="text-gray-600">No production {chartMode === 'revenue' ? 'net revenue' : 'orders'} in the last {days} days.</p>
+              </div>
             ) : <ResponsiveContainer width="100%" height={360}>
               <BarChart data={chartData.series} barCategoryGap="20%">
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
@@ -213,10 +231,13 @@ export default function AdminAnalyticsPage() {
                   tickLine={false}
                 />
                 <YAxis
+                  domain={scale.domain}
+                  ticks={scale.ticks}
+                  allowDecimals={false}
                   tick={{ fontSize: 12, fill: '#4b5563' }}
                   axisLine={false}
                   tickLine={false}
-                  tickFormatter={chartMode === 'revenue' ? (v) => `$${(v / 100).toFixed(0)}` : undefined}
+                  tickFormatter={chartMode === 'revenue' ? formatCurrency : undefined}
                 />
                 <Tooltip
                   formatter={(value) => {
