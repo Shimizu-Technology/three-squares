@@ -90,5 +90,8 @@ export interface AppConfig {
   announcement_enabled?: boolean;
   announcement_text?: string | null;
   announcement_style?: string;
+  enable_storefront_three_squares?: boolean;
+  enable_storefront_latte_stone?: boolean;
+  enable_storefront_catering?: boolean;
 }
 
