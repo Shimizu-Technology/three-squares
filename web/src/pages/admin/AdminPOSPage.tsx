@@ -1020,7 +1020,6 @@ function AdminPOSWorkspace() {
 
   return (
     <div className="min-h-dvh pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 md:h-dvh flex flex-col md:flex-row bg-linear-to-br from-slate-100 via-white to-slate-100 md:overflow-hidden">
-      {simulationActive && SimulatedTerminalPanel && <Suspense fallback={null}><SimulatedTerminalPanel locationId={selectedLocation ?? null} attemptId={simulatedAttempt} terminalId={selectedTerminalId} onSelect={selectTerminal} getToken={getToken} onChange={handleCheckSavedPayment} /></Suspense>}
       {/* ── Left Panel: Menu ────────────────────────────────────────────── */}
       <div ref={menuRef} tabIndex={-1} aria-label="POS menu" className="flex h-[65dvh] shrink-0 flex-col min-h-0 min-w-0 md:h-auto md:flex-1">
         {/* Header */}
@@ -1118,7 +1117,7 @@ function AdminPOSWorkspace() {
               <button
                 key={name}
                 onClick={() => setActiveCategory(name)}
-                className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors shrink-0 ${
+                className={`min-h-11 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors shrink-0 ${
                   activeCategory === name
                     ? 'bg-tsNavy text-white shadow-sm'
                     : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
@@ -1138,7 +1137,7 @@ function AdminPOSWorkspace() {
               <p>No items found</p>
             </div>
           ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
               {filteredItems.map((item) => {
                 const hasStock = item.variants.some(variant => variant.in_stock);
                 const canAdd = item.variants.some(variant => remainingPOSCapacity(variant, liveCart) > 0);
@@ -1187,7 +1186,7 @@ function AdminPOSWorkspace() {
       </div>
 
       {/* ── Right Panel: Cart ───────────────────────────────────────────── */}
-      <div ref={cartRef} tabIndex={-1} aria-label="Current sale" className="min-h-0 w-full md:w-80 lg:w-104 bg-white/95 backdrop-blur border-l border-slate-200 flex flex-col shrink-0">
+      <div ref={cartRef} tabIndex={-1} aria-label="Current sale" className="min-h-0 w-full md:w-80 xl:w-104 md:overflow-y-auto bg-white/95 backdrop-blur border-l border-slate-200 flex flex-col shrink-0">
         <div className="flex items-center justify-between gap-2 px-4 pt-3 md:hidden">
           <h2 className="text-lg font-semibold">Current sale</h2>
           <button type="button" onClick={() => { menuRef.current?.scrollIntoView(); searchRef.current?.focus({ preventScroll: true }); }} className="min-h-11 rounded-lg border border-slate-300 px-3 text-sm font-semibold">Back to menu</button>
@@ -1200,7 +1199,7 @@ function AdminPOSWorkspace() {
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               placeholder="Customer Name"
-              className="flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary"
+              className="min-h-11 min-w-0 flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary"
             />
           </div>
           <div className="flex gap-2 p-1 rounded-xl bg-slate-100">
@@ -1208,7 +1207,7 @@ function AdminPOSWorkspace() {
               <button
                 key={type}
                 onClick={() => setOrderType(type)}
-                className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
+                className={`min-h-11 flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
                   orderType === type
                     ? 'bg-white text-slate-900 shadow-sm'
                     : 'text-slate-600'
@@ -1221,9 +1220,9 @@ function AdminPOSWorkspace() {
         </div>
 
         {/* Cart items */}
-        <div className="flex-1 overflow-auto p-4">
+        <div className="shrink-0 flex-1 p-4">
           {cart.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-slate-400 border border-dashed border-slate-300 rounded-2xl bg-slate-50">
+            <div className="flex flex-col items-center justify-center min-h-44 p-6 text-slate-500 border border-dashed border-slate-300 rounded-2xl bg-slate-50">
               <ShoppingCart className="w-12 h-12 mb-3 opacity-30" />
               <p className="text-sm">Cart is empty</p>
               <p className="text-xs mt-1">Tap items to add</p>
@@ -1268,7 +1267,7 @@ function AdminPOSWorkspace() {
                       <button
                         aria-label={`Decrease quantity for ${item.product.name}`}
                         onClick={() => updateQuantity(item.variant.id, -1)}
-                        className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100"
+                        className="min-w-11 min-h-11 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100"
                       >
                         <Minus className="w-3.5 h-3.5" />
                       </button>
@@ -1277,7 +1276,7 @@ function AdminPOSWorkspace() {
                         disabled={!canSelectMenu || cartState.issues.some(issue => issue.variantId === item.variant.id) || remainingPOSCapacity(item.variant, liveCart) < 1}
                         aria-label={`Increase quantity for ${item.product.name}`}
                         onClick={() => updateQuantity(item.variant.id, 1)}
-                        className="w-8 h-8 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100"
+                        className="min-w-11 min-h-11 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100"
                       >
                         <Plus className="w-3.5 h-3.5" />
                       </button>
@@ -1285,7 +1284,7 @@ function AdminPOSWorkspace() {
                     <button
                       aria-label={`Remove ${item.product.name}`}
                       onClick={() => removeFromCart(item.variant.id)}
-                      className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                      className="min-h-11 min-w-11 flex items-center justify-center p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -1330,34 +1329,34 @@ function AdminPOSWorkspace() {
               <div className="grid grid-cols-5 gap-1.5">
                 <button
                   onClick={() => adjustQuickItem(-1)}
-                  className="py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
+                  className="min-h-11 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
                 >
                   -1
                 </button>
                 <button
                   disabled={!canSelectMenu || !allItems.some(product => product.variants.some(variant => variant.id === quickAdjustItem.variant.id && variant.in_stock))}
                   onClick={() => adjustQuickItem(1)}
-                  className="py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
+                  className="min-h-11 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
                 >
                   +1
                 </button>
                 <button
                   disabled={!canSelectMenu || !allItems.some(product => product.variants.some(variant => variant.id === quickAdjustItem.variant.id && variant.in_stock))}
                   onClick={() => adjustQuickItem(2)}
-                  className="py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
+                  className="min-h-11 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
                 >
                   +2
                 </button>
                 <button
                   disabled={!canSelectMenu || !allItems.some(product => product.variants.some(variant => variant.id === quickAdjustItem.variant.id && variant.in_stock))}
                   onClick={() => adjustQuickItem(5)}
-                  className="py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
+                  className="min-h-11 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
                 >
                   +5
                 </button>
                 <button
                   onClick={removeQuickItem}
-                  className="py-2 rounded-lg bg-rose-50 text-rose-700 text-sm font-medium hover:bg-rose-100 transition-colors"
+                  className="min-h-11 py-2 rounded-lg bg-rose-50 text-rose-700 text-sm font-medium hover:bg-rose-100 transition-colors"
                 >
                   Del
                 </button>
@@ -1370,20 +1369,20 @@ function AdminPOSWorkspace() {
               <p className="text-xs font-medium text-amber-800 mb-2">
                 A saved payment is unresolved. Check it before taking another payment. Reader reset does not clear the payment.
               </p>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => void (selectedTerminal?.provider === 'stripe' && !simulationActive ? handleCancelActiveTerminalPrompt() : handleCancelSavedPayment())}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700"
+                  className="min-h-11 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700"
                 >
                   Cancel Reader Prompt
                 </button>
                 <button
                   onClick={handleCheckSavedPayment}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-amber-300 text-amber-800 hover:bg-amber-100"
+                  className="min-h-11 px-3 py-1.5 text-xs font-medium rounded-lg border border-amber-300 text-amber-800 hover:bg-amber-100"
                 >
                   Check saved payment
                 </button>
-                <button onClick={handleCancelSavedPayment} className="px-3 py-2 text-xs underline">Cancel saved payment</button>
+                <button onClick={handleCancelSavedPayment} className="min-h-11 px-3 py-2 text-xs underline">Cancel saved payment</button>
               </div>
             </div>
           )}
@@ -1396,10 +1395,24 @@ function AdminPOSWorkspace() {
             <button
               onClick={handleResetReaderSession}
               disabled={resettingReader || terminalCollecting}
-              className="w-full mb-2 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium hover:bg-slate-100 transition-colors"
+              className="min-h-11 w-full mb-2 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium hover:bg-slate-100 transition-colors"
             >
               Reset Reader Session
             </button>
+          )}
+
+          {/* Keep the completed sale and change due beside the payment actions. */}
+          {lastOrder && (
+            <div role="status" aria-atomic="true" className="mb-3 rounded-xl bg-emerald-600 p-4 text-white flex items-center gap-3 [overflow-wrap:anywhere]">
+              <Check className="w-6 h-6 shrink-0" />
+              <div className="min-w-0">
+                <div className="font-semibold">Order {lastOrder.order_number} Created!</div>
+                <div className="text-sm opacity-90">
+                  {lastOrder.total_formatted}
+                  {lastOrder.change_due_formatted && ` — Change: ${lastOrder.change_due_formatted}`}
+                </div>
+              </div>
+            </div>
           )}
 
           <div className="grid grid-cols-2 gap-2 mb-2">
@@ -1407,24 +1420,24 @@ function AdminPOSWorkspace() {
               ref={cashButtonRef}
               onClick={() => setShowCashModal(true)}
               disabled={!canSubmitPayment}
-              className="flex items-center justify-center gap-2 py-3 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="min-h-14 flex items-center justify-center gap-2 px-3 py-3 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              <Banknote className="w-5 h-5" />
+              <Banknote className="w-5 h-5 shrink-0" />
               Cash
             </button>
             <button
               onClick={handleCardAction}
               disabled={!canSubmitPayment || !selectedTerminal?.collectable || (!terminalReader && selectedTerminal.provider === 'stripe' && !simulationActive) || !terminalLocationReady}
-              className="flex items-center justify-center gap-2 py-3 text-white rounded-xl font-medium bg-tsNavy hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="min-h-14 flex items-center justify-center gap-2 px-3 py-3 text-sm text-white rounded-xl font-medium bg-tsNavy hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {terminalCollecting ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : terminalReader ? (
-                <Smartphone className="w-5 h-5" />
+                <Smartphone className="w-5 h-5 shrink-0" />
               ) : (
-                <WifiOff className="w-5 h-5" />
+                <WifiOff className="w-5 h-5 shrink-0" />
               )}
-              {terminalCollecting ? 'Tap Card...' : simulationActive ? 'Card (simulated)' : selectedTerminal?.provider === 'worldpay' ? 'Card on reader' : terminalReader ? 'Tap Card' : 'Connect Reader'}
+              <span className="min-w-0">{terminalCollecting ? 'Tap Card...' : simulationActive ? 'Card (simulated)' : selectedTerminal?.provider === 'worldpay' ? 'Card on reader' : terminalReader ? 'Tap Card' : 'Connect Reader'}</span>
             </button>
           </div>
 
@@ -1433,7 +1446,7 @@ function AdminPOSWorkspace() {
           {terminalCollecting && (
             <button
               onClick={() => void (selectedTerminal?.provider === 'stripe' && !simulationActive ? handleCancelActiveTerminalPrompt() : handleCancelSavedPayment())}
-              className="w-full mb-2 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-sm font-medium hover:bg-rose-100 transition-colors"
+              className="min-h-11 w-full mb-2 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-sm font-medium hover:bg-rose-100 transition-colors"
             >
               Cancel Tap/Insert
             </button>
@@ -1443,7 +1456,7 @@ function AdminPOSWorkspace() {
             <button
               disabled={!canSelectMenu || !allItems.some(item => item.id === lastAddedItem.product.id && item.variants.some(variant => variant.id === lastAddedItem.variant.id && variant.in_stock))}
               onClick={() => addToCart(lastAddedItem.product, lastAddedItem.variant)}
-              className="w-full mb-2 py-2.5 px-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors text-left truncate"
+              className="min-h-11 w-full mb-2 py-2.5 px-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors text-left truncate"
               title={`Add again: ${lastAddedItem.product.name}${lastAddedItem.variant.name !== 'Default' ? ` (${lastAddedItem.variant.name})` : ''}`}
             >
               + Add last item again: {lastAddedItem.product.name}
@@ -1469,27 +1482,16 @@ function AdminPOSWorkspace() {
           {cart.length > 0 && (
             <button
               onClick={clearCart}
-              className="w-full py-2 text-slate-400 text-sm hover:text-rose-500 transition-colors"
+              className="min-h-11 w-full py-2 text-slate-400 text-sm hover:text-rose-500 transition-colors"
             >
               Clear Cart
             </button>
           )}
+
+          {/* Practice reader stays in the sale column's scrollable layout. */}
+          {simulationActive && SimulatedTerminalPanel && <Suspense fallback={null}><SimulatedTerminalPanel locationId={selectedLocation ?? null} attemptId={simulatedAttempt} terminalId={selectedTerminalId} onSelect={selectTerminal} getToken={getToken} onChange={handleCheckSavedPayment} /></Suspense>}
         </div>
       </div>
-
-      {/* ── Success Toast ───────────────────────────────────────────────── */}
-      {lastOrder && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-emerald-600 text-white px-6 py-4 rounded-xl shadow-2xl z-50 flex items-center gap-3 animate-fade-in">
-          <Check className="w-6 h-6" />
-          <div>
-            <div className="font-semibold">Order {lastOrder.order_number} Created!</div>
-            <div className="text-sm opacity-90">
-              {lastOrder.total_formatted}
-              {lastOrder.change_due_formatted && ` — Change: ${lastOrder.change_due_formatted}`}
-            </div>
-          </div>
-        </div>
-      )}
 
       {manualSession && <ManualCardDialog sessionId={manualSession} getToken={getToken} onClose={() => setManualSession(null)} onCheck={handleCheckSavedPayment} />}
 
@@ -1541,7 +1543,7 @@ function AdminPOSWorkspace() {
                 </div>
                 <button
                   onClick={handleDisconnectReader}
-                  className="px-3 py-1.5 text-xs font-medium rounded-lg border border-emerald-300 text-emerald-800 hover:bg-emerald-100"
+                  className="min-h-11 px-3 py-1.5 text-xs font-medium rounded-lg border border-emerald-300 text-emerald-800 hover:bg-emerald-100"
                 >
                   Disconnect
                 </button>

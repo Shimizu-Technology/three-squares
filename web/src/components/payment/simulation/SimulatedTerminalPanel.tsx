@@ -8,7 +8,7 @@ export default function SimulatedTerminalPanel({ locationId, attemptId, terminal
   const selected = terminalId === null ? '' : String(terminalId);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
-  const [expanded, setExpanded] = useState(() => window.matchMedia('(min-width: 768px)').matches);
+  const [expanded, setExpanded] = useState(false);
   useEffect(() => {
     let active = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -41,7 +41,7 @@ export default function SimulatedTerminalPanel({ locationId, attemptId, terminal
     } finally { setBusy(false); }
   }
   const terminal = terminals.find(row => String(row.id) === selected);
-  return <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)} className="m-4 shrink-0 md:fixed md:bottom-[max(1rem,env(safe-area-inset-bottom,0px))] md:left-[max(1rem,env(safe-area-inset-left,0px))] md:m-0 z-50 max-h-[70dvh] w-[min(24rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-amber-400 bg-amber-50 p-4 text-amber-950 shadow-lg">
+  return <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)} className="mt-4 w-full min-w-0 rounded-xl border border-amber-400 bg-amber-50 p-3 text-amber-950 [overflow-wrap:anywhere]">
     <summary className="min-h-11 font-bold cursor-pointer">Simulated payments — no money moves</summary>
     <label className="block">Simulated reader<select value={selected} disabled={!!attemptId || busy} onChange={event => onSelect(event.target.value ? Number(event.target.value) : null)} className="block w-full bg-white border rounded p-2 min-h-11 text-base">{terminals.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
     <p className="my-2" role="status">{terminal?.status.replaceAll('_', ' ') || 'No reader configured'}{terminal?.order_number ? ` · ${terminal.order_number}` : ''}</p>

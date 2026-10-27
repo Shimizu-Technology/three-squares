@@ -15,7 +15,7 @@ const react = dataModule(`
   export const useEffect = () => {}; export const lazy = () => () => null;
   export const Suspense = () => null;
 `);
-async function load(relative, extra = '') {
+async function load(relative, extra = '', simulated = false) {
   const source = readFileSync(new URL(relative, import.meta.url), 'utf8') + extra;
   const ast = ts.createSourceFile('controls.tsx', source, ts.ScriptTarget.ESNext, true, ts.ScriptKind.TSX);
   const mocks = {};
@@ -28,7 +28,7 @@ async function load(relative, extra = '') {
       continue;
     }
     if (name.endsWith('/usePaymentTerminal')) {
-      mocks[name] = dataModule(`export const usePaymentTerminal = () => ({ terminals: [], selected: { id:1, provider:'stripe', environment:'sandbox', terminal_id:'tmr_fixture', label:'Fixture reader', status:'ready', collectable:true }, selectedId:1, select(){}, reload:async()=>{}, loading:false, error:null });`);
+      mocks[name] = dataModule(`export const usePaymentTerminal = () => ({ terminals: [], selected: { id:1, provider:'stripe', environment:'${simulated ? 'simulated' : 'sandbox'}', terminal_id:'tmr_fixture', label:'Fixture reader', status:'ready', collectable:true }, selectedId:1, select(){}, reload:async()=>{}, loading:false, error:null });`);
       continue;
     }
     if (name.includes('StaffAccess')) {
@@ -43,7 +43,7 @@ async function load(relative, extra = '') {
     mocks[name] = dataModule(`${clause?.name ? 'export default function FixtureComponent() { return null; }' : ''}\n${named}`);
   }
   const compiled = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
-    .replaceAll('import.meta.env.DEV', 'false')
+    .replaceAll('import.meta.env.DEV', String(simulated))
     .replace(/import\.meta\.env\.[A-Z_]+/g, 'undefined')
     .replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(mocks[name] || import.meta.resolve(name))}`);
   return import(dataModule(compiled)).catch(error => { throw new Error(error.message); });
@@ -73,4 +73,24 @@ for (const [role, names] of Object.entries(roles)) test(`${role} sees only permi
   const discovery = elements(AdminPOSWorkspace()).filter(node => node.type === 'button').some(node => String(node.props.title || '').includes('connect reader'));
   assert.equal(discovery, role === 'owner');
   assert.equal(POSAccessGate().type.name === 'AdminPOSWorkspace', names.includes('pos.sell'));
+});
+
+// Keep the simulator in the cart's scroll flow, including at tablet breakpoints.
+test('POS practice reader is docked inside the scrollable sale column and starts collapsed', async () => {
+  globalThis.__staffControls = { user: { role: 'owner' }, roleLabel: 'Owner', scopeLabel: 'All locations', can: () => true };
+  const { AdminPOSWorkspace: SimulatedPOS } = await load('../src/pages/admin/AdminPOSPage.tsx', '\nexport { AdminPOSWorkspace };', true);
+  const tree = SimulatedPOS();
+  const sale = elements(tree).find(node => node.props?.['aria-label'] === 'Current sale');
+  assert.match(sale.props.className, /md:overflow-y-auto/);
+  const dock = elements(sale).find(node => node.props?.terminalId === 1 && 'attemptId' in node.props);
+  assert.ok(dock, 'practice reader must be a descendant of the sale column');
+  const panel = Panel({ locationId: 1, attemptId: null, terminalId: 1, onSelect() {}, getToken: async () => null, onChange: async () => {} });
+  assert.equal(panel.type, 'details');
+  assert.equal(panel.props.open, false);
+  assert.doesNotMatch(panel.props.className, /fixed|absolute/);
+  assert.equal(text(elements(panel).find(node => node.type === 'summary')), 'Simulated payments — no money moves');
+  const empty = elements(sale).find(node => node.type === 'div' && node.props.className?.includes('border-dashed') && text(node) === 'Cart is emptyTap items to add');
+  assert.ok(empty);
+  assert.match(empty.props.className, /min-h-44/);
+  assert.doesNotMatch(empty.props.className, /h-full/);
 });
