@@ -11,7 +11,7 @@ RSpec.describe "Product CSV import", type: :request do
   end
 
   def upload_csv(text)
-    Tempfile.create(["products", ".csv"]) do |file|
+    Tempfile.create([ "products", ".csv" ]) do |file|
       file.binmode
       file.write(text)
       file.flush
@@ -60,8 +60,8 @@ RSpec.describe "Product CSV import", type: :request do
     upload_csv("name,price\nBad,abc\nMissing,\nNegative,-1\nPrecision,1.234\nHuge,21474836.48\nFree,0.00\n")
     data = response.parsed_body.fetch("data")
     expect(data).to include("imported" => 1, "skipped" => 5, "total" => 6)
-    expect(data.fetch("errors").map { |error| error["row"] }).to eq([2, 3, 4, 5, 6])
-    expect(Product.pluck(:name, :base_price_cents)).to eq([["Free", 0]])
+    expect(data.fetch("errors").map { |error| error["row"] }).to eq([ 2, 3, 4, 5, 6 ])
+    expect(Product.pluck(:name, :base_price_cents)).to eq([ [ "Free", 0 ] ])
   end
 
   it "skips missing names and invalid active flags" do
@@ -89,7 +89,7 @@ RSpec.describe "Product CSV import", type: :request do
     expect(Product.sole.name).to eq("Good Meal")
   end
 
-  ["name,cost\nMeal,1\n", "name,price,price\nMeal,1,2\n", "name,price\n", "name,price\n\"unclosed"].each do |text|
+  [ "name,cost\nMeal,1\n", "name,price,price\nMeal,1,2\n", "name,price\n", "name,price\n\"unclosed" ].each do |text|
     it "rejects invalid headers, empty data or malformed CSV: #{text.inspect}" do
       sign_in(admin)
       upload_csv(text)
@@ -133,7 +133,10 @@ RSpec.describe "Product CSV import", type: :request do
     expect(data.fetch("notices").sole).to include("row" => 2, "name" => "No Location")
     product = Product.find_by!(name: "No Location")
     expect(product).not_to be_published
-    expect(product.product_locations).to be_empty
+    expect(product.product_locations.pluck(:location_id, :available)).to match_array([ [ main_location.id, false ], [ donki_location.id, false ] ])
+    expect(data.fetch("created").sole).to include("row" => 2, "product_id" => product.id, "published" => false, "needs_pickup_locations" => true)
+    get "/api/v1/admin/products/#{product.id}"
+    expect(response.parsed_body.fetch("data")).to include("location_ids" => [], "needs_pickup_locations" => true)
   end
 
   it "skips rows with unknown locations without creating them" do
@@ -142,7 +145,7 @@ RSpec.describe "Product CSV import", type: :request do
     data = response.parsed_body.fetch("data")
     expect(data).to include("imported" => 1, "skipped" => 1)
     expect(data.fetch("errors").sole).to include("row" => 2, "error" => "Unknown or ambiguous location: tumon. Use the location slug.")
-    expect(Product.pluck(:name)).to eq(["Real"])
+    expect(Product.pluck(:name)).to eq([ "Real" ])
   end
 
   it "skips rows containing null characters and still reports counts" do
@@ -152,7 +155,7 @@ RSpec.describe "Product CSV import", type: :request do
     data = response.parsed_body.fetch("data")
     expect(data).to include("imported" => 2, "skipped" => 1, "total" => 3)
     expect(data.fetch("errors").sole).to include("row" => 3, "error" => "Row contains an invalid null character")
-    expect(Collection.pluck(:name)).to eq(["Lunch"])
+    expect(Collection.pluck(:name)).to eq([ "Lunch" ])
   end
 
   it "prefers slugs over names and rejects names shared by several locations" do
@@ -165,9 +168,9 @@ RSpec.describe "Product CSV import", type: :request do
     expect(data).to include("imported" => 2, "skipped" => 1)
     expect(data.fetch("errors").sole).to include("row" => 4, "name" => "Ambiguous")
     by_slug = Product.find_by!(name: "By Slug")
-    expect(by_slug.product_locations.available.pluck(:location_id)).to eq([main_location.id])
+    expect(by_slug.product_locations.available.pluck(:location_id)).to eq([ main_location.id ])
     expect(by_slug.available_for_location?(named_main.id)).to be(false)
-    expect(Product.find_by!(name: "By Name").product_locations.available.pluck(:location_id)).to eq([main_location.id])
+    expect(Product.find_by!(name: "By Name").product_locations.available.pluck(:location_id)).to eq([ main_location.id ])
   end
 
   it "skips rows with null characters in name, description or price" do
@@ -175,7 +178,7 @@ RSpec.describe "Product CSV import", type: :request do
     upload_csv("name,description,price,locations\nNa\u0000me,Tasty,5.00,main\nOkay,Ta\u0000sty,5.00,main\nPricey,Tasty,5.0\u00000,main\n")
     data = response.parsed_body.fetch("data")
     expect(data).to include("imported" => 0, "skipped" => 3, "total" => 3)
-    expect(data.fetch("errors").map { |error| error["error"] }.uniq).to eq(["Row contains an invalid null character"])
+    expect(data.fetch("errors").map { |error| error["error"] }.uniq).to eq([ "Row contains an invalid null character" ])
     expect(Product.count).to eq(0)
   end
 
@@ -186,7 +189,64 @@ RSpec.describe "Product CSV import", type: :request do
     data = response.parsed_body.fetch("data")
     expect(data).to include("imported" => 2, "skipped" => 1)
     expect(data.fetch("errors").sole).to include("row" => 4, "name" => "Folded")
-    expect(Product.find_by!(name: "Exact Lower").product_locations.available.pluck(:location_id)).to eq([main_location.id])
-    expect(Product.find_by!(name: "Exact Upper").product_locations.available.pluck(:location_id)).to eq([upper.id])
+    expect(Product.find_by!(name: "Exact Lower").product_locations.available.pluck(:location_id)).to eq([ main_location.id ])
+    expect(Product.find_by!(name: "Exact Upper").product_locations.available.pluck(:location_id)).to eq([ upper.id ])
+  end
+  it "returns exact committed product identities, including intentionally inactive unassigned drafts" do
+    sign_in(admin)
+    upload_csv("name,price,active,locations\nInactive draft,5.00,false,\nPublished meal,12.00,true,main\nInvalid row,not-a-price,true,main\n")
+    data = response.parsed_body.fetch("data")
+    inactive = Product.find_by!(name: "Inactive draft")
+    published = Product.find_by!(name: "Published meal")
+    expect(data.fetch("created")).to contain_exactly(
+      include("row" => 2, "product_id" => inactive.id, "published" => false, "needs_pickup_locations" => true),
+      include("row" => 3, "product_id" => published.id, "published" => true, "needs_pickup_locations" => false)
+    )
+    expect(data.fetch("notices").sole).to include("row" => 2, "product_id" => inactive.id)
+    expect(data.fetch("errors").sole).to include("row" => 4)
+    expect(data.fetch("errors").sole).not_to have_key("product_id")
+    expect(inactive.product_locations.available).to be_empty
+    patch "/api/v1/admin/products/#{inactive.id}", params: { product: { location_ids: [ main_location.id ] } }, as: :json
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.fetch("data")).to include("needs_pickup_locations" => false, "published" => false, "location_ids" => [ main_location.id ])
+  end
+
+  it "never adds a rolled-back row to the committed receipt" do
+    sign_in(admin)
+    create(:collection, name: "Lunch!", slug: "lunch")
+    upload_csv("name,price,category_name,locations\nRollback Meal,3.00,Lunch,main\nGood Meal,4.00,,main\n")
+    data = response.parsed_body.fetch("data")
+    expect(data.fetch("created").sole).to include("row" => 3, "product_id" => Product.find_by!(name: "Good Meal").id)
+    expect(Product.exists?(name: "Rollback Meal")).to be(false)
+  end
+
+  it "preserves legacy implicit-global drafts while reporting explicit unassigned drafts" do
+    sign_in(admin)
+    legacy = create(:product, published: false, allow_pickup: true)
+    get "/api/v1/admin/products/#{legacy.id}"
+    expect(response.parsed_body.fetch("data")).to include("location_ids" => match_array([ main_location.id, donki_location.id ]), "needs_pickup_locations" => false)
+  end
+
+  it "keeps scoped manager location authorization and independent row rollback" do
+    sign_in(create(:user, :manager, assigned_location: main_location))
+    upload_csv("name,price,category_name,active,locations\nMain meal,12.00,Lunch,true,main\nForeign meal,13.00,Foreign category,true,donki\nUnassigned draft,5.00,,false,\n")
+    data = response.parsed_body.fetch("data")
+    expect(data).to include("imported" => 2, "skipped" => 1)
+    expect(data.fetch("errors").sole).to include("row" => 3, "error" => include("outside your authorized locations"))
+    expect(Product.exists?(name: "Foreign meal")).to be(false)
+    expect(Collection.exists?(name: "Foreign category")).to be(false)
+    expect(Product.find_by!(name: "Main meal").product_locations.available.pluck(:location_id)).to eq([ main_location.id ])
+    draft = Product.find_by!(name: "Unassigned draft")
+    expect(draft).not_to be_published
+    expect(draft.product_locations).not_to be_empty
+    expect(draft.product_locations.available).to be_empty
+    expect(data.fetch("created").map { |row| row.fetch("product_id") }).to match_array(Product.pluck(:id))
+  end
+
+  it "denies assigned counter staff the menu import operation" do
+    sign_in(create(:user, :staff, assigned_location: main_location))
+    upload_csv("name,price,locations\nDenied meal,12.00,main\n")
+    expect(response).to have_http_status(:forbidden)
+    expect(Product.count).to eq(0)
   end
 end

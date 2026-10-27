@@ -1,22 +1,26 @@
 export interface ProductQueryState {
   q: string;
-  published: 'all' | 'true' | 'false' | 'archived' | 'attention';
+  published: 'all' | 'true' | 'false' | 'archived' | 'attention' | 'pickup_locations';
+  batch?: string;
   type: string;
   sort: 'name' | 'price' | 'stock' | 'created';
   dir: 'asc' | 'desc';
   page: number;
 }
 
-const keys = ['q', 'published', 'type', 'sort', 'dir', 'page'];
+const keys = ['q', 'published', 'type', 'sort', 'dir', 'page', 'batch'];
 const hasControl = (value: string) => [...value].some(char => char.charCodeAt(0) < 32 || char.charCodeAt(0) === 127);
 const text = (value: string | null, max: number) => value && value.length <= max && !hasControl(value) ? value : '';
 
 export function parseProductQuery(search: string): ProductQueryState {
   const params = new URLSearchParams(search);
   const page = params.get('page') || '';
+  const batch = params.get('batch') || '';
+  const batchValid = params.getAll('batch').length === 1 && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(batch);
   return {
     q: text(params.get('q'), 500),
-    published: ['true', 'false', 'archived', 'attention'].includes(params.get('published') || '')
+    ...(params.has('batch') ? { batch: batchValid ? batch : 'invalid' } : {}),
+    published: ['true', 'false', 'archived', 'attention', 'pickup_locations'].includes(params.get('published') || '')
       ? params.get('published') as ProductQueryState['published'] : 'all',
     type: text(params.get('type'), 200) || 'all',
     sort: ['price', 'stock', 'created'].includes(params.get('sort') || '')
@@ -33,6 +37,7 @@ export function productListPath(state: ProductQueryState): string {
   if (state.type !== 'all') params.set('type', state.type);
   if (state.sort !== 'name') params.set('sort', state.sort);
   if (state.dir !== 'asc') params.set('dir', state.dir);
+  if (state.batch) params.set('batch', state.batch);
   if (state.page !== 1) params.set('page', String(state.page));
   return '/admin/products' + (params.size ? `?${params}` : '');
 }
@@ -42,12 +47,13 @@ export function safeProductReturnTo(value: unknown): string {
   if (typeof value !== 'string' || !/^\/admin\/products(?:\?[^#]*)?$/.test(value) || (value.includes('\\') || hasControl(value))) return '/admin/products';
   const search = value.slice('/admin/products'.length);
   const params = new URLSearchParams(search);
-  if ([...params.keys()].some(key => !keys.includes(key) || params.getAll(key).length !== 1)) return '/admin/products';
+  if ([...params.keys()].some(key => !keys.includes(key) || (key !== 'batch' && params.getAll(key).length !== 1))) return '/admin/products';
   const canonical = productListPath(parseProductQuery(search));
   // Invalid values are not trusted, even when accompanied by valid filters.
   const normalized = new URLSearchParams(canonical.split('?')[1]);
   for (const [key, val] of params) {
-    const defaults: Record<string, string> = { q: '', published: 'all', type: 'all', sort: 'name', dir: 'asc', page: '1' };
+    if (key === 'batch' && normalized.get('batch') === 'invalid') continue;
+    const defaults: Record<string, string> = { q: '', published: 'all', type: 'all', sort: 'name', dir: 'asc', page: '1', batch: '' };
     if ((normalized.get(key) ?? defaults[key]) !== val) return '/admin/products';
   }
   return canonical;
