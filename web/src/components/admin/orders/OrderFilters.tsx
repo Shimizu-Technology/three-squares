@@ -45,6 +45,29 @@ export default function OrderFilters({
   onStartDateChange,
   onEndDateChange,
 }: OrderFiltersProps) {
+  if (pickupQueue) {
+    const control = 'min-h-11 w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 text-base text-gray-900';
+    return <section aria-label="Pickup queue filters" className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <form onSubmit={(event) => { event.preventDefault(); onSearch(); }} className="col-span-2 flex min-w-0 items-end gap-2 md:col-span-1">
+          <label className="min-w-0 flex-1 text-sm font-medium text-gray-700">Find an order<input value={searchQuery} onChange={(event) => onSearchChange(event.target.value)} placeholder="Name or order #" className={`${control} mt-1`} /></label>
+          <button type="submit" className="min-h-11 rounded-lg bg-tsPrimary px-3 text-sm font-semibold text-white">Search</button>
+        </form>
+        <label className="min-w-0 text-sm font-medium text-gray-700">Pickup location<select value={locationFilter} onChange={(event) => onLocationFilterChange(event.target.value)} className={`${control} mt-1`}><option value="all">All locations</option>{locationOptions.map((location) => <option key={location.id} value={String(location.id)}>{location.name}</option>)}</select></label>
+        <label className="min-w-0 text-sm font-medium text-gray-700">Period<select value={datePreset} onChange={(event) => onDatePresetChange(event.target.value)} className={`${control} mt-1`}><option value="today">Today</option><option value="last_7_days">Last 7 days</option><option value="this_month">This month</option><option value="all_time">All time</option><option value="custom">Custom range</option></select></label>
+      </div>
+      <details className="mt-2" open={datePreset === 'custom'}>
+        <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-gray-700">More filters{orderTypeFilter !== 'all' || businessLineFilter !== 'all' || datePreset === 'custom' ? ' · filters applied' : ''}</summary>
+        <div className="grid gap-3 pt-2 sm:grid-cols-2">
+          <label className="text-sm font-medium text-gray-700">Order type<select value={orderTypeFilter} onChange={(event) => onOrderTypeFilterChange(event.target.value)} className={`${control} mt-1`}><option value="all">All types</option><option value="retail">Retail</option><option value="wholesale">Catering / wholesale</option></select></label>
+          <label className="text-sm font-medium text-gray-700">Business line<select value={businessLineFilter} onChange={(event) => onBusinessLineFilterChange(event.target.value)} className={`${control} mt-1`}><option value="all">All business lines</option><option value="three_squares">Three Squares</option><option value="latte_stone">Latte Stone Cookies</option><option value="catering">Catering</option></select></label>
+          <label className="text-sm font-medium text-gray-700">Start date<input type="date" value={startDate} onChange={(event) => onStartDateChange(event.target.value)} className={`${control} mt-1`} /></label>
+          <label className="text-sm font-medium text-gray-700">End date<input type="date" value={endDate} onChange={(event) => onEndDateChange(event.target.value)} className={`${control} mt-1`} /></label>
+        </div>
+      </details>
+    </section>;
+  }
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

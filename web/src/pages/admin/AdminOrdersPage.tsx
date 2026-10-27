@@ -12,6 +12,7 @@ import {
   RefundModal,
   formatStatus,
 } from '../../components/admin/orders';
+import PickupPackingList from '../../components/admin/orders/PickupPackingList';
 import { SkeletonListPage } from '../../components/admin';
 
 import { configApi, locationsApi } from '../../services/api';
@@ -462,7 +463,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   const storeEmail = appConfig?.store_info?.email || 'sales@bgpacific.com';
   const pageTitle = mode === 'pickup_queue' ? 'Pickup Queue' : mode === 'shipping_queue' ? 'Shipping Queue' : 'Orders';
   const pageSubtitle = mode === 'pickup_queue'
-    ? 'Operational queue for pickup-ready and pickup-confirmation workflows.'
+    ? 'Acknowledge paid meals, pack, then mark Ready.'
     : mode === 'shipping_queue'
       ? 'Operational queue for shipping fulfillment and handoff workflows.'
       : `${totalCount} total orders`;
@@ -475,7 +476,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   const stageLabel = (status: string) => ({ new_paid: 'New paid', waiting_payment: 'Waiting for payment', all_active: 'All active', confirmed: mode === 'pickup_queue' ? 'Acknowledged' : 'Confirmed' }[status] || formatStatus(status));
 
   return (
-    <div className="space-y-6">
+    <div className={mode === 'pickup_queue' ? 'space-y-4' : 'space-y-6'}>
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
@@ -575,6 +576,8 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
               : 'Try adjusting status, location, or business line filters.'}
           </p>
         </div>
+      ) : mode === 'pickup_queue' ? (
+        <PickupPackingList orders={orders} saving={saving} page={page} totalPages={totalPages} onPageChange={setPage} onQuickUpdateStatus={quickUpdateStatus} onViewDetails={fetchOrderDetails} />
       ) : (
         <OrdersTable
           orders={orders}
