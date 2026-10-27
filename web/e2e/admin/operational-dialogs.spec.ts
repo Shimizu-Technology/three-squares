@@ -80,7 +80,8 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await page.keyboard.press('Escape'); await expect(outer).not.toBeVisible();
     await expect(details).toBeFocused();
     await expect.poll(() => page.evaluate(() => scrollY)).toBe(y);
-    expect(await page.evaluate(() => document.body.style.overflow)).not.toBe('hidden');
+    // Native close can precede React's passive body-lock cleanup in WebKit.
+    await expect.poll(() => page.evaluate(() => document.body.style.overflow)).not.toBe('hidden');
   });
 
   test(`shipping nests above order details and preserves failed tracking drafts at ${width}x${height}`, async ({ page }) => {
@@ -110,7 +111,8 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await page.keyboard.press('Escape'); await expect(opener).toBeFocused();
     expect(await page.evaluate(() => document.body.style.overflow)).toBe('hidden');
     await page.keyboard.press('Escape'); await expect(outer).not.toBeVisible();
-    expect(await page.evaluate(() => document.body.style.overflow)).not.toBe('hidden');
+    // Native close can precede React's passive body-lock cleanup in WebKit.
+    await expect.poll(() => page.evaluate(() => document.body.style.overflow)).not.toBe('hidden');
   });
 
   test(`cash and portion dialogs contain focus and block background POS shortcuts at ${width}x${height}`, async ({ page }) => {
@@ -159,6 +161,7 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await cash.getByRole('button', { name: 'Complete Cash Payment', exact: true }).click();
     await expect(cash).not.toBeVisible(); await expect(cashButton).toBeDisabled();
     await expect(page.getByRole('searchbox', { name: 'Find a menu item', exact: true })).toBeFocused();
-    expect(await page.evaluate(() => document.body.style.overflow)).not.toBe('hidden');
+    // Native close can precede React's passive body-lock cleanup in WebKit.
+    await expect.poll(() => page.evaluate(() => document.body.style.overflow)).not.toBe('hidden');
   });
 }

@@ -103,11 +103,11 @@ test('cash and card readiness recover together after a failed menu refresh', asy
   let release!: () => void;
   let delay = false;
   const gate = new Promise<void>(resolve => { release = resolve; });
-  await page.route('**/api/v1/admin/payment_terminals**', route => route.fulfill({ json: { terminals: [{ id: 9191, label: 'QA simulated reader', location_id: 91, environment: 'simulated', status: 'idle', attempt_id: null }] } }));
+  await page.route('**/api/v1/admin/payment_terminals**', route => route.fulfill({ json: { terminals: [{ id: 9191, label: 'QA simulated reader', location_id: 1, enabled: true, collectable: true, provider: 'simulated', environment: 'simulated', status: 'idle', attempt_id: null }] } }));
   await page.route('**/api/v1/admin/pos/menu**', async route => {
     if (delay) await gate;
     if (fail) return route.fulfill({ status: 500, json: { error: 'QA unavailable menu' } });
-    await route.fulfill({ json: { locations: [{ id: 91, name: 'QA counter' }], categories: [{ name: 'Lunch', items: [{ id: 201, name: 'QA card readiness meal', slug: 'qa-card-readiness', product_type: 'local', image_url: null, variants: [{ id: 1201, name: 'Default', price_cents: 1000, price_formatted: '$10.00', sku: 'QA', in_stock: true, stock_quantity: 0, available_quantity: null, inventory_pool_key: null }] }] }], total_products: 1 } });
+    await route.fulfill({ json: { locations: [{ id: 1, name: 'QA counter' }], categories: [{ name: 'Lunch', items: [{ id: 201, name: 'QA card readiness meal', slug: 'qa-card-readiness', product_type: 'local', image_url: null, variants: [{ id: 1201, name: 'Default', price_cents: 1000, price_formatted: '$10.00', sku: 'QA', in_stock: true, stock_quantity: 0, available_quantity: null, inventory_pool_key: null }] }] }], total_products: 1 } });
   });
   await page.goto('/admin/pos');
   const card = page.getByRole('button', { name: 'Card (simulated)', exact: true });
