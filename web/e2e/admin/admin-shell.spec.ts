@@ -5,6 +5,7 @@ test('closed phone navigation is unreachable; open navigation contains focus and
   await page.goto('/admin/orders/pickup-queue');
   const menu = page.getByRole('button', { name: 'Open admin navigation', exact: true });
   await expect(menu).toHaveAttribute('aria-expanded', 'false');
+  await expect(page.locator('button[aria-controls="admin-sidebar"]')).not.toBeVisible();
   await expect(page.getByRole('navigation', { name: 'Admin navigation', exact: true })).toHaveCount(0);
   await menu.focus();
   await page.keyboard.press('Shift+Tab');
@@ -36,6 +37,7 @@ test('collapse persists across tablet and desktop with one current destination a
   await page.reload();
   const sidebar = page.getByRole('complementary', { name: 'Admin sidebar', exact: true });
   await expect(sidebar).toHaveCSS('width', '80px');
+  await expect(page.getByRole('button', { name: 'Open admin navigation', exact: true })).not.toBeVisible();
   await page.getByRole('button', { name: 'Expand sidebar', exact: true }).click();
   await expect(sidebar).toHaveCSS('width', '256px');
   await page.getByRole('button', { name: 'Collapse sidebar', exact: true }).click();
