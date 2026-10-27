@@ -20,10 +20,10 @@ export default function LocationContextBar() {
         <button
           type="button"
           onClick={() => setShowPicker(true)}
-          className="w-full py-3 flex items-center justify-between gap-4 text-left group"
+          className="w-full py-3 flex flex-wrap items-center justify-between gap-3 text-left group"
           aria-label={`Pickup location is ${location.name}. Click to change.`}
         >
-          <div className="min-w-0 flex items-center gap-3">
+          <div className="min-w-[min(100%,14rem)] flex-1 flex items-center gap-3">
             <span className="w-10 h-10 rounded-full bg-warm-100 border border-warm-200 flex items-center justify-center shrink-0">
               <MapPin className="w-4 h-4 text-tsPrimary" />
             </span>
@@ -31,7 +31,7 @@ export default function LocationContextBar() {
               <p className="text-[11px] uppercase tracking-[0.18em] text-warm-500">
                 Pickup location
               </p>
-              <p className="text-sm sm:text-base font-semibold text-warm-900 truncate">
+              <p className="text-sm sm:text-base font-semibold text-warm-900 break-words">
                 {location.name}
               </p>
               {location.accepting_orders_now === false && (
@@ -44,7 +44,7 @@ export default function LocationContextBar() {
               )}
             </div>
           </div>
-          <span className="inline-flex items-center gap-1 text-sm font-medium text-tsPrimary shrink-0 group-hover:text-primary-dark transition">
+          <span className="ml-auto inline-flex items-center gap-1 text-sm font-medium text-tsPrimary shrink-0 group-hover:text-primary-dark transition">
             Change
             <ChevronDown className="w-4 h-4" />
           </span>

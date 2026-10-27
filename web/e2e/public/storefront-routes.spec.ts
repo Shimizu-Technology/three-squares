@@ -63,7 +63,7 @@ test.describe('Storefront Routes', () => {
     await page.waitForLoadState('networkidle');
 
     await expect(page).toHaveURL(/\/products\?business_line=catering/);
-    await expect(page.locator('h1').first()).toContainText('Catering Menu');
+    await expect(page.locator('h1').first()).toContainText('Catering menu');
   });
 
   test('storefront route keeps existing query params while enforcing business_line', async ({ page }) => {
@@ -109,6 +109,6 @@ test.describe('Storefront Routes', () => {
     await dialog.accept();
 
     await expect(page).toHaveURL(/business_line=latte_stone/);
-    await expect(page.locator('h1').first()).toContainText('Latte Stone Cookie Shop');
+    await expect(page.locator('h1').first()).toContainText('Latte Stone Cookies');
   });
 });

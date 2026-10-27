@@ -7,6 +7,10 @@ for (const resource of [
   { name: 'Analytics for the last 14 days', route: '/admin/analytics', endpoint: '/admin/dashboard/chart_data', refresh: 'Refresh analytics' },
   { name: 'Products', route: '/admin/products', endpoint: '/admin/products', refresh: 'Refresh products' },
   { name: 'Collections', route: '/admin/collections', endpoint: '/admin/collections', refresh: 'Refresh collections' },
+  { name: 'Locations', route: '/admin/locations', endpoint: '/admin/locations', refresh: 'Refresh locations' },
+  { name: 'Users', route: '/admin/users', endpoint: '/admin/users', refresh: 'Refresh users' },
+  { name: 'Catering inquiries and stats', route: '/admin/catering', endpoint: '/admin/catering', refresh: 'Refresh inquiries' },
+  { name: 'POS menu and locations', route: '/admin/pos', endpoint: '/admin/pos/menu', refresh: 'Refresh menu' },
 ]) {
   test(`${resource.name}: failure is recoverable and retained data is marked stale`, async ({ page }) => {
     let fail = true;
@@ -21,6 +25,10 @@ for (const resource of [
     await expect(page.getByText('No orders yet', { exact: true })).toHaveCount(0);
     await expect(page.getByText('No products found', { exact: true })).toHaveCount(0);
     await expect(page.getByText('No collections found', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('No locations found.', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('No users found', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('No catering inquiries found', { exact: true })).toHaveCount(0);
+    await expect(page.getByText('No items found', { exact: true })).toHaveCount(0);
     await expect(alert).not.toContainText('Showing last loaded data');
     fail = false;
     await alert.getByRole('button', { name: 'Retry', exact: true }).click();

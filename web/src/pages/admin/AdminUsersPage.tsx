@@ -1,7 +1,8 @@
 import axios from 'axios';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
+import AdminRequestState from '../../components/admin/AdminRequestState';
 import { authGet, authPatch } from '../../services/authApi';
 
 interface User {
@@ -35,39 +36,55 @@ interface AdminUserResponse {
 export default function AdminUsersPage() {
   const { getToken } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
-  const [stats, setStats] = useState<Stats>({ total: 0, admins: 0, customers: 0 });
+  const [stats, setStats] = useState<Stats | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [loadedContext, setLoadedContext] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState(false);
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const requestId = useRef(0);
+  const active = useRef(false);
   const [roleFilter, setRoleFilter] = useState('all');
   const [updatingUserId, setUpdatingUserId] = useState<number | null>(null);
 
-  // Fetch users
-  const fetchUsers = async () => {
+  const context = JSON.stringify([appliedSearch, roleFilter]);
+  const hasData = loadedContext === context;
+
+  const fetchUsers = useCallback(async () => {
+    if (!active.current) return;
+    const id = ++requestId.current;
+    setLoading(true);
     try {
-      setLoading(true);
-      
       const params: Record<string, string> = {};
-      if (searchQuery) params.search = searchQuery;
+      if (appliedSearch) params.search = appliedSearch;
       if (roleFilter !== 'all') params.role = roleFilter;
-      
-      const response = await authGet<UsersIndexResponse>('/admin/users', getToken, { params });
-      
+      const response = await authGet<UsersIndexResponse>('/admin/users', getToken, { params, timeout: 20000 });
+      if (id !== requestId.current) return;
+      if (!Array.isArray(response.data.users) || !response.data.stats) throw new Error('Invalid users response');
       setUsers(response.data.users);
       setStats(response.data.stats);
+      setLoadedContext(context);
+      setLoadError(false);
     } catch (err) {
+      if (id !== requestId.current) return;
       console.error('Failed to fetch users:', err);
-      toast.error('Failed to load users');
+      setLoadError(true);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
-  };
+  }, [getToken, appliedSearch, roleFilter, context]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [roleFilter]);
+    active.current = true;
+    setLoadError(false);
+    void fetchUsers();
+    return () => { active.current = false; requestId.current += 1; };
+  }, [fetchUsers, refreshVersion]);
 
   const handleSearch = () => {
-    fetchUsers();
+    if (searchQuery === appliedSearch) void fetchUsers();
+    else setAppliedSearch(searchQuery);
   };
 
   // Toggle user role
@@ -83,16 +100,11 @@ export default function AdminUsersPage() {
       setUpdatingUserId(user.id);
       const response = await authPatch<AdminUserResponse>(`/admin/users/${user.id}`, { user: { role: newRole } }, getToken);
       
-      // Update user in list
-      setUsers(users.map(u => u.id === user.id ? response.data.user : u));
-      
-      // Update stats
-      if (newRole === 'admin') {
-        setStats({ ...stats, admins: stats.admins + 1, customers: stats.customers - 1 });
-      } else {
-        setStats({ ...stats, admins: stats.admins - 1, customers: stats.customers + 1 });
-      }
-      
+      if (!active.current) return;
+      // Reconcile the currently selected context, even if filters changed
+      // while the role update was pending. Counts come from the server.
+      setRefreshVersion(version => version + 1);
+
       toast.success(response.data.message);
     } catch (err) {
       console.error('Failed to update user:', err);
@@ -117,11 +129,16 @@ export default function AdminUsersPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Users</h1>
           <p className="text-gray-600 mt-1">Manage user accounts and admin access</p>
+          <button type="button" onClick={() => void fetchUsers()} disabled={loading} className="btn-secondary mt-3 min-h-11 disabled:opacity-60">Refresh users</button>
         </div>
       </div>
 
+      <div className="mb-6">
+        <AdminRequestState resource="Users" loading={loading} error={loadError} hasData={hasData} onRetry={() => void fetchUsers()} />
+      </div>
+
       {/* Stats Cards */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      {hasData && stats && <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-white rounded-lg shadow p-4 text-center">
           <p className="text-3xl font-bold text-gray-900">{stats.total}</p>
           <p className="text-sm text-gray-500">Total Users</p>
@@ -134,7 +151,7 @@ export default function AdminUsersPage() {
           <p className="text-3xl font-bold text-gray-600">{stats.customers}</p>
           <p className="text-sm text-gray-500">Customers</p>
         </div>
-      </div>
+      </div>}
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow p-4 mb-6">
@@ -173,16 +190,12 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Users List */}
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-tsPrimary"></div>
-        </div>
-      ) : users.length === 0 ? (
+      {!hasData || (users.length === 0 && (loading || loadError)) ? null : users.length === 0 ? (
         <div className="bg-white rounded-lg shadow p-12 text-center">
           <div className="mb-4"><svg className="w-16 h-16 mx-auto text-gray-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" /></svg></div>
           <h3 className="text-lg font-semibold text-gray-900 mb-2">No users found</h3>
           <p className="text-gray-600">
-            {searchQuery || roleFilter !== 'all' 
+            {appliedSearch || roleFilter !== 'all'
               ? 'Try adjusting your search or filters.'
               : 'Users will appear here once they sign in.'}
           </p>
