@@ -1,0 +1,35 @@
+# Continuous integration
+
+The root `.github/workflows/ci.yml` runs on pull requests and pushes to main.
+
+- API: Ruby from `api/.ruby-version`, PostgreSQL 16, `bin/rails db:prepare`, all RSpec examples, and Brakeman. No live provider credentials are required. Test databases disable demo seeds; specs own their factory data.
+- Web: Node 22, `npm ci`, ESLint regression checks, and `npm run build` (TypeScript plus Vite). No web unit-test script is currently configured. Playwright is intentionally deferred until its fixtures are stable.
+
+Run locally with an isolated database, never a shared development/test database:
+
+```sh
+cd api
+RAILS_ENV=test DATABASE_URL=postgres://localhost/your_isolated_test bin/rails db:prepare
+CI=true RAILS_ENV=test DATABASE_URL=postgres://localhost/your_isolated_test bundle exec rspec
+bin/brakeman --quiet --no-pager --exit-on-warn --exit-on-error
+```
+
+```sh
+cd web
+npm ci
+npm run lint:ci
+npm run build
+```
+
+## Inherited debt
+
+[Issue #40](https://github.com/Shimizu-Technology/three-squares/issues/40) tracks the measured baseline at `c46a401`:
+
+- Strict `npm run lint`: 34 errors and 25 warnings. `lint:ci` still prints all findings and rejects error counts above the committed per-file/rule baseline, including errors in new files. It does not claim strict lint is clean. Reduce baseline entries as debt is fixed; do not increase them to accommodate regressions.
+- RuboCop: 701 offenses across 250 files, mostly quotes and bracket spacing. It is not a CI gate yet; a dedicated formatting PR should retire this debt rather than mix hundreds of edits into the CI repair.
+- Demo seeds fail variant validation on a fresh database. Tests use factories and must not load restaurant seed data.
+- Dependency audits also report inherited advisories. Dependency updates require a separate reviewed slice; neither `npm audit` nor `bin/bundler-audit` is a gate introduced by this CI repair. Inspect their output before launch.
+
+Brakeman retains the documented admin-only role-assignment exception. Its fingerprint was refreshed after the permitted assigned-location parameter changed; authentication and `require_admin!` still guard the action.
+
+CI changes no production environment variables, service state, migrations, or availability checks. Production continues to show its paused preview while the configured API health endpoint is unavailable.

@@ -1,10 +1,10 @@
 {
   "ignored_warnings": [
     {
-      "fingerprint": "c849673ec276dca981ab3f0ff4de047608ba672d361513972cf6b2a169ddfb2e",
-      "note": "Admin-only endpoint — role update is intentional functionality"
+      "fingerprint": "0a86423c29e6719706c390bbcef15ced27f49205572a388354891de4df71290c",
+      "note": "Role assignment is intentional on UsersController#update; authenticate_request and require_admin! run before this action. Replaces the stale fingerprint after assigned_location_id was added; review RBAC in PR #33."
     }
   ],
-  "updated": "2026-02-05",
+  "updated": "2026-10-27",
   "brakeman_version": "7.1.1"
 }
