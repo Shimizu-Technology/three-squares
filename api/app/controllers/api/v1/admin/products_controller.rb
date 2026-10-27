@@ -237,7 +237,7 @@ module Api
         # and shared stock. The later packing/POS slice supplies its fast UI.
         def availability
           attrs = params.require(:availability)
-          unless (attrs.keys - %w[location_id available]).empty? && [true, false].include?(attrs[:available])
+          unless (attrs.keys - %w[location_id available]).empty? && [ true, false ].include?(attrs[:available])
             return render_error("Supply only a location and a boolean available value", status: :unprocessable_entity)
           end
           return staff_record_missing! unless staff_access_policy.location_allowed?(attrs[:location_id])
