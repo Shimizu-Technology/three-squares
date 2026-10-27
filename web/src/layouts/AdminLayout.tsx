@@ -32,6 +32,7 @@ const ROUTE_META: Record<string, RouteMeta> = {
   '/admin/inventory':                { title: 'Inventory',        parent: '/admin' },
   '/admin/analytics':                { title: 'Analytics',        parent: '/admin' },
   '/admin/catering':                 { title: 'Catering',         parent: '/admin' },
+  '/admin/devices':                  { title: 'Devices',          parent: '/admin' },
   '/admin/users':                    { title: 'Users',            parent: '/admin' },
   '/admin/import':                   { title: 'CSV Import',       parent: '/admin' },
   '/admin/settings':                 { title: 'Settings',         parent: '/admin' },
@@ -171,6 +172,7 @@ export default function AdminLayout() {
     { name: 'Shipping Queue', path: '/admin/orders/shipping-queue', icon: 'shipping_queue' },
   ];
   const systemNavigation: NavItem[] = [
+    { name: 'Devices',  path: '/admin/devices', icon: 'devices' },
     { name: 'Users',    path: '/admin/users', icon: 'users' },
     { name: 'Import',   path: '/admin/import', icon: 'import' },
     { name: 'Settings', path: '/admin/settings', icon: 'settings' },
