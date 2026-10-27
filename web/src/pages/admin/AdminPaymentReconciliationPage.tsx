@@ -29,8 +29,7 @@ export default function AdminPaymentReconciliationPage() {
   const { getToken } = useAuth();
   if (access.loading) return <p role="status" className="p-6">Checking accounting access…</p>;
   const user = access.user;
-  // String comparison permits this bounded worker to compile before the parent registers the capability.
-  const allowed = user && (user.role === 'owner' || user.role === 'manager') && user.operational_scope === 'all' && (user.capabilities as readonly string[]).includes('payments.reconcile');
+  const allowed = user && (user.role === 'owner' || user.role === 'manager') && user.operational_scope === 'all' && access.can('payments.reconcile');
   if (!allowed || !user) return <StaffAccessDenied />;
   return <ReconciliationWorkspace key={`${user.id}:${user.clerk_id}:${user.role}:${user.operational_scope}:${user.capabilities.join(',')}`} user={user} canSimulate={user.role === 'owner' && access.can('payments.simulate')} getToken={getToken} />;
 }
@@ -41,9 +40,9 @@ function ReconciliationWorkspace({ user, canSimulate, getToken }: { user: StaffA
   const requestedEnvironment = search.get('environment') || 'production';
   const environment: PaymentEnvironment = requestedEnvironment === 'sandbox' ? 'sandbox' : requestedEnvironment === 'simulated' && import.meta.env.DEV && canSimulate ? 'simulated' : 'production';
   const forbiddenEnvironment = requestedEnvironment !== environment;
-  const identityId = positiveId(search.get('identity_id'));
+  const identityId = search.get('identity_id') || undefined;
   const locationId = positiveId(search.get('location_id'));
-  const batchId = positiveId(search.get('batch_id'));
+  const batchId = search.get('batch_id') || undefined;
   const from = search.get('from') || defaults.from;
   const to = search.get('to') || defaults.to;
   const queryKey = JSON.stringify({ environment, identityId, locationId, from, to });
@@ -67,6 +66,7 @@ function ReconciliationWorkspace({ user, canSimulate, getToken }: { user: StaffA
   const feedback = useRef<HTMLDivElement>(null);
   const active = useRef(false);
   const alive = useRef(false);
+  const activeView = useRef(queryKey);
   const fileSequence = useRef(0);
   const inputId = useId();
   const current = data?.key === queryKey ? data.value : null;
@@ -98,6 +98,7 @@ function ReconciliationWorkspace({ user, canSimulate, getToken }: { user: StaffA
     return () => { alive.current = false; fileSequence.current += 1; window.removeEventListener('storage', onStorage); };
   }, []);
   useEffect(() => {
+    activeView.current = queryKey;
     const abort = new AbortController();
     setLoading(true); setLoadError(''); setConfirmation(null);
     if (!datesValid || forbiddenEnvironment) { setLoading(false); return () => abort.abort(); }
@@ -147,7 +148,7 @@ function ReconciliationWorkspace({ user, canSimulate, getToken }: { user: StaffA
         return token;
       };
       const response = await dispatchAccountingAction(operation, guardedToken, operation.kind === 'import' ? file?.csv : undefined);
-      if (!alive.current) return;
+      if (!alive.current || activeView.current !== queryKey) return;
       setResult(response.data);
       if (!confirmedAccountingResult(operation, response)) {
         setError('The saved request is still unconfirmed. Keep its original details and key; check or retry that same request.');
@@ -159,7 +160,7 @@ function ReconciliationWorkspace({ user, canSimulate, getToken }: { user: StaffA
       }
       await reload();
     } catch (cause) {
-      if (alive.current) {
+      if (alive.current && activeView.current === queryKey) {
         setSaved(readAccountingAction());
         const status = accountingErrorStatus(cause);
         // A replay rejection does not resolve a possibly committed original request.
@@ -187,11 +188,11 @@ function ReconciliationWorkspace({ user, canSimulate, getToken }: { user: StaffA
         if (!alive.current) throw new Error('Signed-in account changed.');
         assertSavedAccountingAction(operation, user.id, context); return token;
       });
-      if (!alive.current) return;
+      if (!alive.current || activeView.current !== queryKey) return;
       if (!confirmedAccountingResult(operation, { status: 200, data: { ...found } })) throw new Error('The saved import does not confirm this original file and key. Preserve the request and resolve the conflict before continuing.');
       clearAccountingAction(operation); setSaved(readAccountingAction()); setResult({ ...found }); setNotice('Saved import found. Review its state and summary below.'); setImportMissing(null); await reload();
     } catch (cause) {
-      if (alive.current) {
+      if (alive.current && activeView.current === queryKey) {
         if (accountingErrorStatus(cause) === 404) { setImportMissing(operation.key); setError('No durable import was found yet (404). Reselect the same file, verify its SHA-256, and replay the original key. Keep this saved request.'); }
         else setError(message(cause));
       }
@@ -238,7 +239,7 @@ function ReconciliationWorkspace({ user, canSimulate, getToken }: { user: StaffA
     {pending && <section className={`${card} border-amber-300 bg-amber-50`} aria-labelledby={`${inputId}-pending`}>
       <h2 id={`${inputId}-pending`} className="text-lg font-semibold">Saved request needs resolution</h2>
       <p className="text-sm">Account #{pending.identity_id} · {pending.environment} · Request key: {pending.key}</p>
-      {pending.actor_id !== user.id ? <p role="alert">This request belongs to another signed-in user. Only the original user can check or replay it. New changes are blocked.</p> : !matches ? <p role="alert">Return to the original account and environment to check this request. New changes are blocked.</p> : <>
+      {pending.actor_id !== user.id ? <p role="alert">This request belongs to another signed-in user. Only the original user can check or replay it. New changes are blocked.</p> : !matches ? <div className="space-y-2"><p role="alert">Return to the original account and environment to check this request. New changes are blocked.</p>{(pending.environment !== 'simulated' || (import.meta.env.DEV && canSimulate)) && <button type="button" className={button} onClick={() => setSearch(previous => { const next = new URLSearchParams(previous); next.set('environment', pending.environment); next.set('identity_id', pending.identity_id); next.delete('location_id'); next.delete('batch_id'); return next; })}>Open saved request’s account</button>}</div> : <>
         {pending.kind === 'import' ? <>
           <p className="text-sm">File SHA-256: {pending.file_sha256}. Only this fingerprint is saved; file contents are never stored in browser recovery data.</p>
           <button type="button" className={button} disabled={busy || !ready} onClick={() => void checkImport()}>Check saved import</button>
@@ -313,7 +314,7 @@ function Truncation({ truncated, label }: { truncated: boolean; label: string })
 function BatchFacts({ batch, report }: { batch: AccountingBatch; report: AccountingReport }) {
   return <div className="space-y-1 text-sm"><h3 className="font-semibold">{batch.external_id} (#{batch.id})</h3><p>Location: {report.locations.find(row => row.id === batch.location_id)?.name ?? batch.location_id ?? 'Not supplied'} · Terminal: {batch.terminal_id ?? 'Not supplied'}</p><p>Guam business date: {batch.business_date}</p><p>Original provider batch date: {batch.provider_batch_date ?? 'Not supplied'}</p><p>Closed at: {batch.closed_at ?? 'Not supplied'}</p><p>Sales: {formatAccountingCents(batch.sales_cents)} · Returns: {formatAccountingCents(batch.returns_cents)}</p><p>Fees: {formatAccountingCents(batch.fees_cents)} · Adjustments: {formatAccountingCents(batch.adjustments_cents)}</p><p className="font-semibold">Net: {formatAccountingCents(batch.amount_cents)}</p><p>Allocated: {formatAccountingCents(batch.allocated_cents)} · Remaining: {formatAccountingCents(batch.remaining_cents)}</p></div>;
 }
-function BatchDetails({ batchId, context, report, getToken, refresh, onClose }: { batchId: number; context: AccountingContext; report: AccountingReport; getToken: GetTokenFn; refresh: number; onClose: () => void }) {
+function BatchDetails({ batchId, context, report, getToken, refresh, onClose }: { batchId: string; context: AccountingContext; report: AccountingReport; getToken: GetTokenFn; refresh: number; onClose: () => void }) {
   const [response, setResponse] = useState<{ key: string; data: BatchDetail | null; error: string } | null>(null);
   const [retry, setRetry] = useState(0);
   const { identity_id, environment } = context;

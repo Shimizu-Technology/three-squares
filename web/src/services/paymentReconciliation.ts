@@ -1,18 +1,18 @@
 import type { GetTokenFn } from './authApi';
 import type { PaymentEnvironment } from '../types/paymentReceipt';
 
-export interface AccountingIdentity { id: number; provider: string; environment: PaymentEnvironment; account_id: string; currency: string }
-export interface AccountingContext { identity_id: number; environment: PaymentEnvironment }
+export interface AccountingIdentity { id: string; provider: string; environment: PaymentEnvironment; account_id: string; currency: string }
+export interface AccountingContext { identity_id: string; environment: PaymentEnvironment }
 export interface AccountingBatch {
-  id: number; external_id: string; location_id: number | null; terminal_id: string | null;
+  id: string; external_id: string; location_id: number | null; terminal_id: string | null;
   business_date: string; provider_batch_date: string | null; closed_at: string | null;
   sales_cents: number; returns_cents: number; fees_cents: number; adjustments_cents: number;
   amount_cents: number; allocated_cents: number; remaining_cents: number;
 }
-export interface AccountingDeposit { id: number; external_id: string; deposit_date: string; amount_cents: number; allocated_cents: number; remaining_cents: number }
-export interface AccountingException { id: number; category: string; state: string; facts: unknown; settlement_batch_id: number | null; funding_deposit_id: number | null; review_reason: string | null; reviewed_at: string | null }
-export interface AccountingImport { id: number; operation_key: string; payload_digest: string; source: string; state: string; summary: unknown; processed_at: string | null }
-export interface VoidableAttempt { attempt_id: number; order_number: string; amount_cents: number }
+export interface AccountingDeposit { id: string; external_id: string; deposit_date: string; amount_cents: number; allocated_cents: number; remaining_cents: number }
+export interface AccountingException { id: string; category: string; state: string; facts: unknown; settlement_batch_id: string | null; funding_deposit_id: string | null; review_reason: string | null; reviewed_at: string | null }
+export interface AccountingImport { id: string; operation_key: string; payload_digest: string; source: string; state: string; summary: unknown; processed_at: string | null }
+export interface VoidableAttempt { attempt_id: string; order_number: string; amount_cents: number }
 export interface AccountingReport {
   identity: AccountingIdentity; from: string; to: string; accounting_time: string | null;
   locations: { id: number; name: string }[]; voidable_attempts: VoidableAttempt[];
@@ -23,11 +23,11 @@ export interface AccountingReport {
 export interface AccountingIndex { accounts: AccountingIdentity[]; report: AccountingReport | null }
 export interface BatchDetail {
   batch: AccountingBatch;
-  items: { id: number; external_id: string; entry_type: string; amount_cents: number; transaction_id: string | null; original_reference: string | null; occurred_at: string | null; provider_local_time: string | null; provider_offset: string | null; business_date: string | null; location_id: number | null; terminal_id: string | null }[];
-  allocations: { id: number; external_id: string; funding_deposit_id: number; amount_cents: number; reason: string | null }[];
+  items: { id: string; external_id: string; entry_type: string; amount_cents: number; transaction_id: string | null; original_reference: string | null; occurred_at: string | null; provider_local_time: string | null; provider_offset: string | null; business_date: string | null; location_id: number | null; terminal_id: string | null }[];
+  allocations: { id: string; external_id: string; funding_deposit_id: string; amount_cents: number; reason: string | null }[];
   truncated: boolean;
 }
-export type AccountingFilters = { environment: PaymentEnvironment; identity_id?: number; from?: string; to?: string; location_id?: number };
+export type AccountingFilters = { environment: PaymentEnvironment; identity_id?: string; from?: string; to?: string; location_id?: number };
 const base = '/admin/payment_reconciliation';
 
 // Use the shared API client (Bearer authentication, device headers and auth-error handling).
@@ -37,7 +37,7 @@ export async function accountingGet<T>(path: string, params: object, getToken: G
   return (await authGet<T>(`${base}${path}`, getToken, { params, signal, timeout: 20000 })).data;
 }
 export const getAccountingReport = (filters: AccountingFilters, getToken: GetTokenFn, signal?: AbortSignal) => accountingGet<AccountingIndex>('', filters, getToken, signal);
-export const getAccountingBatch = (id: number, context: AccountingContext, getToken: GetTokenFn, signal?: AbortSignal) => accountingGet<BatchDetail>(`/batches/${id}`, context, getToken, signal);
+export const getAccountingBatch = (id: string, context: AccountingContext, getToken: GetTokenFn, signal?: AbortSignal) => accountingGet<BatchDetail>(`/batches/${id}`, context, getToken, signal);
 export const checkAccountingImport = (context: AccountingContext, key: string, getToken: GetTokenFn) => accountingGet<AccountingImport>('/import_status', { ...context, operation_key: key }, getToken);
 
 export async function downloadAccountingCSV(path: '/export' | '/simulated_funding', params: object, getToken: GetTokenFn, filename: string): Promise<void> {
@@ -92,11 +92,11 @@ export async function accountingFileDigest(bytes: ArrayBuffer): Promise<string> 
 
 export type AccountingAction =
   | { kind: 'import'; file_sha256: string }
-  | { kind: 'allocate'; batch_id: number; deposit_id: number; amount_cents: number; reason: string }
-  | { kind: 'review'; exception_id: number; reason: string }
+  | { kind: 'allocate'; batch_id: string; deposit_id: string; amount_cents: number; reason: string }
+  | { kind: 'review'; exception_id: string; reason: string }
   | { kind: 'simulate_close'; scenario: string; lag_days: number; fee_cents: number }
   | { kind: 'advance_simulation'; seconds: number }
-  | { kind: 'simulate_void'; attempt_id: number; order_number: string; amount_cents: number };
+  | { kind: 'simulate_void'; attempt_id: string; order_number: string; amount_cents: number };
 export type PendingAccountingAction = AccountingAction & AccountingContext & { version: 1; actor_id: number; key: string };
 export type SavedAccountingAction = { pending: PendingAccountingAction | null; blocked: boolean };
 export interface AccountingStorage { getItem(key: string): string | null; setItem(key: string, value: string): void; removeItem(key: string): void }
@@ -113,14 +113,14 @@ export function readAccountingAction(storage?: AccountingStorage): SavedAccounti
     const raw = (storage ?? localStorage).getItem(accountingStorageKey);
     if (!raw) return { pending: null, blocked: false };
     const v: unknown = JSON.parse(raw);
-    if (!record(v) || v.version !== 1 || !positive(v.actor_id) || !positive(v.identity_id) || !uuid(v.key) || !['production', 'sandbox', 'simulated'].includes(String(v.environment))) throw new Error('Invalid context');
+    if (!record(v) || v.version !== 1 || !positive(v.actor_id) || !uuid(v.identity_id) || !uuid(v.key) || !['production', 'sandbox', 'simulated'].includes(String(v.environment))) throw new Error('Invalid context');
     let action: AccountingAction;
     if (v.kind === 'import' && typeof v.file_sha256 === 'string' && /^[a-f\d]{64}$/.test(v.file_sha256)) action = { kind: v.kind, file_sha256: v.file_sha256 };
-    else if (v.kind === 'allocate' && positive(v.batch_id) && positive(v.deposit_id) && Number.isSafeInteger(v.amount_cents) && v.amount_cents !== 0 && reason(v.reason)) action = { kind: v.kind, batch_id: v.batch_id, deposit_id: v.deposit_id, amount_cents: v.amount_cents as number, reason: v.reason };
-    else if (v.kind === 'review' && positive(v.exception_id) && reason(v.reason)) action = { kind: v.kind, exception_id: v.exception_id, reason: v.reason };
+    else if (v.kind === 'allocate' && uuid(v.batch_id) && uuid(v.deposit_id) && Number.isSafeInteger(v.amount_cents) && v.amount_cents !== 0 && reason(v.reason)) action = { kind: v.kind, batch_id: v.batch_id, deposit_id: v.deposit_id, amount_cents: v.amount_cents as number, reason: v.reason };
+    else if (v.kind === 'review' && uuid(v.exception_id) && reason(v.reason)) action = { kind: v.kind, exception_id: v.exception_id, reason: v.reason };
     else if (v.kind === 'simulate_close' && ['ordinary', 'combined', 'split', 'weekend', 'missing', 'duplicate', 'mismatch', 'external_refund'].includes(String(v.scenario)) && integer(v.lag_days, 0, 14) && integer(v.fee_cents, 0, 10000)) action = { kind: v.kind, scenario: v.scenario as string, lag_days: v.lag_days as number, fee_cents: v.fee_cents as number };
     else if (v.kind === 'advance_simulation' && integer(v.seconds, 1, 2678400)) action = { kind: v.kind, seconds: v.seconds as number };
-    else if (v.kind === 'simulate_void' && positive(v.attempt_id) && typeof v.order_number === 'string' && v.order_number.length > 0 && v.order_number.length <= 200 && integer(v.amount_cents, 1, Number.MAX_SAFE_INTEGER)) action = { kind: v.kind, attempt_id: v.attempt_id, order_number: v.order_number, amount_cents: v.amount_cents as number };
+    else if (v.kind === 'simulate_void' && uuid(v.attempt_id) && typeof v.order_number === 'string' && v.order_number.length > 0 && v.order_number.length <= 200 && integer(v.amount_cents, 1, Number.MAX_SAFE_INTEGER)) action = { kind: v.kind, attempt_id: v.attempt_id, order_number: v.order_number, amount_cents: v.amount_cents as number };
     else throw new Error('Invalid action');
     const pending: PendingAccountingAction = { ...action, version: 1, actor_id: v.actor_id, identity_id: v.identity_id, environment: v.environment as PaymentEnvironment, key: v.key };
     if (Object.keys(v).sort().join(',') !== Object.keys(pending).sort().join(',')) throw new Error('Unexpected saved fields');
@@ -174,10 +174,10 @@ export function confirmedAccountingResult(operation: PendingAccountingAction, re
   const { status, data } = response;
   if (status !== 200 || data.pending === true || data.status === 'unknown') return false;
   switch (operation.kind) {
-    case 'import': return positive(data.id) && data.operation_key === operation.key && data.payload_digest === operation.file_sha256 && ['succeeded', 'conflicted'].includes(String(data.state));
-    case 'allocate': return positive(data.id) && data.amount_cents === operation.amount_cents;
+    case 'import': return uuid(data.id) && data.operation_key === operation.key && data.payload_digest === operation.file_sha256 && ['succeeded', 'conflicted'].includes(String(data.state));
+    case 'allocate': return uuid(data.id) && data.amount_cents === operation.amount_cents;
     case 'review': return data.id === operation.exception_id && data.state === 'reviewed' && data.review_reason === operation.reason;
-    case 'simulate_close': return positive(data.id) && data.operation_key === operation.key && ['succeeded', 'conflicted'].includes(String(data.state));
+    case 'simulate_close': return uuid(data.id) && data.operation_key === operation.key && ['succeeded', 'conflicted'].includes(String(data.state));
     case 'advance_simulation': return typeof data.accounting_time === 'string' && Number.isFinite(Date.parse(data.accounting_time));
     case 'simulate_void': return typeof data.success === 'boolean' && ((data.success && data.status === 'succeeded') || (!data.success && data.status === 'failed'));
   }

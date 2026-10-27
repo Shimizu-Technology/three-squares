@@ -5,8 +5,9 @@ import {
   confirmedAccountingResult, defaultAccountingDates, formatAccountingCents, MAX_ACCOUNTING_FILE_BYTES, parseSignedCents,
   prepareAccountingAction, readAccountingAction, sameAccountingContext, validAccountingDates,
 } from '../src/services/paymentReconciliation.ts';
-const context = { identity_id: 11, environment: 'production' };
-const allocation = { kind: 'allocate', batch_id: 12, deposit_id: 13, amount_cents: -109, reason: 'Documented adjustment' };
+const dbId = n => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+const context = { identity_id: dbId(11), environment: 'production' };
+const allocation = { kind: 'allocate', batch_id: dbId(12), deposit_id: dbId(13), amount_cents: -109, reason: 'Documented adjustment' };
 function storageFixture() {
   const values = new Map();
   return { getItem: key => values.get(key) ?? null, setItem: (key, value) => values.set(key, value), removeItem: key => values.delete(key) };
@@ -54,7 +55,7 @@ test('actor, identity and environment changes cannot replay another saved reques
   const original = prepareAccountingAction(allocation, 4, context, storage);
   assert.equal(sameAccountingContext(original, 5, context), false);
   assert.throws(() => assertSavedAccountingAction(original, 5, context, storage), /account changed/);
-  assert.throws(() => assertSavedAccountingAction(original, 4, { ...context, identity_id: 20 }, storage), /account changed/);
+  assert.throws(() => assertSavedAccountingAction(original, 4, { ...context, identity_id: dbId(20) }, storage), /account changed/);
   assert.throws(() => assertSavedAccountingAction(original, 4, { ...context, environment: 'sandbox' }, storage), /account changed/);
   clearAccountingAction(original, storage);
   const next = prepareAccountingAction(allocation, 4, context, storage);
@@ -79,14 +80,14 @@ test('simulated mutations preserve exact close, clock and explicit void target a
   for (const action of [
     { kind: 'simulate_close', scenario: 'split', lag_days: 14, fee_cents: 10000 },
     { kind: 'advance_simulation', seconds: 259200 },
-    { kind: 'simulate_void', attempt_id: 17, order_number: 'ORDER-EXACT', amount_cents: 12345 },
+    { kind: 'simulate_void', attempt_id: dbId(17), order_number: 'ORDER-EXACT', amount_cents: 12345 },
   ]) {
     const storage = storageFixture();
-    const simulated = { identity_id: 22, environment: 'simulated' };
+    const simulated = { identity_id: dbId(22), environment: 'simulated' };
     const original = prepareAccountingAction(action, 4, simulated, storage);
     assert.deepEqual(readAccountingAction(storage).pending, original);
     assert.doesNotThrow(() => assertSavedAccountingAction(original, 4, simulated, storage));
-    assert.throws(() => prepareAccountingAction({ ...action, attempt_id: 99 }, 4, simulated, storage), /Resolve the saved/);
+    assert.throws(() => prepareAccountingAction({ ...action, attempt_id: dbId(99) }, 4, simulated, storage), /Resolve the saved/);
     const otherStorage = storageFixture();
     assert.throws(() => prepareAccountingAction(action, 4, context, otherStorage), /Invalid accounting request/);
   }
@@ -95,7 +96,7 @@ test('simulated mutations preserve exact close, clock and explicit void target a
 test('only confirmed original import facts release recovery; conflicts and pending results retain it', () => {
   const storage = storageFixture();
   const pending = prepareAccountingAction({ kind: 'import', file_sha256: 'a'.repeat(64) }, 4, context, storage);
-  const data = { id: 12, operation_key: pending.key, payload_digest: pending.file_sha256, state: 'succeeded' };
+  const data = { id: dbId(12), operation_key: pending.key, payload_digest: pending.file_sha256, state: 'succeeded' };
   assert.equal(confirmedAccountingResult(pending, { status: 200, data }), true);
   assert.equal(confirmedAccountingResult(pending, { status: 200, data: { ...data, state: 'conflicted' } }), true);
   for (const response of [
@@ -106,7 +107,7 @@ test('only confirmed original import facts release recovery; conflicts and pendi
   assert.deepEqual(readAccountingAction(storage).pending, pending);
 });
 test('unknown voids keep the original target; HTTP 200 failed voids are definitive failures', () => {
-  const pending = prepareAccountingAction({ kind: 'simulate_void', attempt_id: 17, order_number: 'ORDER-EXACT', amount_cents: 12345 }, 4, { identity_id: 22, environment: 'simulated' }, storageFixture());
+  const pending = prepareAccountingAction({ kind: 'simulate_void', attempt_id: dbId(17), order_number: 'ORDER-EXACT', amount_cents: 12345 }, 4, { identity_id: dbId(22), environment: 'simulated' }, storageFixture());
   assert.equal(confirmedAccountingResult(pending, { status: 202, data: { success: false, status: 'unknown' } }), false);
   assert.equal(confirmedAccountingResult(pending, { status: 200, data: { success: false, status: 'unknown' } }), false);
   assert.equal(confirmedAccountingResult(pending, { status: 200, data: { success: false, status: 'failed', error: 'Refund failed' } }), true);
@@ -114,14 +115,25 @@ test('unknown voids keep the original target; HTTP 200 failed voids are definiti
 });
 test('allocation confirmation must return the exact signed amount, and reviews the exact reason', () => {
   const allocationRequest = prepareAccountingAction(allocation, 4, context, storageFixture());
-  assert.equal(confirmedAccountingResult(allocationRequest, { status: 200, data: { id: 31, amount_cents: -109 } }), true);
-  assert.equal(confirmedAccountingResult(allocationRequest, { status: 200, data: { id: 31, amount_cents: 109 } }), false);
-  const reviewRequest = prepareAccountingAction({ kind: 'review', exception_id: 9, reason: 'Evidence checked' }, 4, context, storageFixture());
-  assert.equal(confirmedAccountingResult(reviewRequest, { status: 200, data: { id: 9, state: 'reviewed', review_reason: 'Evidence checked' } }), true);
-  assert.equal(confirmedAccountingResult(reviewRequest, { status: 200, data: { id: 9, state: 'reviewed', review_reason: 'Other reason' } }), false);
+  assert.equal(confirmedAccountingResult(allocationRequest, { status: 200, data: { id: dbId(31), amount_cents: -109 } }), true);
+  assert.equal(confirmedAccountingResult(allocationRequest, { status: 200, data: { id: dbId(31), amount_cents: 109 } }), false);
+  const reviewRequest = prepareAccountingAction({ kind: 'review', exception_id: dbId(9), reason: 'Evidence checked' }, 4, context, storageFixture());
+  assert.equal(confirmedAccountingResult(reviewRequest, { status: 200, data: { id: dbId(9), state: 'reviewed', review_reason: 'Evidence checked' } }), true);
+  assert.equal(confirmedAccountingResult(reviewRequest, { status: 200, data: { id: dbId(9), state: 'reviewed', review_reason: 'Other reason' } }), false);
 });
 
 test('a browser storage access failure blocks recovery without pretending there is no request', () => {
   const denied = { getItem: () => { throw new Error('Storage access denied'); }, setItem: () => {}, removeItem: () => {} };
   assert.deepEqual(readAccountingAction(denied), { pending: null, blocked: true });
+});
+
+test('API UUIDs survive recovery and numeric accounting identifiers are rejected', () => {
+  const storage = storageFixture();
+  const pending = prepareAccountingAction(allocation, 4, context, storage);
+  assert.equal(typeof pending.identity_id, 'string');
+  assert.equal(pending.identity_id, dbId(11));
+  assert.equal(readAccountingAction(storage).pending.batch_id, dbId(12));
+  storage.setItem(accountingStorageKey, JSON.stringify({ ...pending, identity_id: 11 }));
+  assert.deepEqual(readAccountingAction(storage), { pending: null, blocked: true });
+  assert.equal(confirmedAccountingResult(pending, { status: 200, data: { id: 31, amount_cents: -109 } }), false);
 });
