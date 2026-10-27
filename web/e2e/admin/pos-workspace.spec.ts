@@ -94,3 +94,36 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 2)).toBe(true);
   });
 }
+
+test('cash and card readiness recover together after a failed menu refresh', async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 1024 });
+  let fail = false;
+  let release!: () => void;
+  let delay = false;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  await page.route('**/api/v1/admin/payment_terminals**', route => route.fulfill({ json: { terminals: [{ id: 9191, label: 'QA simulated reader', location_id: 91, environment: 'simulated', status: 'idle', attempt_id: null }] } }));
+  await page.route('**/api/v1/admin/pos/menu**', async route => {
+    if (delay) await gate;
+    if (fail) return route.fulfill({ status: 500, json: { error: 'QA unavailable menu' } });
+    await route.fulfill({ json: { locations: [{ id: 91, name: 'QA counter' }], categories: [{ name: 'Lunch', items: [{ id: 201, name: 'QA card readiness meal', slug: 'qa-card-readiness', product_type: 'local', image_url: null, variants: [{ id: 1201, name: 'Default', price_cents: 1000, price_formatted: '$10.00', sku: 'QA', in_stock: true, stock_quantity: 0, available_quantity: null, inventory_pool_key: null }] }] }], total_products: 1 } });
+  });
+  await page.goto('/admin/pos');
+  const card = page.getByRole('button', { name: 'Card (simulated)', exact: true });
+  const cash = page.getByRole('button', { name: 'Cash', exact: true });
+  await expect(card).toBeVisible();
+  const panel = page.locator('details').filter({ hasText: 'Simulated payments — no money moves' });
+  if (await panel.getAttribute('open') !== null) await panel.locator('summary').click();
+  await expect(card).toBeDisabled();
+  await page.getByRole('button', { name: /QA card readiness meal/ }).filter({ has: page.locator('.line-clamp-2') }).click();
+  await expect(cash).toBeEnabled(); await expect(card).toBeEnabled();
+  delay = true; fail = true;
+  await page.getByRole('button', { name: 'Refresh menu', exact: true }).click();
+  await expect(cash).toBeDisabled(); await expect(card).toBeDisabled();
+  delay = false; release();
+  await expect(page.getByText('POS menu and locations unavailable', { exact: true })).toBeVisible();
+  await expect(cash).toBeDisabled(); await expect(card).toBeDisabled();
+  fail = false;
+  await page.getByRole('button', { name: 'Retry', exact: true }).click();
+  await expect(cash).toBeEnabled(); await expect(card).toBeEnabled();
+  // Never click Card: this case proves the shared readiness gate only.
+});
