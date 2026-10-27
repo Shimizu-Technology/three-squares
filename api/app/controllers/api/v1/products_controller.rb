@@ -2,6 +2,7 @@ module Api
   module V1
     class ProductsController < ApplicationController
       COOKIE_COLLECTION_SLUGS = %w[cookies cookie-boxes mini-cookies].freeze
+      before_action :set_menu_time
       before_action :set_product, only: [ :show ]
 
       # GET /api/v1/products
@@ -19,9 +20,11 @@ module Api
 
         # Collection filter - support both ID and slug
         if params[:collection].present?
-          @products = @products.joins(:collections).where(collections: { slug: params[:collection] })
+          @products = @products.joins(:collections).merge(Collection.ordering_at(@menu_time).for_enabled_storefronts)
+            .where(collections: { slug: params[:collection] })
         elsif params[:collection_id].present?
-          @products = @products.joins(:collections).where(collections: { id: params[:collection_id] })
+          @products = @products.joins(:collections).merge(Collection.ordering_at(@menu_time).for_enabled_storefronts)
+            .where(collections: { id: params[:collection_id] })
         end
 
         @products = @products.where(featured: true) if params[:featured] == "true"
@@ -100,6 +103,14 @@ module Api
 
       private
 
+      def set_menu_time
+        @menu_time = Time.current
+      end
+
+      def visible_collections(product)
+        product.collections.visible_at(@menu_time).for_enabled_storefronts
+      end
+
       def set_product
         @product = public_products_scope.find_by(id: params[:id]) ||
                    public_products_scope.find_by(slug: params[:id])
@@ -108,7 +119,7 @@ module Api
       end
 
       def public_products_scope
-        StorefrontEligibility.scope(Product.published.active)
+        MenuEligibility.scope(StorefrontEligibility.scope(Product.published.active), at: @menu_time)
           .includes(:product_variants, :product_images, :collections, :product_locations)
       end
 
@@ -130,7 +141,7 @@ module Api
           in_stock: product.in_stock?,
           actually_available: product.actually_available?,
           primary_image_url: product.primary_image&.signed_url,
-          collections: product.collections.map { |c| { id: c.id, name: c.name, slug: c.slug } },
+          collections: visible_collections(product).map { |c| { id: c.id, name: c.name, slug: c.slug } },
           variant_count: product.product_variants.available.count,
           total_stock: product.product_variants.sum(:stock_quantity),
           created_at: product.created_at
@@ -159,7 +170,7 @@ module Api
           product_low_stock_threshold: product.product_low_stock_threshold,
           in_stock: product.in_stock?,
           actually_available: product.actually_available?,
-          collections: product.collections.map { |c|
+          collections: visible_collections(product).map { |c|
             {
               id: c.id,
               name: c.name,
