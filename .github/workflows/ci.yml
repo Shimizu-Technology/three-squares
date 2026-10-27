@@ -39,6 +39,8 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/three_squares_ci_test
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - uses: ruby/setup-ruby@v1
         with:
           working-directory: api
@@ -59,12 +61,16 @@ jobs:
         working-directory: web
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
+      - name: Verify lint regression gate
+        run: npm run test:ci-tools
       - name: Lint without adding inherited errors
         run: npm run lint:ci
       - name: Typecheck and build
