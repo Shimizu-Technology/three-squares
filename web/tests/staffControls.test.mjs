@@ -11,6 +11,7 @@ const react = dataModule(`
   export const useState = initial => [typeof initial === 'function' ? initial() : initial, () => {}];
   export const useRef = initial => ({ current: initial });
   export const useMemo = fn => fn(); export const useCallback = fn => fn;
+  export const useId = () => "synthetic-id";
   export const useEffect = () => {}; export const lazy = () => () => null;
   export const Suspense = () => null;
 `);

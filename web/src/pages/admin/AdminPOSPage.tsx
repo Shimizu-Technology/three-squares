@@ -1,4 +1,5 @@
-import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef, useId, lazy, Suspense, type RefObject } from 'react';
+import AdminModal from '../../components/admin/AdminModal';
 import { useNavigate } from 'react-router-dom';
 import { useAuth, SignInButton } from '@clerk/clerk-react';
 import { StaffAccessProvider, StaffAccessDenied, useStaffAccess } from '../../components/admin/StaffAccess.tsx';
@@ -152,13 +153,19 @@ async function confirmTerminalPayment(token: string, orderId: number, allowClose
 
 function CashModal({
   totalCents,
+  submitting,
+  returnFocusRef,
   onComplete,
   onClose,
 }: {
   totalCents: number;
+  submitting: boolean;
+  returnFocusRef: RefObject<HTMLElement | null>;
   onComplete: (cashReceivedCents: number) => void;
   onClose: () => void;
 }) {
+  const cashId = useId();
+  const cashRef = useRef<HTMLInputElement>(null);
   const totalDollars = totalCents / 100;
   const [cashInput, setCashInput] = useState(totalDollars.toFixed(2));
   const cashReceived = parseFloat(cashInput) || 0;
@@ -167,19 +174,20 @@ function CashModal({
   const denominations = [5, 10, 20, 50, 100];
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="p-6 border-b border-gray-200 flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold">Cash Payment</h3>
-            <p className="text-2xl font-bold text-tsPrimary mt-1">${totalDollars.toFixed(2)}</p>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-lg">
-            <X className="w-5 h-5" />
+    <AdminModal open title="Cash Payment" subtitle={`$${totalDollars.toFixed(2)}`} maxWidth="max-w-md"
+      onClose={onClose} dismissible={!submitting} initialFocusRef={cashRef} returnFocusRef={returnFocusRef}
+      footer={(
+          <button
+            onClick={() => onComplete(Math.round(cashReceived * 100))}
+            disabled={submitting || cashReceived < totalDollars}
+            className="w-full py-4 bg-amber-700 text-white rounded-xl text-lg font-semibold hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          >
+            <Banknote className="w-5 h-5" />
+            {submitting ? 'Saving cash payment…' : 'Complete Cash Payment'}
           </button>
-        </div>
-
-        <div className="p-6 space-y-4">
+      )}
+    >
+      <div className="space-y-4">
           {/* Quick denomination buttons */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Quick Amount</label>
@@ -187,6 +195,7 @@ function CashModal({
               {denominations.map((amt) => (
                 <button
                   key={amt}
+                  disabled={submitting}
                   onClick={() => setCashInput(amt.toFixed(2))}
                   className={`py-3 rounded-lg text-sm font-semibold transition-colors border-2 ${
                     cashInput === amt.toFixed(2)
@@ -198,6 +207,7 @@ function CashModal({
                 </button>
               ))}
               <button
+                disabled={submitting}
                 onClick={() => setCashInput(totalDollars.toFixed(2))}
                 className={`py-3 rounded-lg text-sm font-semibold transition-colors border-2 ${
                   cashInput === totalDollars.toFixed(2)
@@ -212,10 +222,13 @@ function CashModal({
 
           {/* Custom input */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Cash Received</label>
+            <label htmlFor={cashId} className="block text-sm font-medium text-gray-700 mb-1">Cash Received</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">$</span>
               <input
+                id={cashId}
+                ref={cashRef}
+                disabled={submitting}
                 type="number"
                 step="0.01"
                 value={cashInput}
@@ -239,20 +252,8 @@ function CashModal({
               Insufficient — need ${Math.abs(changeDue).toFixed(2)} more
             </div>
           )}
-        </div>
-
-        <div className="p-6 border-t border-gray-200">
-          <button
-            onClick={() => onComplete(Math.round(cashReceived * 100))}
-            disabled={cashReceived < totalDollars}
-            className="w-full py-4 bg-amber-500 text-white rounded-xl text-lg font-semibold hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-          >
-            <Banknote className="w-5 h-5" />
-            Complete Cash Payment
-          </button>
-        </div>
       </div>
-    </div>
+    </AdminModal>
   );
 }
 
@@ -262,21 +263,16 @@ function VariantPickerModal({
   product,
   onSelect,
   onClose,
+  returnFocusRef,
 }: {
   product: POSProduct;
+  returnFocusRef: RefObject<HTMLElement | null>;
   onSelect: (variant: POSVariant) => void;
   onClose: () => void;
 }) {
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="p-5 border-b border-gray-200 flex items-center justify-between">
-          <h3 className="font-semibold text-lg">{product.name}</h3>
-          <button onClick={onClose} className="p-1 hover:bg-gray-100 rounded-lg">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-        <div className="p-4 space-y-2">
+    <AdminModal open title={product.name} subtitle="Choose an available option" maxWidth="max-w-sm" onClose={onClose} returnFocusRef={returnFocusRef}>
+      <div className="space-y-2">
           {product.variants.map((v) => (
             <button
               key={v.id}
@@ -292,9 +288,8 @@ function VariantPickerModal({
               <span className="font-semibold text-tsPrimary">{v.price_formatted}</span>
             </button>
           ))}
-        </div>
       </div>
-    </div>
+    </AdminModal>
   );
 }
 
@@ -352,6 +347,8 @@ function AdminPOSWorkspace() {
   // Modals
   const [variantPickerProduct, setVariantPickerProduct] = useState<POSProduct | null>(null);
   const [showCashModal, setShowCashModal] = useState(false);
+  const cashButtonRef = useRef<HTMLButtonElement>(null);
+  const variantOpenerRef = useRef<HTMLElement | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [lastOrder, setLastOrder] = useState<{ order_number: string; total_formatted: string; change_due_formatted?: string; payment_receipt?: PaymentReceiptFacts | null } | null>(null);
 
@@ -492,13 +489,14 @@ function AdminPOSWorkspace() {
     setLastAddedItem({ product, variant });
   }, [canSelectMenu, allItems, liveCart]);
 
-  const handleProductClick = useCallback((product: POSProduct) => {
+  const handleProductClick = useCallback((product: POSProduct, trigger: HTMLButtonElement) => {
     if (!canSelectMenu) return;
     const availableVariants = product.variants.filter(variant => remainingPOSCapacity(variant, liveCart) > 0);
     if (availableVariants.length === 0) return;
     if (availableVariants.length === 1) {
       addToCart(product, availableVariants[0]);
     } else {
+      variantOpenerRef.current = trigger;
       setVariantPickerProduct({ ...product, variants: availableVariants });
     }
   }, [addToCart, canSelectMenu, liveCart]);
@@ -909,6 +907,8 @@ function AdminPOSWorkspace() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      // Native modal inertness does not stop window-level POS shortcuts.
+      if (document.querySelector('dialog[open]') || showReaderPicker) return;
       const target = event.target as HTMLElement | null;
       const isTypingTarget = !!target && (
         target.tagName === 'INPUT' ||
@@ -991,6 +991,7 @@ function AdminPOSWorkspace() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [
+    showReaderPicker,
     canSubmitPayment,
     focusSearchField,
     handleCardAction,
@@ -1138,7 +1139,7 @@ function AdminPOSWorkspace() {
                   <article key={item.id} aria-label={item.name} className="min-w-0 space-y-2">
                   <button
                     type="button"
-                    onClick={() => handleProductClick(item)}
+                    onClick={(event) => handleProductClick(item, event.currentTarget)}
                     disabled={!canAdd || !canSelectMenu}
                     className={`w-full p-3.5 rounded-2xl text-left transition-all min-h-[112px] border ${
                       inCart
@@ -1390,6 +1391,7 @@ function AdminPOSWorkspace() {
 
           <div className="grid grid-cols-2 gap-2 mb-2">
             <button
+              ref={cashButtonRef}
               onClick={() => setShowCashModal(true)}
               disabled={!canSubmitPayment}
               className="flex items-center justify-center gap-2 py-3 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -1486,6 +1488,8 @@ function AdminPOSWorkspace() {
       {showCashModal && (
         <CashModal
           totalCents={cartTotal}
+          submitting={submitting}
+          returnFocusRef={cashButtonRef}
           onComplete={(cashReceivedCents) => submitOrder('cash', cashReceivedCents)}
           onClose={() => setShowCashModal(false)}
         />
@@ -1493,6 +1497,7 @@ function AdminPOSWorkspace() {
 
       {variantPickerProduct && canSelectMenu && (
         <VariantPickerModal
+          returnFocusRef={variantOpenerRef}
           product={allItems.find(item => item.id === variantPickerProduct.id) || variantPickerProduct}
           onSelect={(variant) => {
             addToCart(variantPickerProduct, variant);

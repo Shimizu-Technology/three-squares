@@ -122,6 +122,8 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   };
   const headingRef = useRef<HTMLHeadingElement>(null);
   const detailReturnRef = useRef<{ orderId: number; x: number; y: number; trigger: HTMLElement } | null>(null);
+  const detailOpenerRef = useRef<HTMLElement | null>(null);
+  const refundOpenerRef = useRef<HTMLElement | null>(null);
   const previousOrderIdRef = useRef(selectedOrderId);
   const [detailError, setDetailError] = useState<{ selection: typeof detailSelection; attempt: number; message: string } | null>(null);
   const [detailAttempt, setDetailAttempt] = useState(0);
@@ -238,6 +240,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
 
   // ── Fetch single order details ────────────────────────────────
   const fetchOrderDetails = (orderId: number, trigger: HTMLButtonElement) => {
+    detailOpenerRef.current = trigger;
     detailReturnRef.current = { orderId, x: window.scrollX, y: window.scrollY, trigger };
     changeQuery({ orderId });
   };
@@ -614,12 +617,13 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
         <OrderDetailModal
           key={selectedOrder.id}
           order={selectedOrder}
+          returnFocusRef={detailOpenerRef}
           saving={saving}
           onClose={closeOrderDetails}
           onUpdateOrder={updateOrder}
           onQuickUpdateStatus={quickUpdateStatus}
           onResendNotification={resendNotification}
-          onOpenRefundModal={() => setShowRefundModal(true)}
+          onOpenRefundModal={(trigger) => { refundOpenerRef.current = trigger; setShowRefundModal(true); }}
           hasSavedRefund={pendingRefundRequest?.orderId === selectedOrder.id}
           checkingRefund={processingRefund}
           onCheckRefund={checkRefund}
@@ -632,8 +636,8 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       )}
 
       {/* Ship Order Modal */}
-      {showShipModal && (
         <ShipOrderModal
+          open={showShipModal}
           saving={saving}
           carrier={shipCarrier}
           trackingNumber={shipTrackingNumber}
@@ -642,11 +646,11 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
           onShip={shipOrder}
           onClose={() => { setShowShipModal(false); setShipOrderId(null); }}
         />
-      )}
 
       {/* Refund Modal */}
       {showRefundModal && selectedOrder && (
         <RefundModal
+          returnFocusRef={refundOpenerRef}
           order={selectedOrder}
           processing={processingRefund}
           savedRequest={pendingRefundRequest}

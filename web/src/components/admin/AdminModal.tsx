@@ -46,7 +46,7 @@ export default function AdminModal({
       dismissible={dismissible}
       initialFocusRef={initialFocusRef}
       returnFocusRef={returnFocusRef}
-      className={`rounded-xl ${maxWidth} w-full flex flex-col min-h-0 ${
+      className={`admin-scope rounded-xl ${maxWidth} w-full flex flex-col min-h-0 ${
         printable ? 'print:shadow-none print:max-h-none print:overflow-visible print-content' : ''
       }`}
     >

@@ -1,5 +1,5 @@
-import { useRef, useState } from 'react';
-import useLockBodyScroll from '../../../hooks/useLockBodyScroll';
+import { useId, useRef, useState, type RefObject } from 'react';
+import Dialog from '../../ui/Dialog';
 import type { Order } from './orderUtils';
 import PaymentReceipt from '../../payment/PaymentReceipt';
 import PaymentEnvironmentBadge from '../../payment/PaymentEnvironmentBadge';
@@ -12,7 +12,8 @@ interface OrderDetailModalProps {
   onUpdateOrder: (updates: { status: string; tracking_number?: string | null; admin_notes?: string | null }) => Promise<boolean>;
   onQuickUpdateStatus: (orderId: number, newStatus: string) => void;
   onResendNotification: (orderId: number) => void;
-  onOpenRefundModal: () => void;
+  onOpenRefundModal: (trigger: HTMLButtonElement) => void;
+  returnFocusRef?: RefObject<HTMLElement | null>;
   canManageOrder?: boolean;
   canChangeStatus?: boolean;
   canRefund?: boolean;
@@ -31,19 +32,20 @@ export default function OrderDetailModal({
   onQuickUpdateStatus,
   onResendNotification,
   onOpenRefundModal,
+  returnFocusRef,
   hasSavedRefund,
   checkingRefund,
   onCheckRefund,
   storeEmail = 'sales@bgpacific.com',
   canManageOrder = true, canChangeStatus = true, canRefund = true, canNotify = true,
 }: OrderDetailModalProps) {
-  useLockBodyScroll(true);
+  const headingId = useId();
+  const headingRef = useRef<HTMLHeadingElement>(null);
 
   const [isEditing, setIsEditing] = useState(false);
   const [editStatus, setEditStatus] = useState(order.status);
   const [editTracking, setEditTracking] = useState(order.tracking_number || '');
   const [editAdminNotes, setEditAdminNotes] = useState(order.admin_notes || '');
-  const modalContentRef = useRef<HTMLDivElement | null>(null);
 
   const nextAction = getNextStatusAction(order);
 
@@ -70,19 +72,22 @@ export default function OrderDetailModal({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-white/30 print:bg-white print:p-0 print:block"
-      onClick={onClose}
+    <Dialog open labelledBy={headingId} initialFocusRef={headingRef} returnFocusRef={returnFocusRef}
+      dismissible={!saving} onOpenChange={(open) => { if (!open && !saving) onClose(); }}
+      className="admin-scope bg-white rounded-lg max-w-4xl w-full flex flex-col min-h-0 print:shadow-none print:max-h-none print:overflow-visible print-content"
     >
       {/* Print Styles */}
       <style>{`
         @media print {
+          html, body { height: auto !important; overflow: visible !important; }
+          body > *:not(dialog.print-content) { display: none !important; }
+          dialog.print-content::backdrop { display: none !important; background: transparent !important; }
           body * { visibility: hidden; }
           aside, header, nav, [class*='sidebar'], [class*='Sidebar'] { display: none !important; }
           .md\\:pl-64, [class*='md:pl-64'] { padding-left: 0 !important; }
           .print-content, .print-content * { visibility: visible; }
           .print-content {
-            position: absolute; left: 0; top: 0; width: 100%; padding: 0; margin: 0;
+            position: static !important; inset: auto !important; display: block !important; width: 100%; padding: 0; margin: 0;
             max-width: 100% !important; max-height: none !important;
             overflow: visible !important; box-shadow: none !important; border-radius: 0 !important;
           }
@@ -94,14 +99,11 @@ export default function OrderDetailModal({
         }
       `}</style>
 
-      <div
-        className="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] flex flex-col min-h-0 shadow-2xl print:shadow-none print:max-h-none print:overflow-visible print-content"
-        onClick={(e) => e.stopPropagation()}
-      >
+
         {/* Header */}
         <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-white z-10 print:static print:border-b-2 print:border-gray-400 shrink-0">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">
+            <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-bold text-gray-900">
               <span className="print:hidden">Order #</span>
               <span className="hidden print:inline text-3xl">THREE SQUARES - PACKING SLIP<br /></span>
               {order.order_number}
@@ -114,7 +116,8 @@ export default function OrderDetailModal({
             {order.inventory_restoration_status === 'manual_review_required' && <p role="status" className="mt-3 text-sm text-amber-800">Inventory restoration requires manual review. No stock was restored automatically.</p>}
           </div>
           <button
-            onClick={onClose}
+            onClick={() => { if (!saving) onClose(); }}
+            disabled={saving}
             className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-gray-400 hover:text-gray-600 text-3xl leading-none rounded-lg hover:bg-gray-100 transition print-hide"
             aria-label="Close order details"
           >
@@ -123,15 +126,7 @@ export default function OrderDetailModal({
         </div>
 
         <div
-          ref={modalContentRef}
           className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6 overscroll-contain print:overflow-visible"
-          onWheel={(event) => {
-            if (modalContentRef.current) {
-              modalContentRef.current.scrollTop += event.deltaY;
-            }
-            event.stopPropagation();
-            event.preventDefault();
-          }}
         >
           {/* Order Management */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 print-hide">
@@ -422,7 +417,7 @@ export default function OrderDetailModal({
             {canRefund && (order.payment_status === 'paid' || hasSavedRefund) && (
               <button
                 type="button"
-                onClick={onOpenRefundModal}
+                onClick={(event) => onOpenRefundModal(event.currentTarget)}
                 className="flex-1 min-w-[140px] px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-primary-dark transition font-medium"
               >
                 {hasSavedRefund ? 'Check saved refund' : 'Refund Order'}
@@ -430,7 +425,6 @@ export default function OrderDetailModal({
             )}
           </div>
         </div>
-      </div>
-    </div>
+    </Dialog>
   );
 }
