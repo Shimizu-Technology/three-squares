@@ -39,6 +39,7 @@ export default function AdminVariantPresetsPage() {
   const [editingPreset, setEditingPreset] = useState<VariantPreset | null>(null);
   const [formData, setFormData] = useState<PresetFormData>(emptyFormData);
   const savePending = useRef(false);
+  const newPresetRef = useRef<HTMLButtonElement>(null);
   
   // New value input
   const [newValueName, setNewValueName] = useState('');
@@ -143,8 +144,13 @@ export default function AdminVariantPresetsPage() {
       }
       
       setShowModal(false);
-      // Keep the opener mounted while refreshing the saved preset.
-      loadPresets(true);
+      // A first-preset action or regrouped row may disappear after refresh.
+      // Restore only lost focus; a new modal or another active control wins.
+      void loadPresets(true).then(() => requestAnimationFrame(() => {
+        if (!document.querySelector('dialog[open]') && document.activeElement === document.body) {
+          newPresetRef.current?.focus({ preventScroll: true });
+        }
+      }));
     } catch (error) {
       console.error('Failed to save preset:', error);
       toast.error(axios.isAxiosError(error) ? error.response?.data?.error || 'Failed to save preset' : 'Failed to save preset');
@@ -214,6 +220,7 @@ export default function AdminVariantPresetsPage() {
           </p>
         </div>
         <button
+          ref={newPresetRef}
           onClick={handleCreate}
           className="px-5 py-2.5 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium flex items-center gap-2"
         >

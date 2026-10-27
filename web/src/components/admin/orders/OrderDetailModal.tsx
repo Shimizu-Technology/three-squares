@@ -14,6 +14,7 @@ interface OrderDetailModalProps {
   onResendNotification: (orderId: number) => void;
   onOpenRefundModal: (trigger: HTMLButtonElement) => void;
   returnFocusRef?: RefObject<HTMLElement | null>;
+  focusHeadingRef?: RefObject<HTMLHeadingElement | null>;
   canManageOrder?: boolean;
   canChangeStatus?: boolean;
   canRefund?: boolean;
@@ -33,6 +34,7 @@ export default function OrderDetailModal({
   onResendNotification,
   onOpenRefundModal,
   returnFocusRef,
+  focusHeadingRef,
   hasSavedRefund,
   checkingRefund,
   onCheckRefund,
@@ -40,7 +42,8 @@ export default function OrderDetailModal({
   canManageOrder = true, canChangeStatus = true, canRefund = true, canNotify = true,
 }: OrderDetailModalProps) {
   const headingId = useId();
-  const headingRef = useRef<HTMLHeadingElement>(null);
+  const ownHeadingRef = useRef<HTMLHeadingElement>(null);
+  const headingRef = focusHeadingRef || ownHeadingRef;
 
   const [isEditing, setIsEditing] = useState(false);
   const [editStatus, setEditStatus] = useState(order.status);

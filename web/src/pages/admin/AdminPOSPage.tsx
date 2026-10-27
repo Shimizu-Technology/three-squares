@@ -348,6 +348,7 @@ function AdminPOSWorkspace() {
   const [variantPickerProduct, setVariantPickerProduct] = useState<POSProduct | null>(null);
   const [showCashModal, setShowCashModal] = useState(false);
   const cashButtonRef = useRef<HTMLButtonElement>(null);
+  const wasCashOpenRef = useRef(false);
   const variantOpenerRef = useRef<HTMLElement | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [lastOrder, setLastOrder] = useState<{ order_number: string; total_formatted: string; change_due_formatted?: string; payment_receipt?: PaymentReceiptFacts | null } | null>(null);
@@ -556,6 +557,18 @@ function AdminPOSWorkspace() {
     target.focus();
     target.select();
   }, []);
+
+  useEffect(() => {
+    const wasOpen = wasCashOpenRef.current;
+    wasCashOpenRef.current = showCashModal;
+    if (!wasOpen || showCashModal) return;
+    // Successful cash clears the cart, disabling its opener. Keep keyboard
+    // focus in the workspace after the dialog has released its scroll lock.
+    const frame = requestAnimationFrame(() => {
+      if (cashButtonRef.current?.disabled) focusSearchField();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [showCashModal, focusSearchField]);
 
   // ─── Terminal ────────────────────────────────────────────────────────────
 
