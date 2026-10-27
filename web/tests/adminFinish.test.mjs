@@ -107,6 +107,41 @@ test('range changes hide old data; late requests cannot overwrite newer range; r
   assert.equal(h.button('Last 30 days').props['aria-pressed'], true);
 });
 
+test('zero daily series has a range- and measure-specific empty state with usable controls', async t => {
+  const h = harness(t, Analytics);
+  h.get = async (_, __, options) => ({ data: { ...chart(0, 0), series: Array.from({ length: options.params.days }, () => ({ orders: 0, revenue_cents: 0 })) } });
+  await h.flush();
+  for (const days of [7, 14, 30]) {
+    h.click(`Last ${days} days`); await h.flush();
+    for (const [label, phrase] of [['Revenue', 'net revenue'], ['Orders', 'orders']]) {
+      h.click(label); await h.flush();
+      assert.match(text(h.tree), new RegExp(`No production ${phrase} in the last ${days} days`));
+      assert.equal(nodes(h.tree).some(node => node.type?.name === 'BarChart'), false);
+      assert.equal(h.button(label).props['aria-pressed'], true);
+      assert.equal(h.button(`Last ${days} days`).props['aria-pressed'], true);
+    }
+  }
+});
+
+for (const values of [[1], [50, 75], [-1234, 100], [12500, 44000]]) {
+  test(`nonzero daily values ${values} have distinct cent and integer labels and an inclusive domain`, async t => {
+    const h = harness(t, Analytics);
+    h.get = async () => ({ data: { ...chart(), series: values.map(value => ({ orders: Math.abs(value), revenue_cents: value })) } });
+    await h.flush();
+    for (const mode of ['Revenue', 'Orders']) {
+      h.click(mode); await h.flush();
+      const axis = h.find(node => node.type?.name === 'YAxis').props;
+      const labels = axis.ticks.map(axis.tickFormatter ?? String);
+      assert.equal(new Set(labels).size, labels.length);
+      assert.ok(axis.ticks.every(Number.isInteger));
+      const displayed = mode === 'Revenue' ? values : values.map(Math.abs);
+      assert.ok(axis.domain[0] <= Math.min(0, ...displayed));
+      assert.ok(axis.domain[1] >= Math.max(0, ...displayed));
+      assert.equal(nodes(h.tree).some(node => text(node).includes('No production net revenue')), false);
+    }
+  });
+}
+
 test('dashboard describes scoped all-time production orders and global published products', async t => {
   const h = harness(t, Dashboard); h.access.scopeLabel = 'All locations';
   h.get = async path => ({ data: path.endsWith('/stats') ? { total_orders: 5, total_revenue_cents: 1000, pending_orders: 1, total_products: 12 } : { orders: [] } });
