@@ -163,13 +163,13 @@ export default function CollectionDetailPage() {
         <div className="absolute inset-0 bg-linear-to-r from-tsPrimary via-red-700 to-tsPrimary" />
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16 lg:py-20">
           <FadeIn>
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mb-3 drop-shadow-md">
+            <h1 style={{ color: 'white' }} className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mb-3 drop-shadow-md">
               {collection.name}
             </h1>
             {collection.description && (
-              <p className="text-lg text-white/90 max-w-2xl mb-3">{collection.description}</p>
+              <p style={{ color: 'rgba(255, 255, 255, 0.9)' }} className="text-lg text-white/90 max-w-2xl mb-3">{collection.description}</p>
             )}
-            <p className="text-sm text-white/70">
+            <p style={{ color: 'rgba(255, 255, 255, 0.85)' }} className="text-sm text-white/70">
               {meta?.total || 0} {meta?.total === 1 ? 'product' : 'products'}
             </p>
           </FadeIn>

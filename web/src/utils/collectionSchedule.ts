@@ -37,3 +37,17 @@ export function formatGuamDate(value: string) {
     hour: 'numeric', minute: '2-digit',
   }).format(new Date(value)) + ' (Guam time)';
 }
+
+
+export function nextCollectionRefreshAt(collections: CollectionSchedule[], now: number) {
+  const boundaries = collections.flatMap((collection) => {
+    const upcoming = [collection.starts_at, collection.ends_at]
+      .filter((value): value is string => Boolean(value)).map((value) => Date.parse(value) + 1_100)
+      .filter((value) => value > now);
+    // A request can begin before expiry and return its active snapshot after expiry.
+    const end = collection.ends_at ? Date.parse(collection.ends_at) + 1_100 : NaN;
+    if (collection.available === true && collection.availability_status === 'active' && end <= now) upcoming.push(now);
+    return upcoming;
+  });
+  return boundaries.length ? Math.min(...boundaries) : undefined;
+}

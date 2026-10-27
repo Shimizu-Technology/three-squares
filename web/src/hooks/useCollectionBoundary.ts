@@ -1,17 +1,14 @@
 import { useEffect } from 'react';
+import { nextCollectionRefreshAt } from '../utils/collectionSchedule';
 import type { CollectionSchedule } from '../utils/collectionSchedule';
 
 // Refresh an open page at its next known boundary, and when returning from a background tab.
 export default function useCollectionBoundary(collections: CollectionSchedule[], refresh: () => void) {
   useEffect(() => {
     const now = Date.now();
-    const boundaries = collections.flatMap((collection) => [collection.starts_at, collection.ends_at])
-      // API timestamps have second precision; wait past the complete represented second.
-      .filter((value): value is string => Boolean(value)).map((value) => Date.parse(value) + 1_100)
-      .filter((value) => value > now);
-    const next = Math.min(...boundaries);
-    const timer = Number.isFinite(next)
-      ? window.setTimeout(refresh, Math.min(next - now, 2_147_483_647)) : undefined;
+    const next = nextCollectionRefreshAt(collections, now);
+    const timer = next === undefined ? undefined
+      : window.setTimeout(refresh, Math.min(Math.max(next - now, 0), 2_147_483_647));
     const onVisible = () => { if (document.visibilityState === 'visible') refresh(); };
     window.addEventListener('focus', refresh);
     document.addEventListener('visibilitychange', onVisible);
