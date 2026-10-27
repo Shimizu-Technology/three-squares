@@ -179,6 +179,10 @@ export const productsApi = {
 };
 
 export const locationsApi = {
+  getLocation: async (slug: string): Promise<Location> => {
+    const response = await api.get(`/locations/${encodeURIComponent(slug)}`);
+    return response.data;
+  },
   getLocations: async (): Promise<{ locations: Location[] }> => {
     const response = await api.get('/locations');
     return response.data;

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import type { Collection, Product } from '../services/api';
+import type { Collection, Product, Location } from '../services/api';
 import { productsApi, collectionsApi, locationsApi } from '../services/api';
 import { useLocationStore } from '../store/locationStore';
 import ProductCard from '../components/ProductCard';
@@ -61,7 +61,7 @@ const storefrontThemes: Partial<Record<StorefrontKey, {
   },
 };
 
-export default function ProductsPage() {
+export default function ProductsPage({ pickupLocation }: { pickupLocation?: Location } = {}) {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
@@ -82,7 +82,7 @@ export default function ProductsPage() {
   const sort = searchParams.get('sort') || '';
   const config = useAppConfig();
   const { selectedLocation } = useLocationStore();
-  const locationId = searchParams.get('location_id') || (selectedLocation?.id ? String(selectedLocation.id) : '');
+  const locationId = pickupLocation ? String(pickupLocation.id) : searchParams.get('location_id') || (selectedLocation?.id ? String(selectedLocation.id) : '');
   const businessLine = searchParams.get('business_line') || '';
   const requestedBusinessLine = STOREFRONTS.some((storefront) => storefront.key === businessLine)
     ? businessLine as StorefrontKey
@@ -131,8 +131,8 @@ export default function ProductsPage() {
 
     return {
       eyebrow: 'All Businesses',
-      title: 'Browse Menu',
-      subtitle: 'Guam comfort food favorites and island-made specialties.',
+      title: pickupLocation ? `${pickupLocation.name} Menu` : 'Browse Menu',
+      subtitle: pickupLocation?.address || 'Guam comfort food favorites and island-made specialties.',
     };
   })();
   const visibleCollections = useMemo(() => {
@@ -229,7 +229,7 @@ export default function ProductsPage() {
     if (collection) params.collection = collection;
     if (productType) params.type = productType;
     if (sort) params.sort = sort;
-    if (locationId) params.location_id = locationId;
+    if (locationId && !pickupLocation) params.location_id = locationId;
     if (activeBusinessLine) params.business_line = activeBusinessLine;
     setSearchParams(params);
   };
@@ -241,19 +241,19 @@ export default function ProductsPage() {
       if (value) params.collection = value;
       if (productType) params.type = productType;
       if (sort) params.sort = sort;
-      if (locationId) params.location_id = locationId;
+      if (locationId && !pickupLocation) params.location_id = locationId;
       if (activeBusinessLine) params.business_line = activeBusinessLine;
     } else if (filterType === 'type') {
       if (collection) params.collection = collection;
       if (value) params.type = value;
       if (sort) params.sort = sort;
-      if (locationId) params.location_id = locationId;
+      if (locationId && !pickupLocation) params.location_id = locationId;
       if (activeBusinessLine) params.business_line = activeBusinessLine;
     } else if (filterType === 'sort') {
       if (collection) params.collection = collection;
       if (productType) params.type = productType;
       if (value) params.sort = value;
-      if (locationId) params.location_id = locationId;
+      if (locationId && !pickupLocation) params.location_id = locationId;
       if (activeBusinessLine) params.business_line = activeBusinessLine;
     } else if (filterType === 'location_id') {
       if (collection) params.collection = collection;
@@ -265,7 +265,7 @@ export default function ProductsPage() {
       if (collection) params.collection = collection;
       if (productType) params.type = productType;
       if (sort) params.sort = sort;
-      if (locationId) params.location_id = locationId;
+      if (locationId && !pickupLocation) params.location_id = locationId;
       if (value) params.business_line = value;
     }
     setSearchParams(params);
@@ -281,7 +281,7 @@ export default function ProductsPage() {
     if (collection) params.collection = collection;
     if (productType) params.type = productType;
     if (sort) params.sort = sort;
-    if (locationId) params.location_id = locationId;
+    if (locationId && !pickupLocation) params.location_id = locationId;
     if (activeBusinessLine) params.business_line = activeBusinessLine;
     setSearchParams(params);
   };
@@ -550,7 +550,7 @@ export default function ProductsPage() {
             </div>
 
             {/* Pickup Location Filter */}
-            <div>
+            {!pickupLocation && <div>
               <label className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Pickup Location</label>
               <select
                 value={locationId}
@@ -564,7 +564,7 @@ export default function ProductsPage() {
                   </option>
                 ))}
               </select>
-            </div>
+            </div>}
 
             {/* Clear Filters Button */}
             <div className="flex items-end">

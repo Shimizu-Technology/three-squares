@@ -5,6 +5,7 @@ import { useLocationStore } from '../store/locationStore';
 import type { LocationInfo } from '../store/locationStore';
 import { useCartStore } from '../store/cartStore';
 import toast from 'react-hot-toast';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 /**
  * Location picker modal shown when no location is selected, or when
@@ -16,9 +17,11 @@ export default function LocationPicker() {
   const { cart, clearCart } = useCartStore();
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<LocationInfo | null>(null);
+  const navigate = useNavigate();
+  const directMenu = useLocation().pathname.startsWith('/menu/');
   const pickerRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLDivElement>(null);
-  const showModal = locations.length > 1 && (!selectedLocation || showPicker);
+  const showModal = locations.length > 1 && ((!selectedLocation && !directMenu) || showPicker);
 
   useEffect(() => {
     const fetchLocations = async () => {
@@ -88,9 +91,15 @@ export default function LocationPicker() {
 
   const cartHasItems = (cart?.items?.length ?? 0) > 0;
 
+  const selectLocation = (loc: LocationInfo) => {
+    setSelectedLocation(loc);
+    if (directMenu) navigate(`/menu/${encodeURIComponent(loc.slug)}`);
+  };
+
   const handleLocationSelect = (loc: LocationInfo) => {
     if (selectedLocation?.id === loc.id) {
       setShowPicker(false);
+      if (directMenu) navigate(`/menu/${encodeURIComponent(loc.slug)}`);
       return;
     }
 
@@ -98,7 +107,7 @@ export default function LocationPicker() {
       setPendingLocation(loc);
       setShowConfirm(true);
     } else {
-      setSelectedLocation(loc);
+      selectLocation(loc);
     }
   };
 
@@ -106,7 +115,7 @@ export default function LocationPicker() {
     if (pendingLocation) {
       try {
         await clearCart();
-        setSelectedLocation(pendingLocation);
+        selectLocation(pendingLocation);
       } catch {
         toast.error('Unable to clear cart. Please check your connection and try again.');
       }

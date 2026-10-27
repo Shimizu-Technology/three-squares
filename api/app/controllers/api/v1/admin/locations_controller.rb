@@ -2,7 +2,7 @@ module Api
   module V1
     module Admin
       class LocationsController < BaseController
-        before_action :set_location, only: [ :show, :update, :destroy ]
+        before_action :set_location, only: [ :show, :update, :destroy, :generate_qr ]
 
         def index
           render_success(Location.by_name.map { |location| serialize_location(location) })
@@ -37,6 +37,14 @@ module Api
           end
         end
 
+        def generate_qr
+          service = QrCodeService.new(@location, base_url: params[:base_url])
+          @location.update!(qr_code_url: service.menu_url)
+          render_success({ menu_url: service.menu_url, svg: service.to_svg })
+        rescue ArgumentError => error
+          render_error(error.message)
+        end
+
         private
 
         def set_location
@@ -58,6 +66,7 @@ module Api
             active: location.active,
             hours_json: location.normalized_hours,
             admin_sms_phones: location.admin_sms_phones,
+            qr_code_url: location.qr_code_url,
             admin_email: location.admin_email
           }
         end

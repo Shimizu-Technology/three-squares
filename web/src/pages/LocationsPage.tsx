@@ -5,6 +5,7 @@ import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 
 interface Location {
+  slug: string;
   name: string;
   address: string;
   mapAddress: string;
@@ -21,6 +22,7 @@ interface Location {
 
 const locations: Location[] = [
   {
+    slug: 'three-squares-main',
     name: 'Three Squares Main',
     address: '416 Chalan San Antonio, Tamuning, GU 96913',
     mapAddress: '416+Chalan+San+Antonio,+Tamuning,+GU+96913',
@@ -35,6 +37,7 @@ const locations: Location[] = [
     featured: true,
   },
   {
+    slug: 'three-squares-donki',
     name: 'Three Squares @ Donki',
     address: 'Inside Don Quijote, Tamuning',
     mapAddress: 'Don+Quijote,+Tamuning,+Guam',
@@ -250,6 +253,9 @@ function LocationCard({ location }: LocationCardProps) {
             </div>
           </div>
         )}
+        <Link to={`/menu/${location.slug}`} aria-label={`View ${location.name} menu`} className="mt-5 inline-flex items-center justify-center gap-2 bg-tsPrimary text-white rounded-xl px-5 py-3 font-semibold hover:bg-primary-dark transition-colors">
+          View Menu <ChevronRight className="w-4 h-4" />
+        </Link>
       </div>
 
       {/* Map Preview */}

@@ -73,7 +73,9 @@ Rails.application.routes.draw do
 
         # Collections
         resources :collections, except: [ :new, :edit ]
-        resources :locations, except: [ :new, :edit ]
+        resources :locations, except: [ :new, :edit ] do
+          post :generate_qr, on: :member
+        end
 
         # Variant Presets (for flexible variant system)
         resources :variant_presets, except: [ :new, :edit ] do
@@ -148,7 +150,7 @@ Rails.application.routes.draw do
       # Public routes (no authentication required)
       resources :products, only: [ :index, :show ]
       resources :collections, only: [ :index, :show ]
-      resources :locations, only: [ :index ]
+      resources :locations, only: [ :index, :show ]
 
       # Catering inquiries
       resources :catering, only: [ :create ] do
