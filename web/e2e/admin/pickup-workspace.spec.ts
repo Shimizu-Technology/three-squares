@@ -63,7 +63,7 @@ test('Details restores its explicit opener for Safari-style pointer activation a
   await expect(details).toBeFocused();
 });
 
-test('public/admin round trips cancel every SmoothScroll-owned animation frame on admin', async ({ page }) => {
+test('public/admin round trips keep native scrolling free of SmoothScroll frames', async ({ page }) => {
   await page.addInitScript(() => {
     const pending = new Set<number>();
     const request = window.requestAnimationFrame.bind(window);
@@ -81,7 +81,8 @@ test('public/admin round trips cancel every SmoothScroll-owned animation frame o
   for (let trip = 0; trip < 3; trip += 1) {
     await page.getByText('View Store', { exact: true }).click();
     await expect(page).toHaveURL('/');
-    await expect.poll(() => page.evaluate(() => (window as unknown as { packingSmoothFrames: Set<number> }).packingSmoothFrames.size)).toBeGreaterThan(0);
+    // Public motion cleanup removed Lenis; neither route starts its RAF loop.
+    await expect.poll(() => page.evaluate(() => (window as unknown as { packingSmoothFrames: Set<number> }).packingSmoothFrames.size)).toBe(0);
     await page.goBack();
     await expect(page.getByRole('heading', { name: 'Pickup Queue', exact: true })).toBeVisible();
     await expect.poll(() => page.evaluate(() => (window as unknown as { packingSmoothFrames: Set<number> }).packingSmoothFrames.size)).toBe(0);

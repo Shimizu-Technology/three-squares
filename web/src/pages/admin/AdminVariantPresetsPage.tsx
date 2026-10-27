@@ -40,6 +40,7 @@ export default function AdminVariantPresetsPage() {
   const [formData, setFormData] = useState<PresetFormData>(emptyFormData);
   const savePending = useRef(false);
   const newPresetRef = useRef<HTMLButtonElement>(null);
+  const [focusAfterSave, setFocusAfterSave] = useState(false);
   
   // New value input
   const [newValueName, setNewValueName] = useState('');
@@ -144,13 +145,8 @@ export default function AdminVariantPresetsPage() {
       }
       
       setShowModal(false);
-      // A first-preset action or regrouped row may disappear after refresh.
-      // Restore only lost focus; a new modal or another active control wins.
-      void loadPresets(true).then(() => requestAnimationFrame(() => {
-        if (!document.querySelector('dialog[open]') && document.activeElement === document.body) {
-          newPresetRef.current?.focus({ preventScroll: true });
-        }
-      }));
+      // Restore only after the refreshed groups have committed to the DOM.
+      void loadPresets(true).then(() => setFocusAfterSave(true));
     } catch (error) {
       console.error('Failed to save preset:', error);
       toast.error(axios.isAxiosError(error) ? error.response?.data?.error || 'Failed to save preset' : 'Failed to save preset');
@@ -198,6 +194,17 @@ export default function AdminVariantPresetsPage() {
       )
     }));
   };
+
+  useEffect(() => {
+    if (!focusAfterSave || showModal) return;
+    const frame = requestAnimationFrame(() => {
+      if (!document.querySelector('dialog[open]') && document.activeElement === document.body) {
+        newPresetRef.current?.focus({ preventScroll: true });
+      }
+      setFocusAfterSave(false);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [focusAfterSave, showModal]);
 
   const closeModal = () => { if (!savePending.current) setShowModal(false); };
 
