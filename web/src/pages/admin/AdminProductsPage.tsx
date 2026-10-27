@@ -169,7 +169,7 @@ export default function AdminProductsPage() {
         '/admin/products/import_csv',
         formData,
         getToken,
-        {}
+        { headers: { 'Content-Type': 'multipart/form-data' } }
       );
       setImportResult(response.data.data);
       if (response.data.data.imported > 0) {
