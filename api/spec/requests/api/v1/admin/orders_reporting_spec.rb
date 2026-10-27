@@ -111,5 +111,43 @@ RSpec.describe 'Admin orders reporting', type: :request do
     expect(measure.call).to eq(initial)
   end
 
+  it 'keeps dated cookie shipping list, summary, export and legacy listing consistent' do
+    matching = 2.times.map do
+      order = create_retail_order_with_collection(collection: cookies_collection, fulfillment_type: 'shipping', total_cents: 3100)
+      order.update_columns(status: 'processing', created_at: Time.current.change(hour: 12))
+      # Multiple matching lines must still count each order and its revenue once.
+      item = order.order_items.first
+      create(:order_item, order: order, product: item.product, product_variant: item.product_variant)
+      order
+    end
+    old = create_retail_order_with_collection(collection: cookies_collection, fulfillment_type: 'shipping')
+    old.update_columns(status: 'processing', created_at: 2.days.ago)
+    create_retail_order_with_collection(collection: mains_collection, fulfillment_type: 'pickup', location: pickup_location)
+    filters = { business_line: 'latte_stone', fulfillment_type: 'shipping', status: 'processing',
+                start_date: Date.current.iso8601, end_date: Date.current.iso8601 }
+
+    get '/api/v1/admin/orders', params: filters
+    expect(response).to have_http_status(:ok)
+    json = JSON.parse(response.body)
+    expect(json.fetch('orders').map { |order| order.fetch('id') }).to match_array(matching.map(&:id))
+    expect(json.dig('pagination', 'total_count')).to eq(2)
+
+    get '/api/v1/admin/orders/summary', params: filters
+    expect(response).to have_http_status(:ok)
+    expect(JSON.parse(response.body)).to include('total_orders' => 2, 'paid_orders' => 2,
+                                                'total_revenue_cents' => 6200, 'status_counts' => { 'processing' => 2 })
+
+    get '/api/v1/admin/orders/export', params: filters
+    expect(response).to have_http_status(:ok)
+    expect(CSV.parse(response.body, headers: true).map { |row| row['order_number'] }).to match_array(matching.map(&:order_number))
+
+    allow_any_instance_of(Api::V1::OrdersController).to receive(:authenticate_request).and_return(true)
+    allow_any_instance_of(Api::V1::OrdersController).to receive(:require_admin!).and_return(true)
+    allow_any_instance_of(Api::V1::OrdersController).to receive(:current_user).and_return(admin_user)
+    get '/api/v1/orders', params: filters
+    expect(response).to have_http_status(:ok)
+    expect(JSON.parse(response.body).fetch('orders').map { |order| order.fetch('id') }).to match_array(matching.map(&:id))
+  end
+
 end
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
 import {
@@ -6,6 +6,7 @@ import {
   BarChart3, ArrowRight,
 } from 'lucide-react';
 import { StatCard, SkeletonDashboard } from '../../components/admin';
+import AdminRequestState from '../../components/admin/AdminRequestState';
 import { authGet } from '../../services/authApi';
 
 interface DashboardStats {
@@ -56,34 +57,47 @@ const BUSINESS_LINE_LABELS: Record<string, string> = {
 
 export default function AdminDashboardPage() {
   const { getToken } = useAuth();
-  const [stats, setStats] = useState<DashboardStats>({
-    total_orders: 0, total_revenue_cents: 0, pending_orders: 0, total_products: 0,
-  });
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [recentOrders, setRecentOrders] = useState<RecentOrder[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchDashboardData();
-  }, []);
+  const [loadError, setLoadError] = useState(false);
+  const requestId = useRef(0);
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
+    const id = ++requestId.current;
+    setLoading(true);
     try {
       const [statsRes, ordersRes] = await Promise.all([
         authGet<DashboardStats>('/admin/dashboard/stats', getToken),
         authGet<AdminOrdersListResponse>('/admin/orders', getToken, { params: { per_page: 8 } }),
       ]);
-
+      if (id !== requestId.current) return;
       setStats(statsRes.data);
-      setRecentOrders(ordersRes.data.orders || []);
+      setRecentOrders(ordersRes.data.orders);
+      setLoadError(false);
     } catch (err) {
+      if (id !== requestId.current) return;
       console.error('Failed to fetch dashboard data:', err);
+      setLoadError(true);
     } finally {
-      setLoading(false);
+      if (id === requestId.current) setLoading(false);
     }
-  };
+  }, [getToken]);
 
-  if (loading) {
-    return <SkeletonDashboard />;
+  useEffect(() => {
+    void fetchDashboardData();
+    return () => { requestId.current += 1; };
+  }, [fetchDashboardData]);
+
+  const requestState = <AdminRequestState resource="Dashboard" loading={loading} error={loadError} hasData={stats !== null} onRetry={fetchDashboardData} />;
+
+  if (!stats) {
+    return <div className="space-y-6">
+      <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+      {requestState}
+      {loading && <SkeletonDashboard />}
+    </div>;
   }
 
   return (
@@ -92,7 +106,10 @@ export default function AdminDashboardPage() {
       <div className="rounded-2xl p-6 sm:p-8 shadow-lg bg-tsPrimary">
         <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#ffffff' }}>Welcome back!</h1>
         <p style={{ color: '#ffffff', opacity: 0.9 }}>Here's what's happening with your store today.</p>
+        <button type="button" onClick={fetchDashboardData} disabled={loading} className="mt-4 min-h-[44px] rounded-lg border border-white px-4 text-white focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60">Refresh dashboard</button>
       </div>
+
+      {requestState}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
@@ -173,13 +190,13 @@ export default function AdminDashboardPage() {
           </Link>
         </div>
         <div className="divide-y divide-gray-50">
-          {recentOrders.length === 0 ? (
+          {recentOrders.length === 0 ? (!loadError && !loading && (
             <div className="text-center py-12 px-6">
               <ClipboardList className="w-12 h-12 mx-auto text-gray-300 mb-4" />
               <p className="text-gray-500">No orders yet</p>
               <p className="text-sm text-gray-400 mt-1">Orders will appear here once customers start purchasing</p>
             </div>
-          ) : (
+          )) : (
             recentOrders.map((order) => (
               <Link
                 key={order.id}
