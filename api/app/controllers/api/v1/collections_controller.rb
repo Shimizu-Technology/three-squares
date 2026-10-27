@@ -44,7 +44,7 @@ module Api
         per_page = [ params[:per_page]&.to_i || 12, 50 ].min
 
         products = orderable_products(@collection)
-                             .preload(:product_variants, :product_images, :product_locations)
+                             .preload(:product_variants, :product_images, :product_locations, :collections)
                              # Include the join position so DISTINCT location filtering
                              # remains valid in PostgreSQL and matches staff's saved menu.
                              .select("products.*, product_collections.position AS menu_position")

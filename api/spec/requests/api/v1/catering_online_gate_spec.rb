@@ -38,6 +38,50 @@ RSpec.describe "Catering online ordering gate", type: :request do
     expect(response.parsed_body.fetch("products").first.fetch("pricing").fetch("purchasable")).to be(false)
   end
 
+  it "batches collection classification queries as the public collection page grows" do
+    add_product = lambda do
+      meal = create(:product, product_type: "local", published: true, inventory_level: "variant", allow_pickup: true, allow_shipping: false)
+      create(:product_variant, product: meal, stock_quantity: 6, price_cents: 1200)
+      meal.collections << collection
+    end
+    2.times { add_product.call }
+    measure = lambda do |expected_count|
+      queries = []
+      callback = lambda do |_name, _start, _finish, _id, payload|
+        queries << payload[:sql] if payload[:name] == "Collection Load" && !payload[:cached]
+      end
+      ActiveSupport::Notifications.subscribed(callback, "sql.active_record") do
+        get "/api/v1/collections/#{collection.slug}", params: { per_page: 50 }
+      end
+      expect(response).to have_http_status(:ok), response.body
+      rows = response.parsed_body.fetch("products")
+      expect(rows.size).to eq(expected_count)
+      expect(rows).to all(include("pricing" => include("purchasable" => false, "reason" => StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE)))
+      queries.size
+    end
+    initial = measure.call(3)
+    4.times { add_product.call }
+    expect(measure.call(7)).to eq(initial)
+  end
+
+  it "preloads classification for every public online-price serializer path" do
+    CartItem.create!(session_id: cart_id, product_variant: variant, quantity: 1)
+    calls = 0
+    allow(CatalogPrice).to receive(:resolve).and_wrap_original do |original, **arguments|
+      if arguments[:online]
+        calls += 1
+        expect(arguments.fetch(:product).association(:collections)).to be_loaded
+      end
+      original.call(**arguments)
+    end
+    [ "/api/v1/products", "/api/v1/products/#{product.slug}", "/api/v1/collections/#{collection.slug}", "/api/v1/cart" ].each do |path|
+      previous_calls = calls
+      get path, headers: { "X-Session-ID" => cart_id }
+      expect(response).to have_http_status(:ok), response.body
+      expect(calls).to be > previous_calls
+    end
+  end
+
   it "keeps online SQL price filtering consistent with inquiry-only serialization" do
     expect(Product.where(id: product.id).pick(Arel.sql(CatalogPrice.sql(online: true)))).to be_nil
     SiteSetting.instance.update!(enable_catering_online_ordering: true)
