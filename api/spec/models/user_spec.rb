@@ -21,8 +21,8 @@ RSpec.describe User, type: :model do
       expect(user.errors[:email]).to be_present
     end
 
-    it 'restricts role to customer/admin' do
-      user = build(:user, role: 'owner')
+    it 'rejects obsolete or unknown roles' do
+      user = build(:user, role: 'admin')
 
       expect(user).not_to be_valid
       expect(user.errors[:role]).to include('is not included in the list')
@@ -49,7 +49,7 @@ RSpec.describe User, type: :model do
   describe 'scopes' do
     it 'returns users by role' do
       customer = create(:user, role: 'customer')
-      admin = create(:user, role: 'admin')
+      admin = create(:user, role: 'owner')
 
       expect(User.customers).to include(customer)
       expect(User.customers).not_to include(admin)

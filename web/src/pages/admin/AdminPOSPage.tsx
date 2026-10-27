@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@clerk/clerk-react';
+import { useAuth, SignInButton } from '@clerk/clerk-react';
+import { StaffAccessProvider, StaffAccessDenied, useStaffAccess } from '../../components/admin/StaffAccess.tsx';
 import {
   ArrowLeft, Search, ShoppingCart, Plus, Minus, Trash2,
   Banknote, MapPin, Check, X, ChefHat, AlertCircle,
@@ -297,6 +298,19 @@ function VariantPickerModal({
 // ─── Main POS Page ──────────────────────────────────────────────────────────
 
 export default function AdminPOSPage() {
+  return <StaffAccessProvider><POSAccessGate /></StaffAccessProvider>;
+}
+
+function POSAccessGate() {
+  const access = useStaffAccess();
+  if (access.loading) return <div role="status" className="p-6">Checking POS access…</div>;
+  if (access.error) return <div role="alert" className="space-y-4 p-6"><p>POS access could not be checked.</p><button type="button" onClick={() => void access.reload()} className="btn-primary min-h-11">Retry access check</button></div>;
+  if (!access.user) return <div className="space-y-4 p-6"><p>Sign in to use POS.</p><SignInButton mode="modal"><button className="btn-primary min-h-11">Sign in</button></SignInButton></div>;
+  return access.can('pos.sell') ? <AdminPOSWorkspace /> : <StaffAccessDenied />;
+}
+
+function AdminPOSWorkspace() {
+  const access = useStaffAccess();
   const navigate = useNavigate();
   const { getToken, userId } = useAuth();
 
@@ -975,7 +989,7 @@ export default function AdminPOSPage() {
             </div>
             <div className="min-w-0">
               <h1 className="text-lg font-semibold text-slate-900 whitespace-nowrap">POS Mode</h1>
-              <p className="text-xs text-slate-500 truncate">{selectedLocationName}</p>
+              <p className="text-xs text-slate-500 truncate">{access.roleLabel} · {access.scopeLabel} · {selectedLocationName}</p>
             </div>
           </div>
 
@@ -984,7 +998,7 @@ export default function AdminPOSPage() {
             <div className="hidden md:flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
               <MapPin className="w-4 h-4 text-slate-500" />
               <select
-                disabled={hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)}
+                disabled={access.user?.operational_scope === 'specific' || hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)}
                 value={selectedLocation || ''}
                 onChange={(e) => setSelectedLocation(Number(e.target.value))}
                 className="bg-transparent text-slate-700 text-sm outline-none cursor-pointer"
@@ -1011,7 +1025,7 @@ export default function AdminPOSPage() {
             </div>
 
             {/* Terminal status */}
-            <button
+            {access.can('payments.terminals.discover') && <button
               onClick={handleReaderButtonClick}
               disabled={terminalStatus === 'connecting' || terminalStatus === 'discovering'}
               className={`flex items-center justify-center gap-2 min-w-34 px-3 py-2 rounded-lg text-sm border transition-colors ${
@@ -1029,7 +1043,7 @@ export default function AdminPOSPage() {
                 <WifiOff className="w-4 h-4" />
               )}
               <span className="hidden xl:inline">Reader {terminalLabel}</span>
-            </button>
+            </button>}
           </div>
         </header>
 
@@ -1051,7 +1065,7 @@ export default function AdminPOSPage() {
             <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2">
               <MapPin className="w-4 h-4 text-slate-500" />
               <select
-                disabled={hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)}
+                disabled={access.user?.operational_scope === 'specific' || hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)}
                 value={selectedLocation || ''}
                 onChange={(e) => setSelectedLocation(Number(e.target.value))}
                 className="w-full bg-transparent text-slate-700 text-sm outline-none cursor-pointer"

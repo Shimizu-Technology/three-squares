@@ -4,7 +4,7 @@ module Api
       class ImportsController < BaseController
         # GET /api/v1/admin/imports
         def index
-          imports = current_user.admin? ? Import.all : current_user.imports
+          imports = Import.all
           imports = imports.recent.limit(50)
 
           # Auto-fail stale processing imports (server restarted, job halted, etc.)

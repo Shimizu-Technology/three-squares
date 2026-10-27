@@ -56,7 +56,7 @@ RSpec.describe "Catalog price contract", type: :request do
     expect { Payments::Eligibility.validate_product!(variant: variant, location_id: location.id) }.to raise_error(Payments::FulfillmentError, /price before ordering/)
   end
   it "uses the same location cents in the POS menu and cash order" do
-    admin = create(:user, role: "admin")
+    admin = create(:user, role: "owner")
     [Api::V1::Admin::PosMenuController, Api::V1::Admin::PosOrdersController].each do |controller|
       allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
       allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
@@ -77,7 +77,7 @@ RSpec.describe "Catalog price contract", type: :request do
     product.update!(sale_price_cents: nil)
     variant.update!(price_cents: 0)
     paid = create(:product_variant, product: product, price_cents: 1800, variant_key: "paid-size")
-    admin = create(:user, role: "admin")
+    admin = create(:user, role: "owner")
     controller = Api::V1::Admin::PosMenuController
     allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
     allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
@@ -89,7 +89,7 @@ RSpec.describe "Catalog price contract", type: :request do
 
   it "returns the location validation explanation through the admin save path and rolls back the edit" do
     create(:product_variant, product: product, price_cents: 1800, variant_key: "large")
-    admin = create(:user, role: "admin")
+    admin = create(:user, role: "owner")
     controller = Api::V1::Admin::ProductsController
     allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
     allow_any_instance_of(controller).to receive(:current_user).and_return(admin)

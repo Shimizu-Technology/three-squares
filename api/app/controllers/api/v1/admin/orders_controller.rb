@@ -56,15 +56,16 @@ module Api
         status_counts = orders.group(:status).count
         total_orders = orders.count
         paid_orders = orders.where(payment_status: "paid").count
-        total_revenue_cents = orders.where(simulated: false, payment_environment: "production").where(payment_status: "paid").sum(:total_cents)
-
-        render json: {
+        summary = {
           total_orders: total_orders,
           paid_orders: paid_orders,
-          total_revenue_cents: total_revenue_cents,
           status_counts: status_counts,
           queue_stage_counts: pickup_stage_counts(orders)
         }
+        if staff_access_policy.allowed?("analytics.read")
+          summary[:total_revenue_cents] = orders.where(simulated: false, payment_environment: "production").where(payment_status: "paid").sum(:total_cents)
+        end
+        render json: summary
       end
 
       # GET /api/v1/admin/orders/:id
@@ -76,6 +77,9 @@ module Api
       # PATCH/PUT /api/v1/admin/orders/:id
       # Update order (status, tracking, notes)
       def update
+        if !staff_access_policy.allowed?("orders.manage") && (params.require(:order).keys - [ "status" ]).any?
+          return render json: { error: "Your role can change order status only" }, status: :forbidden
+        end
         @order = Payments::UpdateOrder.call(order: @order, attributes: order_update_params, user: current_user)
         render json: { order: detailed_order_json(@order), message: @order.metadata.dig('inventory_restoration', 'status') == 'manual_review_required' ?
           "Order updated. Inventory restoration requires manual review; no stock was changed." : "Order updated successfully" }
@@ -319,7 +323,7 @@ module Api
       end
 
       def filtered_orders_query(ignore_stage: false)
-        orders_query = Order
+        orders_query = staff_scope(Order.all)
           .includes(order_items: [{ product: :collections }, { product_variant: { product: :collections } }], user: [], location: [])
           .order(created_at: :desc)
 
@@ -329,9 +333,7 @@ module Api
         orders_query = orders_query.where(order_type: params[:order_type]) if params[:order_type].present?
         orders_query = orders_query.where(fulfillment_type: params[:fulfillment_type]) if params[:fulfillment_type].present?
         # Location scoping: staff assigned to a location only see that location's orders
-        if current_user&.location_scoped?
-          orders_query = orders_query.where(location_id: current_user.assigned_location_id)
-        elsif params[:location_id].present?
+        if params[:location_id].present?
           orders_query = orders_query.where(location_id: params[:location_id].to_i)
         end
 
@@ -474,8 +476,7 @@ module Api
       end
 
       def set_order
-        scope = Order.includes(:order_items, :user, :refunds)
-        scope = scope.where(location_id: current_user.assigned_location_id) if current_user.location_scoped?
+        scope = staff_scope(Order.includes(:order_items, :user, :refunds))
         @order = scope.find(params[:id])
       rescue ActiveRecord::RecordNotFound
         render json: { error: "Order not found" }, status: :not_found

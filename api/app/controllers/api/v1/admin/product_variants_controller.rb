@@ -20,6 +20,7 @@ module Api
         # POST /api/v1/admin/products/:product_id/variants
         def create
           @variant = @product.product_variants.new(variant_params)
+          @variant.stock_quantity = 0 unless staff_access_policy.allowed?("stock.manage")
 
           if @variant.save
             render_created(serialize_variant(@variant))
@@ -54,10 +55,14 @@ module Api
 
         # DELETE /api/v1/admin/products/:product_id/variants/:id
         def destroy
-          if @variant.destroy
-            render_success(nil, message: "Variant deleted successfully")
-          else
-            render_error("Failed to delete variant", errors: @variant.errors.full_messages)
+          @variant.with_lock do
+            return unless @variant.stock_quantity.to_i.zero? || require_staff_capability!("stock.manage")
+
+            if @variant.destroy
+              render_success(nil, message: "Variant deleted successfully")
+            else
+              render_error("Failed to delete variant", errors: @variant.errors.full_messages)
+            end
           end
         end
 
@@ -407,7 +412,11 @@ module Api
         end
 
         def variant_params
-          source = params[:product_variant].presence || params[:variant].presence
+          source = if defined?(@staff_variant_payload)
+            @staff_variant_payload
+          else
+            params[:product_variant].presence || params[:variant].presence
+          end
           raise ActionController::ParameterMissing, :product_variant unless source
 
           source.permit(

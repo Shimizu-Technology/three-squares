@@ -36,10 +36,12 @@ RSpec.describe 'Live pickup stage queries', type: :request do
     end
   end
 
-  it 'ignores a forged location filter for scoped staff context' do
-    admin.update!(assigned_location:main)
+  it 'cannot broaden a scoped staff queue through a forged location filter' do
+    create(:user, :owner)
+    admin.update!(role: "staff", assigned_location:main)
     get '/api/v1/admin/orders/summary',params:{fulfillment_type:'pickup',location_id:donki.id,queue_stage:'new_paid'}
-    expect(response.parsed_body['queue_stage_counts']['new_paid']).to eq(1)
-    expect(response.parsed_body['total_orders']).to eq(8)
+    expect(response.parsed_body['queue_stage_counts']['new_paid']).to eq(0)
+    expect(response.parsed_body['total_orders']).to eq(0)
+    expect(response.parsed_body).not_to have_key('total_revenue_cents')
   end
 end

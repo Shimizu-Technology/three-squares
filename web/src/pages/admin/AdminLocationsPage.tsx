@@ -3,6 +3,7 @@ import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
 import axios from 'axios';
 import AdminRequestState from '../../components/admin/AdminRequestState';
+import { useStaffAccess } from '../../components/admin/StaffAccess.tsx';
 import LocationQrCode from '../../components/admin/LocationQrCode';
 import { authDelete, authGet, authPost, authPut } from '../../services/authApi';
 
@@ -129,6 +130,8 @@ function locationError(error: unknown, fallback: string) {
 }
 
 export default function AdminLocationsPage() {
+  const access = useStaffAccess();
+  const canManageLocations = access.can('locations.manage');
   const { getToken } = useAuth();
   const [locations, setLocations] = useState<Location[]>([]);
   const [loading, setLoading] = useState(true);
@@ -239,7 +242,7 @@ export default function AdminLocationsPage() {
 
     try {
       setSavingId(locationId);
-      await authPut(`/admin/locations/${locationId}`, { location: locationPayload(nextForm) }, getToken);
+      await authPut(`/admin/locations/${locationId}`, { location: canManageLocations ? locationPayload(nextForm) : { hours_json: normalizeHours(nextForm.hours_json), active: nextForm.active } }, getToken);
       toast.success('Location updated');
       await fetchLocations(locationId);
     } catch (error) {
@@ -276,7 +279,7 @@ export default function AdminLocationsPage() {
         <button type="button" onClick={() => void fetchLocations()} disabled={loading} className="btn-secondary mt-3 min-h-11 disabled:opacity-60">Refresh locations</button>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      {canManageLocations && <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
         <h2 className="text-lg font-semibold text-gray-900 mb-4">Add Location</h2>
         <form onSubmit={handleCreate} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -366,7 +369,8 @@ export default function AdminLocationsPage() {
             {creating ? 'Creating...' : 'Create Location'}
           </button>
         </form>
-      </div>
+      </div>}
+      {!canManageLocations && <p className="text-sm text-gray-700">You can update hours, active state and menu links here. An owner manages location details and notification settings.</p>}
 
       <div className="space-y-4">
         <AdminRequestState resource="Locations" loading={loading} error={loadError} hasData={hasLoaded} onRetry={() => void fetchLocations()} />
@@ -402,14 +406,14 @@ export default function AdminLocationsPage() {
                     >
                       {savingId === location.id ? 'Saving...' : 'Save'}
                     </button>
-                    <button
+                    {canManageLocations && <button
                       type="button"
                       onClick={() => void handleDelete(location)}
                       disabled={savingId !== null || deletingId !== null}
                       className="px-3 py-1.5 text-sm rounded-lg border border-red-200 bg-red-50 text-red-700 disabled:opacity-50"
                     >
                       {deletingId === location.id ? 'Deleting...' : 'Delete'}
-                    </button>
+                    </button>}
                   </div>
                 </div>
 
@@ -418,7 +422,7 @@ export default function AdminLocationsPage() {
                     <span className="block text-sm font-medium text-gray-700 mb-1">Location name</span>
                     <input
                       type="text"
-                      disabled={savingId === location.id} value={editForm.name}
+                      disabled={savingId === location.id || !canManageLocations} value={editForm.name}
                       onChange={(event) => updateEditForm(location.id, { name: event.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     />
@@ -427,7 +431,7 @@ export default function AdminLocationsPage() {
                     <span className="block text-sm font-medium text-gray-700 mb-1">Slug</span>
                     <input
                       type="text"
-                      disabled={savingId === location.id} value={editForm.slug}
+                      disabled={savingId === location.id || !canManageLocations} value={editForm.slug}
                       onChange={(event) => updateEditForm(location.id, { slug: event.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     />
@@ -436,7 +440,7 @@ export default function AdminLocationsPage() {
                     <span className="block text-sm font-medium text-gray-700 mb-1">Address</span>
                     <input
                       type="text"
-                      disabled={savingId === location.id} value={editForm.address}
+                      disabled={savingId === location.id || !canManageLocations} value={editForm.address}
                       onChange={(event) => updateEditForm(location.id, { address: event.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     />
@@ -445,7 +449,7 @@ export default function AdminLocationsPage() {
                     <span className="block text-sm font-medium text-gray-700 mb-1">Phone</span>
                     <input
                       type="text"
-                      disabled={savingId === location.id} value={editForm.phone}
+                      disabled={savingId === location.id || !canManageLocations} value={editForm.phone}
                       onChange={(event) => updateEditForm(location.id, { phone: event.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                     />
@@ -454,7 +458,7 @@ export default function AdminLocationsPage() {
                     <span className="block text-sm font-medium text-gray-700 mb-1">Location admin email</span>
                     <input
                       type="email"
-                      disabled={savingId === location.id} value={editForm.admin_email}
+                      disabled={savingId === location.id || !canManageLocations} value={editForm.admin_email}
                       onChange={(event) => updateEditForm(location.id, { admin_email: event.target.value })}
                       placeholder="Location admin email"
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg"
@@ -474,7 +478,7 @@ export default function AdminLocationsPage() {
                     <label className="block">
                       <span className="block text-sm font-medium text-gray-700 mb-1">Admin SMS phones (one per line)</span>
                       <textarea
-                        disabled={savingId === location.id} value={editForm.admin_sms_phones_input}
+                        disabled={savingId === location.id || !canManageLocations} value={editForm.admin_sms_phones_input}
                         onChange={(event) => updateEditForm(location.id, { admin_sms_phones_input: event.target.value })}
                         placeholder="Admin SMS phones, one per line"
                         rows={3}

@@ -40,9 +40,10 @@ interface VariantManagerProps {
   productId: number;
   basePriceCents: number;
   inventoryLevel: 'none' | 'product' | 'variant';
+  canManageStock?: boolean;
 }
 
-export default function VariantManager({ productId, basePriceCents, inventoryLevel }: VariantManagerProps) {
+export default function VariantManager({ productId, basePriceCents, inventoryLevel, canManageStock = true }: VariantManagerProps) {
   const { getToken } = useAuth();
   
   // Option types state (flexible system)
@@ -330,32 +331,19 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
         return;
       }
 
-      await axios.patch(
+      const response = await axios.patch<{ data: Variant }>(
         `${API_BASE_URL}/api/v1/admin/products/${productId}/variants/${editingVariant.id}`,
         {
           product_variant: {
             price_cents: priceCents,
-            stock_quantity: stockQty,
-            low_stock_threshold: lowStockThreshold,
+            ...(canManageStock ? { stock_quantity: stockQty, low_stock_threshold: lowStockThreshold } : {}),
             available: editAvailable,
           },
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      setVariants(variants.map(v => 
-        v.id === editingVariant.id 
-          ? { 
-              ...v, 
-              price_cents: priceCents, 
-              stock_quantity: stockQty, 
-              low_stock_threshold: lowStockThreshold,
-              available: editAvailable,
-              stock_status: stockQty <= 0 ? 'out_of_stock' : stockQty <= lowStockThreshold ? 'low_stock' : 'in_stock',
-              low_stock: stockQty > 0 && stockQty <= lowStockThreshold
-            }
-          : v
-      ));
+      setVariants(current => current.map(variant => variant.id === editingVariant.id ? response.data.data : variant));
       
       toast.success('Variant updated!');
       cancelEdit();
@@ -807,6 +795,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
                     <input
                       type="number"
                       min="0"
+                      disabled={!canManageStock}
                       value={editStock}
                       onChange={(e) => setEditStock(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
@@ -818,6 +807,7 @@ export default function VariantManager({ productId, basePriceCents, inventoryLev
                     <input
                       type="number"
                       min="0"
+                      disabled={!canManageStock}
                       value={editLowStockThreshold}
                       onChange={(e) => setEditLowStockThreshold(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
