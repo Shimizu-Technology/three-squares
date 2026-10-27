@@ -59,6 +59,7 @@ export interface Order {
   location_name?: string;
   tracking_number?: string;
   admin_notes?: string;
+  system_cancellation?: { actor: string; reason: string } | null;
   notes?: string;
   created_at: string;
   updated_at?: string;

@@ -25,6 +25,7 @@ module Api
             announcement_style: settings.announcement_style,
             enable_storefront_three_squares: settings.enable_storefront_three_squares,
             enable_storefront_latte_stone: settings.enable_storefront_latte_stone,
+            enable_catering_online_ordering: settings.enable_catering_online_ordering,
             enable_storefront_catering: settings.enable_storefront_catering
           }
         end
@@ -50,6 +51,7 @@ module Api
               announcement_style: settings.announcement_style,
               enable_storefront_three_squares: settings.enable_storefront_three_squares,
               enable_storefront_latte_stone: settings.enable_storefront_latte_stone,
+              enable_catering_online_ordering: settings.enable_catering_online_ordering,
               enable_storefront_catering: settings.enable_storefront_catering
             }
           else
@@ -76,6 +78,7 @@ module Api
             :enable_storefront_three_squares,
             :enable_storefront_latte_stone,
             :enable_storefront_catering,
+            :enable_catering_online_ordering,
             order_notification_emails: [],
             shipping_origin_address: [
               :company, :street1, :street2, :city, :state, :zip, :country, :phone, :email

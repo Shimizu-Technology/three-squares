@@ -42,7 +42,7 @@ module Api
           @products = @products.where("products.name ILIKE ? OR products.description ILIKE ?", "%#{params[:search]}%", "%#{params[:search]}%")
         end
 
-        price_sql = CatalogPrice.sql(location_id: params[:location_id])
+        price_sql = CatalogPrice.sql(location_id: params[:location_id], online: true, settings: @storefront_settings)
 
         # Price range
         if params[:min_price].present? || params[:max_price].present?
@@ -106,6 +106,7 @@ module Api
       private
 
       def set_menu_time
+        @storefront_settings = SiteSetting.instance
         @menu_time = Time.current
       end
 
@@ -131,7 +132,7 @@ module Api
           name: product.name,
           slug: product.slug,
           description: product.description&.truncate(200),
-          pricing: CatalogPrice.resolve(product: product, location_id: params[:location_id]).as_json,
+          pricing: CatalogPrice.resolve(product: product, location_id: params[:location_id], online: true, settings: @storefront_settings).as_json,
           base_price_cents: product.base_price_cents,
           sale_price_cents: product.sale_price_cents,
           new_product: product.new_product,
@@ -157,7 +158,7 @@ module Api
           name: product.name,
           slug: product.slug,
           description: product.description,
-          pricing: CatalogPrice.resolve(product: product, location_id: params[:location_id]).as_json,
+          pricing: CatalogPrice.resolve(product: product, location_id: params[:location_id], online: true, settings: @storefront_settings).as_json,
           base_price_cents: product.base_price_cents,
           sale_price_cents: product.sale_price_cents,
           new_product: product.new_product,
@@ -201,7 +202,7 @@ module Api
           display_name: variant.display_name,
           sku: variant.sku,
           price_cents: variant.price_cents,
-          pricing: CatalogPrice.resolve(product: variant.product, variant: variant, location_id: params[:location_id]).as_json,
+          pricing: CatalogPrice.resolve(product: variant.product, variant: variant, location_id: params[:location_id], online: true, settings: @storefront_settings).as_json,
           available: variant.available,
           actually_available: variant.actually_available?,
           in_stock: variant.in_stock?,

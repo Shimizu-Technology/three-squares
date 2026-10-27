@@ -4,7 +4,7 @@ import { formatPrice } from '../services/api';
 /** All customer prices come from the same server contract, including "was". */
 export default function CatalogPrice({ pricing, productType }: { pricing?: CatalogPricing; productType: string }) {
   if (!pricing?.purchasable || pricing.unit_price_cents === null) {
-    return <span className="text-base font-medium text-warm-600">Contact us for a price</span>;
+    return <span className="text-base font-medium text-warm-600">{pricing?.reason || 'Contact us for a price'}</span>;
   }
   if (productType === 'complimentary_with_meal') {
     return <span className="text-base font-medium text-warm-600">Complimentary with a meal</span>;
