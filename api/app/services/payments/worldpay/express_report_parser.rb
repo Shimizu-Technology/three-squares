@@ -158,12 +158,12 @@ module Payments
       def self.rows_at(node, path, strict: false)
         if strict
           path[0...-1].each do |name|
-            unless node.element_children.length == 1 && node.element_children.first.name == name && node.children.select(&:text?).all? { |child| child.text.strip.empty? }
+            unless node.element_children.length == 1 && node.element_children.first.name == name && character_content_empty?(node)
               raise Xml::Invalid, "unexpected_report_structure"
             end
             node = Xml.child(node, name, required: true)
           end
-          raise Xml::Invalid, "unexpected_report_structure" unless node.children.select(&:text?).all? { |child| child.text.strip.empty? }
+          raise Xml::Invalid, "unexpected_report_structure" unless character_content_empty?(node)
           raise Xml::Invalid, "unexpected_report_structure" if node.element_children.any? { |child| child.name != path.last }
           return node.element_children.to_a
         end
@@ -175,6 +175,10 @@ module Payments
         # Other repeated siblings are not silently interpreted as transactions.
         raise Xml::Invalid, "unexpected_report_structure" if parent.element_children.any? { |child| child.name != path.last }
         parent.element_children.select { |child| child.name == path.last }
+      end
+
+      def self.character_content_empty?(node)
+        node.children.select { |child| child.text? || child.cdata? }.all? { |child| child.text.strip.empty? }
       end
 
       def self.count!(response, path, minimum:, maximum:)

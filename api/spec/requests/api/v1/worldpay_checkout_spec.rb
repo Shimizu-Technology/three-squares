@@ -233,6 +233,27 @@ RSpec.describe 'Worldpay hosted checkout contracts', type: :request do
     expect(variant.reload.stock_quantity).to eq(10)
   end
 
+  it 'durably quarantines uninspectable CDATA in an otherwise empty failed-query collection' do
+    start_checkout
+    attempt = PaymentAttempt.last
+    allow(self).to receive(:query_empty).and_return(true)
+    allow(self).to receive(:query_envelope_code).and_return('1001')
+    allow(self).to receive(:query_response).and_wrap_original do |original|
+      original.call.sub('<Items>', '<Items><![CDATA[<Item><TransactionID>possible-charge</TransactionID></Item>]]>')
+    end
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    quarantine = attempt.reload.provider_metadata.fetch('worldpay_financial_quarantine')
+    expect(quarantine['parse_error']).to eq('unexpected_report_structure')
+    allow(self).to receive(:query_response).and_call_original
+    allow(self).to receive(:query_empty).and_return(false)
+    allow(self).to receive(:query_envelope_code).and_return('0')
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    expect(attempt.reload.provider_metadata['worldpay_financial_quarantine']).to eq(quarantine)
+    expect(attempt.order.reload.payment_status).to eq('pending')
+    expect(PaymentTransaction.count).to eq(0)
+    expect(variant.reload.stock_quantity).to eq(10)
+  end
+
   it 'does not let an overlapping earlier empty query relax a later partial quarantine' do
     start_checkout
     allow(self).to receive(:query_empty).and_return(true)

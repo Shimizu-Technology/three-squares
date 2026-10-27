@@ -119,6 +119,23 @@ RSpec.describe Payments::Worldpay::ExpressReportParser do
         expect(query_parse(xml).dig(:metadata, :financial_ambiguity)).to be(true)
       end
     end
+
+    it "rejects CDATA outside the explicit embedded XML path before declaring a query empty" do
+      tainted = "<![CDATA[<Item><TransactionID>possible-charge</TransactionID></Item>]]>"
+      embedded = "<Items>#{tainted}</Items>".gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;")
+      [ "<ReportingData><Items>#{tainted}</Items></ReportingData>",
+        "<ReportingData>#{tainted}<Items/></ReportingData>",
+        "<ReportingData>#{embedded}</ReportingData>" ].each do |data|
+        %w[0 1001].each do |code|
+          result = query_parse(query_xml(code: code, data: data))
+          expect(result).to include(status: "unknown", complete: false, rows: [])
+          expect(result[:metadata]).to include(financial_ambiguity: true)
+          expect(result.dig(:metadata, :parse_error)).not_to be_nil
+        end
+      end
+      empty = query_parse(query_xml(code: "1001", data: "<ReportingData><Items><![CDATA[ \n ]]></Items></ReportingData>"))
+      expect(empty.dig(:metadata, :financial_ambiguity)).to be(false)
+    end
   end
 
   context "with the published per-Item count contract" do
