@@ -250,8 +250,13 @@ module Api
               Location.find_each { |location| product.product_locations.create!(location: location, available: true) }
             end
             record = product.product_locations.find_or_initialize_by(location_id: attrs[:location_id])
-            record.available = attrs[:available]
-            record.save!
+            if record.persisted?
+              # A local flag must not be blocked by unrelated legacy price data.
+              record.update_columns(available: attrs[:available], updated_at: Time.current)
+            else
+              record.available = attrs[:available]
+              record.save!
+            end
           end
           render_success({ product_id: product.id, location_id: attrs[:location_id].to_i, available: attrs[:available] })
         rescue ActiveRecord::RecordNotFound

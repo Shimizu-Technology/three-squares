@@ -8,6 +8,9 @@ export interface Product {
   featured: boolean;
   archived: boolean;
   product_type: string;
+  allow_pickup?: boolean;
+  allow_shipping?: boolean;
+  location_ids?: number[];
   primary_image_url: string | null;
   variant_count: number;
   total_stock: number;

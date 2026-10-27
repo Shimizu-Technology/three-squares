@@ -14,8 +14,10 @@ module Api
           if params[:location_id].present? && !staff_access_policy.location_allowed?(params[:location_id])
             return staff_record_missing!
           end
-          products = MenuEligibility.scope(StorefrontEligibility.scope(Product.published))
-            .includes(:product_variants, :product_images, :collections)
+          include_unavailable = params[:include_unavailable] == "true"
+          return unless !include_unavailable || require_staff_capability!("availability.manage")
+          products = MenuEligibility.scope(StorefrontEligibility.scope(Product.published.active.where(allow_pickup: true)))
+            .includes(:product_variants, :product_images, :collections, :product_locations)
 
           # Filter by location — auto-scope for location-locked staff
           effective_location_id = if current_user.location_scoped?
@@ -24,7 +26,7 @@ module Api
             params[:location_id].to_i
           end
 
-          if effective_location_id
+          if effective_location_id && !include_unavailable
             products = products.where.not(id: ProductLocation.select(:product_id))
               .or(products.where(id: ProductLocation.where(location_id: effective_location_id, available: true).select(:product_id)))
               .distinct
@@ -69,12 +71,15 @@ module Api
         def pos_product_json(product, effective_location_id)
           primary_image = product.product_images.find(&:primary?) || product.product_images.first
           variants = product.product_variants.select(&:available?).sort_by { |variant| variant.variant_name.to_s }
+          local_rows = product.product_locations.to_a
+          location_available = effective_location_id.nil? || local_rows.empty? || local_rows.any? { |row| row.location_id == effective_location_id && row.available? }
 
           {
             id: product.id,
             name: product.name,
             slug: product.slug,
             product_type: product.product_type,
+            location_available: location_available,
             image_url: primary_image&.url,
             variants: variants.filter_map do |v|
               price = CatalogPrice.resolve(product: product, variant: v, location_id: effective_location_id)
@@ -91,7 +96,7 @@ module Api
                 price_cents: price.unit_price_cents,
                 price_formatted: "$#{'%.2f' % (price.unit_price_cents / 100.0)}",
                 sku: v.sku,
-                in_stock: capacity.nil? || capacity.positive?,
+                in_stock: location_available && (capacity.nil? || capacity.positive?),
                 stock_quantity: v.stock_quantity,
                 inventory_pool_key: pool_type ? "#{pool_type}:#{pool_id}" : nil,
                 available_quantity: capacity

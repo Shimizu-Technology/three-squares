@@ -20,6 +20,8 @@ class Product < ApplicationRecord
   validates :product_low_stock_threshold, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
   validates :allow_pickup, inclusion: { in: [ true, false ] }
   validates :allow_shipping, inclusion: { in: [ true, false ] }
+  validates :weight_oz, numericality: { greater_than: 0 }, allow_nil: true
+  validates :weight_oz, presence: { message: "is required when shipping is enabled" }, if: :allow_shipping?
   validate :check_variants_not_in_carts_before_level_change, on: :update
   validate :must_support_at_least_one_fulfillment_type
 
@@ -38,8 +40,10 @@ class Product < ApplicationRecord
 
   # Callbacks
   before_validation :generate_slug, if: -> { slug.blank? }
+  before_validation :normalize_pickup_weight
   before_validation :generate_sku_prefix, if: -> { sku_prefix.blank? }
   after_save :ensure_default_variant, if: -> { saved_change_to_inventory_level? || ([ "product", "none" ].include?(inventory_level) && product_variants.none?) }
+  after_save :sync_default_variant_shipping_weight, if: -> { allow_shipping? && (saved_change_to_weight_oz? || saved_change_to_allow_shipping?) }
   # Fires on every product creation but short-circuits immediately when
   # no variants exist (the common case). Costs one EXISTS query for
   # products created without nested attributes; acceptable given how
@@ -136,6 +140,16 @@ class Product < ApplicationRecord
   end
 
   private
+
+  def normalize_pickup_weight
+    self.weight_oz = nil if !allow_shipping? && weight_oz == 0
+  end
+
+  def sync_default_variant_shipping_weight
+    product_variants.where(is_default: true).each do |variant|
+      variant.update!(weight_oz: weight_oz) unless variant.weight_oz == weight_oz
+    end
+  end
 
   def generate_slug
     self.slug = name.to_s.parameterize
