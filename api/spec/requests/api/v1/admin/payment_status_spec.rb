@@ -91,9 +91,24 @@ RSpec.describe 'Read-only payment status', type: :request do
       expect(result).to include('profile_id' => saved.id, 'real_dispatch_enabled' => false)
       expect(result.fetch('blockers')).to include("This profile's configuration could not be checked. An operator must review it.")
     end
-    expect(Rails.logger).to have_received(:warn).with('Payments::Configuration::UnsafeConfiguration')
-    expect(Rails.logger).to have_received(:warn).with('ArgumentError')
+    expect(Rails.logger).to have_received(:warn).with("Payments::Configuration::UnsafeConfiguration profile_id=#{bad_online.id}")
+    expect(Rails.logger).to have_received(:warn).with("ArgumentError profile_id=#{bad_pos.id}")
     expect(response.body).not_to include('private-malformed-value', 'private-invalid-zone')
+  end
+
+  it 'describes expected missing credentials and contracts as waiting on Worldpay for both collection methods' do
+    online = profile('sandbox', location: location, presentation: 'worldpay_hosted_page', capabilities: { 'hosted_page_variant' => 'legacy' })
+    PaymentProfile.create!(payment_identity: online.payment_identity, provider: 'worldpay', channel: 'pos', location: location,
+      presentation: 'worldpay_terminal', enabled: true)
+    get url
+    expect(response).to have_http_status(:ok)
+    expect(row(location).fetch('blockers')).to include('Waiting on valid assigned Worldpay hosted-page, terminal, fraud, currency and reporting configuration.')
+    expect(row(location, 'pos').fetch('blockers')).to include('Waiting on valid assigned Worldpay reader, query and timeout contracts and configuration.')
+    [row(location), row(location, 'pos')].each do |result|
+      expect(result).to include('network_gate_enabled' => false, 'real_dispatch_enabled' => false)
+      expect(result.fetch('blockers')).to include('Waiting on Worldpay credentials and application configuration.')
+      expect(result.fetch('blockers').join).not_to include('could not be checked')
+    end
   end
 
   it 'uses resolver selection and the runtime preflight instead of a parallel readiness predicate' do

@@ -43,11 +43,22 @@ module Payments
             blockers << 'Worldpay credentials must match the original account and acceptor identity.'
           end
           if channel == 'pos'
-            Worldpay::TriPosRuntime.new(identity: identity, profile: { 'presentation' => profile.presentation, 'capabilities' => profile.capabilities })
+            begin
+              Worldpay::TriPosRuntime.new(identity: identity, profile: { 'presentation' => profile.presentation, 'capabilities' => profile.capabilities })
+            rescue Configuration::UnsafeConfiguration
+              blockers << 'Waiting on valid assigned Worldpay reader, query and timeout contracts and configuration.'
+            end
           elsif profile.presentation != 'worldpay_hosted_page' || profile.capabilities['hosted_page_variant'] != 'legacy'
             blockers << 'Worldpay Hosted Fields and Premium are waiting on their assigned integration guides; legacy hosted checkout needs its own profile.'
           else
-            Worldpay::Runtime.preflight_profile!(identity: identity, profile: Worldpay::ProfileSnapshot.capture(profile))
+            snapshot = Worldpay::ProfileSnapshot.capture(profile)
+            begin
+              Worldpay::Runtime.preflight_profile!(identity: identity, profile: snapshot)
+            rescue Configuration::UnsafeConfiguration
+              blockers << 'Waiting on valid assigned Worldpay hosted-page, terminal, fraud, currency and reporting configuration.'
+            rescue UnsupportedCapability
+              blockers << 'Worldpay Hosted Fields and Premium are waiting on their assigned integration guides; legacy hosted checkout needs its own profile.'
+            end
           end
         elsif provider == 'stripe'
           begin
@@ -63,7 +74,7 @@ module Payments
       end
       row(location, channel, provider, profile, identity, gate, blockers)
     rescue Configuration::UnsafeConfiguration, Worldpay::Configuration::Invalid, KeyError, TypeError, NoMethodError, ArgumentError, UnsupportedCapability => error
-      Rails.logger.warn(error.class.name)
+      Rails.logger.warn("#{error.class.name} profile_id=#{profile&.id}")
       row(location, channel, provider, profile, identity, gate || false,
         (blockers || []) + ["This profile's configuration could not be checked. An operator must review it."])
     end
