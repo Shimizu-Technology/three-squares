@@ -129,4 +129,84 @@ RSpec.describe Payments::Worldpay::ExpressClient do
     result = client(transport: ->(**) { report_xml(total: 2, rows: report_row + report_row(id: "transaction-2")) }).query_all(fields: {}, page_size: 1)
     expect(result[:metadata][:parse_error]).to eq("report_page_size_limit")
   end
+
+  context "with the published fixed-page reporting contract" do
+    it "enumerates fixed 1000-row pages without sending PageSize or claiming financial success" do
+      calls = []
+      responses = [ published_page_xml(total: 1001), published_page_xml(total: 1001, page: 2) ]
+      instance = published_report_client(transport: ->(**request) { calls << request; responses.shift })
+      result = instance.query_all(fields: published_query_fields)
+      expect(result).to include(status: "unknown", complete: true, pages_read: 2)
+      expect(result[:rows].length).to eq(1001)
+      expect(result[:rows].map { |row| row[:raw_id] }.uniq.length).to eq(1001)
+      expect(result[:rows]).to all(include(status: "unknown", captured_cents: nil, approved_cents: nil, currency: nil))
+      expect(calls.map { |request| request[:interface] }).to eq([ :reporting, :reporting ])
+      calls.each_with_index do |request, index|
+        expect(request[:body]).to include("<PageNumber>#{index + 1}</PageNumber>")
+        expect(request[:body]).not_to include("PageSize", "IdempotencyKey")
+      end
+    end
+
+    it "rejects custom sizes, caller pagination and inconsistent request/response contracts before dispatch" do
+      transport = double("offline transport")
+      expect(transport).not_to receive(:call)
+      instance = published_report_client(transport: transport)
+      [ 1, 999, 1001, "1000", nil ].each do |size|
+        expect { instance.transaction_query_pagination(fields: published_query_fields, page_number: 1, page_size: size) }.to raise_error(Payments::Worldpay::Configuration::Invalid)
+      end
+      %w[PageNumber PageSize].each do |name|
+        fields = { "Parameters" => published_query_fields["Parameters"].merge(name => "1") }
+        expect { instance.transaction_query_pagination(fields: fields, page_number: 1) }.to raise_error(Payments::Worldpay::Configuration::Invalid)
+      end
+      generic = client(transport: transport, report_contract: Payments::Worldpay::PublishedContract.report_contract)
+      expect { generic.transaction_query_pagination(fields: {}, page_number: 1) }.to raise_error(Payments::Worldpay::Configuration::Invalid)
+    end
+
+    it "requires the requested page even when reading just one page" do
+      instance = published_report_client(transport: ->(**) { published_page_xml(total: 1001, page: 2) })
+      result = instance.transaction_query_pagination(fields: published_query_fields, page_number: 1)
+      expect(result).to include(complete: false, rows: [])
+      expect(result.dig(:metadata, :parse_error)).to eq("unexpected_report_page")
+    end
+
+    it "keeps changed counts, missing IDs, identical or changed overlaps and malformed later pages incomplete" do
+      first = published_page_xml(total: 1001)
+      second = published_page_xml(total: 1001, page: 2)
+      [ published_page_xml(total: 1002, page: 2), published_page_xml(total: 2001, page: 2),
+        second.sub("transaction-1001", "transaction-1"), second.sub("transaction-1001", "transaction-1").sub("Approved", "Changed"),
+        second.sub("<TransactionID>transaction-1001</TransactionID>", ""), "<broken" ].each do |xml|
+        responses = [ first, xml ]
+        result = published_report_client(transport: ->(**) { responses.shift }).query_all(fields: published_query_fields)
+        expect(result).to include(complete: false)
+        expect(result[:rows].length).to eq(1000)
+        expect(result.dig(:metadata, :parse_error)).not_to be_nil
+      end
+    end
+
+    it "bounds pages and aggregate memory and never checkpoints unproven empty reports" do
+      responses = [ published_page_xml(total: 1001), published_page_xml(total: 1001, page: 2) ]
+      result = published_report_client(transport: ->(**) { responses.shift }).query_all(fields: published_query_fields, max_rows: 1000)
+      expect(result).to include(complete: false, pages_read: 2)
+      expect(result.dig(:metadata, :parse_error)).to eq("report_aggregate_row_limit")
+      result = published_report_client(transport: ->(**) { published_page_xml(total: 1001) }).query_all(fields: published_query_fields, max_pages: 1)
+      expect(result.dig(:metadata, :parse_error)).to eq("report_page_limit")
+      result = published_report_client(transport: ->(**) { published_page_xml(total: 0, rows: "") }).query_all(fields: published_query_fields)
+      expect(result).to include(complete: false, rows: [])
+      expect(result.dig(:metadata, :parse_error)).to eq("report_count_proof_required")
+      transport = double("offline transport")
+      expect(transport).not_to receive(:call)
+      expect do
+        published_report_client(transport: transport).query_all(fields: published_query_fields, max_rows: 10_001)
+      end.to raise_error(Payments::Worldpay::Configuration::Invalid, "invalid_report_bounds")
+      expect(described_class::MAX_REPORT_ROWS).to eq(10_000)
+    end
+  end
+
+  it "does not checkpoint a generic empty report without total-count proof" do
+    contract = report_contract.except(:total_path)
+    instance = client(report_contract: contract, transport: ->(**) { report_xml(total: 0, rows: "") })
+    result = instance.query_all(fields: {})
+    expect(result).to include(complete: false, rows: [])
+    expect(result.dig(:metadata, :parse_error)).to eq("report_count_proof_required")
+  end
 end

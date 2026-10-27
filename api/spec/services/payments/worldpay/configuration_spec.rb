@@ -12,6 +12,29 @@ RSpec.describe Payments::Worldpay::Configuration do
     expect(config).to be_frozen
   end
 
+  it "accepts only verified Transaction/Reporting namespaces and fails missing Services before dispatch" do
+    config = published_report_configuration
+    expect(config.namespace(:reporting)).to eq(Payments::Worldpay::PublishedContract.namespace(:reporting))
+    expect { config.namespace(:services) }.to raise_error(described_class::Invalid, "interface_namespace_required")
+    transport = double("offline transport")
+    expect(transport).not_to receive(:call)
+    instance = client(configuration: config, transport: transport)
+    expect do
+      instance.payment_account_query(fields: { "PaymentAccount" => { "PaymentAccountID" => "fixture-pass-id" } }, token_scheme: "pass", consent: true)
+    end.to raise_error(described_class::Invalid, "interface_namespace_required")
+    expect { configuration(namespaces: { transaction: "urn:local:transaction" }) }.to raise_error(described_class::Invalid)
+    expect { configuration(namespaces: namespaces.merge(invented: "urn:local:invented")) }.to raise_error(described_class::Invalid)
+  end
+
+  it "permits exact mapped report account identifiers while continuing to reject token echoes and misplaced IDs" do
+    config = configuration
+    facts = { metadata: { account_id: credentials["AccountID"], acceptor_id: credentials["AcceptorID"] } }
+    expect(config.secrets_in?(facts)).to be(true)
+    expect(config.secrets_in?(facts, allow_report_identifiers: true)).to be(false)
+    expect(config.secrets_in?({ account_id: credentials["AccountToken"] }, allow_report_identifiers: true)).to be(true)
+    expect(config.secrets_in?({ raw_id: credentials["AccountID"] }, allow_report_identifiers: true)).to be(true)
+  end
+
   [ { provider: "stripe" }, { environment: "simulated" }, { environment: "production" }, { environment: "invalid" },
     { currency: "EUR" }, { credential_reference: "WORLDPAY_EXPRESS_ACCOUNT_TOKEN" }, { external_account_id: "foreign-account" } ].each do |changes|
     it "rejects identity change #{changes.keys.join(',')} before I/O" do

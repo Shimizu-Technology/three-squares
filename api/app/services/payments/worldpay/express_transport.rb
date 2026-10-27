@@ -30,6 +30,8 @@ module Payments
       # Returns only a bounded XML String. Any error after dispatch is an unknown
       # financial outcome, including oversized bodies and non-200 HTTP responses.
       def call(interface:, body:)
+        response_limit = Configuration.response_bytes(interface)
+        @configuration.namespace(interface)
         uri = @configuration.endpoint(interface)
         raise Error, "invalid_request_body" unless body.is_a?(String) && body.bytesize.between?(1, Configuration::MAX_BYTES)
         http = Net::HTTP.new(uri.host, uri.port, nil)
@@ -48,11 +50,11 @@ module Payments
               raise Error, "unexpected_http_status" unless response.code == "200"
               raise Error, "unexpected_content_encoding" unless [ nil, "identity" ].include?(response["Content-Encoding"])
               length = response["Content-Length"]
-              if length && (!/\A[0-9]{1,10}\z/.match?(length) || length.to_i > Configuration::MAX_BYTES)
+              if length && (!/\A[0-9]{1,10}\z/.match?(length) || length.to_i > response_limit)
                 raise Error, "response_size_limit"
               end
               response.read_body do |chunk|
-                raise Error, "response_size_limit" if result.bytesize + chunk.bytesize > Configuration::MAX_BYTES
+                raise Error, "response_size_limit" if result.bytesize + chunk.bytesize > response_limit
                 result << chunk
               end
             end

@@ -147,8 +147,6 @@ module Payments
         premium_setup: "premium_setup_url_contract_not_mapped",
         observation_currency: "transaction_currency_response_path_not_verified",
         completion_return_void_amount: "method_output_tables_do_not_establish_amount_path",
-        report_contract: "per_item_counts_not_supported_by_existing_report_parser",
-        pagination_request: "published_fixed_page_size_has_no_page_size_request_path",
         reporting_currency: "reporting_currency_path_not_verified",
         terminal_profile: "assigned_terminal_settings_required_no_numeric_defaults"
       })
@@ -173,11 +171,16 @@ module Payments
       end
 
       def self.report_contract
-        raise Unsupported, UNSUPPORTED.fetch(:report_contract)
+        deep_freeze(REPORTING_LAYOUT.slice(:reporting_data_path, :rows_path, :item_count_paths, :fixed_page_size).merge(
+          fields: REPORTING_LAYOUT.fetch(:fields).merge(
+            account_id: [ "AccountID" ], acceptor_id: [ "AcceptorID" ], terminal_id: [ "TerminalID" ],
+            approval_number: [ "ApprovalNumber" ], express_response_code: [ "ExpressResponseCode" ],
+            transaction_type: [ "TransactionType" ], status_code: [ "TransactionStatusCode" ]),
+          embedded_roots: { "ReportingData" => %w[Items Item], "Items" => [ "Item" ] }))
       end
 
       def self.pagination_request
-        raise Unsupported, UNSUPPORTED.fetch(:pagination_request)
+        deep_freeze(REPORTING_LAYOUT.slice(:page_number_path, :fixed_page_size))
       end
     end
   end

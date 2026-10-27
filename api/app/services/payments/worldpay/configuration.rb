@@ -9,6 +9,7 @@ module Payments
       class Invalid < ArgumentError; end
 
       MAX_BYTES = 65_536
+      MAX_REPORT_BYTES = 8 * 1024 * 1024
       GUID = /\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i
       HOSTS = {
         "sandbox" => { transaction: "certtransaction.elementexpress.com", reporting: "certreporting.elementexpress.com", services: "certservices.elementexpress.com" },
@@ -43,7 +44,11 @@ module Payments
         @endpoints = HOSTS.fetch(environment).to_h do |interface, _|
           [ interface, validate_endpoint!(interface, env["WORLDPAY_EXPRESS_#{interface.to_s.upcase}_URL"]).to_s.freeze ]
         end.freeze
-        @namespaces = HOSTS.fetch(environment).keys.to_h { |interface| [ interface, scalar!(namespaces.fetch(interface), limit: 256) ] }.freeze
+        unless namespaces.is_a?(Hash) && (namespaces.keys - HOSTS.fetch(environment).keys).empty? &&
+            %i[transaction reporting].all? { |interface| namespaces.key?(interface) }
+          raise Invalid, "incomplete_worldpay_configuration"
+        end
+        @namespaces = namespaces.to_h { |interface, value| [ interface, scalar!(value, limit: 256) ] }.freeze
         @return_origins = origins!(return_origins)
         @premium_origins = origins!(premium_origins)
         @return_url = allowed_url!(env["WORLDPAY_RETURN_URL"], @return_origins).to_s.freeze
@@ -75,7 +80,12 @@ module Payments
       end
 
       def namespace(interface)
-        @namespaces.fetch(interface)
+        @namespaces.fetch(interface) { raise Invalid, "interface_namespace_required" }
+      end
+
+      def self.response_bytes(interface)
+        raise Invalid, "invalid_interface" unless %i[transaction reporting services].include?(interface)
+        interface == :reporting ? MAX_REPORT_BYTES : MAX_BYTES
       end
 
       def endpoint(interface)
@@ -103,10 +113,16 @@ module Payments
         allowed_url!(value, @premium_origins).to_s
       end
 
-      def secrets_in?(value)
+      def secrets_in?(value, allow_report_identifiers: false)
         case value
-        when Hash then value.any? { |key, entry| secrets_in?(key) || secrets_in?(entry) }
-        when Array then value.any? { |entry| secrets_in?(entry) }
+        when Hash then value.any? do |key, entry|
+          field = { account_id: "AccountID", acceptor_id: "AcceptorID" }[key]
+          # Only exact, explicitly mapped report identifiers may echo these IDs.
+          # The authentication token remains forbidden even if misconfigured as an ID.
+          permitted = allow_report_identifiers && field && entry == @credentials[field] && !entry.include?(@credentials.fetch("AccountToken"))
+          secrets_in?(key) || (!permitted && secrets_in?(entry, allow_report_identifiers: allow_report_identifiers))
+        end
+        when Array then value.any? { |entry| secrets_in?(entry, allow_report_identifiers: allow_report_identifiers) }
         when String, Symbol then credentials.values.any? { |secret| value.to_s.include?(secret) }
         else false
         end

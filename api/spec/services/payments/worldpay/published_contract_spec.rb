@@ -5,8 +5,7 @@ RSpec.describe Payments::Worldpay::PublishedContract do
   include_context "offline Worldpay client contracts"
 
   def published_configuration(terminal_profile: published_profile)
-    # Services is a synthetic test-only identifier, never a published default.
-    configuration(namespaces: namespaces.merge(described_class.namespaces), terminal_profile: terminal_profile)
+    configuration(namespaces: described_class.namespaces, terminal_profile: terminal_profile)
   end
 
   def published_profile
@@ -61,7 +60,8 @@ RSpec.describe Payments::Worldpay::PublishedContract do
       end
     end
     [ described_class.wire_contract, described_class.observation_contracts, described_class.setup_contract,
-      described_class.namespaces, described_class.reporting_layout, described_class.unsupported, described_class::SOURCES ].each { |value| frozen_tree.call(value) }
+      described_class.namespaces, described_class.reporting_layout, described_class.report_contract, described_class.pagination_request,
+      described_class.unsupported, described_class::SOURCES ].each { |value| frozen_tree.call(value) }
     expect { described_class.wire_contract["CreditCardSale"][:amount_path] << "Injected" }.to raise_error(FrozenError)
   end
 
@@ -186,8 +186,12 @@ RSpec.describe Payments::Worldpay::PublishedContract do
     expect(xml).not_to include("PageSize", "IdempotencyKey", "<Terminal>")
     expect(described_class.reporting_layout).to include(rows_path: %w[Items Item], fixed_page_size: 1000,
       item_count_paths: { page: [ "CurrentPageNumber" ], pages: [ "MaxPageCount" ], total: [ "MaxRows" ] })
-    expect { described_class.report_contract }.to raise_error(described_class::Unsupported, "per_item_counts_not_supported_by_existing_report_parser")
-    expect { described_class.pagination_request }.to raise_error(described_class::Unsupported, "published_fixed_page_size_has_no_page_size_request_path")
+    expect(described_class.report_contract).to include(item_count_paths: described_class.reporting_layout[:item_count_paths], fixed_page_size: 1000)
+    expect(described_class.report_contract[:fields]).to include(account_id: [ "AccountID" ], acceptor_id: [ "AcceptorID" ], terminal_id: [ "TerminalID" ],
+      approval_number: [ "ApprovalNumber" ], express_response_code: [ "ExpressResponseCode" ], transaction_type: [ "TransactionType" ], status_code: [ "TransactionStatusCode" ])
+    expect(described_class.report_contract[:fields]).not_to have_key(:currency)
+    expect(described_class.pagination_request).to eq(page_number_path: %w[Parameters PageNumber], fixed_page_size: 1000)
+    expect(described_class.unsupported.keys).not_to include(:report_contract, :pagination_request)
     expect do
       published_builder.build(method: "TransactionQueryPagination", fields: { "Parameters" => fields["Parameters"].merge("PageSize" => "1000") })
     end.to raise_error(Payments::Worldpay::Configuration::Invalid, "wire_field_not_allowed")

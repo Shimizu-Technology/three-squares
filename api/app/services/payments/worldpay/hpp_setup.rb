@@ -12,11 +12,14 @@ module Payments
       module Xml
         MAX_DEPTH = 16
         MAX_NODES = 4096
+        MAX_REPORT_NODES = 200_000
         NAME = /\A[A-Za-z][A-Za-z0-9_]{0,63}\z/
         class Invalid < ArgumentError; end
 
-        def self.parse(input)
-          raise Invalid, "invalid_xml_size" unless input.is_a?(String) && input.bytesize.between?(1, Configuration::MAX_BYTES)
+        def self.parse(input, interface: :transaction)
+          max_bytes = Configuration.response_bytes(interface)
+          max_nodes = interface == :reporting ? MAX_REPORT_NODES : MAX_NODES
+          raise Invalid, "invalid_xml_size" unless input.is_a?(String) && input.bytesize.between?(1, max_bytes)
           wire = input.dup.force_encoding(Encoding::UTF_8)
           unless wire.valid_encoding? && !wire.include?("\0") && !wire.match?(/<!\s*(?:DOCTYPE|ENTITY)/i)
             raise Invalid, "unsafe_xml"
@@ -26,7 +29,7 @@ module Payments
           Nokogiri::XML::Reader(wire, nil, "UTF-8", options).each do |node|
             raise Invalid, "xml_depth_limit" if node.depth >= MAX_DEPTH
             count += 1
-            raise Invalid, "xml_node_limit" if count > MAX_NODES
+            raise Invalid, "xml_node_limit" if count > max_nodes
           end
           document = Nokogiri::XML::Document.parse(wire, nil, "UTF-8", options)
           raise Invalid, "unsafe_xml" if document.internal_subset || document.external_subset

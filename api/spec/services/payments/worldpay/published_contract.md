@@ -1,11 +1,9 @@
 # Published Express XML maps — bounded Phase4a PR2
 
-Checked 2026-10-27 against local base `2e5dacb` (main baseline `323ad77`).
-Worktree: `/Users/leonshimizu/.t3/worktrees/three-squares/t3-9dd2c273`, branch
-`t3/worldpay-published-contract` (T3 renamed the initial `t3/9dd2c273` branch).
-Only the three assigned new files belong to this worker. The
-parent owns integration, provider normalization, the durable ledger, review,
-PR creation, and merge. This worker has no merge authority.
+Checked 2026-10-27 against local base `6d99991` on
+`t3/worldpay-published-pagination`. This slice adapts the existing report ports;
+the parent owns provider normalization, durable processing, HPP/provider policy,
+full integration acceptance, review, PR creation, and merge.
 
 ## Context and acceptance
 
@@ -15,14 +13,19 @@ Hosted Fields bridge, and assigned terminal configuration. Three Squares serves
 online customers, POS staff, managers, and accounting; B&G Pacific remains the
 merchant of record. These maps address the Express backend boundary only.
 They do not change checkout, Stripe, fulfillment, accounting, or provider state.
-No deployed build or merchant configuration was inspected. No private Brain Dump
-content was read.
+No deployed build or merchant configuration was inspected. Existing project
+context was refreshed from the local project status and Phase4a acceptance notes;
+no private details from those notes are reproduced here.
 
 Acceptance for this slice: static maps use public primary evidence; unsupported
 paths have explicit blockers; approved terminal indicators have no numeric
 defaults; existing serializer/setup/observation ports consume the compatible
-maps in standalone tests; financial results remain `unknown`. No credential,
-real transport, Rails boot, database, browser, server, or device is needed.
+maps in standalone tests; financial results remain `unknown`. Published reporting
+must verify every Item's counts, the exact requested page, fixed 1,000-row page
+shape, total/page consistency, unique IDs, and unchanged counts across pages.
+Malformed responses, overlapping IDs, and empty results without count proof
+must remain incomplete. Tests use synthetic credentials and mocked transport;
+no real transport, Rails boot, database, browser, server, or device is needed.
 
 ## Interfaces
 
@@ -43,7 +46,9 @@ client = Payments::Worldpay::ExpressClient.new(
   transport: injected_transport,
   wire_contract: contract.wire_contract,
   setup_contract: contract.setup_contract(presentation: "legacy"),
-  observation_contracts: contract.observation_contracts
+  observation_contracts: contract.observation_contracts,
+  report_contract: contract.report_contract,
+  pagination_request: contract.pagination_request
 )
 ```
 
@@ -62,9 +67,13 @@ not establish that a complete valid financial request can be sent.
 - `observation_contracts` supplies six credit response maps relative to
   `Response`. They do not classify success, refund, capture, cancellation, or
   partial approval. `ApprovedAmount` is retained as a reported string only.
-- `reporting_layout` records verified request, row, and **per-item** count facts
-  for future integration work. It is deliberately not a usable report-parser
-  contract. `report_contract` and `pagination_request` raise `Unsupported`.
+- `reporting_layout` preserves the original evidence map. `report_contract`
+  adapts it to the parser's per-Item count mode and adds the selected P4 row
+  fields. `pagination_request` supplies `page_number_path` and
+  `fixed_page_size: 1000`; it supplies no `page_size_path`.
+- `Configuration` accepts the verified Transaction and Reporting namespaces
+  without a Services namespace. A Services operation with no explicit namespace
+  fails before transport. No namespace is derived from a hostname.
 - `unsupported`, `SOURCES`, and `CHECKED_ON` expose limitations and provenance.
   No map represents merchant assignment or certification.
 
@@ -96,7 +105,9 @@ example is not an independent publication date or a test performed here.
   **TransactionQuery**, not evidence of pagination by itself. P1 pp. 67–68
   establishes pagination and specifies the same reporting-data format.
 
-All source access was read-only public GitHub or `docs.worldpay.com` documentation.
+This adaptation re-read the supplied PDF text and pinned P4 controller source.
+The PDF SHA-256 matched P1 above. The parent had visually inspected printed
+pp. 67–68 (physical PDF pages 68–69). No further source download was needed.
 No Worldpay transaction, hosted, health, reporting-query, Services, or other
 processing endpoint was contacted. Endpoint names appearing in XML or fixtures
 are identifiers, not network calls. No sample programs were executed.
@@ -119,7 +130,7 @@ are identifiers, not network calls. No sample programs were executed.
 | Legacy setup request | P1 pp. 82–83 and P3 Step 1. Common request subset plus TransactionSetup/TransactionSetupMethod, Embedded, CVVRequired, AutoReturn, ReturnURL. ReturnURL comes from server configuration. |
 | Legacy setup response | P1 p. 83 and P3 Step 3: Response/TransactionSetup/TransactionSetupID and Response/TransactionSetup/ValidationCode. Other copies of the ID are not fallback paths. |
 | Pagination request | P1 pp. 67–68: Parameters/TransactionDateTimeBegin, TransactionDateTimeEnd, PageNumber; optional ReferenceNumber, TransactionStatusCode, TransactionType, LaneNumber, ReverseOrder. Other published optional filters are outside this subset. No PageSize is published. |
-| Reporting rows/count facts | P4 `ParseResponse` plus P1 pp. 67–68: ReportingData, Items/Item; row TransactionID, ReferenceNumber, TransactionStatus, TransactionAmount. P1 puts CurrentPageNumber, MaxPageCount, MaxRows in each Item. Currency is unmapped. |
+| Reporting rows/count facts | P4 `HomeController.cs` lines 132–155 plus P1 pp. 67–68: ReportingData/Items/Item; TransactionID, AccountID, AcceptorID, TerminalID, ApprovalNumber, ExpressResponseCode, ReferenceNumber, TransactionAmount, TransactionStatus, TransactionStatusCode, TransactionType. P1 puts CurrentPageNumber, MaxPageCount, MaxRows in each Item. Currency is unmapped. |
 
 Field lists are a deterministic application serialization order. No downloaded
 XSD was consulted and no claim of schema-validation or complete vendor-field
@@ -148,16 +159,15 @@ coverage is made. Paths contain the exact case shown by the cited evidence.
    and allowed operation before dispatch. A supplied System value is not made
    valid by including an ID. No-ID/System recovery remains explicitly unsupported
    without the no-PAN instrument contract. No automatic recovery sequence is added.
-4. **Reporting requires a different adapter shape.** Current
-   `ExpressReportParser.call` requires singular page-count paths relative to
-   `Response`. P1 locates counts inside each repeated Item. Current
-   `ExpressClient` also requires `page_size_path`, while P1 has fixed pages of
-   1,000 and no PageSize input. There is no honest map-only repair for repeated
-   counts, encoded/CDATA payloads, empty results, or count consistency. Accessors
-   raise explicit unsupported errors; the client without these contracts fails
-   before transport. Parent must adapt the port and add primary-backed fixtures.
-   Do not turn `reporting_layout` into a parser contract by inventing PageCount,
-   TotalCount, top-level CurrentPageNumber, or PageSize.
+4. **Reporting enumeration now uses the verified layout.** Pass both published
+   accessors to `ExpressClient`. It sends `Parameters/PageNumber` only and refuses
+   a custom size. Each Item must supply the same three counts. The parser checks
+   `MaxPageCount == ceil(MaxRows / 1000)` and the exact expected row count for
+   the page. `query_all` checks requested page, stable counts, and all unique IDs;
+   any overlap, including identical IDs, makes published enumeration incomplete.
+   An empty published report has no per-Item count proof and stays incomplete,
+   even if unverified top-level count fields appear. No complete empty checkpoint
+   is inferred. Generic top-level contracts remain available for existing tests.
 5. **Currency and some response amounts are unmapped.** The selected credit
    output tables do not establish a transaction CurrencyCode. BalanceCurrencyCode
    is not transaction currency. Completion/Return/Void output tables do not
@@ -165,12 +175,11 @@ coverage is made. Paths contain the exact case shown by the cited evidence.
    omitted with reasons in `unsupported`. The parser retains no financial cents
    or authoritative currency; all responses remain `unknown`, with
    `contract_verified: false`, even for Express code 0 and status Approved.
-6. **Services namespace is unverified in this slice.** No Services methods are
-   provided. Existing `Configuration` nevertheless requires all three namespaces.
-   `namespaces` alone cannot satisfy it. Parent must obtain independent primary
-   evidence or adjust that configuration boundary; never fill the gap by host
-   string substitution. Unit tests use an explicitly synthetic Services namespace
-   borrowed from local fixture support, never a production fallback.
+6. **Services namespace remains unverified.** No Services mapping is supplied.
+   `PublishedContract.namespaces` can now configure Transaction/Reporting without
+   a placeholder. Calling a Services operation without its namespace fails before
+   HTTP construction. Obtain independent primary evidence before enabling it;
+   never fill the gap by host substitution.
 7. **Premium and non-sale HPP variants are outside this map.** No HPType, separate
    hosted URL path, Premium setup contract, token-creation setup, force approval
    field, or SDK mapping is supplied. Parent must constrain allowed assigned setup
@@ -182,38 +191,78 @@ coverage is made. Paths contain the exact case shown by the cited evidence.
    promoted to captured/refunded. No contract is marked assigned or certified;
    this slice does not establish credentials-only or production readiness.
 
+## Reporting bounds and retained observations
+
+`ExpressReportParser.call` accepts `requested_page:`; published mode requires an
+integer from 1 through 1,000. `ExpressClient` always supplies it. Direct XML must
+have `ReportingData/Items/Item`. Escaped or CDATA payloads are parsed once, using
+explicit embedded roots `ReportingData` or `Items`, with either no namespace or
+the verified Reporting namespace. Other wrappers, mixed namespaces, duplicate
+containers/scalars, nested mapped scalars, and DTD/entities are rejected. These
+embedded wrappers are bounded parser compatibility shapes, not a claim that a
+specific merchant deployment emits them.
+
+Reporting responses have an **8 MiB** byte cap and **200,000** XML-reader node
+cap. Transaction and Services responses retain **64 KiB** and **4,096** nodes.
+Both modes retain depth **16** and at most **1,000** element children per node;
+reports also have at most **1,000** Item rows. The transport selects response
+limits by interface and checks both Content-Length and streamed bytes. Requests
+retain the 64 KiB cap. `query_all` defaults to and caps aggregate retained rows
+at **10,000**, with a 1,000-page bound; larger windows need parent-owned bounded
+range splitting. An incomplete result may retain earlier bounded observations
+but must never authorize a durable complete checkpoint.
+
+Rows retain `raw_id` and `reference_number` at the top level. Their metadata adds
+`account_id`, `acceptor_id`, `terminal_id`, `approval_number`,
+`express_response_code`, `transaction_type`, and `status_code`, alongside
+`provider_status` and the string `reported_amount`. Missing or empty optional
+facts are omitted; missing/empty/invalid IDs invalidate the page. Exact mapped
+AccountID/AcceptorID echoes may be retained for identity matching. The
+AccountToken remains forbidden everywhere, as do identifiers echoed in other
+mapped fields. Parent owns matching these observations to the assigned identity.
+
+No CurrencyCode is mapped. `reported_currency`, `reported_amount_cents`, all
+financial cents, and authoritative currency stay nil; financial status stays
+`unknown`. Unknown field **names** may be recorded, with bounded cardinality;
+unknown values, card/PAN, expiry, and card-token values are discarded. Contracts
+cannot alias mapped observations onto sensitive field paths.
+
 ## Verification record and parent continuation
 
 Agent-executed affected-flow unit coverage on Ruby 3.3.4, macOS arm64, local base
-`2e5dacb` plus these new files. Fixtures use synthetic account/profile/transaction
-identifiers, no PAN, and mocked transport. Test helpers prohibit real
-`ExpressTransport` construction and `Net::HTTP.new`. No Rails environment is
-loaded and no database is accessed.
+`6d99991` plus this worker's changes. Fixtures contain synthetic identifiers.
+Report/client tests prohibit real ExpressTransport construction and HTTP access;
+transport tests stub the entire Net::HTTP connection and open no sockets.
+No Rails environment was loaded and no database was accessed.
 
 | Case | Result | Evidence |
 | --- | --- | --- |
-| Q1: seven Transaction layouts serialize assigned profile and exact cents; Reporting request uses published parameters | Passed | `published_contract_spec.rb`, per-method builder and pagination examples |
-| Q2: missing profile fields, conflicting fields, missing original IDs, PAN/handle/token/invented fields fail closed | Passed | New unit contract examples; transport receives no invalid requests |
-| Q3: legacy setup keeps validation server-side, uses configured return URL, refuses missing paired fields/Premium URL | Passed | New setup examples through actual HppSetup and mock ExpressClient |
-| Q4: six financial methods retain only mapped observations and never approve money; partial/duplicate/error codes remain unknown | Passed | Actual ExpressReportParser and mock ExpressClient examples |
-| Q5: unsupported pagination accessors raise; incomplete client fails before dispatch | Passed | New reporting boundary examples |
-| Q6: real Hosted Fields, merchant profile, live HPP/reporting, recovery, durable ledger, UI/device/certification journeys | Not run / blocked | Outside worker scope; dependencies above remain open |
+| Q1: existing financial serialization/setup/observation contracts and financial outcomes | Passed | Existing standalone Worldpay directory; financial maps unchanged |
+| Q2: published request has PageNumber and no PageSize; verified namespaces need no Services placeholder | Passed | Published-contract, configuration, and client specs; missing Services fails before dispatch |
+| Q3: primary-backed observations, discarded unknown/card/expiry/token values, unknown currency/money | Passed | Published report-parser examples through real parser and injected client |
+| Q4: every Item count, requested page, page/total/row consistency, duplicate/missing/malformed IDs | Passed | Report-parser adversarial examples |
+| Q5: full 1,000-row direct/CDATA pages above 64 KiB, known embedded roots, XML and transport limits | Passed | Report-parser and mocked HTTP transport examples |
+| Q6: multiple pages, stable totals, changed/identical overlaps, later malformed pages, aggregate/page limits, unproven empty results | Passed | Published client examples; generic contracts retained |
+| Q7: live reporting/HPP, provider normalization, durable checkpoints, full API/web/release gate, UI/device/certification | Not run | Parent-owned integration or outside the authorized worker scope |
 
-The first focused run had one test expectation using a path without the existing
-parser's `Response/` prefix. Corrected the test expectation; no parser change was
-needed. The subsequent standalone directory run passed **268 examples, 0 failures**,
-including all **19 new examples**. Focused lint passed **2 files, no offenses**.
+The first directory run found the old unsupported-accessor expectation; it was
+updated for the implemented interface. The final standalone directory run passed
+**292 examples, 0 failures**, including all original contracts and 22 additional
+examples. Final focused lint passed **12 files, no offenses**. `git diff --check`
+passed. Bounds examples assert the specific byte/node/child/depth errors so a
+malformed fixture cannot conceal an ineffective limit.
 
-Commands from `api` (absolute Ruby/Bundler avoids the host's system-Ruby launcher):
+Commands from `api`, using Ruby/Bundler 3.3.4:
 
 ```sh
-/Users/leonshimizu/.rbenv/versions/3.3.4/bin/ruby /Users/leonshimizu/.rbenv/versions/3.3.4/bin/bundle exec rspec spec/services/payments/worldpay
-/Users/leonshimizu/.rbenv/versions/3.3.4/bin/ruby /Users/leonshimizu/.rbenv/versions/3.3.4/bin/bundle exec rubocop app/services/payments/worldpay/published_contract.rb spec/services/payments/worldpay/published_contract_spec.rb
+bundle exec rspec spec/services/payments/worldpay --format progress
+bundle exec rubocop app/services/payments/worldpay/{configuration,express_client,express_report_parser,express_transport,hpp_setup,published_contract}.rb spec/services/payments/worldpay/{client_contract_support,configuration_spec,express_client_spec,express_report_parser_spec,express_transport_spec,published_contract_spec}.rb
 ```
 
-Parent's next action: inspect/cherry-pick the local worker commit reported in the
-worker response, preserve these unsupported gates, and integrate normalization
-and ledger changes separately. Re-test the combined commit before review/merge.
-No push, PR, merge, or delegation was performed. No runtime resources were started;
-lifecycle session `01a17ca4-ce65-7902-9c68-6e383568bdd1` had no owned resources.
-The clean committed worktree is retained for the parent.
+Parent's next action: review/cherry-pick the worker commit, consume both published
+reporting accessors, and retest the combined implementation. Durable persistence,
+normalization, HPP/provider policy, required review, and the full acceptance gate
+remain parent-owned. No push, PR, merge, delegation, provider query, credentials
+lookup, database, Rails boot, or runtime service was performed by this worker.
+The committed worker worktree is retained for the parent; lifecycle ownership is
+reported in the local handoff and final worker response.

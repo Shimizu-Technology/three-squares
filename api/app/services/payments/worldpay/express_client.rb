@@ -21,7 +21,7 @@ module Payments
         payment_account_create: "PaymentAccountCreate", payment_account_create_with_trans_id: "PaymentAccountCreateWithTransID",
         payment_account_query: "PaymentAccountQuery", payment_account_update: "PaymentAccountUpdate", payment_account_delete: "PaymentAccountDelete"
       }.freeze
-      MAX_REPORT_ROWS = 100_000
+      MAX_REPORT_ROWS = 10_000
 
       def initialize(configuration:, transport:, wire_contract:, setup_contract: nil, report_contract: nil,
                      pagination_request: nil, observation_contracts: {})
@@ -67,12 +67,18 @@ module Payments
       end
 
       def transaction_query_pagination(fields:, page_number:, page_size: 1000)
+        fixed_size = @pagination_request.is_a?(Hash) && @pagination_request[:fixed_page_size]
+        keys = fixed_size ? %i[page_number_path fixed_page_size] : %i[page_number_path page_size_path]
         unless page_number.is_a?(Integer) && page_number.between?(1, 1000) && page_size.is_a?(Integer) && page_size.between?(1, 1000) &&
-            @pagination_request.is_a?(Hash) && @pagination_request.keys.sort == %i[page_number_path page_size_path].sort && @report_contract
+            @pagination_request.is_a?(Hash) && @pagination_request.keys.length == keys.length && (@pagination_request.keys - keys).empty? && @report_contract.is_a?(Hash) &&
+            (!fixed_size || (fixed_size == 1000 && page_size == fixed_size && @report_contract[:fixed_page_size] == fixed_size)) &&
+            (!!@report_contract[:item_count_paths] == !!fixed_size)
           raise Configuration::Invalid, "pagination_contract_and_bounds_required"
         end
         values = mutable_fields(fields)
-        { page_number_path: page_number.to_s, page_size_path: page_size.to_s }.each do |key, value|
+        parameters = { page_number_path: page_number.to_s }
+        parameters[:page_size_path] = page_size.to_s unless fixed_size
+        parameters.each do |key, value|
           path = @pagination_request[key]
           unless path.is_a?(Array) && path.length == 2 && path.all? { |part| part.is_a?(String) }
             raise Configuration::Invalid, "invalid_pagination_path"
@@ -85,7 +91,7 @@ module Payments
         wire = @builder.build(method: "TransactionQueryPagination", fields: values)
         xml = send_wire(:reporting, wire)
         return report_result([], false, "transport_outcome_unknown", 0) unless xml
-        report = ExpressReportParser.call(xml, configuration: @configuration, contract: @report_contract)
+        report = ExpressReportParser.call(xml, configuration: @configuration, contract: @report_contract, requested_page: page_number)
         return report_result([], false, "report_page_size_limit", 0) if report[:rows].length > page_size
         report
       end
@@ -112,7 +118,7 @@ module Payments
             return report_result(rows, false, "report_transaction_id_required", pages) unless row[:raw_id]
             key = @configuration.identity_key + [ row[:raw_id] ]
             if seen.key?(key)
-              return report_result(rows, false, "overlapping_row_conflict", pages) unless seen[key] == row
+              return report_result(rows, false, "overlapping_row_conflict", pages) if @report_contract[:item_count_paths] || seen[key] != row
               next
             end
             return report_result(rows, false, "report_aggregate_row_limit", pages) if rows.length >= max_rows
@@ -120,6 +126,9 @@ module Payments
             rows << row
           end
           if number == expected_pages
+            if rows.empty? && expected_total.nil?
+              return report_result(rows, false, "report_count_proof_required", pages)
+            end
             if expected_total && rows.length != expected_total
               return report_result(rows, false, "incomplete_report_total", pages)
             end

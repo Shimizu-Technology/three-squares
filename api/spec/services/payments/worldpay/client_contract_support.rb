@@ -1,6 +1,7 @@
 require "spec_helper"
 require_relative "../../../../app/services/payments/worldpay/express_client"
 require_relative "../../../../app/services/payments/worldpay/express_transport"
+require_relative "../../../../app/services/payments/worldpay/published_contract"
 
 # Entirely synthetic wire layouts. These are not Worldpay XSD fixtures.
 module WorldpayClientContractSupport
@@ -104,6 +105,44 @@ module WorldpayClientContractSupport
 
   def transaction_fields
     { "Transaction" => { "ReferenceNumber" => "order-1" } }
+  end
+
+  # Synthetic values in primary-backed published report paths. No provider I/O.
+  def published_report_configuration
+    configuration(namespaces: Payments::Worldpay::PublishedContract.namespaces)
+  end
+
+  def published_report_client(transport:)
+    contract = Payments::Worldpay::PublishedContract
+    Payments::Worldpay::ExpressClient.new(configuration: published_report_configuration, transport: transport,
+      wire_contract: contract.wire_contract, report_contract: contract.report_contract, pagination_request: contract.pagination_request)
+  end
+
+  def published_query_fields
+    { "Parameters" => { "TransactionDateTimeBegin" => "2026-10-26 00:00:00", "TransactionDateTimeEnd" => "2026-10-27 00:00:00" } }
+  end
+
+  def published_item(id: "transaction-1", page: 1, pages: 1, total: 1, extra: "")
+    "<Item><TransactionID>#{id}</TransactionID><AccountID>#{credentials['AccountID']}</AccountID><AcceptorID>#{credentials['AcceptorID']}</AcceptorID>" \
+      "<TerminalID>fixture-terminal</TerminalID><ApprovalNumber>fixture-approval</ApprovalNumber><ExpressResponseCode>0</ExpressResponseCode>" \
+      "<ReferenceNumber>order-1</ReferenceNumber><TransactionAmount>23.05</TransactionAmount><TransactionStatus>Approved</TransactionStatus>" \
+      "<TransactionStatusCode>fixture-status</TransactionStatusCode><TransactionType>fixture-type</TransactionType>" \
+      "<CurrentPageNumber>#{page}</CurrentPageNumber><MaxPageCount>#{pages}</MaxPageCount><MaxRows>#{total}</MaxRows>#{extra}</Item>"
+  end
+
+  def published_page_xml(page: 1, total: 1, rows: nil, embedded: nil)
+    pages = (total + 999) / 1000
+    rows ||= Array.new([ 1000, total - (page - 1) * 1000 ].min) do |index|
+      published_item(id: "transaction-#{(page - 1) * 1000 + index + 1}", page: page, pages: pages, total: total)
+    end.join
+    items = "<Items>#{rows}</Items>"
+    data = case embedded
+    when :cdata then "<![CDATA[<ReportingData>#{items}</ReportingData>]]>"
+    when :escaped then items.gsub("&", "&amp;").gsub("<", "&lt;").gsub(">", "&gt;")
+    else items
+    end
+    "<TransactionQueryPaginationResponse xmlns=\"https://reporting.elementexpress.com\"><Response><ExpressResponseCode>0</ExpressResponseCode>" \
+      "<ReportingData>#{data}</ReportingData></Response></TransactionQueryPaginationResponse>"
   end
 end
 
