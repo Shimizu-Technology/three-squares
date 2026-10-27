@@ -58,3 +58,41 @@ test('contact announces and focuses server outcomes without discarding the draft
   await expect(page.getByRole('status')).toBeFocused();
   await expect(page.getByRole('heading', { name: 'Mahalo for reaching out!' })).toBeVisible();
 });
+
+test('reopening catering preserves a success received while the dialog was closed', async ({ page }) => {
+  let release!: () => void;
+  let received!: () => void;
+  const responseGate = new Promise<void>((resolve) => { release = resolve; });
+  const requestReceived = new Promise<void>((resolve) => { received = resolve; });
+  let attempts = 0;
+  await page.route('**/api/v1/catering', async (route) => {
+    attempts += 1;
+    received();
+    await responseGate;
+    await route.fulfill({ status: 201, json: { inquiry: { id: 1 } } });
+  });
+  await page.goto('/catering');
+  const opener = page.getByRole('button', { name: 'Request a Quote', exact: true }).first();
+  await opener.click();
+  const dialog = page.locator('dialog[aria-labelledby="catering-form-title"]');
+  await dialog.getByLabel('Name *', { exact: true }).fill('Form fixture');
+  await dialog.getByLabel('Email *', { exact: true }).fill('fixture@example.invalid');
+  await dialog.getByLabel('Event Type *').selectOption('corporate');
+  await dialog.getByLabel('Number of Guests *').fill('10');
+  const date = new Date();
+  date.setDate(date.getDate() + 10);
+  await dialog.getByLabel('Event Date *').fill(date.toISOString().slice(0, 10));
+  await dialog.getByRole('button', { name: 'Submit Inquiry' }).click();
+  await requestReceived;
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  release();
+  await expect(dialog.locator('#catering-form-title')).toHaveText('Thank You!');
+  await opener.click();
+  await expect(dialog.getByRole('status')).toBeFocused();
+  await expect(dialog.getByRole('heading', { name: 'Thank You!' })).toBeVisible();
+  expect(attempts).toBe(1);
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  await opener.click();
+  await expect(dialog.getByLabel('Name *', { exact: true })).toHaveValue('');
+});

@@ -150,10 +150,12 @@ export default function CateringPage() {
   const outcomeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (error || submitted) outcomeRef.current?.focus();
-  }, [error, submitted]);
+    if (showForm && (error || submitted)) outcomeRef.current?.focus();
+  }, [showForm, error, submitted]);
 
-  const openInquiry = () => { setSubmitted(false); setError(null); setShowForm(true); };
+  // Keep an unseen response if a request finishes while the dialog is closed.
+  // The success Close action acknowledges it and starts the next inquiry.
+  const openInquiry = () => setShowForm(true);
 
   // Allow deep-linking directly to the inquiry form from other pages.
   useEffect(() => {
