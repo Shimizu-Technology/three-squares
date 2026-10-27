@@ -8,7 +8,7 @@
     "build": "node ./scripts/run-with-project-node.mjs tsc -b && node ./scripts/run-with-project-node.mjs vite build",
     "lint": "node ./scripts/run-with-project-node.mjs eslint .",
     "lint:ci": "node ./scripts/run-with-project-node.mjs node scripts/lint-ci.mjs",
-    "test:ci-tools": "node ./scripts/run-with-project-node.mjs node --test scripts/lint-ci.test.mjs",
+    "test:ci-tools": "node ./scripts/run-with-project-node.mjs node --test scripts/*.test.mjs",
     "preview": "node ./scripts/run-with-project-node.mjs vite preview",
     "test:e2e": "node ./scripts/run-with-project-node.mjs playwright test",
     "test:e2e:ui": "node ./scripts/run-with-project-node.mjs playwright test --ui",

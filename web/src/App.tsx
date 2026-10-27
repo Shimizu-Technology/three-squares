@@ -15,6 +15,7 @@ import LocationPill from './components/LocationPill'; // Import LocationPill
 import { useCartStore } from './store/cartStore'; // Import cart store
 import { API_BASE_URL } from './config';
 import AnnouncementBanner from './components/AnnouncementBanner';
+import RouteErrorBoundary from './components/RouteErrorBoundary';
 
 const ProductsPage = lazy(() => import('./pages/ProductsPage'));
 const BusinessLineEntryPage = lazy(() => import('./pages/BusinessLineEntryPage'));
@@ -482,7 +483,8 @@ function AppContent() {
         {!isAdminPage && isOrderingPage && <LocationPicker />}
 
         {/* Routes with page transitions */}
-        <Suspense fallback={<RouteFallback />} >
+        <RouteErrorBoundary key={routeTransitionKey}>
+        <Suspense fallback={<RouteFallback />}>
         <AnimatePresence mode="wait">
         <Routes location={location} key={routeTransitionKey}>
           <Route path="/" element={<HomePage />} />
@@ -533,6 +535,7 @@ function AppContent() {
         </Routes>
         </AnimatePresence>
         </Suspense>
+        </RouteErrorBoundary>
 
         {/* Footer - Hidden when printing and on admin pages */}
         {!isAdminPage && (
