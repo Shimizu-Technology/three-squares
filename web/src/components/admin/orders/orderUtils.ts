@@ -1,3 +1,4 @@
+import type { PaymentReceiptFacts } from '../../../types/paymentReceipt';
 // Shared types, formatters, and helpers for admin orders
 
 export interface OrderItem {
@@ -27,6 +28,7 @@ export interface Refund {
 }
 
 export interface Order {
+  payment_receipt?: PaymentReceiptFacts | null;
   id: number;
   order_number: string;
   status: string;

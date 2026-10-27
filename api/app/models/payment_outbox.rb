@@ -11,7 +11,7 @@ class PaymentOutbox < ApplicationRecord
     with_lock do
       return if token && lease_token != token
       attempts = [retry_count, 1].max
-      notification = kind != 'compensate' && kind != 'cart_cleanup'
+      notification = !%w[compensate cart_cleanup terminal_sale terminal_refund].include?(kind)
       update!(state: notification && attempts >= 10 ? 'manual_review_required' : 'pending',
         lease_token: nil, lease_until: nil, next_attempt_at: [2**[attempts, 11].min * 30, 3600].min.seconds.from_now,
         last_error: error.class.name)

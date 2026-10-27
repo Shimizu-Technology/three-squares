@@ -18,7 +18,8 @@ module Api
         response.set_header("Referrer-Policy", "no-referrer")
         frontend = ENV["FRONTEND_URL"]
         return render plain: "Your order is saved. Return to checkout to check payment status.", status: :accepted if frontend.blank?
-        redirect_to "#{frontend.delete_suffix('/')}/checkout", allow_other_host: true, status: :see_other
+        destination = attempt.checkout_session.channel == 'pos' ? '/admin/pos' : '/checkout'
+        redirect_to "#{frontend.delete_suffix('/')}#{destination}", allow_other_host: true, status: :see_other
       rescue ActiveRecord::RecordNotFound, Payments::BindingError
         head :not_found
       rescue Payments::Error, Payments::Configuration::UnsafeConfiguration

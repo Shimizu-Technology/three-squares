@@ -712,6 +712,7 @@ module Api
 
         json[:total_refunded_cents] = order.total_refunded_cents
         json[:refundable_amount_cents] = order.refundable_amount_cents
+        json[:payment_receipt] = Payments::ReceiptFacts.for_order(order)
         # Add refund history
         json[:refunds] = order.refunds.recent.map { |r| refund_json(r) }
 

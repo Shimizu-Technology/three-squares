@@ -32,6 +32,7 @@ module Payments
         raise BindingError, 'Payment ownership/order binding mismatch'
       end
       Snapshot.validate!(session: session, attempt: attempt, order: order, current: false)
+      TerminalContext.validate_mode!(attempt)
       identity
     end
   end

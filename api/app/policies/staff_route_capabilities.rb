@@ -34,9 +34,9 @@ class StaffRouteCapabilities
     "product_images" => %w[index show create update destroy set_primary reorder].index_with { "catalog.manage" },
     "inventory_audits" => %w[index show summary for_product for_variant for_order].index_with { "stock.read" },
     "pos_menu" => { "show" => "pos.sell" },
-    "pos_orders" => { "create" => "pos.sell", "confirm_terminal_payment" => "payments.collect" },
+    "pos_orders" => { "create" => "pos.sell", "confirm_terminal_payment" => "payments.collect", "start_payment" => "payments.collect" },
     "payment_terminals" => {
-      "index" => "payments.collect", "status" => "payments.collect", "collect" => "payments.collect",
+      "index" => "payments.collect", "show" => "payments.terminals.manage", "status" => "payments.collect", "collect" => "payments.collect",
       "cancel" => "payments.collect", "create" => "payments.terminals.manage", "update" => "payments.terminals.manage",
       "pair" => "payments.terminals.manage", "destroy" => "payments.terminals.manage", "simulate" => "payments.simulate",
       "advance_simulation" => "payments.simulate"

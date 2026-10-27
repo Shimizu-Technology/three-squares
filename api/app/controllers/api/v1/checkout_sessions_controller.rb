@@ -52,8 +52,8 @@ module Api
       def advance_simulation
         session = authorized_session!
         Payments::Simulation::Guard.validate!(session.payment_identity)
-        Payments::Simulation::Events.deliver_due(session.payment_identity)
-        SimulationClock.for(session.payment_identity).advance!(params.require(:seconds))
+        attempt = session.payment_attempts.order(:created_at).last
+        SimulationClock.for_attempt(attempt).advance!(params.require(:seconds))
         render json: session_json(session.reload, session.payment_attempts.order(:created_at).last)
       end
 
@@ -61,9 +61,10 @@ module Api
       # a supplied order, amount, provider reference or string prefix.
       def simulate
         session = authorized_session!
+        raise Payments::BindingError, 'Use the authorized reader controls for POS simulation' unless session.channel == 'online' || session.payment_attempts.order(:created_at).last.collection_mode == 'hosted'
         Payments::Simulation::Guard.validate!(session.payment_identity)
         attempt = session.payment_attempts.order(:created_at).last
-        provider = Payments::ProviderResolver.for_identity(session.payment_identity)
+        provider = Payments::ProviderResolver.for_attempt(attempt)
         result = provider.collect(attempt: attempt, scenario: params.require(:scenario), handle: params.require(:handle), mode: params.fetch(:mode, 'token'))
         Payments::FinalizeOrder.call(attempt: attempt, result: result)
         render json: session_json(session.reload, attempt.reload)
@@ -80,6 +81,12 @@ module Api
       def authorized_session!
         session = CheckoutSession.find(params[:id])
         raise ActiveRecord::RecordNotFound unless session.authorized?(user: current_user, capability: capability, recovery: true)
+        if session.channel == 'pos'
+          policy = StaffAccessPolicy.new(current_user)
+          allowed = policy.allowed?('payments.collect') && policy.location_allowed?(session.order.location_id)
+          allowed &&= policy.allowed?('payments.simulate') if %w[simulate advance_simulation].include?(action_name)
+          raise ActiveRecord::RecordNotFound unless allowed
+        end
         session
       end
 
@@ -121,13 +128,7 @@ module Api
       end
 
       def collection_active?(session, attempt)
-        return false unless session.expires_at.future?
-        return attempt.state == "collecting" unless attempt.collection_config["flow"] == "worldpay_hosted_page"
-        return false unless %w[collecting unknown].include?(attempt.state) && attempt.approved_cents.zero? && attempt.captured_cents.zero? &&
-          !attempt.compensation_claimed_at && !attempt.provider_metadata['worldpay_collection_blocked'] && attempt.last_error != 'Payments::BindingError'
-        # Expiry hides collection; it never proves cancellation or permits a
-        # replacement setup. Published legacy setup lifetime: ten minutes.
-        attempt.dispatched_at.present? && attempt.dispatched_at > 10.minutes.ago
+        Payments::CollectionAccess.active?(session, attempt)
       end
 
       def not_found(*)

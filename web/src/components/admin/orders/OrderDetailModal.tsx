@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import useLockBodyScroll from '../../../hooks/useLockBodyScroll';
 import type { Order } from './orderUtils';
+import PaymentReceipt from '../../payment/PaymentReceipt';
 import PaymentEnvironmentBadge from '../../payment/PaymentEnvironmentBadge';
 import { formatCurrency, formatDate, getStatusBadge, formatStatus, getNextStatusAction } from './orderUtils';
 
@@ -241,6 +242,7 @@ export default function OrderDetailModal({
 
           {/* Order Info */}
           <div>
+            <PaymentReceipt receipt={order.payment_receipt ?? null} orderReference={order.order_number} onPrint={() => window.print()} />
             <h3 className="font-semibold text-gray-900 mb-3">Order Information</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
               <div>

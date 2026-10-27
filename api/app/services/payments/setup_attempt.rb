@@ -8,8 +8,9 @@ module Payments
       if attempt.raw_provider_id.blank? && attempt.dispatched_at.nil? && attempt.checkout_session.expires_at.past?
         raise Conflict, "Collection expired; check the saved payment before starting again"
       end
-      provider = ProviderResolver.for_identity(attempt.payment_identity)
+      provider = ProviderResolver.for_attempt(attempt)
       provider.preflight(attempt: attempt) if provider.respond_to?(:preflight)
+      return PrepareTerminalAttempt.call(attempt: attempt, provider: provider) if provider.respond_to?(:async_terminal?) && provider.async_terminal?
       dispatch = false
       attempt.with_lock do
         return attempt if (attempt.raw_provider_id.present? || attempt.setup_id.present?) && attempt.collection_config.present?

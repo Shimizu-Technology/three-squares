@@ -4,9 +4,10 @@ module Payments
   # Consumes already authenticated, identity-bound refund observations. The caller
   # verifies webhook signatures/account/livemode and original charge references.
   class ApplyPaymentEvent
-    def self.call(operation:, event_key:, status:, amount_cents:, identity_id:, original_reference:, raw_id: nil)
+    def self.call(operation:, event_key:, status:, amount_cents:, identity_id:, original_reference:, raw_id: nil, receipt: {})
       raise BindingError, "Refund event key is missing" if event_key.blank?
       raise BindingError, "Invalid refund event state" unless %w[pending unknown succeeded failed].include?(status)
+      receipt = ReceiptFacts.project(receipt)
       facts = { status: status, amount_cents: amount_cents, identity_id: identity_id,
         original_reference: original_reference, raw_id: raw_id }
       digest = Digest::SHA256.hexdigest(facts.to_json)
@@ -32,7 +33,7 @@ module Payments
             RefundOperation.where(payment_identity_id: identity_id, raw_provider_id: raw_id).where.not(id: operation.id).exists?
           raise BindingError, "Provider refund ID is already assigned to another operation"
         end
-        operation.refund_observations.create!(event_key: event_key, payload_digest: digest, observed_state: status)
+        operation.refund_observations.create!(event_key: event_key, payload_digest: digest, observed_state: status, facts: receipt)
         # A successful observation is irreversible. Failed is definitive until a
         # confirmed success corrects it; stale pending/unknown cannot reopen it.
         next_state = if operation.state == "succeeded" || status == "succeeded"

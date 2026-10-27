@@ -21,7 +21,7 @@ module Payments
         digest = Snapshot.digest(attempt_id: attempt.id, amount: attempt.requested_cents, snapshot: attempt.payload_digest)
         record = SimulatedPaymentRecord.create_or_find_by!(payment_identity: @identity, operation_key: attempt.operation_key) do |row|
           row.assign_attributes(payment_attempt: attempt, kind: 'collection', payload_digest: digest,
-            raw_id: "sim_#{SecureRandom.hex(16)}", amount_cents: attempt.requested_cents, expires_at: SimulationClock.for(@identity).now + 10.minutes)
+            raw_id: "sim_#{SecureRandom.hex(16)}", amount_cents: attempt.requested_cents, expires_at: SimulationClock.for_attempt(attempt).now + 10.minutes)
         end
         raise Conflict, 'Simulation operation payload changed' unless record.payload_digest == digest && record.payment_attempt_id == attempt.id
         record
@@ -39,7 +39,7 @@ module Payments
             raise Conflict, 'Handle already used with different details' unless record.scenario == scenario && record.facts['bridge_mode'] == mode
             return record
           end
-          raise Conflict, 'Simulated collection expired' if record.expires_at <= SimulationClock.for(@identity).now || attempt.checkout_session.expires_at.past?
+          raise Conflict, 'Simulated collection expired' if record.expires_at <= SimulationClock.for_attempt(attempt).now || attempt.checkout_session.expires_at.past?
           raise Conflict, 'Collection is closed' unless %w[collecting dispatching unknown].include?(attempt.reload.state) && !attempt.compensation_claimed_at
           raise Conflict, 'Operation key/type mismatch (108)' if scenario == 'key_mismatch'
           # Pre-dispatch failure leaves a reusable original handle; no money moved.
@@ -52,9 +52,9 @@ module Payments
           else 'captured'
           end
           facts = record.facts.merge('bridge_mode' => mode, 'approved_cents' => state == 'partial' ? [record.amount_cents / 2, 1].max : (state == 'captured' ? record.amount_cents : 0),
-            'dispatched_at' => SimulationClock.for(@identity).now.iso8601, 'query_count' => 0)
-          facts['visible_after'] = (SimulationClock.for(@identity).now + 60.seconds).iso8601 if %w[query_lag cancel_race late_event].include?(scenario)
-          facts['event_at'] = (SimulationClock.for(@identity).now + 60.seconds).iso8601 if %w[cancel_race late_event duplicate_event].include?(scenario)
+            'dispatched_at' => SimulationClock.for_attempt(attempt).now.iso8601, 'query_count' => 0)
+          facts['visible_after'] = (SimulationClock.for_attempt(attempt).now + 60.seconds).iso8601 if %w[query_lag cancel_race late_event].include?(scenario)
+          facts['event_at'] = (SimulationClock.for_attempt(attempt).now + 60.seconds).iso8601 if %w[cancel_race late_event duplicate_event].include?(scenario)
           record.update!(scenario: scenario, state: state, redeemed_at: Time.current, facts: facts)
         end
         record
@@ -91,7 +91,7 @@ module Payments
         record = SimulatedPaymentRecord.create_or_find_by!(payment_identity: @identity, operation_key: operation_key) do |row|
           row.assign_attributes(kind: kind, payload_digest: digest, original_reference: original.raw_id, amount_cents: amount_cents,
             raw_id: "sim_#{SecureRandom.hex(16)}", state: original.scenario == 'refund_decline' ? 'failed' : 'succeeded', scenario: original.scenario,
-            facts: { 'dispatched_at' => SimulationClock.for(@identity).now.iso8601 })
+            facts: { 'dispatched_at' => SimulationClock.for_attempt(original.payment_attempt).now.iso8601 })
         end
         raise Conflict, 'Simulation operation payload changed' unless record.payload_digest == digest
         record

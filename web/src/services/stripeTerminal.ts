@@ -3,12 +3,15 @@
  * Handles reader discovery, connection, and payment collection.
  */
 import { loadStripeTerminal } from '@stripe/terminal-js';
-import type { Terminal, Reader, ErrorResponse } from '@stripe/terminal-js';
+import type { Terminal, Reader, ErrorResponse, SdkManagedPaymentIntent } from '@stripe/terminal-js';
 
 const API_BASE = import.meta.env?.VITE_API_URL || 'http://localhost:3000';
 
 let terminal: Terminal | null = null;
 let connectedReader: Reader | null = null;
+// SDK-managed encrypted details live only in this connection's memory. Never
+// serialize them to storage, logs, receipts or a backend payload.
+let pendingSDKPayment: { secret: string; intent: SdkManagedPaymentIntent } | null = null;
 let terminalLocationId: number | undefined;
 let locationChange = Promise.resolve();
 
@@ -89,6 +92,7 @@ async function fetchConnectionToken(): Promise<string> {
 }
 
 function handleUnexpectedDisconnect() {
+  pendingSDKPayment = null;
   console.warn('Stripe Terminal: Reader disconnected unexpectedly');
   connectedReader = null;
   updateStatus('disconnected');
@@ -202,17 +206,30 @@ export async function collectPayment(clientSecret: string) {
     throw new Error((collectResult as ErrorResponse).error.message);
   }
 
-  // Step 2: Process the payment
+  pendingSDKPayment = { secret: clientSecret, intent: collectResult.paymentIntent };
+  return processSDKPayment(t, collectResult.paymentIntent);
+}
+
+async function processSDKPayment(t: Terminal, intent: SdkManagedPaymentIntent) {
   updateStatus('processing_payment');
-  const processResult = await t.processPayment(collectResult.paymentIntent);
-
-  if ('error' in processResult) {
-    updateStatus('connected');
-    throw new Error((processResult as ErrorResponse).error.message);
-  }
-
+  const result = await t.processPayment(intent);
   updateStatus('connected');
-  return processResult.paymentIntent;
+  if ('error' in result) {
+    if (result.error.payment_intent?.status === 'requires_payment_method') pendingSDKPayment = null;
+    throw new Error(result.error.message);
+  }
+  pendingSDKPayment = null;
+  return result.paymentIntent;
+}
+
+/** Resume only a server-verified state on the original connected reader. */
+export async function resumeStripePayment(clientSecret: string, providerState: string, readerId: string) {
+  if (!connectedReader || connectedReader.id !== readerId) throw new Error('Connect the original registered reader before resuming this payment.');
+  if (providerState === 'requires_payment_method') return collectPayment(clientSecret);
+  if (providerState === 'requires_confirmation' && pendingSDKPayment?.secret === clientSecret) {
+    return processSDKPayment(await initializeTerminal(), pendingSDKPayment.intent);
+  }
+  throw new Error('The original payment requires a status check. Its SDK processing context is unavailable or collection is not permitted. Do not take another payment.');
 }
 
 /**
@@ -228,6 +245,7 @@ export async function cancelPaymentCollection(): Promise<void> {
  * Disconnect from the current reader.
  */
 export async function disconnectReader(): Promise<void> {
+  pendingSDKPayment = null;
   if (terminal && connectedReader) {
     await terminal.disconnectReader();
     connectedReader = null;
@@ -236,6 +254,7 @@ export async function disconnectReader(): Promise<void> {
 }
 
 async function resetSDKSession(): Promise<void> {
+  pendingSDKPayment = null;
   const t = await initializeTerminal();
 
   // Best-effort cancellation if reader is waiting for card input.
@@ -277,6 +296,7 @@ export function isReaderConnected(): boolean {
  * Clean up the terminal instance.
  */
 export function destroyTerminal(): void {
+  pendingSDKPayment = null;
   if (terminal) {
     if (connectedReader) {
       terminal.disconnectReader();

@@ -210,9 +210,10 @@ RSpec.describe 'Payment ingress controls', type: :request do
     allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
     allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
     location = Location.create!(name: 'POS fixture', slug: SecureRandom.hex(6), active: true, hours_json: { 'Daily' => '00:00-23:59' })
+    reader = PaymentTerminal.create!(payment_identity: @payment_identity, location: location, label: 'Fixture reader', lane_id: SecureRandom.uuid, terminal_id: 'tmr_fixture')
     product = create(:product, published: true, allow_pickup: true, inventory_level: 'variant', sale_price_cents: 900)
     variant = create(:product_variant, product: product, available: true, stock_quantity: 5, price_cents: 1000)
-    post '/api/v1/admin/pos/orders', params: { order: { payment_method: 'card_present', location_id: location.id, items: [{ product_variant_id: variant.id, quantity: 2 }] } }, headers: { 'Idempotency-Key' => SecureRandom.uuid }
+    post '/api/v1/admin/pos/orders', params: { order: { payment_method: 'card_present', location_id: location.id, payment_terminal_id: reader.id, items: [{ product_variant_id: variant.id, quantity: 2 }] } }, headers: { 'Idempotency-Key' => SecureRandom.uuid }
     expect(response).to have_http_status(:created), response.body
     order = Order.find(response.parsed_body['id'])
     attempt = PaymentAttempt.find(order.payment_attempt_id)
@@ -290,10 +291,11 @@ RSpec.describe 'Payment ingress controls', type: :request do
     allow_any_instance_of(controller).to receive(:authenticate_request).and_return(true)
     allow_any_instance_of(controller).to receive(:current_user).and_return(admin)
     location = Location.create!(name: 'Expired POS fixture', slug: SecureRandom.hex(6), active: true, hours_json: { 'Daily' => '00:00-23:59' })
+    reader = PaymentTerminal.create!(payment_identity: @payment_identity, location: location, label: 'Fixture reader', lane_id: SecureRandom.uuid, terminal_id: 'tmr_fixture')
     product = create(:product, published: true, allow_pickup: true, inventory_level: 'variant')
     variant = create(:product_variant, product: product, available: true, stock_quantity: 5, price_cents: 1000)
     key = SecureRandom.uuid
-    payload = { order: { payment_method: 'card_present', location_id: location.id, items: [{ product_variant_id: variant.id, quantity: 1 }] } }
+    payload = { order: { payment_method: 'card_present', location_id: location.id, payment_terminal_id: reader.id, items: [{ product_variant_id: variant.id, quantity: 1 }] } }
     post '/api/v1/admin/pos/orders', params: payload, headers: { 'Idempotency-Key' => key }
     expect(response).to have_http_status(:created), response.body
     order = Order.find(response.parsed_body['id'])

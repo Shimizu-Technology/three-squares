@@ -2,7 +2,8 @@
 
 module Payments
   class ProviderResolver
-    def self.profile!(location_id:, channel:)
+    def self.profile!(location_id:, channel:, collection_mode: nil)
+      channel = 'online' if channel == 'pos' && collection_mode == 'hosted'
       provider = SiteSetting.first&.payment_processor.presence || ENV.fetch("PAYMENTS_DEFAULT_PROVIDER", "worldpay")
       profiles = PaymentProfile.where(enabled: true, channel: channel, provider: provider)
       profile = profiles.where(location_id: location_id).first
@@ -10,6 +11,13 @@ module Payments
       raise Configuration::UnsafeConfiguration, "No enabled payment profile for this location/channel" unless profile
       Configuration.validate_identity!(profile.payment_identity)
       profile
+    end
+
+    def self.for_attempt(attempt)
+      Configuration.validate_identity!(attempt.payment_identity)
+      TerminalContext.validate_mode!(attempt)
+      return TerminalProvider.new(attempt.payment_identity) if attempt.collection_mode == 'terminal' && attempt.snapshot.dig('collection', 'terminal')
+      for_identity(attempt.payment_identity)
     end
 
     def self.for_identity(identity)

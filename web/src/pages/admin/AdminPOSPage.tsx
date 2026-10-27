@@ -11,7 +11,7 @@ import {
   initializeTerminal,
   discoverReaders,
   connectToReader,
-  collectPayment,
+  resumeStripePayment,
   cancelPaymentCollection,
   disconnectReader,
   onStatusChange,
@@ -19,7 +19,13 @@ import {
   setTokenProvider,
   setTerminalLocation,
   type TerminalStatus,
-} from '../../services/stripeTerminal';
+  startTerminalPayment,
+} from '../../services/terminal';
+import { usePaymentTerminal } from '../../hooks/usePaymentTerminal';
+import PaymentReceipt from '../../components/payment/PaymentReceipt';
+import TerminalControls from '../../components/payment/TerminalControls';
+import ManualCardDialog from '../../components/payment/ManualCardDialog';
+import type { PaymentReceiptFacts } from '../../types/paymentReceipt';
 import AdminRequestState from '../../components/admin/AdminRequestState';
 import LocalAvailabilityToggle from '../../components/admin/LocalAvailabilityToggle';
 import { reconcilePOSCart, remainingPOSCapacity, type POSProduct, type POSVariant, type POSCategory, type CartItem } from '../../components/admin/posCart';
@@ -52,6 +58,22 @@ function getReaderMeta(reader: Reader): ReaderMeta {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || '';
 const POS_PENDING_TERMINAL_KEY = 'tsq-pos-pending-terminal-payment';
+interface SavedPOSPayment {
+  user_id: string;
+  order_data: Record<string, unknown>;
+  order_id?: number;
+  order_number?: string;
+  simulated_attempt_id?: string | null;
+  attempt_id?: string | null;
+  terminal_id?: number | null;
+  payment_state?: string;
+  collection_mode?: string;
+  checkout_session_id?: string;
+}
+function savedPOSPayment(): SavedPOSPayment | null {
+  try { return JSON.parse(localStorage.getItem(POS_PENDING_TERMINAL_KEY) || 'null'); } catch { return null; }
+}
+
 
 async function fetchPOSMenu(token: string, locationId?: number, includeUnavailable = false): Promise<{ categories: POSCategory[]; locations: POSLocation[] }> {
   const params = new URLSearchParams();
@@ -79,7 +101,11 @@ async function createPOSOrder(token: string, orderData: Record<string, unknown>,
   if (!posRequest) posRequest = { digest, key: crypto.randomUUID(), owner };
   localStorage.setItem(POS_REQUEST_KEY, JSON.stringify(posRequest));
   // Freeze a recoverable request only after owner/payload validation succeeds.
-  localStorage.setItem(POS_PENDING_TERMINAL_KEY, JSON.stringify({ user_id: owner, order_data: orderData, created_at: new Date().toISOString() }));
+  const prior = savedPOSPayment();
+  localStorage.setItem(POS_PENDING_TERMINAL_KEY, JSON.stringify({
+    ...(prior?.user_id === owner && JSON.stringify(prior.order_data) === digest ? prior : {}),
+    user_id: owner, order_data: orderData, created_at: new Date().toISOString(),
+  }));
   const res = await fetch(`${API_BASE}/api/v1/admin/pos/orders`, {
     method: 'POST',
     headers: {
@@ -100,12 +126,14 @@ async function createPOSOrder(token: string, orderData: Record<string, unknown>,
   localStorage.setItem(POS_PENDING_TERMINAL_KEY, JSON.stringify({
     user_id: owner, order_data: orderData, order_id: data.id, order_number: data.order_number,
     simulated_attempt_id: data.payment_environment === 'simulated' ? data.payment_attempt_id : null,
+    attempt_id: data.payment_attempt_id, terminal_id: data.payment_terminal_id,
+    collection_mode: data.collection_mode, payment_state: data.payment_state, checkout_session_id: data.checkout_session_id,
     created_at: new Date().toISOString(),
   }));
   return data;
 }
 
-async function confirmTerminalPayment(token: string, orderId: number, allowClosed = false) {
+async function confirmTerminalPayment(token: string, orderId: number, allowClosed = false, allowPending = false) {
   const res = await fetch(`${API_BASE}/api/v1/admin/pos/orders/${orderId}/confirm_terminal_payment`, {
     method: 'POST',
     headers: {
@@ -114,6 +142,7 @@ async function confirmTerminalPayment(token: string, orderId: number, allowClose
     },
   });
   const data = await res.json();
+  if (res.ok && allowPending) return data;
   if (res.ok && allowClosed && ['failed', 'cancelled', 'compensated'].includes(data.payment_state)) return data;
   if (!res.ok || data.payment_status !== 'paid' || !data.inventory_committed) throw new Error(data.error || 'Payment status is being checked. Keep this saved order; do not collect another payment.');
   return data;
@@ -324,20 +353,26 @@ function AdminPOSWorkspace() {
   const [variantPickerProduct, setVariantPickerProduct] = useState<POSProduct | null>(null);
   const [showCashModal, setShowCashModal] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [lastOrder, setLastOrder] = useState<{ order_number: string; total_formatted: string; change_due_formatted?: string } | null>(null);
+  const [lastOrder, setLastOrder] = useState<{ order_number: string; total_formatted: string; change_due_formatted?: string; payment_receipt?: PaymentReceiptFacts | null } | null>(null);
 
   // Terminal
   const [terminalLocationReady, setTerminalLocationReady] = useState(false);
   const [resettingReader, setResettingReader] = useState(false);
-  const [simulationActive, setSimulationActive] = useState(false);
-  const [simulatedAttempt, setSimulatedAttempt] = useState<string | null>(() => { try { return JSON.parse(localStorage.getItem(POS_PENDING_TERMINAL_KEY) || 'null')?.simulated_attempt_id || null; } catch { return null; } });
+  const [savedPayment, setSavedPayment] = useState(savedPOSPayment);
+  const [manualSession, setManualSession] = useState<string | null>(null);
+  const paymentTerminal = usePaymentTerminal({ locationId: selectedLocation, getToken });
+  const { selected: selectedTerminal, selectedId: selectedTerminalId, select: selectTerminal, terminals: paymentTerminals, loading: readersLoading, reload: reloadPaymentTerminals } = paymentTerminal;
+  const simulationActive = import.meta.env.DEV && selectedTerminal?.environment === 'simulated';
+  const simulatedAttempt = savedPayment?.simulated_attempt_id ?? null;
   useEffect(() => {
-    let active = true;
-    void getToken().then(token => fetch(`${API_BASE}/api/v1/admin/payment_terminals`, { headers: { Authorization: `Bearer ${token}` } })).then(response => response.json()).then(data => {
-      if (active) setSimulationActive(import.meta.env.DEV && (data.terminals || []).some((row: {location_id: number; environment: string}) => row.location_id === selectedLocation && row.environment === 'simulated'));
-    }).catch(() => {});
-    return () => { active = false; };
-  }, [getToken, selectedLocation]);
+    const saved = savedPOSPayment();
+    if (saved && saved.user_id === userId && saved.terminal_id) {
+      selectTerminal(saved.terminal_id);
+    } else if (!saved && selectedTerminalId === null && !readersLoading) {
+      const ready = paymentTerminals.find(row => row.collectable === true && row.enabled && row.status !== 'retired');
+      if (ready) selectTerminal(ready.id);
+    }
+  }, [userId, selectedLocation, selectedTerminalId, selectTerminal, paymentTerminals, readersLoading, savedPayment]);
   const [terminalStatus, setTerminalStatus] = useState<TerminalStatus>('not_initialized');
   const [terminalReader, setTerminalReader] = useState<Reader | null>(null);
   const [terminalError, setTerminalError] = useState<string | null>(null);
@@ -511,7 +546,7 @@ function AdminPOSWorkspace() {
     () => cart.reduce((sum, c) => sum + c.quantity, 0),
     [cart]
   );
-  const terminalLabel = simulationActive ? 'Simulated reader' : terminalReader ? 'Connected' : 'Offline';
+  const terminalLabel = simulationActive ? 'Simulated reader' : selectedTerminal?.provider === 'worldpay' ? selectedTerminal.status.replaceAll('_', ' ') : terminalReader ? 'Connected' : 'Offline';
   const connectedReaderName = terminalReader
     ? (getReaderMeta(terminalReader).label || getReaderMeta(terminalReader).serial_number || 'Unknown Reader')
     : null;
@@ -550,6 +585,7 @@ function AdminPOSWorkspace() {
 
   const handleConnectReader = useCallback(async (reader: Reader) => {
     if (!terminalLocationReady || terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
+    if (getReaderMeta(reader).id !== selectedTerminal?.terminal_id) { setTerminalError('Choose the registered reader for this POS location.'); return; }
     try {
       setTerminalError(null);
       const connected = await connectToReader(reader);
@@ -558,14 +594,14 @@ function AdminPOSWorkspace() {
     } catch (err) {
       setTerminalError(err instanceof Error ? err.message : 'Connection failed');
     }
-  }, [terminalStatus, terminalLocationReady]);
+  }, [terminalStatus, terminalLocationReady, selectedTerminal?.terminal_id]);
 
   const handleDiscoverReaders = useCallback(async () => {
-    if (!terminalLocationReady || terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
+    if (!access.can('payments.terminals.discover') || selectedTerminal?.provider !== 'stripe' || !terminalLocationReady || terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
     try {
       setTerminalError(null);
       await initializeTerminal();
-      const readers = await discoverReaders();
+      const readers = (await discoverReaders()).filter(reader => getReaderMeta(reader).id === selectedTerminal?.terminal_id);
       setAvailableReaders(readers);
       if (readers.length === 0) {
         setTerminalError('No readers found. Make sure the S700 is on and connected to WiFi.');
@@ -577,10 +613,10 @@ function AdminPOSWorkspace() {
     } catch (err) {
       setTerminalError(err instanceof Error ? err.message : 'Discovery failed');
     }
-  }, [handleConnectReader, terminalStatus, terminalLocationReady]);
+  }, [access, selectedTerminal?.provider, selectedTerminal?.terminal_id, handleConnectReader, terminalStatus, terminalLocationReady]);
 
   const handleReaderButtonClick = useCallback(async () => {
-    if (!terminalLocationReady || terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
+    if (selectedTerminal?.provider !== 'stripe' || selectedTerminal.environment === 'simulated' || !access.can('payments.terminals.discover') || !terminalLocationReady || terminalStatus === 'connecting' || terminalStatus === 'discovering') return;
 
     if (!terminalReader) {
       await handleDiscoverReaders();
@@ -590,13 +626,13 @@ function AdminPOSWorkspace() {
     try {
       setTerminalError(null);
       await initializeTerminal();
-      const readers = await discoverReaders();
+      const readers = (await discoverReaders()).filter(reader => getReaderMeta(reader).id === selectedTerminal?.terminal_id);
       setAvailableReaders(readers);
       setShowReaderPicker(true);
     } catch (err) {
       setTerminalError(err instanceof Error ? err.message : 'Reader refresh failed');
     }
-  }, [terminalReader, terminalStatus, handleDiscoverReaders, terminalLocationReady]);
+  }, [access, selectedTerminal, terminalReader, terminalStatus, handleDiscoverReaders, terminalLocationReady]);
 
   const handleDisconnectReader = useCallback(async () => {
     try {
@@ -623,7 +659,8 @@ function AdminPOSWorkspace() {
     localStorage.removeItem(POS_PENDING_TERMINAL_KEY);
     clearPOSRequest();
     setHasPendingTerminalSession(false);
-    setSimulatedAttempt(null);
+    setSavedPayment(null);
+    setManualSession(null);
   }, []);
 
   const handleCheckSavedPayment = useCallback(async () => {
@@ -635,10 +672,10 @@ function AdminPOSWorkspace() {
       if (!token) return;
       // Replaying creation uses the saved payload and original request key.
       const order = pending.order_data ? await createPOSOrder(token, pending.order_data, userId) : pending;
-      if (order.payment_environment === 'simulated' && order.payment_attempt_id) {
-        setSimulatedAttempt(order.payment_attempt_id);
-        setSelectedLocation(order.location_id);
-      }
+      setSavedPayment(savedPOSPayment());
+      if (order.location_id) setSelectedLocation(order.location_id);
+      if (order.payment_terminal_id) selectTerminal(order.payment_terminal_id);
+      if (order.collection_mode === 'hosted' && order.checkout_session_id) setManualSession(order.checkout_session_id);
       const confirmed = order.payment_method === 'cash' && order.payment_status === 'paid' && order.inventory_committed
         ? order : await confirmTerminalPayment(token, order.id || order.order_id, true);
       if (['failed', 'cancelled', 'compensated'].includes(confirmed.payment_state)) {
@@ -646,14 +683,15 @@ function AdminPOSWorkspace() {
         setTerminalError('Saved payment is closed. Review the cart before taking payment.');
         return;
       }
+      setTerminalError(null);
       setLastOrder(confirmed);
       clearCart();
       clearPendingTerminalSession();
     } catch (error) {
       setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
       setTerminalError(error instanceof Error ? error.message : 'Payment remains unresolved.');
-    }
-  }, [getToken, userId, clearCart, clearPendingTerminalSession]);
+    } finally { setSavedPayment(savedPOSPayment()); await reloadPaymentTerminals(); }
+  }, [getToken, userId, clearCart, clearPendingTerminalSession, selectTerminal, reloadPaymentTerminals]);
 
   const handleCancelSavedPayment = useCallback(async () => {
     try {
@@ -681,8 +719,8 @@ function AdminPOSWorkspace() {
     } catch (error) {
       setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
       setTerminalError(error instanceof Error ? error.message : 'Cancellation is unresolved.');
-    }
-  }, [getToken, userId, clearCart, clearPendingTerminalSession]);
+    } finally { setSavedPayment(savedPOSPayment()); await reloadPaymentTerminals(); }
+  }, [getToken, userId, clearCart, clearPendingTerminalSession, reloadPaymentTerminals]);
 
   const handleResetReaderSession = useCallback(async () => {
     if (resettingReader) return;
@@ -705,85 +743,97 @@ function AdminPOSWorkspace() {
   }, [selectedLocation, resettingReader]);
 
   const handleTerminalPayment = useCallback(async () => {
-    if (cart.length === 0 || terminalCollecting || hasPendingTerminalSession || localStorage.getItem(POS_PENDING_TERMINAL_KEY)) return;
+    if (!canSubmitPayment || !selectedTerminal?.collectable || !terminalLocationReady || localStorage.getItem(POS_PENDING_TERMINAL_KEY)) return;
     setTerminalCollecting(true);
     setTerminalError(null);
-
     try {
       const token = await getToken();
-      if (!token) return;
-
-      // 1. Create order with card_present payment method
+      if (!token) throw new Error('Sign in before taking payment.');
       const orderData = {
-        customer_name: customerName || 'Walk-in',
-        order_type: orderType,
-        payment_method: 'card_present',
-        location_id: selectedLocation,
-        items: cart.map((c) => ({
-          product_variant_id: c.variant.id,
-          quantity: c.quantity,
-        })),
+        customer_name: customerName || 'Walk-in', order_type: orderType,
+        payment_method: 'card_present', location_id: selectedLocation,
+        payment_terminal_id: selectedTerminal.id,
+        items: cart.map(c => ({ product_variant_id: c.variant.id, quantity: c.quantity })),
       };
-
-      const orderResult = await createPOSOrder(token, orderData, userId);
-
-      if (!orderResult.client_secret) {
-        throw new Error('Card collection is unavailable. Your saved order can be checked again.');
-      }
-
-      localStorage.setItem(POS_PENDING_TERMINAL_KEY, JSON.stringify({
-        user_id: userId,
-        simulated_attempt_id: orderResult.payment_environment === 'simulated' ? orderResult.payment_attempt_id : null,
-        order_id: orderResult.id,
-        order_data: orderData,
-        order_number: orderResult.order_number,
-        amount_cents: cartTotal,
-        created_at: new Date().toISOString(),
-      }));
+      const order = await createPOSOrder(token, orderData, userId);
+      setSavedPayment(savedPOSPayment());
       setHasPendingTerminalSession(true);
+      if (!posRequest?.key || !order.payment_terminal_id) throw new Error('Saved reader payment needs reconciliation.');
+      // Reserve the original lane and persist a single dispatch claim. Retrying
+      // this endpoint can only resume/query that same payment, never create one.
+      const started = await startTerminalPayment({ token, orderId: order.id, terminalId: order.payment_terminal_id, key: posRequest.key });
+      await paymentTerminal.reload();
+      if (order.payment_environment === 'simulated' || order.payment_provider === 'worldpay') return;
+      if (!terminalReader || getReaderMeta(terminalReader).id !== selectedTerminal.terminal_id) throw new Error('Reconnect the original registered reader before collecting.');
+      if (!order.client_secret) throw new Error('Card collection is unavailable. Check the saved payment.');
+      await resumeStripePayment(order.client_secret, started.terminal_resume?.provider_state || '', selectedTerminal.terminal_id);
+      const confirmed = await confirmTerminalPayment(token, order.id);
+      setTerminalError(null);
+      setLastOrder(confirmed);
+      clearCart();
+      clearPendingTerminalSession();
+    } catch (error) {
+      setTerminalError(error instanceof Error ? error.message : 'Payment outcome unknown. Check the saved payment before collecting again.');
+    } finally {
+      setSavedPayment(savedPOSPayment());
+      setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
+      setTerminalCollecting(false);
+    }
+  }, [canSubmitPayment, selectedTerminal, terminalReader, terminalLocationReady, getToken, customerName, orderType, selectedLocation, cart, userId, paymentTerminal, clearCart, clearPendingTerminalSession]);
 
-      if (orderResult.payment_environment === 'simulated') {
-        setSimulatedAttempt(orderResult.payment_attempt_id);
-        return;
+  const handleResumeReaderPayment = useCallback(async () => {
+    setTerminalCollecting(true);
+    try {
+      const saved = savedPOSPayment();
+      if (!saved || saved.user_id !== userId || !posRequest?.key || posRequest.owner !== userId) throw new Error('Use the original staff session to recover this payment.');
+      const token = await getToken();
+      if (!token) throw new Error('Sign in to recover payment.');
+      const order = await createPOSOrder(token, saved.order_data, userId);
+      setSavedPayment(savedPOSPayment());
+      if (!order.payment_terminal_id) throw new Error('Saved payment has no reader. Check its status.');
+      const checked = await confirmTerminalPayment(token, order.id, true, true);
+      if (checked.payment_status === 'paid' && checked.inventory_committed) {
+        setLastOrder(checked); clearCart(); clearPendingTerminalSession(); return;
       }
-
-      // 2. Collect payment via terminal reader
-      await collectPayment(orderResult.client_secret);
-
-      // 3. Confirm payment on backend (retry up to 3 times — card was already charged)
-      let confirmed;
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          confirmed = await confirmTerminalPayment(token, orderResult.id);
-          break;
-        } catch {
-          if (attempt < 2) await new Promise((r) => setTimeout(r, 1000));
-        }
+      if (['failed', 'cancelled', 'compensated'].includes(checked.payment_state)) {
+        clearPendingTerminalSession(); setTerminalError('Saved payment is closed. Review the cart.'); return;
       }
+      const started = await startTerminalPayment({ token, orderId: order.id, terminalId: order.payment_terminal_id, key: posRequest.key });
+      if (order.payment_provider === 'stripe' && order.payment_environment !== 'simulated') {
+        const originalReader = paymentTerminals.find(row => row.id === order.payment_terminal_id);
+        const resume = started.terminal_resume;
+        if (!originalReader || !resume?.client_secret || !resume.provider_state) throw new Error('Original reader payment is not ready to resume. Check its status.');
+        await resumeStripePayment(resume.client_secret, resume.provider_state, originalReader.terminal_id);
+        const confirmed = await confirmTerminalPayment(token, order.id);
+        setLastOrder(confirmed); clearCart(); clearPendingTerminalSession(); setTerminalError(null);
+      } else setTerminalError('Original reader dispatch/status requested. Check this saved payment before taking another payment.');
+      await reloadPaymentTerminals();
+    } catch (error) {
+      setTerminalError(error instanceof Error ? error.message : 'Reader payment remains unresolved.');
+    } finally { setTerminalCollecting(false); }
+  }, [getToken, userId, paymentTerminals, reloadPaymentTerminals, clearCart, clearPendingTerminalSession]);
 
-      if (confirmed) {
-        setLastOrder(confirmed);
-        clearCart();
-        setTimeout(() => setLastOrder(null), 4000);
-        clearPendingTerminalSession();
-      } else {
-        // Payment succeeded on terminal but confirmation failed — DO NOT clear cart
-        // so staff can see what was ordered. Show order number for manual recovery.
-        alert(
-          `⚠️ Card was charged but order ${orderResult.order_number} couldn't be confirmed automatically.\n\n` +
-          `Order ID: ${orderResult.id}\n` +
-          `Please check Stripe Dashboard and confirm the order manually.`
-        );
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Terminal payment failed';
-      setTerminalError(message);
-      alert(message);
+  const handleManualCardAction = useCallback(async () => {
+    if (!canSubmitPayment || localStorage.getItem(POS_PENDING_TERMINAL_KEY)) return;
+    setTerminalCollecting(true); setTerminalError(null);
+    try {
+      const token = await getToken();
+      if (!token) throw new Error('Sign in before taking payment.');
+      const order = await createPOSOrder(token, {
+        customer_name: customerName || 'Walk-in', order_type: orderType,
+        payment_method: 'card_online', location_id: selectedLocation,
+        items: cart.map(c => ({ product_variant_id: c.variant.id, quantity: c.quantity })),
+      }, userId);
+      setSavedPayment(savedPOSPayment());
+      if (!order.checkout_session_id) throw new Error('Check the saved payment before collecting.');
+      setManualSession(order.checkout_session_id);
+    } catch (error) {
+      setTerminalError(error instanceof Error ? error.message : 'Hosted payment unavailable. Check the saved order.');
     } finally {
       setHasPendingTerminalSession(Boolean(localStorage.getItem(POS_PENDING_TERMINAL_KEY)));
       setTerminalCollecting(false);
     }
-  }, [cart, customerName, orderType, selectedLocation, getToken, clearCart, terminalCollecting, cartTotal, userId, hasPendingTerminalSession, clearPendingTerminalSession]);
+  }, [canSubmitPayment, getToken, customerName, orderType, selectedLocation, cart, userId]);
 
   // ─── Submit order ───────────────────────────────────────────────────────
 
@@ -837,13 +887,13 @@ function AdminPOSWorkspace() {
 
   const handleCardAction = useCallback(() => {
     if (!canSubmitPayment || !terminalLocationReady) return;
-    if (!terminalReader && !simulationActive) {
+    if (!selectedTerminal || (selectedTerminal.provider === 'stripe' && !simulationActive && !terminalReader)) {
       setTerminalError('Reader unavailable. Choose a reader or retry. Resolve any saved card payment before taking cash.');
       void handleDiscoverReaders();
       return;
     }
     void handleTerminalPayment();
-  }, [canSubmitPayment, terminalReader, handleTerminalPayment, handleDiscoverReaders, terminalLocationReady, simulationActive]);
+  }, [canSubmitPayment, selectedTerminal, terminalReader, handleTerminalPayment, handleDiscoverReaders, terminalLocationReady, simulationActive]);
 
   useEffect(() => {
     if (cart.length === 0) {
@@ -956,7 +1006,7 @@ function AdminPOSWorkspace() {
 
   return (
     <div className="min-h-dvh pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 md:h-dvh flex flex-col md:flex-row bg-linear-to-br from-slate-100 via-white to-slate-100 md:overflow-hidden">
-      {simulationActive && SimulatedTerminalPanel && <Suspense fallback={null}><SimulatedTerminalPanel locationId={selectedLocation ?? null} attemptId={simulatedAttempt} getToken={getToken} onChange={handleCheckSavedPayment} /></Suspense>}
+      {simulationActive && SimulatedTerminalPanel && <Suspense fallback={null}><SimulatedTerminalPanel locationId={selectedLocation ?? null} attemptId={simulatedAttempt} terminalId={selectedTerminalId} onSelect={selectTerminal} getToken={getToken} onChange={handleCheckSavedPayment} /></Suspense>}
       {/* ── Left Panel: Menu ────────────────────────────────────────────── */}
       <div ref={menuRef} tabIndex={-1} aria-label="POS menu" className="flex h-[65dvh] shrink-0 flex-col min-h-0 min-w-0 md:h-auto md:flex-1">
         {/* Header */}
@@ -980,7 +1030,7 @@ function AdminPOSWorkspace() {
 
           <div className="flex items-center gap-2 md:gap-3">
             {/* Terminal status */}
-            {access.can('payments.terminals.discover') && <button
+            {access.can('payments.terminals.discover') && selectedTerminal?.provider === 'stripe' && !simulationActive && <button
               onClick={handleReaderButtonClick}
               disabled={terminalStatus === 'connecting' || terminalStatus === 'discovering'}
               className={`flex items-center justify-center gap-2 min-w-34 px-3 py-2 rounded-lg text-sm border transition-colors ${
@@ -1308,7 +1358,7 @@ function AdminPOSWorkspace() {
               </p>
               <div className="flex gap-2">
                 <button
-                  onClick={handleCancelActiveTerminalPrompt}
+                  onClick={() => void (selectedTerminal?.provider === 'stripe' && !simulationActive ? handleCancelActiveTerminalPrompt() : handleCancelSavedPayment())}
                   className="px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700"
                 >
                   Cancel Reader Prompt
@@ -1324,7 +1374,11 @@ function AdminPOSWorkspace() {
             </div>
           )}
 
-          {(terminalReader || hasPendingTerminalSession || terminalCollecting || terminalError) && (
+          {lastOrder?.payment_receipt && <details className="rounded-lg border p-2"><summary className="min-h-11 cursor-pointer">Receipt for {lastOrder.order_number}</summary><div className="max-h-[35dvh] overflow-y-auto"><PaymentReceipt receipt={lastOrder.payment_receipt} orderReference={lastOrder.order_number} onPrint={() => window.print()} /></div></details>}
+          <TerminalControls compact {...paymentTerminal} busy={terminalCollecting} locked={submitting}
+            pending={hasPendingTerminalSession ? { orderNumber: savedPayment?.order_number, attemptId: savedPayment?.attempt_id, terminalId: savedPayment?.terminal_id, state: savedPayment?.payment_state } : null} />
+          {hasPendingTerminalSession && savedPayment?.collection_mode === 'terminal' && <button type="button" disabled={terminalCollecting} onClick={() => void handleResumeReaderPayment()} className="min-h-11 w-full rounded-lg border p-2 text-sm">Resume original reader payment</button>}
+          {selectedTerminal?.provider === 'stripe' && !simulationActive && (terminalReader || hasPendingTerminalSession || terminalCollecting || terminalError) && (
             <button
               onClick={handleResetReaderSession}
               disabled={resettingReader || terminalCollecting}
@@ -1345,7 +1399,7 @@ function AdminPOSWorkspace() {
             </button>
             <button
               onClick={handleCardAction}
-              disabled={!canSubmitPayment || (!terminalReader && !simulationActive) || !terminalLocationReady}
+              disabled={!canSubmitPayment || !selectedTerminal?.collectable || (!terminalReader && selectedTerminal.provider === 'stripe' && !simulationActive) || !terminalLocationReady}
               className="flex items-center justify-center gap-2 py-3 text-white rounded-xl font-medium bg-tsNavy hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {terminalCollecting ? (
@@ -1355,13 +1409,15 @@ function AdminPOSWorkspace() {
               ) : (
                 <WifiOff className="w-5 h-5" />
               )}
-              {terminalCollecting ? 'Tap Card...' : simulationActive ? 'Card (simulated)' : terminalReader ? 'Tap Card' : 'Connect Reader'}
+              {terminalCollecting ? 'Tap Card...' : simulationActive ? 'Card (simulated)' : selectedTerminal?.provider === 'worldpay' ? 'Card on reader' : terminalReader ? 'Tap Card' : 'Connect Reader'}
             </button>
           </div>
 
+          <button type="button" onClick={() => void handleManualCardAction()} disabled={!canSubmitPayment} className="min-h-11 w-full rounded-lg border p-2 text-sm disabled:opacity-50">Use hosted card form</button>
+
           {terminalCollecting && (
             <button
-              onClick={handleCancelActiveTerminalPrompt}
+              onClick={() => void (selectedTerminal?.provider === 'stripe' && !simulationActive ? handleCancelActiveTerminalPrompt() : handleCancelSavedPayment())}
               className="w-full mb-2 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-sm font-medium hover:bg-rose-100 transition-colors"
             >
               Cancel Tap/Insert
@@ -1419,6 +1475,8 @@ function AdminPOSWorkspace() {
           </div>
         </div>
       )}
+
+      {manualSession && <ManualCardDialog sessionId={manualSession} getToken={getToken} onClose={() => setManualSession(null)} onCheck={handleCheckSavedPayment} />}
 
       {/* ── Modals ──────────────────────────────────────────────────────── */}
       <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-300 bg-white px-4 pt-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] md:hidden">

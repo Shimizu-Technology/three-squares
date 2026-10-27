@@ -245,6 +245,7 @@ module Api
 
       def detailed_order_json(order)
         json = {
+          payment_receipt: Payments::ReceiptFacts.for_order(order),
           id: order.id,
           order_number: order.order_number,
           status: order.status,

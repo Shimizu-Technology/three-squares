@@ -7,7 +7,7 @@ module Payments
       AttemptLock.call(attempt, raw_id: result.raw_id) do |session, stored, charge, order, charges|
         identity = AttemptLock.validate!(session, stored, order)
         validate_result!(stored, result)
-        collection_closed = %w[failed cancelled].include?(stored.state) || session.state == 'cancelled'
+        collection_closed = %w[failed cancelled].include?(stored.state) || session.state == 'cancelled' || stored.cancel_requested_at.present?
         if Configuration.production? && result.raw_id.to_s.start_with?('sim_', 'test_pi_', 'fake_')
           raise BindingError, 'Synthetic transaction cannot fulfill production'
         end
@@ -41,6 +41,11 @@ module Payments
             amount_cents: result.captured_cents.positive? ? result.captured_cents : result.approved_cents, currency: result.currency,
             state: result.captured_cents.positive? ? 'captured' : 'authorized', first_observed_at: Time.current, last_observed_at: Time.current)
           charge.update!(last_observed_at: Time.current, state: 'captured') if result.captured_cents.positive?
+          receipt = ReceiptFacts.project(result.metadata[:receipt])
+          if receipt.any?
+            prior = ReceiptFacts.project(charge.metadata['receipt'])
+            charge.update!(metadata: charge.metadata.merge('receipt' => receipt.merge(prior)))
+          end
           stored.update!(raw_provider_id: result.raw_id, approved_cents: [stored.approved_cents, result.approved_cents].max,
             captured_cents: [stored.captured_cents, result.captured_cents].max)
         elsif stored.captured_cents.positive? || charge&.order_id
@@ -59,14 +64,14 @@ module Payments
           end
           next order
         end
-        if collection_closed
-          mark_compensation!(session, stored, 'capture_after_collection_closed')
-          next order
-        end
         if charge.order_id == order.id && (commitment = InventoryCommitment.find_by(order_id: order.id))
           order.update!(inventory_committed_at: commitment.created_at, inventory_commitment_id: commitment.id)
           session.update!(state: 'fulfilled', consumed_at: session.consumed_at || Time.current)
           record_effects!(order, session)
+          next order
+        end
+        if collection_closed
+          mark_compensation!(session, stored, 'capture_after_collection_closed')
           next order
         end
         if result.metadata[:compensation_required]
