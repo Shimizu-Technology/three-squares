@@ -56,6 +56,7 @@ export default function ProductDetailPage() {
   const [showSizeGuide, setShowSizeGuide] = useState(false);
   const [locationNameById, setLocationNameById] = useState<Record<number, string>>({});
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const productRequest = useRef(0);
   const sizeGuideContentRef = useRef<HTMLDivElement | null>(null);
   
   const { addItem, cart, openCart } = useCartStore();
@@ -73,6 +74,7 @@ export default function ProductDetailPage() {
     if (slug) {
       fetchProduct(slug);
     }
+    return () => { productRequest.current += 1; };
   }, [slug, locationId]);
 
   useEffect(() => {
@@ -230,9 +232,11 @@ export default function ProductDetailPage() {
   // ── Data fetching ─────────────────────────────────────────────────────────
 
   const fetchProduct = async (productSlug: string) => {
+    const version = ++productRequest.current;
     try {
       setLoading(true);
       const data = await productsApi.getProduct(productSlug, locationId);
+      if (version !== productRequest.current) return;
       setProduct(data);
       
       // For products with variants, select the first one
@@ -246,16 +250,16 @@ export default function ProductDetailPage() {
       
       setError(null);
     } catch (err) {
-      setError('Failed to load product');
+      if (version === productRequest.current) setError('Failed to load product');
       console.error(err);
     } finally {
-      setLoading(false);
+      if (version === productRequest.current) setLoading(false);
     }
   };
 
   useLockBodyScroll(showSizeGuide);
 
-  if (loading) {
+  if (loading || (!error && product?.pricing && product.pricing.location_id !== (locationId ?? null))) {
     return (
       <div className="min-h-screen bg-warm-50 flex items-center justify-center">
         <div className="text-center">

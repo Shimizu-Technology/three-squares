@@ -14,13 +14,14 @@ import { useLocation, useNavigate } from 'react-router-dom';
  */
 export default function LocationPicker() {
   const { selectedLocation, locations, showPicker, setSelectedLocation, setLocations, setShowPicker } = useLocationStore();
-  const { cart, clearCart } = useCartStore();
+  const { clearCart, fetchCart } = useCartStore();
   const [switching, setSwitching] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [pendingLocation, setPendingLocation] = useState<LocationInfo | null>(null);
   const navigate = useNavigate();
   const pathname = useLocation().pathname;
   const directMenu = pathname.startsWith('/menu/');
+  const checkout = pathname === '/checkout';
   const selectionVersion = useRef(0);
   const pickerRef = useRef<HTMLDivElement>(null);
   const confirmRef = useRef<HTMLDivElement>(null);
@@ -48,7 +49,9 @@ export default function LocationPicker() {
             try {
               await clearCart();
             } catch {
-              // Cart-clear failed — clear selection anyway
+              toast.error('Could not clear the cart for the unavailable pickup location. Please try again.');
+              setShowPicker(true);
+              return;
             }
             setSelectedLocation(null);
           }
@@ -103,13 +106,13 @@ export default function LocationPicker() {
 
   if (locations.length <= 1) return null;
 
-  const cartHasItems = (cart?.items?.length ?? 0) > 0;
+  const today = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'Pacific/Guam' }).format(new Date());
 
   const selectLocation = (loc: LocationInfo) => {
     setSelectedLocation(loc);
   };
 
-  const handleLocationSelect = (loc: LocationInfo) => {
+  const handleLocationSelect = async (loc: LocationInfo) => {
     if (directMenu) {
       // The route checks the server cart before changing global selection.
       setShowPicker(false);
@@ -121,7 +124,21 @@ export default function LocationPicker() {
       return;
     }
 
-    if (cartHasItems) {
+    if (switching) return;
+    const version = selectionVersion.current;
+    const previousId = useLocationStore.getState().selectedLocation?.id;
+    setSwitching(true);
+    await fetchCart();
+    if (selectionVersion.current !== version || useLocationStore.getState().selectedLocation?.id !== previousId) return;
+    setSwitching(false);
+    const state = useCartStore.getState();
+    if (state.pricingError || !state.cart) {
+      toast.error('Could not check your cart. Your pickup location has not changed. Please try again.');
+      return;
+    }
+    const compatible = checkout && state.cart.items.every((item) => item.product.allow_pickup && item.product.available_location_ids?.includes(loc.id));
+    if (compatible) { selectLocation(loc); return; }
+    if (state.cart.items.length > 0) {
       setPendingLocation(loc);
       setShowConfirm(true);
     } else {
@@ -219,24 +236,14 @@ export default function LocationPicker() {
                       {loc.address}
                     </p>
                   )}
-                  {loc.phone && (
+                  {loc.phone && loc.slug !== 'three-squares-donki' && (
                     <p className="text-sm text-warm-600 flex items-center gap-1.5 mb-1">
                       <Phone className="w-3.5 h-3.5 flex-shrink-0 text-warm-400" />
                       {loc.phone}
                     </p>
                   )}
-                  {loc.hours_json && Object.keys(loc.hours_json).length > 0 && (
-                    <div className="text-sm text-warm-500 flex items-start gap-1.5 mt-1">
-                      <Clock className="w-3.5 h-3.5 mt-0.5 flex-shrink-0 text-warm-400" />
-                      <div className="text-xs leading-relaxed">
-                        {Object.entries(loc.hours_json).map(([day, hours]) => (
-                          <span key={day} className="mr-3">
-                            <span className="font-medium">{day}:</span> {hours}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <p className="text-sm text-warm-600 flex items-start gap-1.5 mt-1"><Clock className="w-3.5 h-3.5 shrink-0 mt-0.5" />Today: {loc.hours_json?.[today] || 'Check current hours'}{loc.accepting_orders_now === false ? ' · Not taking pickup orders now' : ''}</p>
+                  {loc.slug === 'three-squares-donki' && <p className="mt-1 text-sm text-warm-600">For help, contact the Main team or WhatsApp.</p>}
                 </button>
               ))}
             </div>

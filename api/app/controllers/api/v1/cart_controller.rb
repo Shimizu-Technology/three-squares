@@ -9,6 +9,10 @@ module Api
       def show
         cart_items = get_cart_items.to_a
         render json: {
+          pricing_context: {
+            fulfillment_type: params[:fulfillment_type].presence || (cart_items.all? { |item| !item.product.allow_shipping? } ? "pickup" : nil),
+            location_id: params[:fulfillment_type] == "shipping" ? nil : (params[:location_id].presence || request.headers["X-Location-ID"].presence)&.to_i
+          },
           items: cart_items.map { |item| cart_item_json(item) },
           subtotal_cents: cart_items.sum { |item| cart_price(item).unit_price_cents.to_i * item.quantity },
           item_count: cart_items.sum(&:quantity)
@@ -393,6 +397,7 @@ module Api
       end
 
       def cart_pickup_location(variant)
+        return nil if params[:fulfillment_type] == "shipping"
         # A browsing location does not choose pickup for a shippable item.
         return nil if variant.product.allow_shipping? && params[:fulfillment_type] != "pickup"
         params[:location_id].presence || request.headers["X-Location-ID"].presence

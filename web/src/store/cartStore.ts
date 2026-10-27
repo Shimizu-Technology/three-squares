@@ -3,10 +3,15 @@ import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import axios from 'axios';
 import api from '../services/api';
-import type { Cart, CartValidation } from '../types/cart';
+import type { Cart, CartValidation, CartPricingContext } from '../types/cart';
 import toast from 'react-hot-toast';
 
+let cartFetchVersion = 0;
+
 interface CartStore {
+  pricingContext: CartPricingContext | null;
+  isRepricing: boolean;
+  pricingError: string | null;
   // State
   cart: Cart | null;
   isLoading: boolean;
@@ -14,7 +19,7 @@ interface CartStore {
   sessionId: string | null;
   
   // Actions
-  fetchCart: () => Promise<void>;
+  fetchCart: (context?: CartPricingContext | null) => Promise<void>;
   addItem: (variantId: number | null, quantity: number, productId?: number) => Promise<void>;
   updateQuantity: (cartItemId: number, quantity: number) => Promise<void>;
   removeItem: (cartItemId: number) => Promise<void>;
@@ -42,6 +47,9 @@ const getSessionId = (): string => {
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
+      pricingContext: null,
+      isRepricing: false,
+      pricingError: null,
       // Initial State
       cart: null,
       isLoading: false,
@@ -49,20 +57,21 @@ export const useCartStore = create<CartStore>()(
       sessionId: getSessionId(),
       
       // Fetch cart from API
-      fetchCart: async () => {
-        set({ isLoading: true });
+      fetchCart: async (context) => {
+        const version = ++cartFetchVersion;
+        const pricingContext = context === undefined ? get().pricingContext : context;
+        set({ isLoading: true, isRepricing: true, pricingError: null, pricingContext });
         try {
-          const sessionId = get().sessionId;
-          const response = await api.get('/cart', {
+          const response = await api.get<Cart>('/cart', {
+            params: pricingContext || undefined,
             headers: {
-              'X-Session-ID': sessionId,
-                'X-Location-ID': useLocationStore.getState().selectedLocation?.id?.toString() || '',
+              'X-Session-ID': get().sessionId,
+              'X-Location-ID': useLocationStore.getState().selectedLocation?.id?.toString() || '',
             },
           });
-          set({ cart: response.data, isLoading: false });
-        } catch (error) {
-          console.error('Failed to fetch cart:', error);
-          set({ isLoading: false });
+          if (version === cartFetchVersion) set({ cart: response.data, isLoading: false, isRepricing: false });
+        } catch {
+          if (version === cartFetchVersion) set({ isLoading: false, isRepricing: false, pricingError: 'Could not refresh your order price. Try again before paying.' });
         }
       },
       
@@ -160,6 +169,7 @@ export const useCartStore = create<CartStore>()(
       
       // Clear entire cart
       clearCart: async () => {
+        ++cartFetchVersion;
         set({ isLoading: true });
         try {
           const sessionId = get().sessionId;
@@ -170,7 +180,7 @@ export const useCartStore = create<CartStore>()(
             },
           });
           
-          set({ cart: null, isLoading: false });
+          set({ cart: null, isLoading: false, isRepricing: false, pricingError: null });
         } catch (error) {
           console.error('Failed to clear cart:', error);
           set({ isLoading: false });
@@ -182,7 +192,7 @@ export const useCartStore = create<CartStore>()(
       validateCart: async () => {
         try {
           const sessionId = get().sessionId;
-          const response = await api.post('/cart/validate', {}, {
+          const response = await api.post('/cart/validate', get().pricingContext || {}, {
             headers: {
               'X-Session-ID': sessionId,
                 'X-Location-ID': useLocationStore.getState().selectedLocation?.id?.toString() || '',

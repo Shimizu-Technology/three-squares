@@ -9,3 +9,9 @@ A product-level location override replaces the global sale only when all variant
 Location context is a request parameter for catalog queries and `X-Location-ID`/pickup attributes for cart/checkout. Shipping does not inherit a browsing-location override. Checkout snapshots freeze resolved item cents; finalization never recharges a changed catalog price. No provider behavior or checkout/payment UI changes are included here.
 
 Seeds and decimal-money setters round decimal input at the cents boundary. Seeds are demo data, not an authorization to repair production prices.
+
+## Client pickup context
+
+`locationStore.selectedLocation` is the pickup destination across menu, detail and checkout. Legacy `products?location_id=…` links redirect to the guarded `/menu/:slug` entry, preserving other filters. Changing location during browsing checks the server cart and requires clearing its items; cancellation or a failed clear preserves the previous destination. Checkout lists only destinations compatible with all items, so its destination change can retain those items and reprice them.
+
+Cart pricing accepts explicit `fulfillment_type` and `location_id` and echoes `pricing_context`. Checkout refreshes that server summary whenever destination or fulfillment changes. The pay action remains unavailable until the returned context matches, while a request is pending, or after a failed refresh. Later requests supersede stale responses. Shipping ignores pickup-location overrides; when the Cookie storefront is disabled, checkout offers pickup only. No payment-provider component, session/attempt call or finalization behavior changes.

@@ -24,6 +24,7 @@ export default function FeaturedProducts() {
   const cartItems = useCartStore((state) => state.cart?.items) ?? EMPTY_CART_ITEMS;
 
   useEffect(() => {
+    let active = true;
     const fetchFeaturedProducts = async () => {
       try {
         setIsLoading(true);
@@ -53,15 +54,16 @@ export default function FeaturedProducts() {
           featuredProducts = uniqueProducts.slice(0, 8);
         }
 
-        setProducts(featuredProducts);
+        if (active) { setProducts(featuredProducts); setError(null); }
       } catch {
-        setError('Failed to load products');
+        if (active) setError('Failed to load products');
       } finally {
-        setIsLoading(false);
+        if (active) setIsLoading(false);
       }
     };
 
     fetchFeaturedProducts();
+    return () => { active = false; };
   }, [locationId]);
 
   useEffect(() => {
@@ -154,6 +156,7 @@ export default function FeaturedProducts() {
                   <h3 className="font-medium text-sm sm:text-base text-warm-900 mb-2 line-clamp-2 group-hover:text-tsPrimary transition">
                     {product.name}
                   </h3>
+                  {!locationId && <p className="mb-2 text-xs text-warm-600">Pickup: {product.available_location_ids?.map((id) => locationNameById[id]).filter(Boolean).join(' · ') || 'Choose a location'}</p>}
 
                   <div className="mt-auto">
                     <CatalogPrice pricing={product.pricing} productType={product.product_type} />

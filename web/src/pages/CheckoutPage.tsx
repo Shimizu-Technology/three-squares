@@ -18,8 +18,8 @@ import { useLocationStore } from '../store/locationStore';
 function CheckoutForm() {
   const navigate = useNavigate();
   const { getToken, isSignedIn, isLoaded: authLoaded, userId } = useAuth();
-  const { cart, sessionId, fetchCart, validateCart, removeItem, isLoading: cartLoading } = useCartStore();
-  const { selectedLocation: storedLocation } = useLocationStore();
+  const { cart, sessionId, fetchCart, validateCart, removeItem, isLoading: cartLoading, isRepricing, pricingError } = useCartStore();
+  const { selectedLocation: storedLocation, setSelectedLocation } = useLocationStore();
   const paymentForm = useRef<CardPaymentHandle>(null);
   const [savedClientConfig, setSavedClientConfig] = useState<StripeClientConfiguration | null>(null);
   const [locationClientConfig, setLocationClientConfig] = useState<StripeClientConfiguration | null>(null);
@@ -27,19 +27,19 @@ function CheckoutForm() {
   // Get items from cart (with fallback to empty array)
   const items = cart?.items || [];
   const subtotalCents = cart?.subtotal_cents || 0; // Use cents directly from cart
-  const cartSupportsShipping = items.length > 0 && items.every((item) => item.product.allow_shipping === true);
   const cartSupportsPickup = items.length > 0 && items.every((item) => item.product.allow_pickup === true);
 
   // App config
   const [appConfig, setAppConfig] = useState<AppConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
+  const cartSupportsShipping = appConfig?.enable_storefront_latte_stone === true && items.length > 0 && items.every((item) => item.product.allow_shipping === true);
 
   // Form state
   const [contact, updateContact] = useReducer(checkoutContactReducer, emptyCheckoutContact);
   const { name, email, phone } = contact.values;
-  const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'shipping'>('shipping');
+  const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'shipping'>('pickup');
   const [pickupLocations, setPickupLocations] = useState<Location[]>([]);
-  const [pickupLocationId, setPickupLocationId] = useState<number | null>(null);
+  const pickupLocationId = storedLocation?.id ?? null;
   useEffect(() => {
     let active = true;
     setLocationClientConfig(null);
@@ -201,9 +201,9 @@ function CheckoutForm() {
         setPickupLocations(locs);
         // Pre-fill from location store, fall back to first location
         if (storedLocation && locs.some((l: Location) => l.id === storedLocation.id)) {
-          setPickupLocationId(storedLocation.id);
+          setSelectedLocation(locs.find((location) => location.id === storedLocation.id)!);
         } else if (locs.length > 0) {
-          setPickupLocationId(locs[0].id);
+          setSelectedLocation(locs[0]);
         }
       } catch (err) {
         console.error('Failed to load config:', err);
@@ -214,10 +214,17 @@ function CheckoutForm() {
     loadConfig();
   }, []);
 
-  // Fetch cart on mount
+  // Every summary refresh uses the same explicit fulfillment/destination context.
+  // The store discards stale responses; payment stays blocked until it matches.
   useEffect(() => {
-    fetchCart();
-  }, [fetchCart]);
+    if (!configLoading) void fetchCart({ fulfillment_type: deliveryMethod, location_id: deliveryMethod === 'pickup' ? pickupLocationId : null });
+  }, [configLoading, deliveryMethod, pickupLocationId, fetchCart]);
+
+  useEffect(() => () => { void fetchCart(null); }, [fetchCart]);
+
+  const priceContextMatches = cart?.pricing_context?.fulfillment_type === deliveryMethod
+    && (deliveryMethod === 'shipping' || cart.pricing_context.location_id === pickupLocationId);
+  const pricePending = configLoading || isRepricing || !priceContextMatches;
 
   // Redirect if cart is empty (but wait for cart to load first!)
   useEffect(() => {
@@ -246,17 +253,14 @@ function CheckoutForm() {
 
   useEffect(() => {
     if (deliveryMethod !== 'pickup') return;
-    if (compatiblePickupLocations.length === 0) {
-      setPickupLocationId(null);
-      return;
-    }
+    if (compatiblePickupLocations.length === 0) return;
 
     const hasValidCurrentLocation =
       pickupLocationId !== null && compatiblePickupLocationIds.includes(pickupLocationId);
     if (!hasValidCurrentLocation) {
-      setPickupLocationId(compatiblePickupLocations[0].id);
+      setSelectedLocation(compatiblePickupLocations[0]);
     }
-  }, [deliveryMethod, pickupLocationId, compatiblePickupLocationIds, compatiblePickupLocations]);
+  }, [deliveryMethod, pickupLocationId, compatiblePickupLocationIds, compatiblePickupLocations, setSelectedLocation]);
 
   // Calculate shipping rates
   const handleCalculateShipping = async () => {
@@ -309,6 +313,7 @@ function CheckoutForm() {
 
   // Check if all required fields are filled
   const isFormValid = () => {
+    if (pricePending || pricingError) return false;
     const hasContactInfo = name.trim() !== '' && email.trim() !== '' && phone.trim() !== '';
 
     if (deliveryMethod === 'pickup') {
@@ -331,7 +336,7 @@ function CheckoutForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (submitting.current || pendingPayment) return;
+    if (submitting.current || pendingPayment || pricePending || pricingError) return;
     submitting.current = true;
     setError(null);
     setValidationIssues(null);
@@ -690,7 +695,10 @@ function CheckoutForm() {
                         <select
                           id="pickupLocation"
                           value={pickupLocationId ?? ''}
-                          onChange={(e) => setPickupLocationId(e.target.value ? Number(e.target.value) : null)}
+                          onChange={(e) => {
+                            const location = compatiblePickupLocations.find((item) => item.id === Number(e.target.value));
+                            if (location) setSelectedLocation(location);
+                          }}
                           className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm text-blue-900 focus:outline-none focus:ring-2 focus:ring-tsPrimary"
                         >
                           <option value="" disabled>Select a location</option>
@@ -965,6 +973,8 @@ function CheckoutForm() {
                 </div>
               )}
 
+              {pricePending && !pricingError && <p role="status" className="mb-3 text-sm text-warm-700">Updating your total for {deliveryMethod === 'pickup' ? storedLocation?.name || 'pickup' : 'shipping'}…</p>}
+              {pricingError && <div role="alert" className="mb-3 text-sm text-red-700">{pricingError} <button type="button" className="underline min-h-11" onClick={() => void fetchCart({ fulfillment_type: deliveryMethod, location_id: deliveryMethod === 'pickup' ? pickupLocationId : null })}>Refresh price</button></div>}
               {/* Submit Button */}
               <button
                 type="submit"
@@ -980,7 +990,7 @@ function CheckoutForm() {
                     Processing...
                   </>
                 ) : (
-                  pendingPayment ? 'Payment status pending' : `Pay ${formatPrice(totalCents)}`
+                  pendingPayment ? 'Payment status pending' : pricingError ? 'Refresh price to continue' : pricePending ? 'Updating price…' : `Pay ${formatPrice(totalCents)}`
                 )}
               </button>
             </form>

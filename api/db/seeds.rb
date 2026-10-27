@@ -112,7 +112,7 @@ location_seed_data = [
     name: "Three Squares @ Donki",
     slug: "three-squares-donki",
     address: "Inside Don Quijote, Tamuning, GU",
-    phone: "(671) 646-2652",
+    phone: nil,
     hours_json: {
       "Daily" => "10:00 AM - 10:00 PM"
     }

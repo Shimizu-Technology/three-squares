@@ -1,3 +1,5 @@
+import { useLocationStore } from '../store/locationStore';
+import useAppConfig from '../hooks/useAppConfig';
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
@@ -8,6 +10,8 @@ import OptimizedImage from './ui/OptimizedImage';
 
 export default function CartDrawer() {
   const navigate = useNavigate();
+  const location = useLocationStore((state) => state.selectedLocation);
+  const config = useAppConfig();
   const {
     cart,
     isOpen,
@@ -271,7 +275,7 @@ export default function CartDrawer() {
 
             {/* Shipping note */}
             <p className="text-xs text-warm-500 text-center bg-warm-50 py-2 px-3 rounded-lg">
-              Shipping calculated at checkout
+              {config?.enable_storefront_latte_stone === true && cart.items.every((item) => item.product.allow_shipping) ? 'Choose pickup or shipping at checkout' : `Pickup at ${location?.name || 'your selected location'}`}
             </p>
 
             {cart.items.some((item) => item.pricing?.purchasable === false) && <p role="alert" className="text-sm text-warm-700">Remove items priced by request before checking out. Contact us to confirm their price.</p>}
