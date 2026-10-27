@@ -51,7 +51,7 @@ module Api
       # GET /api/v1/admin/orders/summary
       # Lightweight counts for queue dashboards and operational triage.
       def summary
-        orders = filtered_orders_query.except(:includes, :order)
+        orders = filtered_orders_query(ignore_stage: true).except(:includes, :order)
 
         status_counts = orders.group(:status).count
         total_orders = orders.count
@@ -62,7 +62,8 @@ module Api
           total_orders: total_orders,
           paid_orders: paid_orders,
           total_revenue_cents: total_revenue_cents,
-          status_counts: status_counts
+          status_counts: status_counts,
+          queue_stage_counts: pickup_stage_counts(orders)
         }
       end
 
@@ -341,12 +342,13 @@ module Api
         { any: email_sent || sms_sent, email: email_sent, sms: sms_sent, warnings: warnings }
       end
 
-      def filtered_orders_query
+      def filtered_orders_query(ignore_stage: false)
         orders_query = Order
           .includes(order_items: [{ product: :collections }, { product_variant: { product: :collections } }], user: [], location: [])
           .order(created_at: :desc)
 
-        orders_query = orders_query.where(status: params[:status]) if params[:status].present?
+        orders_query = orders_query.where(status: params[:status]) if params[:status].present? && !ignore_stage
+        orders_query = apply_pickup_stage(orders_query, params[:queue_stage]) unless ignore_stage
         orders_query = orders_query.where(payment_status: params[:payment_status]) if params[:payment_status].present?
         orders_query = orders_query.where(order_type: params[:order_type]) if params[:order_type].present?
         orders_query = orders_query.where(fulfillment_type: params[:fulfillment_type]) if params[:fulfillment_type].present?
@@ -375,6 +377,31 @@ module Api
         end
 
         orders_query
+      end
+
+      def apply_pickup_stage(relation, stage)
+        return relation if stage.blank? || stage == "all"
+
+        pickups = relation.where(fulfillment_type: "pickup")
+        case stage
+        when "new_paid" then pickups.where(status: "pending", payment_status: "paid")
+        when "waiting_payment" then pickups.where(status: "pending").where.not(payment_status: "paid")
+        when "confirmed" then pickups.where(status: %w[confirmed processing], payment_status: "paid")
+        when "all_active" then pickups.where(status: %w[pending confirmed processing ready], payment_status: "paid")
+        when "ready", "picked_up" then pickups.where(status: stage, payment_status: "paid")
+        else pickups.none
+        end
+      end
+
+      def pickup_stage_counts(relation)
+        groups = relation.where(fulfillment_type: "pickup").group(:status, :payment_status).count
+        paid = ->(statuses) { groups.sum { |(status, payment), count| payment == "paid" && statuses.include?(status) ? count : 0 } }
+        {
+          new_paid: paid.call(%w[pending]), confirmed: paid.call(%w[confirmed processing]),
+          ready: paid.call(%w[ready]), picked_up: paid.call(%w[picked_up]),
+          waiting_payment: groups.sum { |(status, payment), count| status == "pending" && payment != "paid" ? count : 0 },
+          all_active: paid.call(%w[pending confirmed processing ready])
+        }
       end
 
       def parse_datetime_param(value, end_of_day: false)

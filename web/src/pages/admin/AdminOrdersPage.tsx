@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
 import type { Order } from '../../components/admin/orders';
@@ -41,6 +41,7 @@ interface OrdersSummaryResponse {
   paid_orders: number;
   total_revenue_cents: number;
   status_counts: Record<string, number>;
+  queue_stage_counts: Record<string, number>;
 }
 
 export default function AdminOrdersPage() {
@@ -64,7 +65,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
 
   // Filters
   const [statusFilter, setStatusFilter] = useState(
-    mode === 'pickup_queue' ? 'confirmed' : mode === 'shipping_queue' ? 'processing' : 'all'
+    mode === 'pickup_queue' ? 'new_paid' : mode === 'shipping_queue' ? 'processing' : 'all'
   );
   const [orderTypeFilter, setOrderTypeFilter] = useState('all');
   const [businessLineFilter, setBusinessLineFilter] = useState(mode === 'shipping_queue' ? 'latte_stone' : 'all');
@@ -73,6 +74,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   );
   const [locationFilter, setLocationFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
   const [datePreset, setDatePreset] = useState('today');
   const [startDate, setStartDate] = useState(() => {
     const today = new Date();
@@ -103,54 +105,84 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   const [exporting, setExporting] = useState(false);
   const [summary, setSummary] = useState<OrdersSummaryResponse | null>(null);
 
-  const buildFilterParams = (): Record<string, unknown> => {
+  const [clock, setClock] = useState(Date.now);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<number | null>(null);
+  const [loadedKey, setLoadedKey] = useState('');
+  const [refreshVersion, setRefreshVersion] = useState(0);
+  const loadedKeyRef = useRef('');
+  const requestRef = useRef(0);
+  const abortRef = useRef<AbortController | null>(null);
+
+  const buildFilterParams = useCallback((): Record<string, unknown> => {
     const params: Record<string, unknown> = {};
-    if (statusFilter !== 'all') params.status = statusFilter;
+    if (statusFilter !== 'all') {
+      if (mode === 'pickup_queue') params.queue_stage = statusFilter;
+      else params.status = statusFilter;
+    }
     if (orderTypeFilter !== 'all') params.order_type = orderTypeFilter;
     if (businessLineFilter !== 'all') params.business_line = businessLineFilter;
     if (fulfillmentFilter !== 'all') params.fulfillment_type = fulfillmentFilter;
     if (locationFilter !== 'all') params.location_id = Number(locationFilter);
-    if (searchQuery) params.search = searchQuery;
+    if (appliedSearch) params.search = appliedSearch;
     if (startDate) params.start_date = startDate;
     if (endDate) params.end_date = endDate;
     return params;
-  };
+  }, [mode, statusFilter, orderTypeFilter, businessLineFilter, fulfillmentFilter, locationFilter, appliedSearch, startDate, endDate]);
+  const queryKey = JSON.stringify({ page, ...buildFilterParams() });
+  const hasCurrentData = loadedKey === queryKey;
+  const stale = lastUpdated !== null && clock - lastUpdated > 30_000;
 
-  // ── Fetch orders ──────────────────────────────────────────────
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const params: Record<string, unknown> = { page, per_page: 25, ...buildFilterParams() };
-
-      const response = await authGet<OrdersIndexResponse>('/admin/orders', getToken, { params });
-
-      setOrders(response.data.orders);
-      setTotalPages(response.data.pagination.total_pages);
-      setTotalCount(response.data.pagination.total_count);
-    } catch (err) {
-      console.error('Failed to fetch orders:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSummary = async () => {
+  // Keep list and counts as one successful snapshot. Older filter responses
+  // cannot replace a newer request; refreshes preserve rendered rows and focus.
+  const fetchOrders = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    const requestId = ++requestRef.current;
+    setLoading(loadedKeyRef.current !== queryKey);
+    setRefreshing(true);
     try {
       const params = buildFilterParams();
-      const response = await authGet<OrdersSummaryResponse>('/admin/orders/summary', getToken, { params });
-      setSummary(response.data);
+      const [listing, counts] = await Promise.all([
+        authGet<OrdersIndexResponse>('/admin/orders', getToken, { params: { page, per_page: 25, ...params }, signal: controller.signal }),
+        authGet<OrdersSummaryResponse>('/admin/orders/summary', getToken, { params, signal: controller.signal }),
+      ]);
+      if (requestRef.current !== requestId || controller.signal.aborted) return;
+      setOrders(listing.data.orders);
+      setTotalPages(listing.data.pagination.total_pages);
+      setTotalCount(listing.data.pagination.total_count);
+      setSummary(counts.data);
+      setLoadedKey(queryKey);
+      loadedKeyRef.current = queryKey;
+      setLastUpdated(Date.now());
+      setLoadError(null);
     } catch (error) {
-      console.error('Failed to fetch order summary:', error);
+      if (controller.signal.aborted || requestRef.current !== requestId) return;
+      setLoadError(axios.isAxiosError(error) ? error.response?.data?.error || 'Could not refresh orders. Check the connection and try again.' : 'Could not refresh orders. Try again.');
+    } finally {
+      if (requestRef.current === requestId) {
+        setLoading(false);
+        setRefreshing(false);
+      }
     }
-  };
+  }, [buildFilterParams, getToken, page, queryKey]);
 
   useEffect(() => {
-    fetchOrders();
-  }, [page, statusFilter, orderTypeFilter, businessLineFilter, fulfillmentFilter, locationFilter, startDate, endDate]);
+    void fetchOrders();
+    return () => { requestRef.current += 1; abortRef.current?.abort(); };
+  }, [fetchOrders, refreshVersion]);
 
   useEffect(() => {
-    fetchSummary();
-  }, [statusFilter, orderTypeFilter, businessLineFilter, fulfillmentFilter, locationFilter, startDate, endDate]);
+    if (mode === 'default') return;
+    const refreshVisible = () => { if (!document.hidden) { setClock(Date.now()); void fetchOrders(); } };
+    const interval = window.setInterval(refreshVisible, 10_000);
+    document.addEventListener('visibilitychange', refreshVisible);
+    return () => { window.clearInterval(interval); document.removeEventListener('visibilitychange', refreshVisible); };
+  }, [fetchOrders, mode]);
+
+  const reconcileOrders = () => setRefreshVersion((version) => version + 1);
 
   useEffect(() => {
     configApi.getConfig().then(setAppConfig).catch(console.error);
@@ -168,7 +200,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   useEffect(() => {
     if (mode === 'pickup_queue') {
       setFulfillmentFilter('pickup');
-      setStatusFilter('confirmed');
+      setStatusFilter('new_paid');
     } else if (mode === 'shipping_queue') {
       setFulfillmentFilter('shipping');
       setStatusFilter('processing');
@@ -196,8 +228,8 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
     try {
       setSaving(true);
       const response = await authPatch<AdminOrderResponse>(`/admin/orders/${selectedOrder.id}`, { order: updates }, getToken);
-      setOrders(orders.map((o) => (o.id === selectedOrder.id ? response.data.order : o)));
       setSelectedOrder(response.data.order);
+      reconcileOrders();
       toast.success(response.data.message || 'Order updated successfully!');
       return true;
     } catch (err) {
@@ -222,8 +254,8 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
     try {
       setSaving(true);
       const response = await authPatch<AdminOrderResponse>(`/admin/orders/${orderId}`, { order: { status: newStatus } }, getToken);
-      setOrders(orders.map((o) => (o.id === orderId ? response.data.order : o)));
       if (selectedOrder?.id === orderId) setSelectedOrder(response.data.order);
+      reconcileOrders();
       toast.success(`Order marked as ${formatStatus(newStatus)}!`);
     } catch (err) {
       toast.error(axios.isAxiosError(err) ? err.response?.data?.error || 'Failed to update status' : 'Failed to update status');
@@ -248,8 +280,8 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
         getToken
       );
 
-      setOrders(orders.map((o) => (o.id === shipOrderId ? response.data.order : o)));
       if (selectedOrder?.id === shipOrderId) setSelectedOrder(response.data.order);
+      reconcileOrders();
       setShowShipModal(false);
       setShipOrderId(null);
       toast.success('Order shipped! Customer will receive a notification email.');
@@ -276,7 +308,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       toast.success(response.data.message || 'Refund processed successfully');
       const updatedOrder = response.data.order;
       setSelectedOrder(updatedOrder);
-      setOrders(orders.map((o) => (o.id === updatedOrder.id ? updatedOrder : o)));
+      reconcileOrders();
       setShowRefundModal(false);
     } catch (err) {
       toast.error(axios.isAxiosError(err) ? err.response?.data?.error || err.response?.data?.details || 'Failed to process refund' : 'Failed to process refund');
@@ -297,7 +329,8 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
 
   const handleSearch = () => {
     setPage(1);
-    fetchOrders();
+    setAppliedSearch(searchQuery);
+    reconcileOrders();
   };
 
   const updateDatePreset = (preset: string) => {
@@ -385,10 +418,12 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       ? 'Operational queue for shipping fulfillment and handoff workflows.'
       : `${totalCount} total orders`;
   const queueStatusOptions = mode === 'pickup_queue'
-    ? [ 'pending', 'confirmed', 'ready', 'picked_up' ]
+    ? [ 'new_paid', 'confirmed', 'ready', 'picked_up', 'waiting_payment', 'all_active' ]
     : mode === 'shipping_queue'
       ? [ 'pending', 'processing', 'shipped', 'delivered' ]
       : [];
+
+  const stageLabel = (status: string) => ({ new_paid: 'New paid', waiting_payment: 'Waiting for payment', all_active: 'All active', confirmed: mode === 'pickup_queue' ? 'Acknowledged' : 'Confirmed' }[status] || formatStatus(status));
 
   return (
     <div className="space-y-6">
@@ -399,7 +434,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
           <p className="text-sm text-gray-500 mt-1">
             {mode === 'default' ? (
               <>
-                <span className="font-semibold text-gray-700">{totalCount}</span> total orders
+                <span className="font-semibold text-gray-700">{hasCurrentData ? totalCount : '—'}</span> total orders
               </>
             ) : (
               pageSubtitle
@@ -416,10 +451,20 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
         </button>
       </div>
 
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        <button type="button" onClick={reconcileOrders} disabled={refreshing} className="min-h-11 px-4 border border-gray-300 rounded-lg bg-white disabled:opacity-50">{refreshing ? 'Refreshing…' : 'Refresh orders'}</button>
+        <span role="status">{lastUpdated ? `Last updated ${new Date(lastUpdated).toLocaleTimeString()}` : 'No successful update yet'}{loadError ? ' · Updates unavailable' : stale ? ' · Updates delayed — this snapshot may be stale' : ''}</span>
+      </div>
+      {loadError && <div role="alert" className="border border-amber-300 bg-amber-50 text-amber-950 p-4 rounded-lg">
+        <p>{loadError}</p><p>{hasCurrentData ? 'Showing the last saved snapshot for these filters. It may be out of date.' : 'Orders for these filters have not loaded.'}</p>
+        <button type="button" onClick={reconcileOrders} disabled={refreshing} className="min-h-11 underline font-semibold">Try again</button>
+      </div>}
+      {mode === 'pickup_queue' && hasCurrentData && (summary?.queue_stage_counts?.new_paid || 0) > 0 && <p role="status" className="border-l-4 border-amber-500 bg-amber-50 p-3 text-amber-950 font-semibold">{summary?.queue_stage_counts.new_paid} paid orders need acknowledgment</p>}
       {queueStatusOptions.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap gap-3">
           {queueStatusOptions.map((status) => {
-            const count = summary?.status_counts?.[status] || 0;
+            const counts = mode === 'pickup_queue' ? summary?.queue_stage_counts : summary?.status_counts;
+            const count = hasCurrentData ? counts?.[status] ?? '—' : '—';
             return (
               <button
                 key={status}
@@ -431,19 +476,20 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
                     : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
                 }`}
               >
-                {formatStatus(status)} ({count})
+                {stageLabel(status)} ({count})
               </button>
             );
           })}
           <div className="ml-auto text-sm text-gray-600 flex items-center gap-4">
-            <span>Total: <span className="font-semibold text-gray-900">{summary?.total_orders || 0}</span></span>
-            <span>Paid: <span className="font-semibold text-gray-900">{summary?.paid_orders || 0}</span></span>
+            <span>All stages: <span className="font-semibold text-gray-900">{hasCurrentData ? summary?.total_orders ?? '—' : '—'}</span></span>
+            <span>Paid, all stages: <span className="font-semibold text-gray-900">{hasCurrentData ? summary?.paid_orders ?? '—' : '—'}</span></span>
           </div>
         </div>
       )}
 
       {/* Filters */}
       <OrderFilters
+        pickupQueue={mode === 'pickup_queue'}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         onSearch={handleSearch}
@@ -467,12 +513,12 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       />
 
       {/* Orders List */}
-      {loading ? (
+      {loading || (!hasCurrentData && !loadError) ? (
         <SkeletonListPage />
-      ) : orders.length === 0 ? (
+      ) : !hasCurrentData && loadError ? null : orders.length === 0 ? (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center">
           <h3 className="text-lg font-bold text-gray-900 mb-2">
-            {mode === 'default' ? 'No orders yet' : 'No matching queue orders'}
+            No matching orders
           </h3>
           <p className="text-gray-500">
             {mode === 'default'

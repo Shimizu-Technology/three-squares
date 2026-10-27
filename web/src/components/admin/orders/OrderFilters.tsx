@@ -1,4 +1,5 @@
 interface OrderFiltersProps {
+  pickupQueue?: boolean;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   onSearch: () => void;
@@ -22,6 +23,7 @@ interface OrderFiltersProps {
 }
 
 export default function OrderFilters({
+  pickupQueue = false,
   searchQuery,
   onSearchChange,
   onSearch,
@@ -84,15 +86,11 @@ export default function OrderFilters({
           onChange={(e) => onStatusFilterChange(e.target.value)}
           className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-gray-300 transition text-sm"
         >
-          <option value="all">All Status</option>
-          <option value="pending">Pending</option>
-          <option value="confirmed">Confirmed (Pickup)</option>
-          <option value="processing">Processing (Retail)</option>
-          <option value="ready">Ready (Pickup)</option>
-          <option value="shipped">Shipped (Retail)</option>
-          <option value="picked_up">Picked Up</option>
-          <option value="delivered">Delivered</option>
-          <option value="cancelled">Cancelled</option>
+          {(pickupQueue ? [
+            ['all', 'All pickup orders'], ['new_paid', 'New paid'], ['confirmed', 'Acknowledged'], ['ready', 'Ready'], ['picked_up', 'Picked up'], ['waiting_payment', 'Waiting for payment'], ['all_active', 'All active'],
+          ] : [
+            ['all', 'All Status'], ['pending', 'Pending'], ['confirmed', 'Acknowledged (Pickup)'], ['processing', 'Processing (Shipping)'], ['ready', 'Ready (Pickup)'], ['shipped', 'Shipped'], ['picked_up', 'Picked up'], ['delivered', 'Delivered'], ['cancelled', 'Cancelled'],
+          ]).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
         </select>
       </div>
 
@@ -120,6 +118,7 @@ export default function OrderFilters({
         </select>
 
         <select
+          disabled={pickupQueue}
           value={fulfillmentFilter}
           onChange={(e) => onFulfillmentFilterChange(e.target.value)}
           className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-gray-300 transition text-sm"
