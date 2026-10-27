@@ -7,7 +7,7 @@ import { checkoutApi, checkoutClientConfiguration, checkoutCapability, pendingCh
 import { authGet } from '../services/authApi';
 import { checkoutContactReducer, emptyCheckoutContact } from '../lib/checkoutContact';
 import { motion, AnimatePresence } from 'framer-motion';
-import { type CardPaymentHandle } from '../components/payment/PaymentForm';
+import type { CardPaymentHandle } from '../components/payment/PaymentForm';
 import PaymentForm, { type CollectionConfiguration } from '../components/payment/PaymentCollectionForm';
 import type { ShippingAddress, ShippingMethod, AppConfig } from '../types/order';
 import type { Location } from '../services/api';
