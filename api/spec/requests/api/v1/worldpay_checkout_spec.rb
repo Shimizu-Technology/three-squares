@@ -37,6 +37,8 @@ RSpec.describe 'Worldpay hosted checkout contracts', type: :request do
   let(:query_changes) { {} }
   let(:extra_rows) { [] }
   let(:query_empty) { false }
+  let(:query_envelope_code) { '0' }
+  let(:query_omits_data) { false }
 
   def query_response
     attempt = PaymentAttempt.last
@@ -45,7 +47,8 @@ RSpec.describe 'Worldpay hosted checkout contracts', type: :request do
       'TransactionStatusCode' => '1', 'TransactionAmount' => '25.00' }.merge(query_changes)
     rows = query_empty ? [] : [ values ] + extra_rows.map { |changes| values.merge(changes) }
     items = rows.map { |row| '<Item>' + row.map { |name, value| "<#{name}>#{ERB::Util.html_escape(value)}</#{name}>" }.join + '</Item>' }.join
-    "<TransactionQueryResponse xmlns=\"https://reporting.elementexpress.com\"><Response><ExpressResponseCode>0</ExpressResponseCode><ReportingData><Items>#{items}</Items></ReportingData></Response></TransactionQueryResponse>"
+    data = query_omits_data ? '' : "<ReportingData><Items>#{items}</Items></ReportingData>"
+    "<TransactionQueryResponse xmlns=\"https://reporting.elementexpress.com\"><Response><ExpressResponseCode>#{query_envelope_code}</ExpressResponseCode>#{data}</Response></TransactionQueryResponse>"
   end
 
   def start_checkout
@@ -192,6 +195,42 @@ RSpec.describe 'Worldpay hosted checkout contracts', type: :request do
     expect(Order.last.payment_status).to eq('pending')
     expect(variant.reload.stock_quantity).to eq(10)
     expect(PaymentTransaction.count).to eq(0)
+  end
+
+  it 'recovers reporting communication failures without transaction evidence to one paid order' do
+    start_checkout
+    attempt = PaymentAttempt.last
+    allow(self).to receive(:query_omits_data).and_return(true)
+    %w[1001 1002 30].each do |code|
+      allow(self).to receive(:query_envelope_code).and_return(code)
+      Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+      expect(attempt.reload.state).to eq('unknown')
+      expect(attempt.provider_metadata['worldpay_financial_quarantine']).to be_nil
+      expect(attempt.order.reload.payment_status).to eq('pending')
+      expect(PaymentTransaction.count).to eq(0)
+    end
+    allow(self).to receive(:query_omits_data).and_return(false)
+    allow(self).to receive(:query_envelope_code).and_return('0')
+    2.times { Payments::ReconcileAttempt.call(attempt: attempt, force: true) }
+    expect(attempt.order.reload.payment_status).to eq('paid')
+    expect(PaymentTransaction.where(payment_attempt: attempt).count).to eq(1)
+    expect(InventoryCommitment.where(order: attempt.order).count).to eq(1)
+    expect(variant.reload.stock_quantity).to eq(8)
+  end
+
+  it 'keeps transaction evidence quarantined even when its query envelope reports a communication failure' do
+    start_checkout
+    attempt = PaymentAttempt.last
+    allow(self).to receive(:query_envelope_code).and_return('1001')
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    quarantine = attempt.reload.provider_metadata.fetch('worldpay_financial_quarantine')
+    expect(quarantine['raw_ids']).to include('000123')
+    allow(self).to receive(:query_envelope_code).and_return('0')
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    expect(attempt.reload.provider_metadata['worldpay_financial_quarantine']).to eq(quarantine)
+    expect(attempt.order.reload.payment_status).to eq('pending')
+    expect(PaymentTransaction.count).to eq(0)
+    expect(variant.reload.stock_quantity).to eq(10)
   end
 
   it 'does not let an overlapping earlier empty query relax a later partial quarantine' do

@@ -84,6 +84,43 @@ RSpec.describe Payments::Worldpay::ExpressReportParser do
     end
   end
 
+  context "with the original-setup query contract" do
+    def query_parse(xml)
+      described_class.query(xml, configuration: published_report_configuration, contract: Payments::Worldpay::PublishedContract.report_contract)
+    end
+
+    def query_xml(code: "0", data: "<ReportingData><Items>#{published_item}</Items></ReportingData>")
+      "<TransactionQueryResponse xmlns=\"https://reporting.elementexpress.com\"><Response><ExpressResponseCode>#{code}</ExpressResponseCode>#{data}</Response></TransactionQueryResponse>"
+    end
+
+    it "keeps recognized reporting failures without transaction evidence retryable" do
+      [ "", "<ReportingData/>", "<ReportingData><Items/></ReportingData>",
+        "<ReportingData><![CDATA[<Items/>]]></ReportingData>" ].each do |data|
+        %w[1001 1002 30].each do |code|
+          result = query_parse(query_xml(code: code, data: data))
+          expect(result).to include(status: "unknown", complete: false, rows: [])
+          expect(result[:metadata]).to include(parse_error: "report_query_not_successful", financial_ambiguity: false)
+        end
+      end
+    end
+
+    it "retains non-authorizing financial evidence even inside a failed query envelope" do
+      result = query_parse(query_xml(code: "1001"))
+      expect(result).to include(status: "unknown", complete: false)
+      expect(result[:rows].map { |entry| entry[:raw_id] }).to eq([ "transaction-1" ])
+      expect(result[:metadata]).to include(parse_error: "report_query_not_successful", financial_ambiguity: true)
+      malformed = query_parse(query_xml(code: "1002", data: "<ReportingData><Items>#{published_item}<Item><TransactionID/></Item></Items></ReportingData>"))
+      expect(malformed.dig(:metadata, :financial_ambiguity)).to be(true)
+      expect(malformed[:rows].map { |entry| entry[:raw_id] }).to include("transaction-1")
+    end
+
+    it "does not treat malformed or uninspectable transaction data as an empty failed query" do
+      [ "<broken", query_xml(code: "1001", data: "<ReportingData><Unexpected><Item/></Unexpected></ReportingData>") ].each do |xml|
+        expect(query_parse(xml).dig(:metadata, :financial_ambiguity)).to be(true)
+      end
+    end
+  end
+
   context "with the published per-Item count contract" do
     def published_parse(xml, requested_page: 1, contract: Payments::Worldpay::PublishedContract.report_contract)
       described_class.call(xml, configuration: published_report_configuration, contract: contract, requested_page: requested_page)

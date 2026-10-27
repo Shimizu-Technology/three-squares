@@ -37,10 +37,16 @@ module Payments
       # Published HPP recovery queries the exact server-stored setup ID (PDF
       # pp. 19-20, 66-67). Reaching the 1000-row cap cannot prove completeness.
       def self.query(xml, configuration:, contract:)
+        financial_ambiguity = true
         validate_report_contract!(contract)
         root, response, code = envelope(xml, "TransactionQuery", configuration.namespace(:reporting), interface: :reporting)
-        raise Xml::Invalid, "report_query_not_successful" unless code.to_i.zero?
-        data = Xml.at(response, contract[:reporting_data_path], required: true)
+        query_failed = !code.to_i.zero?
+        data = Xml.at(response, contract[:reporting_data_path], required: !query_failed)
+        # A recognized failed query with no transaction data is retryable. If
+        # data exists, inspect it before rejecting the envelope so tainted rows
+        # cannot hide behind a communication-error code.
+        financial_ambiguity = !query_failed || (!data.nil? && (data.element_children.any? || !data.text.strip.empty?))
+        raise Xml::Invalid, "report_query_not_successful" if query_failed && !financial_ambiguity
         path = contract[:rows_path]
         if data.element_children.empty? && !data.text.strip.empty?
           data = Xml.parse(data.text, interface: :reporting)
@@ -50,12 +56,14 @@ module Payments
           end
         end
         nodes = rows_at(data, path, strict: true)
+        financial_ambiguity = nodes.any?
         raise Xml::Invalid, "report_row_limit" if nodes.length > MAX_ROWS
         rows = []
         nodes.each { |node| rows << row(node, contract[:fields], allow_empty: true) }
         unless rows.all? { |entry| entry[:raw_id] } && rows.map { |entry| entry[:raw_id] }.uniq.size == rows.size
           raise Xml::Invalid, "report_transaction_id_required"
         end
+        raise Xml::Invalid, "report_query_not_successful" if query_failed
         result = { status: "unknown", complete: nodes.any? && nodes.size < MAX_ROWS, rows: rows,
           metadata: { contract_verified: false, express_response_code: code } }
         raise Xml::Invalid, "sensitive_response" if configuration.secrets_in?(result, allow_report_identifiers: true)
@@ -64,7 +72,8 @@ module Payments
         # Retain only already-scrubbed observations, never raw XML. Even a
         # malformed later row cannot erase earlier possible financial evidence.
         safe_rows = (rows || []).reject { |entry| configuration.secrets_in?(entry, allow_report_identifiers: true) }
-        { status: "unknown", complete: false, rows: safe_rows, metadata: { contract_verified: false, parse_error: error.message, financial_ambiguity: true } }
+        { status: "unknown", complete: false, rows: safe_rows,
+          metadata: { contract_verified: false, parse_error: error.message, financial_ambiguity: financial_ambiguity } }
       end
 
       # Generic counts are relative to Response. Published counts are relative
