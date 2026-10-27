@@ -53,7 +53,7 @@ export function orderDateRange(preset: OrderDatePreset, now = new Date()) {
 
 export function parseOrderQuery(search: string, mode: OrderPageMode, now = new Date()): OrderQueryState {
   const params = new URLSearchParams(search);
-  const datePreset = option(params.get('datepreset'), datePresets,
+  let datePreset = option(params.get('datepreset'), datePresets,
     params.has('start') || params.has('end') ? 'custom' : 'today') as OrderDatePreset;
   const defaultRange = datePreset === 'custom' ? { startDate: '', endDate: '' } : orderDateRange(datePreset, now);
   // Explicit dates pin an applied preset across reloads, including after midnight.
@@ -62,6 +62,10 @@ export function parseOrderQuery(search: string, mode: OrderPageMode, now = new D
   let endDate = validDate(params.get('end')) ? params.get('end')! : defaultRange.endDate;
   if (datePreset === 'all_time') { startDate = ''; endDate = ''; }
   if (startDate && endDate && startDate > endDate) [startDate, endDate] = [endDate, startDate];
+  // Retain the applied dates on reload, but never label a historical range
+  // Today/Last 7 days/This month after that relative period has moved on.
+  if (datePreset !== 'custom' && datePreset !== 'all_time' &&
+      (startDate !== defaultRange.startDate || endDate !== defaultRange.endDate)) datePreset = 'custom';
 
   return {
     search: (params.get('search') || '').trim(),

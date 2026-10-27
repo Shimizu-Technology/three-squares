@@ -105,3 +105,18 @@ test('successful last-row mutation replaces an invalid page before publishing an
   await expect(page.getByRole('article', { name: 'Order URL-91001', exact: true })).toBeVisible();
   await expect(page.getByText('No matching orders', { exact: true })).not.toBeVisible();
 });
+
+
+test('a saved historical Today URL retains its dates with an honest Custom range label', async ({ page }) => {
+  await page.goto('/admin/orders/pickup-queue?datepreset=today&start=2000-01-01&end=2000-01-01');
+  await expect(page.getByLabel('Period', { exact: true })).toHaveValue('custom');
+  await expect(page.getByLabel('Start date', { exact: true })).toHaveValue('2000-01-01');
+  await expect(page.getByLabel('End date', { exact: true })).toHaveValue('2000-01-01');
+  expect(await query(page, 'datepreset')).toBe('custom');
+  await page.getByLabel('Period', { exact: true }).selectOption('today');
+  await expect(page.getByLabel('Period', { exact: true })).toHaveValue('today');
+  expect(await query(page, 'start')).not.toBe('2000-01-01');
+  await page.goBack();
+  await expect(page.getByLabel('Period', { exact: true })).toHaveValue('custom');
+  await expect(page.getByLabel('Start date', { exact: true })).toHaveValue('2000-01-01');
+});

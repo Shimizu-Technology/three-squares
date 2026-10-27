@@ -53,11 +53,14 @@ test('unsupported filter values fall back to the current mode instead of reachin
   assert.equal(state.datePreset, 'today');
 });
 
-test('concrete preset dates survive reload the next day without changing the applied request', () => {
+test('pinned preset dates retain their request but become an honest custom range after expiry', () => {
   const state = parse('?datepreset=last_7_days');
   assert.equal(state.startDate, '2026-10-21');
   assert.equal(state.endDate, '2026-10-27');
-  assert.deepEqual(parse(serializeOrderQuery(state), 'default', new Date(2026, 10, 2, 12)), state);
+  const later = parse(serializeOrderQuery(state), 'default', new Date(2026, 10, 2, 12));
+  assert.deepEqual(later, { ...state, datePreset: 'custom' });
+  assert.equal(orderListContext(later, 'default'), orderListContext(state, 'default'));
+  assert.equal(parse('?datepreset=today&start=2026-10-26&end=2026-10-26').datePreset, 'custom');
   assert.deepEqual(orderDateRange('this_month', new Date(2024, 1, 17)), { startDate: '2024-02-01', endDate: '2024-02-29' });
   assert.deepEqual(orderDateRange('last_7_days', new Date(2026, 0, 3)), { startDate: '2025-12-28', endDate: '2026-01-03' });
 });
