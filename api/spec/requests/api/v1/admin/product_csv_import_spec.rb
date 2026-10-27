@@ -178,4 +178,15 @@ RSpec.describe "Product CSV import", type: :request do
     expect(data.fetch("errors").map { |error| error["error"] }.uniq).to eq(["Row contains an invalid null character"])
     expect(Product.count).to eq(0)
   end
+
+  it "uses an exact slug and rejects slugs that only differ by case" do
+    sign_in(admin)
+    upper = Location.create!(name: "Upper Site", slug: "MAIN")
+    upload_csv("name,price,locations\nExact Lower,5.00,main\nExact Upper,6.00,MAIN\nFolded,7.00,Main\n")
+    data = response.parsed_body.fetch("data")
+    expect(data).to include("imported" => 2, "skipped" => 1)
+    expect(data.fetch("errors").sole).to include("row" => 4, "name" => "Folded")
+    expect(Product.find_by!(name: "Exact Lower").product_locations.available.pluck(:location_id)).to eq([main_location.id])
+    expect(Product.find_by!(name: "Exact Upper").product_locations.available.pluck(:location_id)).to eq([upper.id])
+  end
 end

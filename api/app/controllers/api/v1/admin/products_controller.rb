@@ -154,18 +154,23 @@ module Api
           imported = 0
           errors = []
           notices = []
-          # Slugs are unique and take precedence; a name only resolves when it
-          # identifies exactly one location.
+          # An exact slug wins; otherwise a case-insensitive slug or name only
+          # resolves when it identifies exactly one location.
           all_locations = Location.all.to_a
-          locations_by_slug = all_locations.index_by { |location| location.slug.to_s.downcase }
+          locations_by_exact_slug = all_locations.index_by(&:slug)
+          locations_by_slug = all_locations.group_by { |location| location.slug.to_s.downcase }
           locations_by_name = all_locations.group_by { |location| location.name.to_s.downcase }
+          unique_match = ->(matches) { matches&.one? ? matches.first : nil }
           rows.each_with_index do |row, index|
             name = row["name"]&.strip
             price = row["price"]&.strip
             active = row["active"]&.strip&.downcase
-            location_keys = row["locations"].to_s.split(/[;|]/).map { |key| key.strip.downcase }.reject(&:empty?)
+            location_keys = row["locations"].to_s.split(/[;|]/).map(&:strip).reject(&:empty?)
             resolved_locations = location_keys.map do |key|
-              locations_by_slug[key] || (locations_by_name[key]&.one? ? locations_by_name[key].first : nil)
+              folded = key.downcase
+              locations_by_exact_slug[key] ||
+                unique_match.call(locations_by_slug[folded]) ||
+                (locations_by_slug.key?(folded) ? nil : unique_match.call(locations_by_name[folded]))
             end
             unknown_locations = location_keys.zip(resolved_locations).filter_map { |key, location| key if location.nil? }
             error = if row.fields.any? { |value| value.to_s.include?("\u0000") }
