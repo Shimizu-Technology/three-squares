@@ -1080,7 +1080,7 @@ export default function AdminPOSPage() {
 
         {/* Product grid */}
         <div className="flex-1 overflow-auto p-4">
-          {!hasMenu ? null : filteredItems.length === 0 ? (
+          {!hasMenu || (filteredItems.length === 0 && (loading || loadError)) ? null : filteredItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-56 text-slate-400 border border-dashed border-slate-300 rounded-2xl bg-white">
               <AlertCircle className="w-8 h-8 mb-2" />
               <p>No items found</p>

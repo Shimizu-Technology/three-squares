@@ -197,7 +197,8 @@ export default function AdminCateringPage() {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-8">Catering Inquiries</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-4">Catering Inquiries</h1>
+      <button type="button" onClick={() => void fetchData()} disabled={loading} className="btn-secondary mb-4 min-h-11 disabled:opacity-60">Refresh inquiries</button>
 
       <div className="mb-6">
         <AdminRequestState resource="Catering inquiries and stats" loading={loading} error={loadError} hasData={hasData} onRetry={() => void fetchData()} />
@@ -307,7 +308,7 @@ export default function AdminCateringPage() {
                     </td>
                   </tr>
                 ))}
-                {inquiries.length === 0 && (
+                {inquiries.length === 0 && !loading && !loadError && (
                   <tr>
                     <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                       No catering inquiries found

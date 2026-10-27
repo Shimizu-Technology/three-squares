@@ -273,6 +273,7 @@ export default function AdminLocationsPage() {
         <p className="text-sm text-gray-500 mt-1">
           Manage pickup locations, order windows, and location-specific notification routing.
         </p>
+        <button type="button" onClick={() => void fetchLocations()} disabled={loading} className="btn-secondary mt-3 min-h-11 disabled:opacity-60">Refresh locations</button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -369,7 +370,7 @@ export default function AdminLocationsPage() {
 
       <div className="space-y-4">
         <AdminRequestState resource="Locations" loading={loading} error={loadError} hasData={hasLoaded} onRetry={() => void fetchLocations()} />
-        {!hasLoaded ? null : locations.length === 0 ? (
+        {!hasLoaded || (locations.length === 0 && (loading || loadError)) ? null : locations.length === 0 ? (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 text-sm text-gray-500">No locations found.</div>
         ) : (
           locations.map((location) => {
