@@ -35,9 +35,16 @@ module Api
             products = products.where(product_type: params[:product_type])
           end
 
+          # Stock capacity is advisory; sale reservation remains authoritative.
+          products = products.order(:name).to_a
+          held = InventoryReservation.where(state: "held").where("expires_at > ?", Time.current)
+          pools = held.where(pool_type: "Product", pool_id: products.map(&:id))
+            .or(held.where(pool_type: "ProductVariant", pool_id: products.flat_map { |product| product.product_variants.map(&:id) }))
+          @held_quantities = pools.group(:pool_type, :pool_id).sum(:quantity)
+
           # Group by collection (category)
           categories = {}
-          products.order(:name).each do |product|
+          products.each do |product|
             serialized = pos_product_json(product, effective_location_id)
             next if serialized[:variants].empty?
             collection_names = product.collections.map(&:name)
@@ -60,8 +67,8 @@ module Api
         private
 
         def pos_product_json(product, effective_location_id)
-          primary_image = product.product_images.find_by(primary: true) || product.product_images.first
-          variants = product.product_variants.where(available: true).order(:variant_name)
+          primary_image = product.product_images.find(&:primary?) || product.product_images.first
+          variants = product.product_variants.select(&:available?).sort_by { |variant| variant.variant_name.to_s }
 
           {
             id: product.id,
@@ -72,14 +79,22 @@ module Api
             variants: variants.filter_map do |v|
               price = CatalogPrice.resolve(product: product, variant: v, location_id: effective_location_id)
               next unless price.purchasable
+              pool_type, pool_id, stock = case product.inventory_level
+              when "product" then [ "Product", product.id, product.product_stock_quantity ]
+              when "variant" then [ "ProductVariant", v.id, v.stock_quantity ]
+              else [ nil, nil, nil ]
+              end
+              capacity = pool_type ? [ stock.to_i - @held_quantities.fetch([ pool_type, pool_id ], 0), 0 ].max : nil
               {
                 id: v.id,
                 name: v.display_name,
                 price_cents: price.unit_price_cents,
                 price_formatted: "$#{'%.2f' % (price.unit_price_cents / 100.0)}",
                 sku: v.sku,
-                in_stock: v.in_stock?,
-                stock_quantity: v.stock_quantity
+                in_stock: capacity.nil? || capacity.positive?,
+                stock_quantity: v.stock_quantity,
+                inventory_pool_key: pool_type ? "#{pool_type}:#{pool_id}" : nil,
+                available_quantity: capacity
               }
             end
           }
