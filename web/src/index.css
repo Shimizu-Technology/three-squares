@@ -53,6 +53,8 @@
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
@@ -86,6 +88,48 @@
     color: #4B5563; /* gray-600 */
   }
 
+}
+
+/* Public content paints behind the notch while controls stay within the safe area. */
+.public-site { padding-top: env(safe-area-inset-top, 0px); }
+.public-nav { top: env(safe-area-inset-top, 0px); }
+.public-site footer { padding-bottom: env(safe-area-inset-bottom, 0px); }
+.cart-drawer-header { padding-top: calc(1rem + env(safe-area-inset-top, 0px)); }
+.cart-drawer-footer { padding-bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px)); }
+.location-picker-panel { padding-bottom: env(safe-area-inset-bottom, 0px); }
+
+/* Opening the cart gives spatial feedback; native dialog owns focus and close. */
+@media (prefers-reduced-motion: no-preference) {
+  .cart-drawer[open] {
+    opacity: 1;
+    transform: translateX(0);
+    transition: opacity 220ms ease-out, transform 220ms cubic-bezier(0.23, 1, 0.32, 1);
+  }
+  @starting-style {
+    .cart-drawer[open] { opacity: 0; transform: translateX(24px); }
+  }
+}
+
+.public-site button,
+.public-site a,
+.public-site [role="button"] { touch-action: manipulation; }
+.public-site button,
+.public-site [role="button"] { -webkit-user-select: none; user-select: none; }
+.public-site button:active,
+.public-site [role="button"]:active { opacity: 0.88; }
+
+@media (pointer: coarse) {
+  input, textarea, select { font-size: max(16px, 1em) !important; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-pulse { animation: none !important; }
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* Small/helper text */
@@ -177,25 +221,20 @@
   position: absolute;
   bottom: -2px;
   left: 0;
-  width: 0;
+  width: 100%;
   height: 2px;
   background-color: var(--color-ts-blue);
-  transition: width 0.3s ease;
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.18s ease-out;
 }
 
-.nav-link-hover:hover::after {
-  width: 100%;
-}
 
 /* Card hover effects - warm and inviting */
 .card-hover {
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.card-hover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.1);
-}
 
 /* Clean button styling */
 .btn-primary {
@@ -205,16 +244,10 @@
   padding: 0.8rem 1.75rem;
   border-radius: 0.55rem;
   border: 1px solid #111827;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.btn-primary:hover {
-  background-color: #0b0f18;
-  border-color: #0b0f18;
-  box-shadow: 0 4px 12px rgba(17, 24, 39, 0.28);
-  transform: translateY(-1px);
-}
 
 .btn-primary:active {
   transform: translateY(0);
@@ -234,16 +267,10 @@
   padding: 0.8rem 1.75rem;
   border-radius: 0.55rem;
   border: 1px solid #111827;
-  transition: all 0.2s ease;
+  transition: color 0.2s ease, background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.btn-secondary:hover {
-  background-color: #111827;
-  color: white;
-  box-shadow: 0 4px 12px rgba(17, 24, 39, 0.2);
-  transform: translateY(-1px);
-}
 
 .btn-secondary:active {
   transform: translateY(0);
@@ -263,10 +290,6 @@
   transition: color 0.2s ease, text-decoration-color 0.2s ease;
 }
 
-.link-primary:hover {
-  color: var(--color-ts-navy);
-  text-decoration: underline;
-}
 
 .link-primary:active {
   color: var(--color-ts-navy);
@@ -287,8 +310,29 @@
   transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.btn-icon:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+@media (hover: hover) and (pointer: fine) {
+  .nav-link-hover:hover::after { transform: scaleX(1); }
+  .card-hover:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px -8px rgba(0, 0, 0, 0.1);
+  }
+  .btn-primary:hover {
+    background-color: #0b0f18;
+    border-color: #0b0f18;
+    box-shadow: 0 4px 12px rgba(17, 24, 39, 0.28);
+    transform: translateY(-1px);
+  }
+  .btn-secondary:hover {
+    background-color: #111827;
+    color: white;
+    box-shadow: 0 4px 12px rgba(17, 24, 39, 0.2);
+    transform: translateY(-1px);
+  }
+  .link-primary:hover {
+    color: var(--color-ts-navy);
+    text-decoration: underline;
+  }
+  .btn-icon:hover { background-color: rgba(0, 0, 0, 0.05); }
 }
 
 .btn-icon:active {

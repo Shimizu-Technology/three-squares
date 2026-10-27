@@ -82,7 +82,6 @@ export default function Dialog({
       aria-labelledby={labelledBy}
       aria-describedby={describedBy}
       className={`ts-dialog m-auto max-h-[calc(100dvh-2rem)] max-w-[calc(100vw-2rem)] border-0 bg-white p-0 text-warm-900 shadow-2xl ${className}`}
-      data-lenis-prevent
       tabIndex={-1}
       onKeyDown={(event) => {
         if (event.key !== 'Tab') return;

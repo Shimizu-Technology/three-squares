@@ -94,7 +94,7 @@ export default function CollectionDetailPage() {
       didScrollRef.current = true;
       return;
     }
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({ top: 0, behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }, [currentPage]);
 
   const handleSearch = (e: React.FormEvent) => {
