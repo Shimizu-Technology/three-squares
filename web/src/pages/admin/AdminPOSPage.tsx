@@ -122,6 +122,11 @@ async function createPOSOrder(token: string, orderData: Record<string, unknown>,
     }
     throw new Error(data.error || 'Failed to create order');
   }
+  localStorage.setItem(POS_PENDING_TERMINAL_KEY, JSON.stringify({
+    user_id: owner, order_data: orderData, order_id: data.id, order_number: data.order_number,
+    simulated_attempt_id: data.payment_environment === 'simulated' ? data.payment_attempt_id : null,
+    created_at: new Date().toISOString(),
+  }));
   return data;
 }
 
@@ -632,6 +637,7 @@ export default function AdminPOSPage() {
       if (!token) return;
       // Replaying creation uses the saved payload and original request key.
       const order = pending.order_data ? await createPOSOrder(token, pending.order_data, userId) : pending;
+      if (order.payment_environment === 'simulated' && order.payment_attempt_id) setSimulatedAttempt(order.payment_attempt_id);
       const confirmed = order.payment_method === 'cash' && order.payment_status === 'paid' && order.inventory_committed
         ? order : await confirmTerminalPayment(token, order.id || order.order_id, true);
       if (['failed', 'cancelled', 'compensated'].includes(confirmed.payment_state)) {

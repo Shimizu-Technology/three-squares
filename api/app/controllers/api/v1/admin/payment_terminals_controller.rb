@@ -42,24 +42,41 @@ module Api
         def simulate
           terminal = scope.find(params[:id])
           Payments::Simulation::Guard.validate!(terminal.payment_identity)
-          attempt = terminal.leased_attempt || raise(ActiveRecord::RecordNotFound)
-          authorize_attempt!(attempt)
-          provider = Payments::ProviderResolver.for_identity(attempt.payment_identity)
-          action = params.require(:command)
-          raise Payments::Conflict, 'Reader offline. Reconnect it or cancel the saved payment.' if terminal.status == 'offline' && !%w[reconnect disconnect].include?(action)
-          if action == 'reconnect'
-            terminal.update!(status: 'waiting_for_card')
-          elsif action == 'tap'
-            terminal.update!(status: 'card_inserted')
-          elsif action == 'disconnect'
-            terminal.update!(status: 'offline')
-          else
-            scenarios = {'approve'=>'approve', 'decline'=>'decline', 'wrong_pin'=>'invalid_pin', 'lose_response'=>'timeout_after_approval'}
-            scenario = scenarios.fetch(action) { raise Payments::Error, 'Unsupported reader action' }
-            result = provider.collect(attempt: attempt, handle: provider.collection(attempt: attempt)[:client_secret], scenario: scenario)
-            Payments::FinalizeOrder.call(attempt: attempt, result: result)
+          terminal.with_lock do
+            action = params.require(:command)
+            if action == 'reconnect' && terminal.leased_attempt_id.nil?
+              terminal.update!(status: 'ready')
+              next
+            end
+            expected_id = params[:attempt_id].to_s
+            unless terminal.leased_attempt_id == expected_id
+              raise Payments::Conflict, 'Reader payment changed. Refresh and select the saved payment before controlling this reader.'
+            end
+            attempt = terminal.leased_attempt || raise(ActiveRecord::RecordNotFound)
+            authorize_attempt!(attempt)
+            provider = Payments::ProviderResolver.for_identity(attempt.payment_identity)
+            raise Payments::Conflict, 'Reader offline. Reconnect it or cancel the saved payment.' if terminal.status == 'offline' && !%w[reconnect disconnect].include?(action)
+            if action == 'reconnect'
+              terminal.update!(status: 'waiting_for_card')
+            elsif action == 'tap'
+              terminal.update!(status: 'card_inserted')
+            elsif action == 'disconnect'
+              terminal.update!(status: 'offline')
+            else
+              scenarios = {'approve'=>'approve', 'decline'=>'decline', 'wrong_pin'=>'invalid_pin', 'lose_response'=>'timeout_after_approval'}
+              scenario = scenarios.fetch(action) { raise Payments::Error, 'Unsupported reader action' }
+              begin
+                result = provider.collect(attempt: attempt, handle: provider.collection(attempt: attempt)[:client_secret], scenario: scenario)
+                Payments::FinalizeOrder.call(attempt: attempt, result: result)
+              rescue Payments::Error => error
+                # The local processor transaction may have committed before the
+                # response was lost. Commit its evidence before returning error.
+                @simulation_error = error
+              end
+            end
+            terminal.release_resolved!
           end
-          terminal.with_lock { terminal.release_resolved! }
+          raise @simulation_error if @simulation_error
           render json: representation(terminal.reload)
         end
 

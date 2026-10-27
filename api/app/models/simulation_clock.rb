@@ -9,5 +9,6 @@ class SimulationClock < ApplicationRecord
     Payments::Simulation::Guard.validate!(payment_identity)
     raise Payments::Error, 'Advance must be 1–604800 seconds' unless seconds.is_a?(Integer) && seconds.between?(1, 604800)
     with_lock { update!(now: now + seconds) }
+    Payments::Simulation::Events.deliver_due(payment_identity)
   end
 end

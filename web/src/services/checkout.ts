@@ -38,6 +38,8 @@ function headers(token: string | null, capability: string, cartSession?: string 
     'X-Checkout-Capability': capability, ...(cartSession ? { 'X-Session-ID': cartSession } : {}), ...(key ? { 'Idempotency-Key': key } : {}) };
 }
 export const checkoutApi = {
+  advanceSimulation: async (id: string, token: string | null, capability: string) =>
+    (await api.post<CheckoutState>(`/checkout_sessions/${id}/advance_simulation`, { seconds: 61 }, { headers: headers(token, capability) })).data,
   simulate: async (id: string, token: string | null, capability: string, handle: string, scenario: string, mode: string) =>
     (await api.post<CheckoutState>(`/checkout_sessions/${id}/simulate`, { handle, scenario, mode }, { headers: headers(token, capability) })).data,
   cancel: async (id: string, token: string | null, capability: string) =>

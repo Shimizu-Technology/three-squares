@@ -43,6 +43,9 @@ module Payments
 
       def cancel(attempt:)
         record = engine.query(attempt)
+        if record.scenario == 'cancel_race' && record.facts['visible_after'] && Time.iso8601(record.facts['visible_after']) > SimulationClock.for(identity).now
+          return Result.new(status: 'cancelled', identity_id: identity.id, raw_id: record.raw_id, requested_cents: attempt.requested_cents, approved_cents: 0, captured_cents: 0, currency: 'USD', metadata: { simulated: true })
+        end
         record.with_lock { record.update!(state: 'cancelled') if %w[collecting failed].include?(record.state) }
         query(attempt: attempt)
       end

@@ -539,6 +539,12 @@ function CheckoutForm() {
                   }
                 } catch { setError('We could not check payment status. Your order remains saved.'); }
               }}>Check payment status</button>
+              {import.meta.env.DEV && savedClientConfig?.payment_environment === 'simulated' && <button type="button" className="mt-3 block min-h-11 underline" onClick={async () => {
+                try {
+                  const state = await checkoutApi.advanceSimulation(pendingPayment.id, isSignedIn ? await getToken() : null, pendingPayment.capability);
+                  if (!(await finishCheckout(state))) { setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state)); setError(`Simulation payment status: ${state.payment_state}`); }
+                } catch { setError('Simulation time could not advance. Your payment remains saved.'); }
+              }}>Advance simulated time by 61 seconds</button>}
               {canRetryCollection && <button type="button" className="ml-4 mt-3 underline" disabled={loading || !paymentReady} onClick={async () => {
                 if (!paymentForm.current || submitting.current) return;
                 submitting.current = true;

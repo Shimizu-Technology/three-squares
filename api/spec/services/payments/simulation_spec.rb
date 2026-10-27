@@ -71,6 +71,35 @@ RSpec.describe Payments::Simulation::Provider do
     end
   end
 
+  it 'queries a duplicate hint until the original capture is proven without compensating it' do
+    Payments::FinalizeOrder.call(attempt: attempt, result: collect('duplicate'))
+    expect(attempt.reload.compensation_claimed_at).to be_nil
+    expect(order.reload.payment_status).to eq('pending')
+    Payments::ReconcileAttempt.call(attempt: attempt, force: true)
+    expect(order.reload.payment_status).to eq('paid')
+    expect(SimulatedPaymentRecord.where(kind:'collection').count).to eq(1)
+    expect(SimulatedPaymentRecord.where(kind:'reversal')).to be_empty
+  end
+
+  it 'compensates a late capture after confirmed cancellation and deduplicates replayed events' do
+    expect { collect('cancel_race') }.to raise_error(Payments::Error)
+    Payments::CancelCheckout.call(attempt: attempt)
+    expect(attempt.reload.state).to eq('cancelled')
+    2.times { SimulationClock.for(identity).advance!(61) }
+    expect(attempt.reload.state).to eq('compensated')
+    expect(order.reload.payment_status).to eq('pending')
+    expect(product.reload.product_stock_quantity).to eq(5)
+    expect(SimulatedPaymentRecord.where(kind:'reversal').count).to eq(1)
+  end
+
+  it 'converges duplicate scheduled capture events on one charge and stock commitment' do
+    Payments::FinalizeOrder.call(attempt: attempt, result: collect('duplicate_event'))
+    2.times { SimulationClock.for(identity).advance!(61) }
+    expect(InventoryCommitment.where(order:order).count).to eq(1)
+    expect(product.reload.product_stock_quantity).to eq(4)
+    expect(SimulatedPaymentRecord.first.facts['event_delivered']).to be(true)
+  end
+
   it 'recovers a lost approval after a provider restart without redispatch' do
     expect { collect('timeout_after_approval') }.to raise_error(Payments::Error)
     recovered = described_class.new(identity).query(attempt: attempt)

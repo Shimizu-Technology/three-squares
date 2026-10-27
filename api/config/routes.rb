@@ -191,6 +191,7 @@ Rails.application.routes.draw do
       post "contact", to: "contact_submissions#create"
 
       resources :checkout_sessions, only: [:create, :show] do
+        post :advance_simulation, on: :member unless Rails.env.production? || ENV["APP_DEPLOYMENT_ENV"] == "production"
         post :simulate, on: :member unless Rails.env.production? || ENV["APP_DEPLOYMENT_ENV"] == "production"
         member do
           post :confirm

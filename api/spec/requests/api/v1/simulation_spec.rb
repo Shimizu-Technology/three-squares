@@ -51,9 +51,18 @@ RSpec.describe 'Local simulated payment journeys', type: :request do
     expect(response).to have_http_status(:accepted),response.body
     post "/api/v1/admin/payment_terminals/#{terminal.id}/collect",params:{attempt_id:attempts.last}
     expect(response).to have_http_status(:conflict)
+    post "/api/v1/admin/payment_terminals/#{terminal.id}/simulate",params:{command:'approve',attempt_id:attempts.last}
+    expect(response).to have_http_status(:conflict)
+    expect(Order.where(payment_status:'paid')).to be_empty
+    post "/api/v1/admin/payment_terminals/#{terminal.id}/simulate",params:{command:'disconnect',attempt_id:attempts.first}
+    expect(response.parsed_body['status']).to eq('offline')
+    post "/api/v1/admin/payment_terminals/#{terminal.id}/simulate",params:{command:'approve',attempt_id:attempts.first}
+    expect(response).to have_http_status(:conflict)
+    post "/api/v1/admin/payment_terminals/#{terminal.id}/simulate",params:{command:'reconnect',attempt_id:attempts.first}
+    expect(response.parsed_body['status']).to eq('waiting_for_card')
     terminal.update!(leased_at: 1.day.ago)
     expect { terminal.reserve!(PaymentAttempt.find(attempts.last)) }.to raise_error(Payments::Conflict)
-    post "/api/v1/admin/payment_terminals/#{terminal.id}/simulate",params:{command:'lose_response'}
+    post "/api/v1/admin/payment_terminals/#{terminal.id}/simulate",params:{command:'lose_response',attempt_id:attempts.first}
     expect(response).to have_http_status(:unprocessable_entity)
     expect(terminal.reload.leased_attempt_id).to eq(attempts.first)
     Payments::ReconcileAttempt.call(attempt:PaymentAttempt.find(attempts.first),force:true)
@@ -61,5 +70,9 @@ RSpec.describe 'Local simulated payment journeys', type: :request do
     get "/api/v1/admin/payment_terminals/#{terminal.id}/status"
     expect(response.parsed_body['attempt_id']).to be_nil
     expect(product.reload.product_stock_quantity).to eq(9)
+    terminal.update!(leased_attempt_id:attempts.first,status:'offline')
+    terminal.with_lock { terminal.release_resolved! }
+    expect(terminal.reload.status).to eq('offline')
+    expect { terminal.reserve!(PaymentAttempt.find(attempts.last)) }.to raise_error(Payments::BindingError)
   end
 end

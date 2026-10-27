@@ -53,7 +53,8 @@ module Payments
           end
           facts = record.facts.merge('bridge_mode' => mode, 'approved_cents' => state == 'partial' ? [record.amount_cents / 2, 1].max : (state == 'captured' ? record.amount_cents : 0),
             'dispatched_at' => SimulationClock.for(@identity).now.iso8601, 'query_count' => 0)
-          facts['visible_after'] = (SimulationClock.for(@identity).now + 60.seconds).iso8601 if scenario == 'query_lag'
+          facts['visible_after'] = (SimulationClock.for(@identity).now + 60.seconds).iso8601 if %w[query_lag cancel_race late_event].include?(scenario)
+          facts['event_at'] = (SimulationClock.for(@identity).now + 60.seconds).iso8601 if %w[cancel_race late_event duplicate_event].include?(scenario)
           record.update!(scenario: scenario, state: state, redeemed_at: Time.current, facts: facts)
         end
         record

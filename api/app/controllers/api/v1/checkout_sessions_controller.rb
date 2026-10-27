@@ -43,6 +43,14 @@ module Api
         render json: session_json(session.reload, attempt.reload), status: :accepted
       end
 
+      def advance_simulation
+        session = authorized_session!
+        Payments::Simulation::Guard.validate!(session.payment_identity)
+        Payments::Simulation::Events.deliver_due(session.payment_identity)
+        SimulationClock.for(session.payment_identity).advance!(params.require(:seconds))
+        render json: session_json(session.reload, session.payment_attempts.order(:created_at).last)
+      end
+
       # Local simulator only: all authority comes from the saved session, never
       # a supplied order, amount, provider reference or string prefix.
       def simulate

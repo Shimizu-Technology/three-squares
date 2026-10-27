@@ -16,14 +16,14 @@ export default function SimulatedTerminalPanel({ locationId, attemptId, getToken
     return () => { active = false; };
   }, [getToken, locationId, attemptId]);
   async function act(action: string) {
-    if (!selected || !attemptId || busy) return;
+    if (!selected || (!attemptId && action !== 'reconnect') || busy) return;
     setBusy(true); setError('');
     try {
       const headers = {Authorization: `Bearer ${await getToken()}`};
       const path = `/admin/payment_terminals/${selected}`;
       const response = action === 'take'
         ? await api.post<Terminal>(`${path}/collect`, {attempt_id: attemptId}, {headers})
-        : await api.post<Terminal>(`${path}/simulate`, {command: action}, {headers});
+        : await api.post<Terminal>(`${path}/simulate`, {command: action, attempt_id: attemptId}, {headers});
       setTerminals(rows => rows.map(row => row.id === response.data.id ? response.data : row));
       if (['approve', 'decline', 'wrong_pin'].includes(action)) await onChange();
     } catch (failure) {
@@ -36,7 +36,7 @@ export default function SimulatedTerminalPanel({ locationId, attemptId, getToken
     <label className="block">Simulated reader<select value={selected} onChange={event => setSelected(event.target.value)} className="block w-full bg-white border rounded p-2 min-h-11 text-base">{terminals.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
     <p className="my-2" role="status">{terminal?.status.replaceAll('_', ' ') || 'No reader configured'}{terminal?.order_number ? ` · ${terminal.order_number}` : ''}</p>
     {!attemptId && <p className="mb-2 text-sm">Add items and press Card to save an order, then take payment here.</p>}
-    <div className="grid grid-cols-2 gap-2">{[['take','Take card payment'],['tap','Tap card'],['approve','Approve'],['decline','Decline'],['wrong_pin','Enter wrong PIN'],['disconnect','Disconnect'],['reconnect','Reconnect'],['lose_response','Lose response']].map(([value,label]) => <button type="button" key={value} disabled={busy || !attemptId || !selected} className="min-h-11 rounded border border-amber-500 bg-white px-2 py-2 disabled:opacity-50" onClick={() => void act(value)}>{label}</button>)}</div>
+    <div className="grid grid-cols-2 gap-2">{[['take','Take card payment'],['tap','Tap card'],['approve','Approve'],['decline','Decline'],['wrong_pin','Enter wrong PIN'],['disconnect','Disconnect'],['reconnect','Reconnect'],['lose_response','Lose response']].map(([value,label]) => <button type="button" key={value} disabled={busy || !selected || (value !== 'reconnect' && (!attemptId || (value !== 'take' && terminal?.attempt_id !== attemptId)))} className="min-h-11 rounded border border-amber-500 bg-white px-2 py-2 disabled:opacity-50" onClick={() => void act(value)}>{label}</button>)}</div>
     {error && <p role="alert" className="mt-3 text-sm break-words">{error}</p>}
   </details>;
 }

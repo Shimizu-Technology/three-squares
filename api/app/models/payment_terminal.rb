@@ -23,7 +23,7 @@ class PaymentTerminal < ApplicationRecord
 
   def release_resolved!
     if leased_attempt_id && %w[captured failed cancelled compensated].include?(leased_attempt.reload.state)
-      update!(leased_attempt: nil, leased_at: nil, status: 'ready')
+      update!(leased_attempt: nil, leased_at: nil, status: %w[offline retired].include?(status) ? status : 'ready')
     end
   end
 end

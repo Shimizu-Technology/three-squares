@@ -12,6 +12,9 @@ module Payments
         when 'duplicate' then record.facts.fetch('query_count', 0) <= 1 ? '22' : '0'
         else nil
         end
+        # A duplicate response is a hint; the bound follow-up query returns the
+        # original capture. Do not infer captured cents from the duplicate hint.
+        state = 'unknown' if record.scenario == 'duplicate' && record.facts.fetch('query_count', 0) <= 1
         Worldpay::ExpressParser.fixture(raw_id: record.raw_id, amount_cents: record.amount_cents,
           reference_number: record.payment_attempt&.reference_number.to_s, status: state, code: code)
       end
