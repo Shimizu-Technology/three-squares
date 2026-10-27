@@ -12,6 +12,7 @@ module Authenticatable
   private
 
   def authenticate_request
+    return if current_user
     token = extract_token
     return render_unauthorized unless token
 

@@ -27,6 +27,11 @@ module StaffAuthorization
   def authorize_staff_route!(explicit: false)
     return true if @staff_route_authorized
     return true unless explicit || StaffRouteCapabilities.protected?(controller_path, action_name)
+    # Rails moves a re-declared callback to its later declaration. Several
+    # direct controllers retain a legacy authenticate_request declaration, so
+    # the guard must resolve authentication before making a policy decision.
+    authenticate_request unless current_user
+    return false if performed?
     capability = StaffRouteCapabilities.capability_for(controller_path, action_name)
     unless capability
       render json: { error: "This administrative action has no access policy" }, status: :forbidden
