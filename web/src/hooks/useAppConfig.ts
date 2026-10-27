@@ -1,36 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useSyncExternalStore } from 'react';
 import { configApi } from '../services/api';
-import type { AppConfig } from '../types/order';
+import { createAppConfigCache } from '../lib/appConfigCache.ts';
 
-let cachedConfig: AppConfig | null = null;
-let inFlight: Promise<AppConfig> | null = null;
+const cache = createAppConfigCache(() => configApi.getConfig());
+
+// All mounted consumers refresh after a save; stale in-flight responses are discarded.
+export const invalidateAppConfig = cache.invalidate;
 
 export default function useAppConfig() {
-  const [config, setConfig] = useState<AppConfig | null>(cachedConfig);
-
-  useEffect(() => {
-    if (cachedConfig) {
-      return;
-    }
-
-    if (!inFlight) {
-      inFlight = configApi.getConfig()
-        .then((data) => {
-          cachedConfig = data;
-          return data;
-        })
-        .catch((error) => {
-          console.error('Failed to load app config:', error);
-          return null as unknown as AppConfig;
-        });
-    }
-
-    inFlight.then((data) => {
-      if (data) {
-        setConfig(data);
-      }
-    });
-  }, []);
-
-  return config;
+  return useSyncExternalStore(cache.subscribe, cache.getSnapshot, () => null);
 }
