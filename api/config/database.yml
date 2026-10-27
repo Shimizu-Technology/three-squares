@@ -57,6 +57,8 @@ development:
 test:
   <<: *default
   database: three_squares_test
+  # Specs own their fixtures; restaurant demo seeds are not test fixtures.
+  seeds: false
 
 # As with config/credentials.yml, you never want to store sensitive information,
 # like your database password, in your source code. If your source code is

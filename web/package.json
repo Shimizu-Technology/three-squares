@@ -7,6 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "lint:ci": "node scripts/lint-ci.mjs",
+    "test:ci-tools": "node --test scripts/lint-ci.test.mjs",
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
@@ -20,7 +22,8 @@
     "test:comprehensive": "playwright test --project=comprehensive --project=comprehensive-mobile",
     "test:comprehensive:desktop": "playwright test --project=comprehensive",
     "test:comprehensive:mobile": "playwright test --project=comprehensive-mobile",
-    "test:comprehensive:headed": "playwright test --project=comprehensive --headed"
+    "test:comprehensive:headed": "playwright test --project=comprehensive --headed",
+    "test:unit": "node --experimental-strip-types --test tests/*.test.mjs"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.58.1",

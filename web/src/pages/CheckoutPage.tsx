@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useReducer } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
 import { useCartStore } from '../store/cartStore';
 import { configApi, locationsApi, ordersApi, shippingApi, paymentIntentsApi, formatPrice } from '../services/api';
+import { authGet } from '../services/authApi';
+import { checkoutContactReducer, emptyCheckoutContact } from '../lib/checkoutContact';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { motion, AnimatePresence } from 'framer-motion';
 import StripeProvider from '../components/payment/StripeProvider';
@@ -15,7 +17,7 @@ import { useLocationStore } from '../store/locationStore';
 
 function CheckoutForm() {
   const navigate = useNavigate();
-  const { getToken, isSignedIn, isLoaded: authLoaded } = useAuth();
+  const { getToken, isSignedIn, isLoaded: authLoaded, userId } = useAuth();
   const { cart, clearCart, sessionId, fetchCart, validateCart, removeItem, isLoading: cartLoading } = useCartStore();
   const { selectedLocation: storedLocation } = useLocationStore();
   const stripe = useStripe();
@@ -32,9 +34,8 @@ function CheckoutForm() {
   const [configLoading, setConfigLoading] = useState(true);
   
   // Form state
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
+  const [contact, updateContact] = useReducer(checkoutContactReducer, emptyCheckoutContact);
+  const { name, email, phone } = contact.values;
   const [deliveryMethod, setDeliveryMethod] = useState<'pickup' | 'shipping'>('shipping');
   const [pickupLocations, setPickupLocations] = useState<Location[]>([]);
   const [pickupLocationId, setPickupLocationId] = useState<number | null>(null);
@@ -112,6 +113,29 @@ function CheckoutForm() {
     () => pickupLocations.filter((location) => compatiblePickupLocationIds.includes(location.id)),
     [pickupLocations, compatiblePickupLocationIds]
   );
+
+  // A profile response may arrive after sign-out or an identity change.
+  useEffect(() => {
+    const identity = authLoaded && isSignedIn ? userId : null;
+    updateContact({ type: 'identity', identity });
+    if (!identity) return;
+    let cancelled = false;
+
+    authGet<{
+      email: string | null;
+      name: string | null;
+      phone: string | null;
+    }>('/me', getToken)
+      .then(({ data: profile }) => {
+        if (cancelled) return;
+        updateContact({ type: 'profile', identity, profile });
+      })
+      .catch(() => {
+        // Checkout remains usable when profile loading fails.
+      });
+
+    return () => { cancelled = true; };
+  }, [isSignedIn, authLoaded, userId, getToken]);
 
   // Load app config
   useEffect(() => {
@@ -493,7 +517,7 @@ function CheckoutForm() {
                       id="name"
                       required
                       value={name}
-                      onChange={(e) => setName(e.target.value)}
+                      onChange={(e) => updateContact({ type: 'edit', field: 'name', value: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="John Doe"
                     />
@@ -507,7 +531,7 @@ function CheckoutForm() {
                       id="email"
                       required
                       value={email}
-                      onChange={(e) => setEmail(e.target.value)}
+                      onChange={(e) => updateContact({ type: 'edit', field: 'email', value: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="your@email.com"
                     />
@@ -521,7 +545,7 @@ function CheckoutForm() {
                       id="phone"
                       required
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => updateContact({ type: 'edit', field: 'phone', value: e.target.value })}
                       className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="(555) 123-4567"
                     />

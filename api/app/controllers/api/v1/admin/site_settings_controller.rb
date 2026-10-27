@@ -22,7 +22,10 @@ module Api
             shipping_origin_address: settings.shipping_origin_address,
             announcement_enabled: settings.announcement_enabled,
             announcement_text: settings.announcement_text,
-            announcement_style: settings.announcement_style
+            announcement_style: settings.announcement_style,
+            enable_storefront_three_squares: settings.enable_storefront_three_squares,
+            enable_storefront_latte_stone: settings.enable_storefront_latte_stone,
+            enable_storefront_catering: settings.enable_storefront_catering
           }
         end
 
@@ -44,7 +47,10 @@ module Api
               shipping_origin_address: settings.shipping_origin_address,
               announcement_enabled: settings.announcement_enabled,
               announcement_text: settings.announcement_text,
-              announcement_style: settings.announcement_style
+              announcement_style: settings.announcement_style,
+              enable_storefront_three_squares: settings.enable_storefront_three_squares,
+              enable_storefront_latte_stone: settings.enable_storefront_latte_stone,
+              enable_storefront_catering: settings.enable_storefront_catering
             }
           else
             render json: { errors: settings.errors.full_messages }, status: :unprocessable_entity
@@ -67,6 +73,9 @@ module Api
             :announcement_enabled,
             :announcement_text,
             :announcement_style,
+            :enable_storefront_three_squares,
+            :enable_storefront_latte_stone,
+            :enable_storefront_catering,
             order_notification_emails: [],
             shipping_origin_address: [
               :company, :street1, :street2, :city, :state, :zip, :country, :phone, :email
