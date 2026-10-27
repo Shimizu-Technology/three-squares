@@ -32,7 +32,7 @@ module Api
             business_line_breakdown: business_line_breakdown,
             fulfillment_breakdown: fulfillment_breakdown,
             location_breakdown: location_breakdown
-          }
+          }.merge(simulated_order_notice)
         end
 
         # GET /api/v1/admin/dashboard/chart_data
@@ -81,10 +81,17 @@ module Api
               this_week: { orders: this_week_orders, revenue_cents: this_week_revenue },
               last_week: { orders: last_week_orders, revenue_cents: last_week_revenue }
             }
-          }
+          }.merge(simulated_order_notice)
         end
 
         private
+
+        def simulated_order_notice
+          return {} if Payments::Configuration.production? || ENV["PAYMENTS_SIMULATION_ENABLED"] != "true"
+
+          count = staff_scope(Order.all).where("simulated = TRUE OR payment_environment = ?", "simulated").count
+          count.positive? ? { excluded_simulated_order_count: count } : {}
+        end
 
         def business_line_breakdown_data(scope)
           retail_orders = scope.where(order_type: "retail")

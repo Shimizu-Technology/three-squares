@@ -46,4 +46,6 @@ Ordinary dashboard totals, charts, period comparisons, business/location breakdo
 
 Production is the server-side default. Sandbox, simulated and unstamped orders are excluded. Historical card orders require an independently verified `LegacyCaptureBinding`; a `paid` label or current payment setting is insufficient. Unverified history therefore contributes zero until its original evidence is verified through the established foundation. Imports cannot fill that authority gap. Staff POS cash requires its committed inventory/order evidence and remains in ordinary revenue, outside processor settlement. CSV preserves gross order totals and adds captured, succeeded-refund and net-revenue cents.
 
+For a non-production demo with simulation enabled, dashboard and analytics show an all-time, location-scoped count with **Simulated orders aren't counted in revenue**. Their totals and charts still use production-only net revenue; the notice never mixes simulated cents into those queries. Production responses omit the notice and retain the existing reporting data contract.
+
 This slice supplies simulator/application evidence for C09 and C17. It is not processor certification, proof of a physical device, an assigned funding format or permission to resume production.

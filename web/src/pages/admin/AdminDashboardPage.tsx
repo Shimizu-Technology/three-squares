@@ -15,6 +15,7 @@ interface DashboardStats {
   total_revenue_cents: number;
   pending_orders: number;
   total_products: number;
+  excluded_simulated_order_count?: number;
   business_line_breakdown?: Record<string, { orders: number; revenue_cents: number }>;
   fulfillment_breakdown?: Record<string, number>;
   location_breakdown?: Array<{ name: string; orders: number; revenue_cents: number }>;
@@ -113,6 +114,11 @@ export default function AdminDashboardPage() {
       </div>
 
       {requestState}
+
+      {(stats.excluded_simulated_order_count ?? 0) > 0 && <aside role="note" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
+        <p className="font-semibold">Simulated orders aren&apos;t counted in revenue</p>
+        <p className="mt-1 text-sm">{stats.excluded_simulated_order_count} simulated orders in your location scope (all time). The totals below remain production-only; no simulated money is included.</p>
+      </aside>}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">

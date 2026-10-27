@@ -232,3 +232,17 @@ for (const button of ['Retail order emails', 'Enable Catering storefront']) test
   for (let i = 0; i < 20; i++) await Promise.resolve();
   assert.equal(h.writes, writes); assert.equal(h.toasts.length, toasts);
 });
+
+for (const [name, Component] of [['dashboard', Dashboard], ['analytics', Analytics]]) {
+  test(`${name} explains excluded simulated orders without adding them to production revenue`, async t => {
+    const h = harness(t, Component);
+    h.get = async path => ({ data: path.endsWith('/stats') ? { total_orders: 1, total_revenue_cents: 750, pending_orders: 0, total_products: 1, excluded_simulated_order_count: 3 }
+      : path.endsWith('/chart_data') ? { ...chart(), excluded_simulated_order_count: 3 } : { orders: [] } });
+    await h.flush();
+    const notice = h.find(node => node.props?.role === 'note');
+    assert.match(text(notice), /Simulated orders aren't counted in revenue/);
+    assert.match(text(notice), /3 simulated orders in your location scope \(all time\)/);
+    assert.match(text(notice), /production-only; no simulated money is included/);
+    if (name === 'dashboard') assert.equal(h.find(node => node.props?.label === 'All-time net revenue').props.value, '$7.50');
+  });
+}
