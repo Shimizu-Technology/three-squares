@@ -4,9 +4,7 @@ class Order < ApplicationRecord
   has_many :order_items, dependent: :destroy
   has_many :refunds, dependent: :destroy
 
-  # Valid statuses by order type:
-  # Retail:    pending → processing → shipped → delivered (or cancelled)
-  # Wholesale: pending → confirmed → ready → picked_up (or cancelled)
+  # Fulfillment determines the workflow, independently of sales channel/order type.
   VALID_STATUSES = %w[pending confirmed processing ready shipped picked_up delivered cancelled].freeze
   RETAIL_STATUSES = %w[pending processing shipped delivered cancelled].freeze
   PICKUP_STATUSES = %w[pending confirmed ready picked_up cancelled].freeze
@@ -50,6 +48,7 @@ class Order < ApplicationRecord
   validates :payment_status, inclusion: { in: %w[pending paid failed refunded] }
   validates :total_cents, numericality: { greater_than_or_equal_to: 0 }
   validate :pickup_orders_require_location
+  validate :valid_status_transition, on: :update
 
   # Guest orders (no user_id) must have contact email — unless staff-created (POS walk-ins)
   validates :customer_email, presence: { message: "is required for guest checkout" }, if: -> { user_id.nil? && !staff_created? }
@@ -139,16 +138,16 @@ class Order < ApplicationRecord
     payment_status == "paid" && refundable_amount_cents > 0
   end
 
-    def can_cancel?
-    %w[pending confirmed processing ready].include?(status)
+  def can_cancel?
+    next_status_options.include?("cancelled")
   end
 
   def can_ship?
-    status == "processing" && payment_status == "paid"
+    next_status_options.include?("shipped")
   end
 
   def can_mark_ready?
-    wholesale? && status == "confirmed" && payment_status == "paid"
+    next_status_options.include?("ready")
   end
 
   def is_paid?
@@ -163,23 +162,23 @@ class Order < ApplicationRecord
     fulfillment_type == "pickup"
   end
 
-  # Get valid next statuses based on order type and current status
-  def next_status_options
-    if retail?
-      case status
-      when "pending" then [ "processing", "cancelled" ]
-      when "processing" then [ "shipped", "cancelled" ]
-      when "shipped" then [ "delivered" ]
-      else []
-      end
-    else
-      case status
-      when "pending" then [ "confirmed", "cancelled" ]
-      when "confirmed" then [ "ready", "cancelled" ]
-      when "ready" then [ "picked_up" ]
-      else []
-      end
-    end
+  PICKUP_TRANSITIONS = {
+    "pending" => %w[confirmed cancelled],
+    "confirmed" => %w[ready cancelled],
+    # Recover pickups previously directed into the shipping workflow.
+    "processing" => %w[ready cancelled],
+    "ready" => %w[picked_up cancelled]
+  }.freeze
+  SHIPPING_TRANSITIONS = {
+    "pending" => %w[processing cancelled],
+    "processing" => %w[shipped cancelled],
+    "shipped" => %w[delivered]
+  }.freeze
+
+  def next_status_options(from: status)
+    transitions = is_pickup_order? ? PICKUP_TRANSITIONS : SHIPPING_TRANSITIONS
+    options = transitions.fetch(from, [])
+    payment_status == "paid" ? options : options.select { |option| option == "cancelled" }
   end
 
   # Type helpers
@@ -286,6 +285,13 @@ class Order < ApplicationRecord
   end
 
   private
+
+  def valid_status_transition
+    return unless will_save_change_to_status?
+    return if next_status_options(from: status_in_database).include?(status)
+
+    errors.add(:status, "cannot change from #{status_in_database} to #{status} for this fulfillment and payment state")
+  end
 
   def pickup_orders_require_location
     return unless fulfillment_type == "pickup"
