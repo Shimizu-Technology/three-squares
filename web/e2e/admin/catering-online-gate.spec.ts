@@ -32,6 +32,23 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await page.reload(); await expect(toggle).toBeChecked();
   });
 
+  test(`staff can see why the system closed the uncharged saved order at ${width}x${height}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await page.route('**/api/v1/admin/orders/99003', route => route.fulfill({ json: { order: {
+      id: 99003, order_number: 'SYSTEM-GATE', status: 'cancelled', payment_status: 'pending', payment_environment: 'sandbox',
+      order_type: 'retail', source: 'online', customer_name: 'Synthetic catering checkout', customer_email: 'gate@example.test',
+      customer_phone: '5550100', total_cents: 1200, subtotal_cents: 1200, shipping_cost_cents: 0, tax_cents: 0,
+      created_at: new Date().toISOString(), next_status_options: [], order_items: [], item_count: 0, line_count: 0,
+      fulfillment_type: 'pickup', location_id: 1, location_name: 'Main',
+      system_cancellation: { actor: 'system', reason: 'catering_inquiry_required' },
+    } } }));
+    await page.goto('/admin/orders?order=99003');
+    await expect(page.getByRole('status').filter({ hasText: 'Closed by system: catering items now require an inquiry.' })).toBeVisible();
+    await expect(page.getByText('No payment was started. No cancellation email or SMS was sent.', { exact: false })).toBeVisible();
+    await page.getByRole('button', { name: 'Close order details', exact: true }).click();
+    await expect(page.getByText('Closed by system:', { exact: false })).toHaveCount(0);
+  });
+
   test(`saved-order collection is blocked independently of an empty cart at ${width}x${height}`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     await page.addInitScript(() => sessionStorage.setItem('tsq-checkout-pending', JSON.stringify({ id: 'saved-gate', capability: 'a'.repeat(64), key: 'fixture-saved-key', orderId: 99002, orderNumber: 'SAVED-GATE', amountCents: 1200 })));

@@ -151,6 +151,39 @@ RSpec.describe "Catering online ordering gate", type: :request do
     expect(response.parsed_body.fetch("payment_state")).to eq("cancelled")
   end
 
+  it "records the system closure for staff without standard cancellation email or SMS" do
+    session = create_undispatched_checkout
+    order = session.order
+    order.update!(metadata: order.metadata.merge("fixture_note" => "preserved"), admin_notes: "Staff draft")
+    SiteSetting.instance.update!(enable_catering_online_ordering: false, enable_order_emails: true, enable_order_sms: true)
+    expect(order).not_to be_simulated
+    expect(order.payment_environment).to eq("sandbox")
+    expect(order.customer_email).to be_present
+    expect(order.customer_phone).to be_present
+    expect {
+      Payments::SetupAttempt.call(attempt: session.payment_attempts.last)
+    }.not_to change { PaymentOutbox.where(kind: "notification").count }
+    expect(order.reload).to have_attributes(status: "cancelled", admin_notes: "Staff draft")
+    expect(order.metadata).to include("fixture_note" => "preserved", "system_cancellation" => { "actor" => "system", "reason" => "catering_inquiry_required" })
+    headers = sign_in(create(:user, :owner))
+    get "/api/v1/admin/orders/#{order.id}", headers: headers
+    expect(response).to have_http_status(:ok), response.body
+    expect(response.parsed_body.fetch("order").fetch("system_cancellation")).to eq("actor" => "system", "reason" => "catering_inquiry_required")
+  end
+
+  it "keeps standard customer email and SMS for ordinary cancellations" do
+    session = create_undispatched_checkout
+    order = session.order
+    SiteSetting.instance.update!(enable_order_emails: true, enable_order_sms: true)
+    expect {
+      Payments::UpdateOrder.call(order: order, attributes: { status: "cancelled" }, user: nil)
+    }.to change { PaymentOutbox.where(kind: "notification").count }.by(2)
+    notifications = PaymentOutbox.where(kind: "notification").map(&:payload)
+    expect(notifications.map { |payload| payload.fetch("job") }).to contain_exactly("SendOrderStatusEmailJob", "SendOrderSmsJob")
+    expect(notifications).to all(include("args" => [ order.id, "cancelled", order.reload.notification_seq ]))
+    expect(order.metadata).not_to have_key("system_cancellation")
+  end
+
   it "lets recovery close a never-dispatched gated intent once and never retries it" do
     session = create_undispatched_checkout
     attempt = session.payment_attempts.last

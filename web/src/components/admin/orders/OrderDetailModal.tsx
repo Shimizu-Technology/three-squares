@@ -108,6 +108,9 @@ export default function OrderDetailModal({
             </h2>
             <p className="text-sm text-gray-500 mt-1">{formatDate(order.created_at)}</p>
             <PaymentEnvironmentBadge environment={order.payment_environment} inline />
+            {order.system_cancellation?.actor === 'system' && order.system_cancellation.reason === 'catering_inquiry_required' && (
+              <p role="status" className="mt-3 text-sm text-gray-700 print-hide">Closed by system: catering items now require an inquiry. No payment was started. No cancellation email or SMS was sent.</p>
+            )}
             {order.inventory_restoration_status === 'manual_review_required' && <p role="status" className="mt-3 text-sm text-amber-800">Inventory restoration requires manual review. No stock was restored automatically.</p>}
           </div>
           <button

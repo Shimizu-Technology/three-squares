@@ -62,7 +62,10 @@ module Payments
           current.approved_cents.positive? || current.captured_cents.positive? || current.compensation_claimed_at
         next false if StorefrontEligibility.online_ordering_enabled_for_order?(order)
 
-        UpdateOrder.call(order: order, attributes: { status: "cancelled" }, user: nil)
+        UpdateOrder.call(order: order, attributes: {
+          status: "cancelled",
+          metadata: order.metadata.merge("system_cancellation" => { "actor" => "system", "reason" => "catering_inquiry_required" })
+        }, user: nil, notify: false)
         current.update!(state: "cancelled", error_classification: "catering_inquiry_required",
           last_error: StorefrontEligibility::INQUIRY_REQUIRED_MESSAGE, next_recovery_at: nil)
         session.update!(state: "cancelled")

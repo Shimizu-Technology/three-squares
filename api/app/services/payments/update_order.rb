@@ -2,7 +2,7 @@
 
 module Payments
   class UpdateOrder
-    def self.call(order:, attributes:, user:)
+    def self.call(order:, attributes:, user:, notify: true)
       action = lambda do |current|
         attrs = attributes.to_h.stringify_keys
         if current.status == 'cancelled' && attrs['status'].present? && attrs['status'] != 'cancelled'
@@ -17,7 +17,7 @@ module Payments
             # No commitment means no deduction to restore. A late capture is
             # compensated by the finalizer, which observes this locked status.
           end
-          unless current.simulated? || current.payment_environment == 'simulated'
+          if notify && !current.simulated? && current.payment_environment != 'simulated'
             settings = SiteSetting.instance
             seq = current.notification_seq if Order::STATUS_SEQUENCE.key?(current.status) && current.status != 'pending'
             if seq
