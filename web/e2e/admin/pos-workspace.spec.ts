@@ -57,13 +57,15 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await page.getByRole('button', { name: 'Refresh menu', exact: true }).click();
     await expect(cash).toBeEnabled();
     await expect(page.getByText('$30.00', { exact: true }).first()).toBeVisible();
-    // Existing cash overlay has no background focus containment until A-11.
-    // Reproduce a menu refresh after tender opened, then complete against stale data.
+    // Native dialogs prevent staff from focusing background controls. Model an
+    // external menu invalidation programmatically to retain the stale-tender regression.
     await cash.click();
     await expect(page.getByRole('heading', { name: 'Cash Payment', exact: true })).toBeVisible();
     failure = true;
-    await page.getByRole('button', { name: 'Refresh menu', exact: true }).focus();
-    await page.keyboard.press('Enter');
+    const backgroundRefresh = page.getByRole('button', { name: 'Refresh menu', exact: true });
+    await backgroundRefresh.focus();
+    await expect(backgroundRefresh).not.toBeFocused();
+    await backgroundRefresh.evaluate(button => button.click());
     await expect(page.getByText('POS menu and locations unavailable', { exact: true })).toBeVisible();
     await expect(cash).toBeDisabled();
     let submitted = false;
@@ -101,11 +103,11 @@ test('cash and card readiness recover together after a failed menu refresh', asy
   let release!: () => void;
   let delay = false;
   const gate = new Promise<void>(resolve => { release = resolve; });
-  await page.route('**/api/v1/admin/payment_terminals**', route => route.fulfill({ json: { terminals: [{ id: 9191, label: 'QA simulated reader', location_id: 91, environment: 'simulated', status: 'idle', attempt_id: null }] } }));
+  await page.route('**/api/v1/admin/payment_terminals**', route => route.fulfill({ json: { terminals: [{ id: 9191, label: 'QA simulated reader', location_id: 1, enabled: true, collectable: true, provider: 'simulated', environment: 'simulated', status: 'idle', attempt_id: null }] } }));
   await page.route('**/api/v1/admin/pos/menu**', async route => {
     if (delay) await gate;
     if (fail) return route.fulfill({ status: 500, json: { error: 'QA unavailable menu' } });
-    await route.fulfill({ json: { locations: [{ id: 91, name: 'QA counter' }], categories: [{ name: 'Lunch', items: [{ id: 201, name: 'QA card readiness meal', slug: 'qa-card-readiness', product_type: 'local', image_url: null, variants: [{ id: 1201, name: 'Default', price_cents: 1000, price_formatted: '$10.00', sku: 'QA', in_stock: true, stock_quantity: 0, available_quantity: null, inventory_pool_key: null }] }] }], total_products: 1 } });
+    await route.fulfill({ json: { locations: [{ id: 1, name: 'QA counter' }], categories: [{ name: 'Lunch', items: [{ id: 201, name: 'QA card readiness meal', slug: 'qa-card-readiness', product_type: 'local', image_url: null, variants: [{ id: 1201, name: 'Default', price_cents: 1000, price_formatted: '$10.00', sku: 'QA', in_stock: true, stock_quantity: 0, available_quantity: null, inventory_pool_key: null }] }] }], total_products: 1 } });
   });
   await page.goto('/admin/pos');
   const card = page.getByRole('button', { name: 'Card (simulated)', exact: true });

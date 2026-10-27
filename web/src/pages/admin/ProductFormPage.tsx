@@ -7,7 +7,7 @@ import toast from 'react-hot-toast';
 import { ArrowLeft, Save, X, Archive, AlertTriangle, History } from 'lucide-react';
 import ImageUpload from '../../components/ImageUpload';
 import VariantManager from '../../components/VariantManager';
-import useLockBodyScroll from '../../hooks/useLockBodyScroll';
+import AdminModal from '../../components/admin/AdminModal';
 import { readProductDraft, writeProductDraft, discardProductDraft, discardSubmittedProductDraft } from '../../components/admin/products/productDraft';
 import type { ProductDraft, ProductFormData } from '../../components/admin/products/productDraft';
 import { safeProductReturnTo, readProductListReturn } from '../../components/admin/products/productQueryState';
@@ -124,10 +124,10 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
   const [loading, setLoading] = useState(isEditMode);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const archivePending = useRef(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isArchived, setIsArchived] = useState(false);
   const [images, setImages] = useState<ProductImage[]>([]);
-  const deleteModalContentRef = useRef<HTMLDivElement | null>(null);
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
   const [allLocations, setAllLocations] = useState<LocationOption[]>([]);
   
@@ -135,8 +135,6 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [inventoryAudits, setInventoryAudits] = useState<InventoryAudit[]>([]);
   const [loadingAudits, setLoadingAudits] = useState(false);
-  const inventoryModalContentRef = useRef<HTMLDivElement | null>(null);
-  const collectionsScrollRef = useRef<HTMLDivElement | null>(null);
   const shippingDisclosureRef = useRef<HTMLDetailsElement | null>(null);
   const shippingWeightRef = useRef<HTMLInputElement | null>(null);
   const [shippingWeightError, setShippingWeightError] = useState('');
@@ -451,7 +449,8 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
   };
 
   const handleDelete = async () => {
-    if (!id) return;
+    if (!id || archivePending.current) return;
+    archivePending.current = true;
     
     try {
       setDeleting(true);
@@ -471,8 +470,8 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
         duration: 5000,
         position: 'top-right',
       });
-      setShowDeleteModal(false);
     } finally {
+      archivePending.current = false;
       setDeleting(false);
     }
   };
@@ -504,7 +503,6 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
     }
   };
 
-  useLockBodyScroll(showDeleteModal || showInventoryModal);
 
   if (loading) {
     return (
@@ -983,15 +981,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
           ) : (
             <div>
               <div
-                ref={collectionsScrollRef}
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 border border-gray-300 rounded-lg p-4 bg-gray-50 max-h-60 overflow-y-auto overscroll-contain touch-pan-y"
-                onWheel={(event) => {
-                  const container = collectionsScrollRef.current;
-                  if (!container) return;
-                  if (container.scrollHeight <= container.clientHeight) return;
-                  container.scrollTop += event.deltaY;
-                  event.stopPropagation();
-                }}
               >
                 {allCollections.map((collection) => (
                   <div key={collection.id} className="flex items-center">
@@ -1111,32 +1101,35 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
       </form>
 
       {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/30" onClick={() => !deleting && setShowDeleteModal(false)}>
-          <div className="bg-white rounded-lg max-w-md w-full max-h-[85vh] flex flex-col min-h-0 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="flex items-center p-6 border-b border-gray-200 shrink-0">
-              <div className="shrink-0 w-12 h-12 rounded-full bg-red-100 flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-              <div className="ml-4">
-                <h3 className="text-lg font-semibold text-gray-900">Archive Product</h3>
-                <p className="text-sm text-gray-500">Product will be hidden from customers</p>
-              </div>
-            </div>
-
-            {/* Body */}
-            <div
-              ref={deleteModalContentRef}
-              className="flex-1 min-h-0 overflow-y-auto p-6 overscroll-contain"
-              onWheel={(event) => {
-                if (deleteModalContentRef.current) {
-                  deleteModalContentRef.current.scrollTop += event.deltaY;
-                }
-                event.stopPropagation();
-                event.preventDefault();
-              }}
+      <AdminModal
+        open={showDeleteModal}
+        onClose={() => { if (!archivePending.current) setShowDeleteModal(false); }}
+        title="Archive Product"
+        subtitle="Product will be hidden from customers"
+        maxWidth="max-w-md"
+        dismissible={!deleting}
+        footer={(
+          <div className="flex flex-wrap justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => { if (!archivePending.current) setShowDeleteModal(false); }}
+              className="min-h-[44px] px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
+              disabled={deleting}
             >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="min-h-[44px] px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-primary-dark transition flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={deleting}
+            >
+              <Archive className="w-4 h-4 mr-2" />
+              {deleting ? 'Archiving...' : 'Archive Product'}
+            </button>
+          </div>
+        )}
+      >
               <p className="text-gray-700 mb-2">
                 Are you sure you want to archive <strong>{formData.name}</strong>?
               </p>
@@ -1154,67 +1147,21 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                   <strong>Tip:</strong> Archiving is safer than deleting. You can restore archived products later.
                 </p>
               </div>
-            </div>
-
-            {/* Actions */}
-            <div className="flex justify-end gap-3 p-6 border-t border-gray-200 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
-                disabled={deleting}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-primary-dark transition flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={deleting}
-              >
-                <Archive className="w-4 h-4 mr-2" />
-                {deleting ? 'Archiving...' : 'Archive Product'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </AdminModal>
 
       {/* Inventory History Modal */}
-      {showInventoryModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 backdrop-blur-md bg-black/30" onClick={() => setShowInventoryModal(false)}>
-          <div className="bg-white rounded-lg max-w-4xl w-full max-h-[85vh] flex flex-col min-h-0 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="shrink-0 w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <History className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">Inventory History</h3>
-                  <p className="text-sm text-gray-500">{formData.name}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowInventoryModal(false)}
-                className="p-2 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-100 transition"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div
-              ref={inventoryModalContentRef}
-              className="flex-1 min-h-0 overflow-y-auto p-6 overscroll-contain"
-              onWheel={(event) => {
-                if (inventoryModalContentRef.current) {
-                  inventoryModalContentRef.current.scrollTop += event.deltaY;
-                }
-                event.stopPropagation();
-                event.preventDefault();
-              }}
-            >
+      <AdminModal
+        open={showInventoryModal}
+        onClose={() => setShowInventoryModal(false)}
+        title="Inventory History"
+        subtitle={formData.name}
+        maxWidth="max-w-4xl"
+        footer={(
+          <div className="flex justify-end">
+            <button type="button" onClick={() => setShowInventoryModal(false)} className="min-h-[44px] px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">Close</button>
+          </div>
+        )}
+      >
               {loadingAudits ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-tsPrimary"></div>
@@ -1284,22 +1231,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                   </table>
                 </div>
               )}
-            </div>
-
-            {/* Footer */}
-            <div className="flex justify-end p-4 border-t border-gray-200 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShowInventoryModal(false)}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      </AdminModal>
     </div>
   );
 }
-

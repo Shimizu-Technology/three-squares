@@ -16,7 +16,7 @@ const imports = {
   '../../components/admin/StaffAccess.tsx': mockModule("export const useStaffAccess = () => ({ can: () => true, user: { operational_scope: 'all', authorized_locations: [{id:1},{id:2}] } });"),
   '../../components/ImageUpload': mockModule('export default function ImageUpload() { return null; }'),
   '../../components/VariantManager': mockModule('export default function VariantManager() { return null; }'),
-  '../../hooks/useLockBodyScroll': mockModule('export default function useLockBodyScroll() {}'),
+  '../../components/admin/AdminModal': mockModule('export default function AdminModal() {}'),
   '../../services/authApi': mockModule(`export const authGet = (...a) => ${context}.get(...a); export const authPut = (...a) => ${context}.put(...a); export const authPost = (...a) => ${context}.post(...a); export const authDelete = async () => ({});`),
   '../../components/admin/products/productDraft': new URL('../src/components/admin/products/productDraft.ts', import.meta.url).href,
   '../../components/admin/products/productQueryState': new URL('../src/components/admin/products/productQueryState.ts', import.meta.url).href,

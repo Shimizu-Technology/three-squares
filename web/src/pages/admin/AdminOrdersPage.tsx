@@ -122,6 +122,10 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   };
   const headingRef = useRef<HTMLHeadingElement>(null);
   const detailReturnRef = useRef<{ orderId: number; x: number; y: number; trigger: HTMLElement } | null>(null);
+  const detailOpenerRef = useRef<HTMLElement | null>(null);
+  const refundOpenerRef = useRef<HTMLButtonElement | null>(null);
+  const orderDetailHeadingRef = useRef<HTMLHeadingElement>(null);
+  const wasRefundOpenRef = useRef(false);
   const previousOrderIdRef = useRef(selectedOrderId);
   const [detailError, setDetailError] = useState<{ selection: typeof detailSelection; attempt: number; message: string } | null>(null);
   const [detailAttempt, setDetailAttempt] = useState(0);
@@ -141,6 +145,19 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
     setPendingRefundRequest(selectedOrder ? savedRefundRequest(selectedOrder.id) : null);
   }, [selectedOrder?.id, userId]);
   const [processingRefund, setProcessingRefund] = useState(false);
+  useEffect(() => {
+    const wasOpen = wasRefundOpenRef.current;
+    wasRefundOpenRef.current = showRefundModal;
+    if (!wasOpen || showRefundModal) return;
+    const frame = requestAnimationFrame(() => {
+      // A full refund removes its opener while the outer detail stays open.
+      if (!refundOpenerRef.current?.isConnected || refundOpenerRef.current.disabled) {
+        orderDetailHeadingRef.current?.focus({ preventScroll: true });
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [showRefundModal]);
+
   const [exporting, setExporting] = useState(false);
   const [summary, setSummary] = useState<OrdersSummaryResponse | null>(null);
 
@@ -238,6 +255,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
 
   // ── Fetch single order details ────────────────────────────────
   const fetchOrderDetails = (orderId: number, trigger: HTMLButtonElement) => {
+    detailOpenerRef.current = trigger;
     detailReturnRef.current = { orderId, x: window.scrollX, y: window.scrollY, trigger };
     changeQuery({ orderId });
   };
@@ -614,12 +632,14 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
         <OrderDetailModal
           key={selectedOrder.id}
           order={selectedOrder}
+          returnFocusRef={detailOpenerRef}
+          focusHeadingRef={orderDetailHeadingRef}
           saving={saving}
           onClose={closeOrderDetails}
           onUpdateOrder={updateOrder}
           onQuickUpdateStatus={quickUpdateStatus}
           onResendNotification={resendNotification}
-          onOpenRefundModal={() => setShowRefundModal(true)}
+          onOpenRefundModal={(trigger) => { refundOpenerRef.current = trigger; setShowRefundModal(true); }}
           hasSavedRefund={pendingRefundRequest?.orderId === selectedOrder.id}
           checkingRefund={processingRefund}
           onCheckRefund={checkRefund}
@@ -632,8 +652,8 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       )}
 
       {/* Ship Order Modal */}
-      {showShipModal && (
         <ShipOrderModal
+          open={showShipModal}
           saving={saving}
           carrier={shipCarrier}
           trackingNumber={shipTrackingNumber}
@@ -642,11 +662,11 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
           onShip={shipOrder}
           onClose={() => { setShowShipModal(false); setShipOrderId(null); }}
         />
-      )}
 
       {/* Refund Modal */}
       {showRefundModal && selectedOrder && (
         <RefundModal
+          returnFocusRef={refundOpenerRef}
           order={selectedOrder}
           processing={processingRefund}
           savedRequest={pendingRefundRequest}
