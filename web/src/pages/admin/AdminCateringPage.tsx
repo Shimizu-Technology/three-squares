@@ -1,537 +1,167 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import axios from 'axios';
 import { useAuth } from '@clerk/clerk-react';
 import { authGet, authPatch, authPost } from '../../services/authApi';
-import { Calendar, Users, DollarSign, AlertCircle, CheckCircle, XCircle, Mail, Phone, Building, Eye } from 'lucide-react';
 import AdminRequestState from '../../components/admin/AdminRequestState';
-import AdminModal from '../../components/admin/AdminModal';
+import Dialog from '../../components/ui/Dialog';
+import { CATERING_STATUS, cateringEventDate, mergeCateringDraft, validQuoteAmount, type CateringDraft } from '../../components/admin/catering/cateringWorkflow';
+import { formatGuamDate } from '../../utils/collectionSchedule';
 
 interface CateringInquiry {
-  id: number;
-  contact_name: string;
-  contact_email: string;
-  contact_phone?: string;
-  company_name?: string;
-  event_type: string;
-  event_date: string;
-  event_time?: string;
-  guest_count: number;
-  budget_range?: string;
-  status: string;
-  days_until_event: number | null;
-  urgent: boolean;
-  created_at: string;
-  venue_address?: string;
-  menu_preferences?: string;
-  special_requests?: string;
-  dietary_restrictions?: string;
-  admin_notes?: string;
-  quoted_amount?: number;
-  quoted_at?: string;
+  id: number; contact_name: string; contact_email: string; contact_phone?: string; company_name?: string;
+  event_type: string; event_date: string; event_time?: string; guest_count: number; budget_range?: string;
+  status: string; days_until_event: number | null; urgent: boolean; created_at: string; updated_at?: string;
+  venue_address?: string; menu_preferences?: string; special_requests?: string; dietary_restrictions?: string;
+  admin_notes?: string; quoted_amount?: number | null; quoted_at?: string;
 }
-
-interface Stats {
-  total: number;
-  pending: number;
-  quoted: number;
-  active: number;
-  upcoming_this_week: number;
-  urgent: number;
-}
-
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  quoted: 'bg-blue-100 text-blue-800',
-  accepted: 'bg-green-100 text-green-800',
-  declined: 'bg-gray-100 text-gray-800',
-  completed: 'bg-purple-100 text-purple-800',
-  cancelled: 'bg-red-100 text-red-800',
+interface Stats { total: number; pending: number; quoted: number; active: number; upcoming_this_week: number; urgent: number }
+interface PageMeta { page: number; total: number; total_pages: number }
+interface Feedback { error?: string; success?: string; conflict?: boolean }
+const transitions: Record<string, [string, string][]> = {
+  pending: [['cancelled', 'Cancel inquiry']], quoted: [['accepted', 'Record acceptance'], ['declined', 'Record decline'], ['cancelled', 'Cancel inquiry']],
+  accepted: [['completed', 'Mark completed'], ['cancelled', 'Cancel inquiry']], declined: [['cancelled', 'Cancel inquiry']],
 };
-
-const EVENT_TYPE_LABELS: Record<string, string> = {
-  wedding: 'Wedding',
-  corporate: 'Corporate Event',
-  party: 'Party / Celebration',
-  graduation: 'Graduation',
-  funeral: 'Funeral / Memorial',
-  memorial: 'Memorial',
-  other: 'Other',
+const statusStyle = (status: string) => status === 'pending' ? 'bg-amber-50 text-amber-900' : status === 'quoted' ? 'bg-blue-50 text-blue-900' : status === 'accepted' ? 'bg-green-50 text-green-900' : 'bg-gray-100 text-gray-800';
+const failureMessage = (error: unknown) => {
+  if (!axios.isAxiosError(error)) return error instanceof Error ? error.message : 'Save not confirmed. Your draft is still here. Refresh details before retrying.';
+  const data = error.response?.data;
+  return Array.isArray(data?.errors) ? data.errors.join('. ') : data?.error || 'Save not confirmed. Your draft is still here. Refresh details before retrying.';
 };
 
 export default function AdminCateringPage() {
   const { getToken } = useAuth();
-  const [inquiries, setInquiries] = useState<CateringInquiry[]>([]);
-  const [stats, setStats] = useState<Stats | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [selectedInquiry, setSelectedInquiry] = useState<CateringInquiry | null>(null);
-  const [detailId, setDetailId] = useState<number | null>(null);
-  const [detailLoading, setDetailLoading] = useState(false);
-  const [detailError, setDetailError] = useState(false);
-  const detailContext = useRef<number | null>(null);
-  const detailRequest = useRef(0);
-  const listRequest = useRef(0);
-  const active = useRef(false);
-  const [loadedFilter, setLoadedFilter] = useState<string | null>(null);
-  const [loadError, setLoadError] = useState(false);
-  const [refreshVersion, setRefreshVersion] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  const [drafts, setDrafts] = useState<Record<number, { quote: string; notes: string; notesDirty: boolean }>>({});
-  const quoteAmount = detailId === null ? '' : drafts[detailId]?.quote || '';
-  const adminNotes = detailId === null ? '' : drafts[detailId]?.notes || '';
-  const updateDraft = (patch: Partial<{ quote: string; notes: string }>) => {
-    if (detailId === null) return;
-    setDrafts(previous => ({ ...previous, [detailId]: { ...(previous[detailId] || { quote: '', notes: '', notesDirty: false }), ...patch, ...(patch.notes !== undefined ? { notesDirty: true } : {}) } }));
-  };
-  const hasData = loadedFilter === statusFilter;
+  const [inquiries, setInquiries] = useState<CateringInquiry[]>([]), [stats, setStats] = useState<Stats | null>(null);
+  const [statusFilter, setStatusFilter] = useState('active'), [page, setPage] = useState(1), [meta, setMeta] = useState<PageMeta>({ page: 1, total: 0, total_pages: 0 });
+  const [loading, setLoading] = useState(true), [loadError, setLoadError] = useState(false), [loadedKey, setLoadedKey] = useState<string | null>(null), [refreshVersion, setRefreshVersion] = useState(0);
+  const [selectedInquiry, setSelectedInquiry] = useState<CateringInquiry | null>(null), [detailId, setDetailId] = useState<number | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false), [detailError, setDetailError] = useState(false), [saving, setSaving] = useState(false);
+  const [drafts, setDrafts] = useState<Record<number, CateringDraft>>({}), [feedback, setFeedback] = useState<Record<number, Feedback>>({});
+  const active = useRef(false), listRequest = useRef(0), detailRequest = useRef(0), detailContext = useRef<number | null>(null), writePending = useRef(false);
+  const opener = useRef<HTMLElement | null>(null), errorRef = useRef<HTMLDivElement>(null);
+  const listKey = `${statusFilter}|${page}`, hasData = loadedKey === listKey;
+  const draft = detailId === null ? undefined : drafts[detailId], currentFeedback = detailId === null ? undefined : feedback[detailId];
+  const quoteAmount = draft?.quote || '', adminNotes = draft?.notes || '';
+  const current = selectedInquiry?.id === detailId ? selectedInquiry : null;
+  const canWrite = !!current && !saving && !detailLoading && !detailError && !currentFeedback?.conflict;
 
   useEffect(() => {
     active.current = true;
-    return () => {
-      active.current = false;
-      listRequest.current += 1;
-      detailRequest.current += 1;
-    };
+    return () => { active.current = false; listRequest.current++; detailRequest.current++; };
   }, []);
-
+  useEffect(() => { if (currentFeedback?.error) errorRef.current?.focus(); }, [currentFeedback?.error, detailId]);
   const fetchData = useCallback(async () => {
     if (!active.current) return;
-    const generation = ++listRequest.current;
-    setLoading(true);
+    const generation = ++listRequest.current; setLoading(true);
     try {
-      const [inquiriesRes, statsRes] = await Promise.all([
-        authGet<{ inquiries: CateringInquiry[] }>(`/admin/catering${statusFilter ? `?status=${statusFilter}` : ''}`, getToken, { timeout: 20000 }),
+      const [list, counts] = await Promise.all([
+        authGet<{ inquiries: CateringInquiry[]; meta?: PageMeta }>('/admin/catering', getToken, { params: { status: statusFilter, page }, timeout: 20000 }),
         authGet<Stats>('/admin/catering/stats', getToken, { timeout: 20000 }),
       ]);
       if (generation !== listRequest.current) return;
-      if (!Array.isArray(inquiriesRes.data.inquiries) || !statsRes.data) throw new Error('Invalid catering response');
-      setInquiries(inquiriesRes.data.inquiries);
-      setStats(statsRes.data);
-      setLoadedFilter(statusFilter);
-      setLoadError(false);
-    } catch (error) {
-      if (generation !== listRequest.current) return;
-      console.error('Error fetching catering data:', error);
-      setLoadError(true);
-    } finally {
-      if (generation === listRequest.current) setLoading(false);
-    }
-  }, [getToken, statusFilter]);
+      if (!Array.isArray(list.data.inquiries) || !counts.data) throw new Error('Invalid catering response');
+      const pagination = list.data.meta || { page, total: list.data.inquiries.length, total_pages: 1 };
+      setPage(pagination.page); setMeta(pagination); setInquiries(list.data.inquiries); setStats(counts.data);
+      setLoadedKey(`${statusFilter}|${pagination.page}`); setLoadError(false);
+    } catch { if (generation === listRequest.current) setLoadError(true); }
+    finally { if (generation === listRequest.current) setLoading(false); }
+  }, [getToken, statusFilter, page]);
+  useEffect(() => { void fetchData(); return () => { listRequest.current++; }; }, [fetchData, refreshVersion]);
 
-  useEffect(() => {
-    void fetchData();
-    return () => { listRequest.current += 1; };
-  }, [fetchData, refreshVersion]);
-
-  const closeDetails = () => {
-    detailContext.current = null;
-    detailRequest.current += 1;
-    setDetailId(null);
-  };
-
-  const fetchInquiryDetails = async (id: number, refresh = false) => {
-    if (!active.current || (refresh && detailContext.current !== id)) return;
-    if (detailContext.current !== id) {
-      setSelectedInquiry(null);
-      setDetailError(false);
-    }
-    detailContext.current = id;
-    setDetailId(id);
+  const fetchInquiryDetails = async (id: number, refresh = false, trigger?: HTMLElement) => {
+    if (!active.current || (refresh && detailContext.current !== id) || writePending.current) return;
+    if (trigger) opener.current = trigger;
+    if (detailContext.current !== id) { setSelectedInquiry(null); setDetailError(false); }
+    detailContext.current = id; setDetailId(id); setDetailLoading(true);
     const generation = ++detailRequest.current;
-    setDetailLoading(true);
     try {
-      const res = await authGet<{ inquiry: CateringInquiry }>(`/admin/catering/${id}`, getToken, { timeout: 20000 });
+      const response = await authGet<{ inquiry: CateringInquiry }>(`/admin/catering/${id}`, getToken, { timeout: 20000 });
       if (generation !== detailRequest.current) return;
-      if (res.data.inquiry?.id !== id) throw new Error('Invalid inquiry response');
-      setSelectedInquiry(res.data.inquiry);
-      setDrafts(previous => ({
-        ...previous, [id]: previous[id]?.notesDirty ? previous[id] : {
-          quote: previous[id]?.quote || '', notes: res.data.inquiry.admin_notes || '', notesDirty: false,
-        },
-      }));
-      setDetailError(false);
-    } catch (error) {
-      if (generation !== detailRequest.current) return;
-      console.error('Error fetching inquiry details:', error);
-      setDetailError(true);
-    } finally {
-      if (generation === detailRequest.current) setDetailLoading(false);
-    }
+      if (response.data.inquiry?.id !== id) throw new Error('Invalid inquiry response');
+      setSelectedInquiry(response.data.inquiry);
+      setDrafts(previous => ({ ...previous, [id]: mergeCateringDraft(previous[id], response.data.inquiry) }));
+      setFeedback(previous => ({ ...previous, [id]: {} })); setDetailError(false);
+    } catch { if (generation === detailRequest.current) setDetailError(true); }
+    finally { if (generation === detailRequest.current) setDetailLoading(false); }
   };
-
-  const handleQuote = async () => {
-    if (!selectedInquiry || !quoteAmount) return;
+  const closeDetails = () => {
+    if (writePending.current) return;
+    detailContext.current = null; detailRequest.current++; setDetailId(null);
+  };
+  const updateDraft = (patch: Partial<{ quote: string; notes: string }>) => {
+    if (detailId === null) return;
+    setDrafts(previous => ({ ...previous, [detailId]: { ...(previous[detailId] || { quote: '', notes: '', notesDirty: false, quoteDirty: false }), ...patch,
+      ...(patch.notes !== undefined ? { notesDirty: true } : {}), ...(patch.quote !== undefined ? { quoteDirty: true } : {}) } }));
+  };
+  const mutate = async (action: 'quote' | 'notes' | 'status', status?: string) => {
+    if (!current || !canWrite || writePending.current) return;
+    const id = current.id, submittedQuote = quoteAmount, submittedNotes = adminNotes;
+    if (action === 'quote' && !validQuoteAmount(submittedQuote)) {
+      setFeedback(previous => ({ ...previous, [id]: { error: 'Enter a positive quote amount with at most two decimal places (up to 99,999,999.99).' } })); return;
+    }
+    writePending.current = true; setSaving(true); setFeedback(previous => ({ ...previous, [id]: {} }));
     try {
-      await authPost(`/admin/catering/${selectedInquiry.id}/quote`, {
-        quoted_amount: parseFloat(quoteAmount),
-        admin_notes: adminNotes,
-      }, getToken);
+      const version = { expected_updated_at: current.updated_at };
+      const response = action === 'notes'
+        ? await authPatch<{ inquiry: CateringInquiry }>(`/admin/catering/${id}`, { ...version, inquiry: { admin_notes: submittedNotes } }, getToken, { timeout: 20000 })
+        : await authPost<{ inquiry: CateringInquiry }>(`/admin/catering/${id}/${action}`, { ...version, ...(action === 'quote' ? { quoted_amount: submittedQuote, admin_notes: submittedNotes } : { status }) }, getToken, { timeout: 20000 });
       if (!active.current) return;
-      setRefreshVersion(version => version + 1);
-      fetchInquiryDetails(selectedInquiry.id, true);
-      setDrafts(previous => ({ ...previous, [selectedInquiry.id]: { ...previous[selectedInquiry.id], quote: previous[selectedInquiry.id]?.quote === quoteAmount ? '' : previous[selectedInquiry.id]?.quote || '', notesDirty: previous[selectedInquiry.id]?.notes === adminNotes ? false : previous[selectedInquiry.id]?.notesDirty || false } }));
+      const saved = response.data.inquiry;
+      if (saved?.id !== id || !saved.updated_at) throw new Error('Save response not confirmed. Refresh details before retrying.');
+      if (detailContext.current === id) setSelectedInquiry(saved);
+      setDrafts(previous => {
+        const existing = previous[id];
+        return { ...previous, [id]: mergeCateringDraft(existing ? { ...existing,
+          notesDirty: action !== 'status' && existing.notes === submittedNotes ? false : existing.notesDirty,
+          quoteDirty: action === 'quote' && existing.quote === submittedQuote ? false : existing.quoteDirty } : undefined, saved) };
+      });
+      setFeedback(previous => ({ ...previous, [id]: { success: action === 'quote' ? 'Quote recorded. No email was sent by this app. Contact the customer separately.' : action === 'notes' ? 'Follow-up notes saved. This is a staff record, not a delivery receipt.' : 'Inquiry status recorded. No message was sent.' } }));
+      setRefreshVersion(value => value + 1);
     } catch (error) {
-      console.error('Error sending quote:', error);
-    }
-  };
-
-  const handleStatusChange = async (status: string) => {
-    if (!selectedInquiry) return;
-    try {
-      await authPost(`/admin/catering/${selectedInquiry.id}/status`, { status }, getToken);
       if (!active.current) return;
-      setRefreshVersion(version => version + 1);
-      fetchInquiryDetails(selectedInquiry.id, true);
-    } catch (error) {
-      console.error('Error updating status:', error);
-    }
+      const conflict = axios.isAxiosError(error) && error.response?.status === 409;
+      // Unconfirmed writes also require an explicit refresh before another attempt.
+      const unknown = !axios.isAxiosError(error) || !error.response || error.response.status >= 500;
+      setFeedback(previous => ({ ...previous, [id]: { error: failureMessage(error), conflict: conflict || unknown } }));
+    } finally { writePending.current = false; if (active.current) setSaving(false); }
   };
 
-  const handleUpdateNotes = async () => {
-    if (!selectedInquiry) return;
-    try {
-      await authPatch(`/admin/catering/${selectedInquiry.id}`, {
-        inquiry: { admin_notes: adminNotes },
-      }, getToken);
-      setDrafts(previous => ({ ...previous, [selectedInquiry.id]: {
-        ...previous[selectedInquiry.id], notesDirty: previous[selectedInquiry.id]?.notes === adminNotes ? false : previous[selectedInquiry.id]?.notesDirty || false,
-      } }));
-      fetchInquiryDetails(selectedInquiry.id, true);
-    } catch (error) {
-      console.error('Error updating notes:', error);
-    }
-  };
-
-  return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-2xl font-bold text-gray-900 mb-4">Catering Inquiries</h1>
-      <button type="button" onClick={() => void fetchData()} disabled={loading} className="btn-secondary mb-4 min-h-11 disabled:opacity-60">Refresh inquiries</button>
-
-      <div className="mb-6">
-        <AdminRequestState resource="Catering inquiries and stats" loading={loading} error={loadError} hasData={hasData} onRetry={() => void fetchData()} />
+  return <div className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6 [overflow-wrap:anywhere]">
+    <header className="space-y-2"><h1 className="text-2xl font-bold text-gray-900">Catering follow-up</h1><p className="text-gray-700">All-location inquiries for owners and managers. Record quotes and customer follow-up here; contact customers outside this app.</p><button type="button" onClick={() => void fetchData()} disabled={loading} className="btn-secondary min-h-11 disabled:opacity-50">Refresh inquiries</button></header>
+    <AdminRequestState resource="Catering inquiries and stats" loading={loading} error={loadError} hasData={hasData} onRetry={() => void fetchData()} />
+    {stats && hasData && <div className="grid grid-cols-2 gap-3 md:grid-cols-4">{[['Needs quote', stats.pending], ['Quotes recorded', stats.quoted], ['Active inquiries', stats.active], ['Within 7 days', stats.urgent]].map(([label, value]) => <div key={label} className="rounded-lg border border-gray-200 bg-white p-4"><p className="text-sm text-gray-700">{label}</p><p className="text-2xl font-semibold tabular-nums text-gray-900">{value}</p></div>)}</div>}
+    <label className="block space-y-1"><span className="font-medium text-gray-800">Inquiry status</span><select aria-label="Inquiry status" value={statusFilter} onChange={event => { setStatusFilter(event.target.value); setPage(1); setLoadError(false); }} className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base sm:w-auto"><option value="active">Active inquiries</option><option value="all">All inquiries</option>{Object.entries(CATERING_STATUS).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+    {hasData && <>
+      <p className="text-sm text-gray-700">{meta.total} matching inquiries · earliest event first</p>
+      <div className="grid gap-4 xl:grid-cols-2">{inquiries.map(inquiry => <article key={inquiry.id} aria-label={`Inquiry ${inquiry.id}: ${inquiry.contact_name}`} className="min-w-0 space-y-3 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
+        <div className="flex flex-wrap items-start justify-between gap-2"><h2 className="break-words text-lg font-semibold text-gray-900">{inquiry.contact_name}</h2><span className={`rounded-md px-3 py-1 text-sm font-medium ${statusStyle(inquiry.status)}`}>{CATERING_STATUS[inquiry.status] || inquiry.status}</span></div>
+        <p className="break-words text-sm text-gray-700">{inquiry.company_name || inquiry.contact_email}</p>
+        <p className="text-gray-800">{cateringEventDate(inquiry.event_date)}{inquiry.event_time && ` · ${inquiry.event_time} (Guam)`}<br />{inquiry.guest_count} guests · {inquiry.event_type}</p>
+        {inquiry.urgent && <p className="font-semibold text-amber-900">Event within 7 days</p>}
+        <button type="button" onClick={event => void fetchInquiryDetails(inquiry.id, false, event.currentTarget)} className="btn-primary min-h-11">View</button>
+      </article>)}</div>
+      {inquiries.length === 0 && !loading && !loadError && <p className="rounded-lg border border-gray-200 bg-white p-6 text-gray-700">No catering inquiries found</p>}
+      {meta.total_pages > 1 && <nav aria-label="Catering inquiry pages" className="flex flex-wrap items-center justify-between gap-3"><button type="button" onClick={() => setPage(value => value - 1)} disabled={loading || page <= 1} className="btn-secondary min-h-11 disabled:opacity-50">Previous inquiries</button><span className="text-gray-700">Page {page} of {meta.total_pages}</span><button type="button" onClick={() => setPage(value => value + 1)} disabled={loading || page >= meta.total_pages} className="btn-secondary min-h-11 disabled:opacity-50">Next inquiries</button></nav>}
+    </>}
+    <Dialog open={detailId !== null} onOpenChange={open => { if (!open) closeDetails(); }} dismissible={!saving} labelledBy="catering-detail-title" returnFocusRef={opener} className="w-full rounded-xl sm:w-4xl">
+      <div className="flex max-h-[calc(100dvh-2rem)] flex-col"><header className="shrink-0 space-y-2 border-b border-gray-200 p-4 sm:p-6"><h2 id="catering-detail-title" className="break-words text-xl font-bold text-gray-900">{current?.contact_name || `Inquiry #${detailId}`}</h2><p className="text-sm text-gray-700">Inquiry #{detailId} · Manual follow-up</p></header>
+        <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain p-4 sm:p-6">
+          <AdminRequestState resource="Inquiry details" loading={detailLoading} error={detailError} hasData={!!current} onRetry={() => { if (detailId !== null) void fetchInquiryDetails(detailId, true); }} />
+          {current && <>
+            <div className="flex flex-wrap items-center justify-between gap-3"><span className={`rounded-md px-3 py-1 text-sm font-medium ${statusStyle(current.status)}`}>{CATERING_STATUS[current.status] || current.status}</span><button type="button" disabled={saving || detailLoading} onClick={() => void fetchInquiryDetails(current.id, true)} className="btn-secondary min-h-11 disabled:opacity-50">Refresh details</button></div>
+            {currentFeedback?.error && <div ref={errorRef} tabIndex={-1} role="alert" className="space-y-2 rounded-lg border border-red-300 bg-red-50 p-3 text-red-900"><p>{currentFeedback.error}</p>{currentFeedback.conflict && <p>Your draft is retained. Refresh details, compare the saved notes below, then decide whether to retry.</p>}</div>}
+            {currentFeedback?.success && <p role="status" className="rounded-lg border border-green-300 bg-green-50 p-3 text-green-900">{currentFeedback.success}</p>}
+            <section className="space-y-2 rounded-lg border border-gray-200 p-4"><h3 className="font-semibold text-gray-900">Contact outside this app</h3><p className="text-sm text-gray-700">Opening an email or phone link does not send a quote or record contact. Add the channel, date and outcome to the follow-up notes after you contact the customer.</p><a href={`mailto:${current.contact_email}`} className="flex min-h-11 items-center break-all text-tsPrimary underline">{current.contact_email}</a>{current.contact_phone && <a href={`tel:${current.contact_phone}`} className="flex min-h-11 items-center text-tsPrimary underline">{current.contact_phone}</a>}{current.company_name && <p className="break-words text-gray-700">{current.company_name}</p>}</section>
+            <section className="space-y-2 rounded-lg border border-gray-200 p-4"><h3 className="font-semibold text-gray-900">Event details</h3><p className="text-gray-800">{cateringEventDate(current.event_date)}{current.event_time && ` · ${current.event_time} (Guam)`} · {current.guest_count} guests</p>{[['Budget', current.budget_range], ['Venue', current.venue_address], ['Menu preferences', current.menu_preferences], ['Dietary restrictions', current.dietary_restrictions], ['Special requests', current.special_requests]].filter(([,value]) => value).map(([label,value]) => <p key={label} className="whitespace-pre-wrap break-words text-gray-700"><span className="font-medium">{label}: </span>{value}</p>)}</section>
+            {current.quoted_amount != null && <section className="rounded-lg border border-gray-200 p-4"><h3 className="font-semibold text-gray-900">Recorded quote: ${current.quoted_amount.toFixed(2)}</h3>{current.quoted_at && <p className="mt-1 text-sm text-gray-700">Recorded {formatGuamDate(current.quoted_at)}</p>}<p className="mt-2 text-sm text-gray-700">This is a saved quote, not evidence of delivery, customer acceptance, a deposit or a reservation.</p></section>}
+            <fieldset disabled={!canWrite} className="min-w-0 space-y-5">
+              {['pending', 'quoted'].includes(current.status) && <section className="space-y-3 rounded-lg border border-gray-200 p-4"><h3 className="font-semibold text-gray-900">Record quote details</h3><p className="text-sm text-gray-700">This saves the amount and follow-up notes. No quote email is sent by this app.</p><label className="block space-y-1"><span className="font-medium text-gray-800">Quote amount ($)</span><input type="text" inputMode="decimal" value={quoteAmount} onChange={event => updateDraft({ quote: event.target.value })} placeholder="0.00" className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label><button type="button" onClick={() => void mutate('quote')} disabled={!canWrite || !quoteAmount} className="btn-primary min-h-11 disabled:opacity-50">{saving ? 'Saving…' : 'Record quote'}</button></section>}
+              <section className="space-y-3 rounded-lg border border-gray-200 p-4"><label className="block space-y-1"><span className="font-semibold text-gray-900">Follow-up notes (staff recorded)</span><textarea value={adminNotes} onChange={event => updateDraft({ notes: event.target.value })} rows={5} placeholder="Record the actual contact channel, date/time and outcome." className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label><button type="button" disabled={!canWrite} onClick={() => void mutate('notes')} className="btn-secondary min-h-11 disabled:opacity-50">Save Notes</button></section>
+              {(transitions[current.status] || []).length > 0 && <section className="space-y-3 rounded-lg border border-gray-200 p-4"><h3 className="font-semibold text-gray-900">Record the actual outcome</h3><p className="text-sm text-gray-700">Record acceptance or decline only after the customer tells you. These actions do not take a payment or confirm a deposit.</p><div className="flex flex-wrap gap-2">{transitions[current.status].map(([status,label]) => <button key={status} type="button" disabled={!canWrite} onClick={() => void mutate('status', status)} className="btn-secondary min-h-11 disabled:opacity-50">{label}</button>)}</div></section>}
+            </fieldset>
+            {draft?.notesDirty && adminNotes !== (current.admin_notes || '') && <details className="rounded-lg border border-gray-200 p-3"><summary className="min-h-11 cursor-pointer py-2 font-medium text-gray-800">Latest saved notes — compare with your draft</summary><p className="whitespace-pre-wrap break-words text-gray-700">{current.admin_notes || 'No saved notes.'}</p></details>}
+          </>}
+        </div><footer className="flex shrink-0 justify-end border-t border-gray-200 p-4"><button type="button" aria-label="Close modal" disabled={saving} onClick={closeDetails} className="btn-secondary min-h-11 disabled:opacity-50">Close</button></footer>
       </div>
-
-      {/* Stats Cards */}
-      {hasData && stats && (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-          <div className="bg-white rounded-lg shadow p-4">
-            <div className="text-sm text-gray-500">Total</div>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </div>
-          <div className="bg-yellow-50 rounded-lg shadow p-4">
-            <div className="text-sm text-yellow-600">Pending</div>
-            <div className="text-2xl font-bold text-yellow-700">{stats.pending}</div>
-          </div>
-          <div className="bg-blue-50 rounded-lg shadow p-4">
-            <div className="text-sm text-blue-600">Quoted</div>
-            <div className="text-2xl font-bold text-blue-700">{stats.quoted}</div>
-          </div>
-          <div className="bg-green-50 rounded-lg shadow p-4">
-            <div className="text-sm text-green-600">Active</div>
-            <div className="text-2xl font-bold text-green-700">{stats.active}</div>
-          </div>
-          <div className="bg-purple-50 rounded-lg shadow p-4">
-            <div className="text-sm text-purple-600">This Week</div>
-            <div className="text-2xl font-bold text-purple-700">{stats.upcoming_this_week}</div>
-          </div>
-          <div className="bg-red-50 rounded-lg shadow p-4">
-            <div className="text-sm text-red-600">Urgent</div>
-            <div className="text-2xl font-bold text-red-700">{stats.urgent}</div>
-          </div>
-        </div>
-      )}
-
-      {/* Filter */}
-      <div className="mb-6">
-        <select
-          value={statusFilter}
-          onChange={(e) => { setLoadError(false); setStatusFilter(e.target.value); }}
-          className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500"
-        >
-          <option value="">All Statuses</option>
-          <option value="pending">Pending</option>
-          <option value="quoted">Quoted</option>
-          <option value="accepted">Accepted</option>
-          <option value="declined">Declined</option>
-          <option value="completed">Completed</option>
-          <option value="cancelled">Cancelled</option>
-        </select>
-      </div>
-
-      {hasData && <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Inquiries List */}
-        <div className="lg:col-span-3">
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Event</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {inquiries.map((inquiry) => (
-                  <tr
-                    key={inquiry.id}
-                    onClick={() => fetchInquiryDetails(inquiry.id)}
-                    className={`cursor-pointer hover:bg-gray-50 ${selectedInquiry?.id === inquiry.id ? 'bg-warm-50' : ''}`}
-                  >
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{inquiry.contact_name}</div>
-                      <div className="text-sm text-gray-500">{inquiry.company_name || inquiry.contact_email}</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{EVENT_TYPE_LABELS[inquiry.event_type] || inquiry.event_type}</div>
-                      <div className="text-sm text-gray-500">{inquiry.guest_count} guests</div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{new Date(inquiry.event_date).toLocaleDateString()}</div>
-                      {inquiry.urgent && (
-                        <span className="inline-flex items-center gap-1 text-xs text-red-600">
-                          <AlertCircle className="w-3 h-3" /> Urgent
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${STATUS_COLORS[inquiry.status]}`}>
-                        {inquiry.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-right">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          fetchInquiryDetails(inquiry.id);
-                        }}
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        <Eye className="w-3.5 h-3.5" />
-                        View
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-                {inquiries.length === 0 && !loading && !loadError && (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
-                      No catering inquiries found
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>}
-
-      {/* Detail Modal */}
-      {detailId !== null && (
-        <AdminModal
-          open={detailId !== null}
-          onClose={closeDetails}
-          title={selectedInquiry?.contact_name || `Inquiry #${detailId}`}
-          subtitle={selectedInquiry ? `Inquiry #${selectedInquiry.id} • ${EVENT_TYPE_LABELS[selectedInquiry.event_type] || selectedInquiry.event_type}` : undefined}
-          maxWidth="max-w-5xl"
-          footer={
-            <div className="flex justify-end">
-              <button
-                type="button"
-                onClick={closeDetails}
-                className="btn-secondary"
-              >
-                Close
-              </button>
-            </div>
-          }
-        >
-          <AdminRequestState resource="Inquiry details" loading={detailLoading} error={detailError} hasData={selectedInquiry?.id === detailId} onRetry={() => void fetchInquiryDetails(detailId, true)} />
-          {selectedInquiry && <div className="space-y-5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`px-2.5 py-1 text-xs font-semibold rounded-full ${STATUS_COLORS[selectedInquiry.status]}`}>
-                {selectedInquiry.status}
-              </span>
-              {selectedInquiry.urgent && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-red-50 text-red-700 text-xs font-semibold">
-                  <AlertCircle className="w-3.5 h-3.5" /> Urgent
-                </span>
-              )}
-              {selectedInquiry.quoted_amount && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-green-50 text-green-700 text-xs font-semibold">
-                  Quote: ${selectedInquiry.quoted_amount.toFixed(2)}
-                </span>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-2">
-                <h3 className="font-semibold text-gray-900">Contact</h3>
-                <div className="flex items-center gap-2 text-sm">
-                  <Mail className="w-4 h-4 text-gray-400" />
-                  <a href={`mailto:${selectedInquiry.contact_email}`} className="text-blue-600 hover:underline">
-                    {selectedInquiry.contact_email}
-                  </a>
-                </div>
-                {selectedInquiry.contact_phone && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Phone className="w-4 h-4 text-gray-400" />
-                    <a href={`tel:${selectedInquiry.contact_phone}`} className="text-blue-600 hover:underline">
-                      {selectedInquiry.contact_phone}
-                    </a>
-                  </div>
-                )}
-                {selectedInquiry.company_name && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <Building className="w-4 h-4 text-gray-400" />
-                    {selectedInquiry.company_name}
-                  </div>
-                )}
-              </div>
-
-              <div className="rounded-xl border border-gray-200 bg-gray-50/70 p-4 space-y-2">
-                <h3 className="font-semibold text-gray-900">Event</h3>
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="w-4 h-4 text-gray-400" />
-                  <span className="font-medium">{new Date(selectedInquiry.event_date).toLocaleDateString()}</span>
-                  {selectedInquiry.event_time && <span>at {selectedInquiry.event_time}</span>}
-                </div>
-                <div className="flex items-center gap-2 text-sm">
-                  <Users className="w-4 h-4 text-gray-400" />
-                  {selectedInquiry.guest_count} guests
-                </div>
-                {selectedInquiry.budget_range && (
-                  <div className="flex items-center gap-2 text-sm">
-                    <DollarSign className="w-4 h-4 text-gray-400" />
-                    {selectedInquiry.budget_range}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {(selectedInquiry.venue_address || selectedInquiry.menu_preferences || selectedInquiry.dietary_restrictions || selectedInquiry.special_requests) && (
-              <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3 text-sm">
-                <h3 className="font-semibold text-gray-900">Additional Details</h3>
-                {selectedInquiry.venue_address && (
-                  <div>
-                    <div className="text-gray-500 font-medium">Venue</div>
-                    <div>{selectedInquiry.venue_address}</div>
-                  </div>
-                )}
-                {selectedInquiry.menu_preferences && (
-                  <div>
-                    <div className="text-gray-500 font-medium">Menu Preferences</div>
-                    <div>{selectedInquiry.menu_preferences}</div>
-                  </div>
-                )}
-                {selectedInquiry.dietary_restrictions && (
-                  <div>
-                    <div className="text-gray-500 font-medium">Dietary Restrictions</div>
-                    <div>{selectedInquiry.dietary_restrictions}</div>
-                  </div>
-                )}
-                {selectedInquiry.special_requests && (
-                  <div>
-                    <div className="text-gray-500 font-medium">Special Requests</div>
-                    <div>{selectedInquiry.special_requests}</div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-              {selectedInquiry.status === 'pending' && (
-                <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-3">
-                  <div className="font-medium text-gray-900">Send Quote</div>
-                  <div>
-                    <label className="block text-sm text-gray-500 mb-1">Quote Amount ($)</label>
-                    <input
-                      type="number"
-                      value={quoteAmount}
-                      onChange={(e) => updateDraft({ quote: e.target.value })}
-                      placeholder="0.00"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
-                    />
-                  </div>
-                  <button
-                    onClick={handleQuote}
-                    disabled={!quoteAmount}
-                    className="w-full btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    Send Quote
-                  </button>
-                </div>
-              )}
-
-              {selectedInquiry.quoted_amount && (
-                <div className="rounded-xl border border-gray-200 bg-green-50/40 p-4">
-                  <div className="text-sm text-gray-500">Quoted Amount</div>
-                  <div className="text-2xl font-bold text-green-600">${selectedInquiry.quoted_amount.toFixed(2)}</div>
-                  {selectedInquiry.quoted_at && (
-                    <div className="text-xs text-gray-400 mt-1">
-                      Sent {new Date(selectedInquiry.quoted_at).toLocaleString()}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-2">
-                <label className="block text-sm font-medium text-gray-700">Admin Notes</label>
-                <textarea
-                  value={adminNotes}
-                  onChange={(e) => updateDraft({ notes: e.target.value })}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent text-sm"
-                />
-                <button
-                  onClick={handleUpdateNotes}
-                  className="text-sm font-medium text-tsPrimary hover:text-primary-dark"
-                >
-                  Save Notes
-                </button>
-              </div>
-
-              <div className="rounded-xl border border-gray-200 bg-white p-4 space-y-2">
-                <div className="font-medium text-gray-900 text-sm">Update Status</div>
-                <div className="flex flex-wrap gap-2">
-                  {selectedInquiry.status === 'quoted' && (
-                    <>
-                      <button
-                        onClick={() => handleStatusChange('accepted')}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200"
-                      >
-                        <CheckCircle className="w-4 h-4" /> Accept
-                      </button>
-                      <button
-                        onClick={() => handleStatusChange('declined')}
-                        className="flex items-center gap-1 px-3 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
-                      >
-                        <XCircle className="w-4 h-4" /> Decline
-                      </button>
-                    </>
-                  )}
-                  {selectedInquiry.status === 'accepted' && (
-                    <button
-                      onClick={() => handleStatusChange('completed')}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200"
-                    >
-                      <CheckCircle className="w-4 h-4" /> Mark Completed
-                    </button>
-                  )}
-                  {!['completed', 'cancelled'].includes(selectedInquiry.status) && (
-                    <button
-                      onClick={() => handleStatusChange('cancelled')}
-                      className="flex items-center gap-1 px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200"
-                    >
-                      <XCircle className="w-4 h-4" /> Cancel
-                    </button>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>}
-        </AdminModal>
-      )}
-    </div>
-  );
+    </Dialog>
+  </div>;
 }
