@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  parseProductDraft, productDraftKey, readProductDraft, writeProductDraft, discardProductDraft,
+  parseProductDraft, productDraftKey, readProductDraft, writeProductDraft, discardProductDraft, discardSubmittedProductDraft,
 } from '../src/components/admin/products/productDraft.ts';
 
 const form = {
@@ -59,4 +59,22 @@ test('storage read/write/delete exceptions preserve SPA recovery and never crash
   assert.doesNotThrow(() => discardProductDraft('no-storage', '105'));
   assert.equal(readProductDraft('no-storage', '105'), null);
   assert.equal(writeProductDraft('', 'new', form), false);
+});
+
+test('a confirmed submission clears its own draft but cannot erase later edits after navigation', () => {
+  const values = setup();
+  values.set(productDraftKey('late-save', '42'), envelope(form, 'late-save', '42'));
+  const submitted = readProductDraft('late-save', '42');
+  assert.equal(readProductDraft('late-save', '42'), submitted);
+  writeProductDraft('late-save', '42', { ...form, name: 'Newer unsaved lunch' });
+  discardSubmittedProductDraft('late-save', '42', submitted);
+  assert.equal(readProductDraft('late-save', '42').data.name, 'Newer unsaved lunch');
+  const latest = readProductDraft('late-save', '42');
+  discardSubmittedProductDraft('late-save', '42', latest);
+  assert.equal(readProductDraft('late-save', '42'), null);
+  writeProductDraft('late-create', 'new', form);
+  const creation = readProductDraft('late-create', 'new');
+  writeProductDraft('late-create', 'new', { ...form, name: 'Another new dish' });
+  discardSubmittedProductDraft('late-create', 'new', creation);
+  assert.equal(readProductDraft('late-create', 'new').data.name, 'Another new dish');
 });

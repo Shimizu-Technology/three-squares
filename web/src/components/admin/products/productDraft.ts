@@ -69,7 +69,12 @@ export function readProductDraft(userId: string, productId: string): ProductDraf
   if (!userId) return null;
   const key = productDraftKey(userId, productId);
   if (memoryDrafts.has(key)) return memoryDrafts.get(key) ?? null;
-  try { return parseProductDraft(sessionStorage.getItem(key) || '', userId, productId); } catch { return null; }
+  try {
+    const draft = parseProductDraft(sessionStorage.getItem(key) || '', userId, productId);
+    // Keep an immutable write identity so a late save cannot clear a newer draft.
+    memoryDrafts.set(key, draft);
+    return draft;
+  } catch { return null; }
 }
 
 export function writeProductDraft(userId: string, productId: string, data: ProductFormData): boolean {
@@ -88,4 +93,10 @@ export function discardProductDraft(userId: string, productId: string): void {
   try { sessionStorage.removeItem(key); } catch {
     try { sessionStorage.setItem(key, 'null'); } catch { /* In-memory tombstone still prevents SPA duplication. */ }
   }
+}
+
+// A reopened editor can write a new draft while an older save is in flight.
+// Clear only the draft captured by that submission; explicit Discard stays unconditional.
+export function discardSubmittedProductDraft(userId: string, productId: string, submitted: ProductDraft | null): void {
+  if (readProductDraft(userId, productId) === submitted) discardProductDraft(userId, productId);
 }

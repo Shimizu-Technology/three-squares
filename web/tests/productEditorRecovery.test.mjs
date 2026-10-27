@@ -227,3 +227,26 @@ test('storage failure keeps an in-memory navigation draft and honestly warns abo
   assert.equal(warned, true);
   h.unmount();
 });
+
+test('a late saved response after unmount preserves a newer editor draft and never redirects it', async () => {
+  for (const id of ['42', null]) {
+    const h = harness(id);
+    await h.flush();
+    await h.change('name', 'Submitted lunch');
+    await h.change('base_price_cents', '12.00');
+    if (!id) {
+      await h.change('allow_pickup', false, 'checkbox');
+      await h.change('allow_shipping', true, 'checkbox');
+    }
+    let release;
+    const gate = new Promise(resolve => { release = resolve; });
+    h.put = h.post = async () => { await gate; return { data: { data: fresh } }; };
+    const save = h.submit();
+    h.unmount();
+    writeProductDraft(h.userId, id || 'new', { ...fresh, name: 'Newer lunch after navigation' });
+    release();
+    await save;
+    assert.equal(readProductDraft(h.userId, id || 'new').data.name, 'Newer lunch after navigation');
+    assert.deepEqual(h.navigations, []);
+  }
+});

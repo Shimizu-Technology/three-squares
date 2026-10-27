@@ -7,7 +7,7 @@ import { ArrowLeft, Save, X, Archive, AlertTriangle, History } from 'lucide-reac
 import ImageUpload from '../../components/ImageUpload';
 import VariantManager from '../../components/VariantManager';
 import useLockBodyScroll from '../../hooks/useLockBodyScroll';
-import { readProductDraft, writeProductDraft, discardProductDraft } from '../../components/admin/products/productDraft';
+import { readProductDraft, writeProductDraft, discardProductDraft, discardSubmittedProductDraft } from '../../components/admin/products/productDraft';
 import type { ProductDraft, ProductFormData } from '../../components/admin/products/productDraft';
 import { safeProductReturnTo, readProductListReturn } from '../../components/admin/products/productQueryState';
 import { authDelete, authGet, authPost, authPut } from '../../services/authApi';
@@ -348,6 +348,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
       return;
     }
 
+    const submittedDraft = readProductDraft(userId, draftId);
     try {
       setSaving(true);
       
@@ -357,7 +358,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
 
       if (isEditMode) {
         const response = await authPut<ProductDetailsResponse>(`/admin/products/${id}`, payload, getToken);
-        discardProductDraft(userId, draftId);
+        discardSubmittedProductDraft(userId, draftId, submittedDraft);
         if (!alive.current) return;
         
         // Update form data with latest from server (in case anything changed)
@@ -393,7 +394,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
         });
       } else {
         const response = await authPost<ProductDetailsResponse>('/admin/products', payload, getToken);
-        discardProductDraft(userId, draftId);
+        discardSubmittedProductDraft(userId, draftId, submittedDraft);
         if (!alive.current) return;
         
         toast.success('Product created successfully!', {
