@@ -185,8 +185,10 @@ end
 
 RSpec.describe 'Payment ingress controls', type: :request do
   include PaymentFoundationHelpers
+  include ActiveSupport::Testing::TimeHelpers
 
   it 'rate limits order lookups and checkout creation by IP' do
+    travel_to Time.utc(2026, 10, 28, 12, 0, 15)
     previous = Rack::Attack.cache.store
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
     30.times { get '/api/v1/orders/nonexistent' }
@@ -201,6 +203,7 @@ RSpec.describe 'Payment ingress controls', type: :request do
     expect(response).to have_http_status(:too_many_requests)
   ensure
     Rack::Attack.cache.store = previous
+    travel_back
   end
 
   it 'converges signed Stripe webhook before POS confirmation through the same inventory commit' do
