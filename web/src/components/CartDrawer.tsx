@@ -180,17 +180,18 @@ export default function CartDrawer() {
                     </div>
 
                     {/* Price */}
-                    <div className="text-right">
+                    {item.pricing?.purchasable !== false && <div className="text-right">
                       <p className="text-base font-bold text-warm-900">
-                        {item.pricing?.purchasable === false ? item.pricing.reason || 'Price by request' : `$${(item.subtotal_cents / 100).toFixed(2)}`}
+                        {`$${(item.subtotal_cents / 100).toFixed(2)}`}
                       </p>
                       {item.quantity > 1 && item.pricing?.purchasable !== false && (
                         <p className="text-xs text-warm-400">
                           ${(item.product_variant.price_cents / 100).toFixed(2)} each
                         </p>
                       )}
-                    </div>
+                    </div>}
                   </div>
+                  {item.pricing?.purchasable === false && <p className="mt-3 text-sm font-medium text-warm-900">{item.pricing.reason || 'Contact us for a price before ordering'}</p>}
 
                   {/* Bottom Row: Quantity Controls + Remove */}
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-warm-100">

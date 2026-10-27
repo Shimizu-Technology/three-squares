@@ -70,6 +70,7 @@ for (const [width, height] of [[768, 1024], [1024, 768], [390, 844], [1440, 900]
     await page.getByRole('button', { name: /Shopping cart with 1 item/ }).click();
     const cart = page.getByRole('dialog', { name: 'Shopping Cart', exact: true });
     await expect(cart.getByText(reason, { exact: true })).toBeVisible();
+    expect((await cart.getByRole('heading', { name: 'Fixture catering platter', exact: true }).boundingBox())?.width).toBeGreaterThan(80);
     await expect(cart.getByRole('button', { name: 'Secure Checkout', exact: true })).toBeDisabled();
     await expect(cart.getByRole('link', { name: 'Start a catering inquiry', exact: true })).toHaveAttribute('href', '/catering');
     await cart.getByRole('button', { name: 'Remove Fixture catering platter from cart', exact: true }).click();
