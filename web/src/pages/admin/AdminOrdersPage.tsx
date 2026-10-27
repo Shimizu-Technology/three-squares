@@ -13,6 +13,7 @@ import {
   formatStatus,
 } from '../../components/admin/orders';
 import PickupPackingList from '../../components/admin/orders/PickupPackingList';
+import ShippingPackingList from '../../components/admin/orders/ShippingPackingList';
 import { SkeletonListPage } from '../../components/admin';
 
 import { configApi, locationsApi } from '../../services/api';
@@ -593,6 +594,8 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
         </div>
       ) : mode === 'pickup_queue' ? (
         <PickupPackingList orders={orders} saving={saving} page={page} totalPages={totalPages} onPageChange={setPage} onQuickUpdateStatus={quickUpdateStatus} onViewDetails={fetchOrderDetails} />
+      ) : mode === 'shipping_queue' ? (
+        <ShippingPackingList orders={orders} saving={saving} page={page} totalPages={totalPages} onPageChange={setPage} onQuickUpdateStatus={quickUpdateStatus} onViewDetails={fetchOrderDetails} />
       ) : (
         <OrdersTable
           orders={orders}

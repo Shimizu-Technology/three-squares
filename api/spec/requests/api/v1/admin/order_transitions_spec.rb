@@ -73,4 +73,15 @@ RSpec.describe 'Staff fulfillment transitions', type: :request do
     transition(pickup, 'ready')
     expect(response).to have_http_status(:ok)
   end
+  it 'includes saved shipping tracking and staff notes in the list contract' do
+    order = create(:order, fulfillment_type: 'shipping', status: 'shipped', payment_status: 'paid',
+                    tracking_number: 'USPS: QA-TRACK-123', admin_notes: 'Pack the cookie tins upright')
+    get '/api/v1/admin/orders', params: { fulfillment_type: 'shipping' }
+    expect(response).to have_http_status(:ok)
+    row = response.parsed_body.fetch('orders').find { |item| item['id'] == order.id }
+    expect(row).to include('tracking_number' => order.tracking_number, 'admin_notes' => order.admin_notes)
+    get "/api/v1/admin/orders/#{order.id}"
+    expect(response.parsed_body.fetch('order').slice('tracking_number', 'admin_notes')).to eq(row.slice('tracking_number', 'admin_notes'))
+  end
+
 end
