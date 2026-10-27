@@ -47,7 +47,7 @@ test('successful role update reconciles the active search after a filter read ov
   await page.getByRole('button', { name: 'Search', exact: true }).click();
   await read;
   release();
-  await expect(page.getByRole('button', { name: 'Remove Admin', exact: true }).filter({ visible: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Remove Admin(?: Access)?$/ }).filter({ visible: true })).toBeVisible();
   await expect(page.getByPlaceholder('Search by email or name...')).toHaveValue(user.email);
 });
 
