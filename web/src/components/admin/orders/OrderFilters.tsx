@@ -1,3 +1,5 @@
+import { useRef, useState } from 'react';
+
 interface OrderFiltersProps {
   pickupQueue?: boolean;
   searchQuery: string;
@@ -45,6 +47,9 @@ export default function OrderFilters({
   onStartDateChange,
   onEndDateChange,
 }: OrderFiltersProps) {
+  const [moreFiltersOpen, setMoreFiltersOpen] = useState(datePreset === 'custom' || statusFilter === 'all');
+  const moreFiltersRef = useRef<HTMLDetailsElement>(null);
+
   if (pickupQueue) {
     const control = 'min-h-11 w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 text-base text-gray-900';
     return <section aria-label="Pickup queue filters" className="rounded-xl border border-gray-200 bg-white p-4">
@@ -54,9 +59,16 @@ export default function OrderFilters({
           <button type="submit" className="min-h-11 rounded-lg bg-tsPrimary px-3 text-sm font-semibold text-white">Search</button>
         </form>
         <label className="min-w-0 text-sm font-medium text-gray-700">Pickup location<select aria-label="Pickup location" value={locationFilter} onChange={(event) => onLocationFilterChange(event.target.value)} className={`${control} mt-1`}><option value="all">All locations</option>{locationOptions.map((location) => <option key={location.id} value={String(location.id)}>{location.name}</option>)}</select></label>
-        <label className="min-w-0 text-sm font-medium text-gray-700">Period<select aria-label="Period" value={datePreset} onChange={(event) => onDatePresetChange(event.target.value)} className={`${control} mt-1`}><option value="today">Today</option><option value="last_7_days">Last 7 days</option><option value="this_month">This month</option><option value="all_time">All time</option><option value="custom">Custom range</option></select></label>
+        <label className="min-w-0 text-sm font-medium text-gray-700">Period<select aria-label="Period" value={datePreset} onChange={(event) => {
+          if (event.target.value === 'custom') {
+            // Native disclosure state may have changed without a prop change.
+            setMoreFiltersOpen(true);
+            if (moreFiltersRef.current) moreFiltersRef.current.open = true;
+          }
+          onDatePresetChange(event.target.value);
+        }} className={`${control} mt-1`}><option value="today">Today</option><option value="last_7_days">Last 7 days</option><option value="this_month">This month</option><option value="all_time">All time</option><option value="custom">Custom range</option></select></label>
       </div>
-      <details className="mt-2" open={datePreset === 'custom' || statusFilter === 'all'}>
+      <details ref={moreFiltersRef} className="mt-2" open={moreFiltersOpen} onToggle={(event) => setMoreFiltersOpen(event.currentTarget.open)}>
         <summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-gray-700">More filters{orderTypeFilter !== 'all' || businessLineFilter !== 'all' || datePreset === 'custom' || statusFilter === 'all' ? ' · filters applied' : ''}</summary>
         <div className="grid gap-3 pt-2 sm:grid-cols-2">
           <label className="text-sm font-medium text-gray-700">Stage<select aria-label="Stage" value={statusFilter} onChange={(event) => onStatusFilterChange(event.target.value)} className={`${control} mt-1`}>{[['all','All pickup orders'],['new_paid','New paid'],['confirmed','Acknowledged'],['ready','Ready'],['picked_up','Picked up'],['waiting_payment','Waiting for payment'],['all_active','All active']].map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>

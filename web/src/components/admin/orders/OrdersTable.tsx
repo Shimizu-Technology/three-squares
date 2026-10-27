@@ -8,7 +8,7 @@ interface OrdersTableProps {
   totalPages: number;
   onPageChange: (page: number) => void;
   onQuickUpdateStatus: (orderId: number, newStatus: string) => void;
-  onViewDetails: (orderId: number) => void;
+  onViewDetails: (orderId: number, trigger: HTMLButtonElement) => void;
 }
 
 function OrderTypeBadge({ type }: { type: string }) {
@@ -93,7 +93,7 @@ export default function OrdersTable({
                       )}
                       <button
                         disabled={saving}
-                        onClick={() => onViewDetails(order.id)}
+                        onClick={(event) => onViewDetails(order.id, event.currentTarget)}
                         className="inline-flex items-center px-3.5 py-2.5 text-gray-700 text-sm font-semibold bg-gray-100 hover:bg-gray-200 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
                       >
                         Details
@@ -157,7 +157,7 @@ export default function OrdersTable({
                 )}
                 <button
                   disabled={saving}
-                  onClick={() => onViewDetails(order.id)}
+                  onClick={(event) => onViewDetails(order.id, event.currentTarget)}
                   className={`${nextAction ? 'flex-1' : 'w-full'} px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
                     nextAction
                       ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'

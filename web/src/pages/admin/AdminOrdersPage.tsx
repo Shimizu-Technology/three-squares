@@ -226,8 +226,8 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
   }, [mode]);
 
   // ── Fetch single order details ────────────────────────────────
-  const fetchOrderDetails = async (orderId: number) => {
-    detailReturnRef.current = { x: window.scrollX, y: window.scrollY, trigger: document.activeElement instanceof HTMLElement ? document.activeElement : null };
+  const fetchOrderDetails = async (orderId: number, trigger: HTMLButtonElement) => {
+    detailReturnRef.current = { x: window.scrollX, y: window.scrollY, trigger };
     try {
       const response = await authGet<AdminOrderResponse>(`/admin/orders/${orderId}`, getToken);
       setSelectedOrder(response.data.order);
@@ -239,6 +239,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
 
   const closeOrderDetails = () => {
     const position = detailReturnRef.current;
+    detailReturnRef.current = null;
     setSelectedOrder(null);
     // Restore after the modal releases its body lock. Keep keyboard focus on
     // the original control without letting focus itself scroll the queue.

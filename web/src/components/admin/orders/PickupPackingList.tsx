@@ -8,7 +8,7 @@ interface Props {
   totalPages: number;
   onPageChange: (page: number) => void;
   onQuickUpdateStatus: (id: number, status: string) => void;
-  onViewDetails: (id: number) => void;
+  onViewDetails: (id: number, trigger: HTMLButtonElement) => void;
 }
 
 export default function PickupPackingList({ orders, saving, page, totalPages, onPageChange, onQuickUpdateStatus, onViewDetails }: Props) {
@@ -25,7 +25,7 @@ export default function PickupPackingList({ orders, saving, page, totalPages, on
           </div>
           <div className="flex shrink-0 gap-2">
             {action && <button type="button" disabled={saving} onClick={() => onQuickUpdateStatus(order.id, action.status)} className={`min-h-11 flex-1 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 sm:flex-none ${action.color}`}>{action.label}</button>}
-            <button type="button" disabled={saving} onClick={() => onViewDetails(order.id)} className="min-h-11 flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50 sm:flex-none">Details</button>
+            <button type="button" disabled={saving} onClick={(event) => onViewDetails(order.id, event.currentTarget)} className="min-h-11 flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50 sm:flex-none">Details</button>
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
