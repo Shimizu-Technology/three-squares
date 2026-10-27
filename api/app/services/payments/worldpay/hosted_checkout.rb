@@ -31,16 +31,25 @@ module Payments
       end
 
       def preflight(attempt:)
-        XmlBuilder.new(configuration: @runtime.configuration, contract: PublishedContract.wire_contract).build(
-          method: "TransactionSetup", fields: fields_for(attempt), amount_cents: attempt.requested_cents, idempotency_key: attempt.operation_key)
+        self.class.preflight_fields!(configuration: @runtime.configuration, profile: @runtime.profile,
+          reference: attempt.reference_number.to_s, amount_cents: attempt.requested_cents, operation_key: attempt.operation_key)
+      end
+
+      def self.preflight_fields!(configuration:, profile:, reference:, amount_cents:, operation_key:)
+        XmlBuilder.new(configuration: configuration, contract: PublishedContract.wire_contract).build(
+          method: "TransactionSetup", fields: setup_fields(profile, reference), amount_cents: amount_cents, idempotency_key: operation_key)
         true
       rescue Configuration::Invalid, KeyError
         raise Payments::Configuration::UnsafeConfiguration, "Assigned hosted setup fields are incomplete", cause: nil
       end
 
       def fields_for(attempt)
-        { "Transaction" => { "ReferenceNumber" => attempt.reference_number.to_s, "TicketNumber" => attempt.reference_number.to_s },
-          "TransactionSetup" => @runtime.profile.fetch("capabilities").fetch("setup_fields") }
+        self.class.setup_fields(@runtime.profile, attempt.reference_number.to_s)
+      end
+
+      def self.setup_fields(profile, reference)
+        { "Transaction" => { "ReferenceNumber" => reference, "TicketNumber" => reference },
+          "TransactionSetup" => profile.fetch("capabilities").fetch("setup_fields") }
       end
 
       def self.valid_return?(attempt:, token:, validation_code:, setup_id:, return_state: ReturnState.new)
