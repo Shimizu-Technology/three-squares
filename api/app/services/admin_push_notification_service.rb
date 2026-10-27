@@ -9,12 +9,21 @@ class AdminPushNotificationService
       return { success: true, skipped: true, reason: "No active subscriptions" } if subscriptions.empty?
 
       sent = 0
+      failures = []
 
       subscriptions.find_each do |subscription|
         sent += 1 if deliver(subscription, order_payload(order))
       rescue StandardError => e
-        handle_delivery_error(subscription, e)
+        begin
+          handle_delivery_error(subscription, e)
+        rescue StandardError => failure
+          failures << failure
+        end
       end
+
+      # Attempt every recipient before the job retries transient failures. Tags
+      # replace repeated alerts for recipients already reached on an earlier try.
+      raise failures.first if failures.any?
 
       { success: true, sent: sent }
     end

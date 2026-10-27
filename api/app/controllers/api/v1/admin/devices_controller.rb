@@ -44,17 +44,12 @@ module Api
           device = AdminDevice.find_or_initialize_by(device_uuid: admin_device_uuid)
           return render json: { error: "Device not found" }, status: :not_found unless accessible_current_device?(device)
 
-          previous_owner = device.user_id
-          previous_location = device.location_id
           assign_device_attributes(device, current_device_params)
           device.user = current_user
           device.active = true
           device.last_seen_at = Time.current
 
           if device.save
-            if previous_owner != device.user_id || previous_location != device.location_id
-              device.admin_push_subscriptions.update_all(active: false, updated_at: Time.current)
-            end
             render json: {
               device: device_json(device),
               push: push_json,
@@ -69,11 +64,7 @@ module Api
         def update
           assign_device_attributes(@device, managed_device_params)
 
-          previous_location = @device.location_id_in_database
           if @device.save
-            if previous_location != @device.location_id
-              @device.admin_push_subscriptions.update_all(active: false, updated_at: Time.current)
-            end
             render json: {
               device: device_json(@device),
               message: "Device updated successfully"

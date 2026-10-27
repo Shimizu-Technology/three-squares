@@ -82,4 +82,13 @@ RSpec.describe AdminPushNotificationService, type: :service do
     expect { described_class.send_new_order(order) }.to raise_error(StandardError)
     expect(north_subscription.reload).to be_active
   end
+  it "attempts later healthy recipients before raising an earlier transient failure for retry" do
+    later = create(:admin_push_subscription, admin_device: create(:admin_device, location: north))
+    allow(WebPush).to receive(:payload_send).with(hash_including(endpoint: north_subscription.endpoint))
+      .and_raise(StandardError, "upstream timeout")
+    expect { described_class.send_new_order(order) }.to raise_error(StandardError, "upstream timeout")
+    expect(WebPush).to have_received(:payload_send).with(hash_including(endpoint: later.endpoint))
+    expect(later.reload.last_sent_at).to be_present
+  end
+
 end

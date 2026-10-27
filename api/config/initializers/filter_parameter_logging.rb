@@ -6,3 +6,6 @@
 Rails.application.config.filter_parameters += [
   :capability, :collection_config, :passw, :email, :secret, :token, :_key, :crypt, :salt, :certificate, :otp, :ssn, :cvv, :cvc
 ]
+
+# Push endpoints and subscription keys grant delivery capability.
+Rails.application.config.filter_parameters += %i[endpoint p256dh auth]

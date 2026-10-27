@@ -137,4 +137,25 @@ RSpec.describe "Admin devices", type: :request do
       expect(device.reload.location).to eq(other_location)
     end
   end
+  it "filters push endpoint and key capabilities from request logs" do
+    filter = ActiveSupport::ParameterFilter.new(Rails.application.config.filter_parameters)
+    filtered = filter.filter({ subscription: subscription_attributes }.deep_stringify_keys)
+    expect(filtered.dig("subscription", "endpoint")).to eq("[FILTERED]")
+    expect(filtered.dig("subscription", "keys", "auth")).to eq("[FILTERED]")
+    expect(filtered.dig("subscription", "keys", "p256dh")).to eq("[FILTERED]")
+  end
+
+  it "disables old subscriptions atomically when a scoped owner's location is repaired, even on invalid new subscription" do
+    register
+    device = AdminDevice.find_by!(device_uuid: "device-under-test")
+    old = create(:admin_push_subscription, admin_device: device)
+    admin_user.update!(assigned_location: other_location)
+    post "/api/v1/admin/devices/current/push_subscription", params: {
+      subscription: { endpoint: "https://localhost/invalid", keys: subscription_attributes[:keys] }
+    }, headers: headers
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(device.reload.location_id).to eq(other_location.id)
+    expect(old.reload).not_to be_active
+  end
+
 end
