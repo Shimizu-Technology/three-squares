@@ -46,6 +46,9 @@ export default function ProductsTable({
   const ActionMenu = ({ product }: { product: Product }) => (
     <div className="relative">
       <button
+        type="button"
+        aria-label={`More actions for ${product.name}`}
+        aria-expanded={actionMenuOpen === product.id}
         onClick={() => setActionMenuOpen(actionMenuOpen === product.id ? null : product.id)}
         className="min-w-[44px] min-h-[44px] p-2.5 text-gray-400 hover:text-gray-600 rounded btn-icon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
       >
