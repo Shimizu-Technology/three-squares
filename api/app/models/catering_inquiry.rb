@@ -1,10 +1,19 @@
 # frozen_string_literal: true
 
 # Catering inquiry/quote request from customers.
-# Workflow: pending → quoted → accepted/declined → completed
+# Quotes are manually recorded; no customer delivery is implied.
 class CateringInquiry < ApplicationRecord
   # === Constants ===
   STATUSES = %w[pending quoted accepted declined completed cancelled].freeze
+  ACTIVE_STATUSES = %w[pending quoted accepted].freeze
+  STATUS_TRANSITIONS = {
+    "pending" => %w[quoted cancelled],
+    "quoted" => %w[accepted declined cancelled],
+    "accepted" => %w[completed cancelled],
+    "declined" => %w[cancelled],
+    "completed" => [],
+    "cancelled" => []
+  }.freeze
   EVENT_TYPES = %w[wedding corporate party graduation funeral memorial other].freeze
   BUDGET_RANGES = [
     "$500 or less",
@@ -26,13 +35,16 @@ class CateringInquiry < ApplicationRecord
   validates :guest_count, presence: true, numericality: { greater_than: 0 }
   validates :status, presence: true, inclusion: { in: STATUSES }
 
+  validate :allowed_status_transition, on: :update
+
   validate :event_date_in_future, on: :create
   validate :minimum_lead_time, on: :create
 
   # === Scopes ===
   scope :pending, -> { where(status: "pending") }
   scope :quoted, -> { where(status: "quoted") }
-  scope :active, -> { where(status: %w[pending quoted accepted]) }
+  scope :active, -> { where(status: ACTIVE_STATUSES) }
+  scope :urgent, -> { active.where(event_date: Date.current..(Date.current + 7)) }
   scope :upcoming, -> { where("event_date >= ?", Date.current).order(:event_date) }
   scope :recent, -> { order(created_at: :desc) }
 
@@ -60,32 +72,63 @@ class CateringInquiry < ApplicationRecord
   end
 
   def urgent?
-    days_until_event && days_until_event <= 7
+    ACTIVE_STATUSES.include?(status) && days_until_event.present? && days_until_event.between?(0, 7)
   end
 
-  def mark_quoted!(amount:, admin:, notes: nil)
-    update!(
+  # Validate the uncast input only when recording a quote. Historical malformed
+  # amounts must not prevent staff from saving unrelated notes or status changes.
+  def mark_quoted!(amount:, admin:, **options)
+    unless %w[pending quoted].include?(status)
+      errors.add(:status, "does not allow recording a quote")
+      raise ActiveRecord::RecordInvalid, self
+    end
+
+    unless (amount.is_a?(String) || amount.is_a?(Numeric)) &&
+        amount.to_s.match?(/\A[0-9]+(?:\.[0-9]{1,2})?\z/) &&
+        amount.to_d.positive? && amount.to_d <= BigDecimal("99999999.99")
+      errors.add(:quoted_amount, "must be a positive decimal up to 99999999.99 with at most two decimal places")
+      raise ActiveRecord::RecordInvalid, self
+    end
+
+    attributes = {
       status: "quoted",
       quoted_amount: amount,
       quoted_at: Time.current,
-      responded_by: admin,
-      admin_notes: notes
-    )
+      responded_by: admin
+    }
+    attributes[:admin_notes] = options[:notes] if options.key?(:notes)
+    update!(attributes)
+  end
+
+  def transition_to!(next_status)
+    unless next_status != "quoted" && STATUS_TRANSITIONS.fetch(status, []).include?(next_status)
+      errors.add(:status, "cannot change from #{status} to #{next_status}")
+      raise ActiveRecord::RecordInvalid, self
+    end
+
+    update!(status: next_status)
   end
 
   def mark_accepted!
-    update!(status: "accepted")
+    transition_to!("accepted")
   end
 
   def mark_declined!
-    update!(status: "declined")
+    transition_to!("declined")
   end
 
   def mark_completed!
-    update!(status: "completed")
+    transition_to!("completed")
   end
 
   private
+
+  def allowed_status_transition
+    return unless will_save_change_to_status?
+    return if STATUS_TRANSITIONS.fetch(status_in_database, []).include?(status)
+
+    errors.add(:status, "cannot change from #{status_in_database} to #{status}")
+  end
 
   def event_date_in_future
     return unless event_date
