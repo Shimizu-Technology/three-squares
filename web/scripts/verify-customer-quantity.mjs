@@ -26,7 +26,7 @@ try {
   for (const [engine, type] of [['chromium', chromium], ['webkit', webkit]]) {
     const browser = await type.launch();
     try {
-      for (const [width, height] of [[768, 1024], [1024, 768], [1440, 900], [390, 844]]) {
+      for (const [width, height] of [[768, 1024], [1024, 768], [1440, 900], [390, 844], ...(engine === 'webkit' ? [[375, 812]] : [])]) {
         const context = await browser.newContext({ viewport: { width, height }, hasTouch: true });
         try {
           const page = await context.newPage();

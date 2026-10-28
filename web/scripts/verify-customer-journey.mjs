@@ -42,6 +42,7 @@ try {
         [1024, 768],
         [1440, 900],
         [390, 844],
+        ...(engine === "webkit" ? [[375, 812]] : []),
       ]) {
         const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, deviceScaleFactor: 1 });
         const page = await context.newPage();

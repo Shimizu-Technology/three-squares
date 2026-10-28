@@ -99,3 +99,20 @@ test('dark-surface controls preserve roles and geometry without leaking recipe p
   assert.match(css, /\.ui-button--on-dark\.ui-button--secondary \{ background: transparent; border-color: rgb\(255 255 255 \/ 50%\); color: white/);
   assert.match(css, /\.ui-button--on-dark:focus-visible \{ outline-color: white/);
 });
+
+const { module: {ChoiceGroup} } = await compile('../src/components/ui/ChoiceGroup.tsx');
+const { module: {ActionTile} } = await compile('../src/components/ui/ActionTile.tsx');
+test('single-choice sections expose selection and invoke only their own value', () => {
+  const calls=[];
+  const tree=ChoiceGroup({label:'Order stages',value:'new',choices:[{value:'new',label:'New paid'},{value:'ready',label:'Ready'}],onChange:value=>calls.push(value)});
+  assert.equal(tree.props.role,'group');assert.equal(tree.props['aria-label'],'Order stages');
+  const [first,second]=tree.props.children;
+  assert.equal(first.props.type,'button');assert.equal(first.props['aria-pressed'],true);assert.equal(second.props['aria-pressed'],false);
+  second.props.onClick();assert.deepEqual(calls,['ready']);
+  const disabled=ChoiceGroup({label:'Editor sections',value:'new',choices:[{value:'new',label:'Menu'}],onChange(){},disabled:true});
+  assert.equal(disabled.props.children[0].props.disabled,true);
+});
+test('dashboard shortcuts retain real navigation and named content', () => {
+  const html=render(ActionTile,{to:'/admin/orders',icon:createElement('svg'),children:'View Orders'});
+  assert.match(html,/href="\/admin\/orders"/);assert.match(html,/View Orders/);assert.match(html,/aria-hidden="true"/);
+});

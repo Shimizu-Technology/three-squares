@@ -1,3 +1,4 @@
+import { Button } from '../../ui/Button';
 import type { Order } from './orderUtils';
 import { formatCurrency, formatDate, formatStatus, getNextStatusAction, getStatusBadge, pickupOrderAge as orderAge } from './orderUtils';
 
@@ -24,8 +25,8 @@ export default function ShippingPackingList({ orders, saving, page, totalPages, 
             <p className="mt-1 text-sm text-gray-600">{order.order_number} · <time dateTime={order.created_at} title={formatDate(order.created_at)}>{orderAge(order.created_at)}</time></p>
           </div>
           <div className="flex shrink-0 gap-2">
-            {action && <button type="button" disabled={saving} onClick={() => onQuickUpdateStatus(order.id, action.status)} className={`min-h-11 flex-1 rounded-lg px-4 py-2 text-sm font-semibold text-white disabled:opacity-50 sm:flex-none ${action.color}`}>{action.label}</button>}
-            <button type="button" disabled={saving} onClick={(event) => onViewDetails(order.id, event.currentTarget)} className="min-h-11 flex-1 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-semibold text-gray-800 hover:bg-gray-50 disabled:opacity-50 sm:flex-none">Details</button>
+            {action && <Button type="button" disabled={saving} onClick={() => onQuickUpdateStatus(order.id, action.status)} variant="primary">{action.label}</Button>}
+            <Button type="button" disabled={saving} onClick={(event) => onViewDetails(order.id, event.currentTarget)} variant="secondary">Details</Button>
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
@@ -50,9 +51,9 @@ export default function ShippingPackingList({ orders, saving, page, totalPages, 
       </article>;
     })}
     {totalPages > 1 && <nav aria-label="Shipping order pages" className="flex flex-wrap items-center justify-center gap-3 py-3">
-      <button type="button" disabled={page <= 1 || saving} onClick={() => onPageChange(Math.max(1, page - 1))} className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 disabled:opacity-50">Previous</button>
+      <Button type="button" disabled={page <= 1 || saving} onClick={() => onPageChange(Math.max(1, page - 1))} variant="secondary">Previous</Button>
       <span className="text-sm text-gray-700">Page {page} of {totalPages}</span>
-      <button type="button" disabled={page >= totalPages || saving} onClick={() => onPageChange(Math.min(totalPages, page + 1))} className="min-h-11 rounded-lg border border-gray-300 bg-white px-4 disabled:opacity-50">Next</button>
+      <Button type="button" disabled={page >= totalPages || saving} onClick={() => onPageChange(Math.min(totalPages, page + 1))} variant="secondary">Next</Button>
     </nav>}
   </div>;
 }

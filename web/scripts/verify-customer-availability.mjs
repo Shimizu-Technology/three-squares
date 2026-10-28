@@ -43,6 +43,7 @@ try {
     try {
       for (const [width, height] of [
         [390, 844],
+        ...(engine === "webkit" ? [[375, 812]] : []),
         [1440, 900],
       ]) {
         const context = await browser.newContext({ viewport: { width, height }, hasTouch: true });

@@ -1,8 +1,11 @@
+import { Button } from '../../components/ui/Button';
+import { IconButton } from '../../components/ui/IconButton';
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { useLocation, useNavigate, useNavigationType } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import { Upload } from 'lucide-react';
+import { Plus, RefreshCw, Upload } from 'lucide-react';
 import type { Product, DetailedProduct } from '../../components/admin/products';
 import {
   ProductFilters,
@@ -283,26 +286,14 @@ export default function AdminProductsPage() {
         ? event.target.closest<HTMLElement>('button, a[href], [tabindex]') : null;
     }} onBlurCapture={() => { searchEditing.current = false; }}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Products</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {hasLoaded ? <>Showing <span className="font-semibold text-gray-700">{filteredProducts.length}</span> of {products.length} products{(loading || loadError) && ' (last loaded)'}</> : 'Browse and manage your products'}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={fetchProducts} disabled={loading} className="btn-secondary min-h-[44px] disabled:opacity-60">Refresh products</button>
-          <button type="button" onClick={openImport} className="btn-secondary min-h-11 inline-flex items-center">
-            <Upload className="w-4 h-4 mr-2" /> Menu CSV
-          </button>
-          <button onClick={() => openEditor()} className="btn-primary flex items-center gap-2">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Product
-          </button>
-        </div>
-      </div>
+      <AdminPageHeader title="Products"
+        subtitle={hasLoaded ? <>Showing <span className="font-semibold text-gray-700">{filteredProducts.length}</span> of {products.length} products{(loading || loadError) && ' (last loaded)'}</> : 'Browse and manage your products'}
+        actions={<>
+          <IconButton onClick={fetchProducts} loading={loading} aria-label="Refresh products" title="Refresh products"><RefreshCw /></IconButton>
+          <Button onClick={openImport} variant="secondary" icon={<Upload />}>Menu CSV</Button>
+          <Button onClick={() => openEditor()} icon={<Plus />}>Add Product</Button>
+        </>}
+      />
 
       {query.batch && <section role="status" className="mb-4 rounded-xl border border-gray-300 bg-white p-4 [overflow-wrap:anywhere]">
         <p className="font-semibold text-gray-900">{batchReceipt ? `Reviewing ${batchReceipt.filename}` : 'This batch receipt is unavailable in this tab'}</p>

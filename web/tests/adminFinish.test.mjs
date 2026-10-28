@@ -1,3 +1,4 @@
+import { uiModules, expandUi } from './helpers/uiModules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -32,7 +33,7 @@ const mocks = {
 async function load(path) {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8');
   const code = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
-    .replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(mocks[name] || import.meta.resolve(name))}`);
+    .replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(mocks[name] || uiModules[name] || import.meta.resolve(name))}`);
   return (await import(url(code))).default;
 }
 const Analytics = await load('../src/pages/admin/AdminAnalyticsPage.tsx');
@@ -40,7 +41,7 @@ const Dashboard = await load('../src/pages/admin/AdminDashboardPage.tsx');
 const Settings = await load('../src/pages/AdminSettingsPage.tsx');
 const PaymentsPanel = await load('../src/components/payment/PaymentStatusPanel.tsx');
 const Products = await load('../src/components/admin/products/ProductsTable.tsx');
-const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(nodes)];
+const nodes = value => { const node = expandUi(value); return !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children, node.props?.actions].flat(Infinity).flatMap(nodes)]; }
 const text = node => typeof node === 'string' || typeof node === 'number' ? String(node) : node && typeof node !== 'boolean' ? [node.props?.children].flat(Infinity).map(text).join('') : '';
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 const initialSettings = {

@@ -1,8 +1,9 @@
+import { ActionTile } from '../../components/ui/ActionTile';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
 import {
-  ShoppingCart, DollarSign, Clock, Package, Plus, ClipboardList, FolderOpen, Settings,
+  ShoppingCart, DollarSign, Clock, Package, Plus, ClipboardList, FolderOpen,
   BarChart3, ArrowRight,
 } from 'lucide-react';
 import { StatCard, SkeletonDashboard } from '../../components/admin';
@@ -156,38 +157,12 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
-        <Link to="/admin/products/new" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-tsPrimary transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
-          <div className="w-10 h-10 bg-tsSurface rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-tsPrimary/10 transition">
-            <Plus className="w-5 h-5 text-gray-600 group-hover:text-tsPrimary transition" />
-          </div>
-          <p className="text-sm font-medium text-gray-700">Add Product</p>
-        </Link>
-        <Link to="/admin/orders" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-tsPrimary transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
-          <div className="w-10 h-10 bg-tsSurface rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-tsPrimary/10 transition">
-            <ClipboardList className="w-5 h-5 text-gray-600 group-hover:text-tsPrimary transition" />
-          </div>
-          <p className="text-sm font-medium text-gray-700">View Orders</p>
-        </Link>
-        <Link to="/admin/collections" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-tsPrimary transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
-          <div className="w-10 h-10 bg-tsSurface rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-tsPrimary/10 transition">
-            <FolderOpen className="w-5 h-5 text-gray-600 group-hover:text-tsPrimary transition" />
-          </div>
-          <p className="text-sm font-medium text-gray-700">Collections</p>
-        </Link>
-        <Link to="/admin/analytics" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-tsPrimary transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
-          <div className="w-10 h-10 bg-tsSurface rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-tsPrimary/10 transition">
-            <BarChart3 className="w-5 h-5 text-gray-600 group-hover:text-tsPrimary transition" />
-          </div>
-          <p className="text-sm font-medium text-gray-700">Analytics</p>
-        </Link>
-        <Link to="/admin/settings" className="bg-white rounded-xl border border-gray-100 p-4 text-center hover:shadow-md hover:border-tsPrimary transition group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
-          <div className="w-10 h-10 bg-tsSurface rounded-lg flex items-center justify-center mx-auto mb-3 group-hover:bg-tsPrimary/10 transition">
-            <Settings className="w-5 h-5 text-gray-600 group-hover:text-tsPrimary transition" />
-          </div>
-          <p className="text-sm font-medium text-gray-700">Settings</p>
-        </Link>
-      </div>
+      <nav aria-label="Quick actions" className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <ActionTile to="/admin/products/new" icon={<Plus />}>Add Product</ActionTile>
+        <ActionTile to="/admin/orders" icon={<ClipboardList />}>View Orders</ActionTile>
+        <ActionTile to="/admin/collections" icon={<FolderOpen />}>Menus &amp; specials</ActionTile>
+        <ActionTile to="/admin/analytics" icon={<BarChart3 />}>Analytics</ActionTile>
+      </nav>
 
       {/* Recent Orders */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">

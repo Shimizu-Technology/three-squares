@@ -31,6 +31,7 @@ try {
         [1024, 768],
         [1440, 900],
         [390, 844],
+        ...(engine === "webkit" ? [[375, 812]] : []),
       ])
         for (const touch of [false, true]) {
           const context = await browser.newContext({

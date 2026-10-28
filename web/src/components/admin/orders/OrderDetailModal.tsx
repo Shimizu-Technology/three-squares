@@ -1,3 +1,6 @@
+import { IconButton } from '../../ui/IconButton';
+import { X, Mail } from 'lucide-react';
+import { Button } from '../../ui/Button';
 import { useId, useRef, useState, type RefObject } from 'react';
 import Dialog from '../../ui/Dialog';
 import type { Order } from './orderUtils';
@@ -118,14 +121,7 @@ export default function OrderDetailModal({
             )}
             {order.inventory_restoration_status === 'manual_review_required' && <p role="status" className="mt-3 text-sm text-amber-800">Inventory restoration requires manual review. No stock was restored automatically.</p>}
           </div>
-          <button
-            onClick={() => { if (!saving) onClose(); }}
-            disabled={saving}
-            className="min-w-[44px] min-h-[44px] inline-flex items-center justify-center text-gray-400 hover:text-gray-600 text-3xl leading-none rounded-lg hover:bg-gray-100 transition print-hide"
-            aria-label="Close order details"
-          >
-            &times;
-          </button>
+          <span className="print-hide"><IconButton onClick={() => { if (!saving) onClose(); }} disabled={saving} aria-label="Close order details"><X /></IconButton></span>
         </div>
 
         <div
@@ -135,26 +131,26 @@ export default function OrderDetailModal({
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 print-hide">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
               <h3 className="font-semibold text-gray-900">Order Management</h3>
-              <div className="flex gap-2 w-full sm:w-auto">
+              <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                 {!isEditing && canChangeStatus && nextAction && (
-                  <button
+                  <Button
                     type="button"
                     disabled={saving}
                     onClick={() => onQuickUpdateStatus(order.id, nextAction.status)}
-                    className={`flex-1 sm:flex-none px-4 py-2 text-white rounded-lg transition text-sm font-medium ${nextAction.color}`}
+                    variant="primary"
                   >
                     {nextAction.label}
-                  </button>
+                  </Button>
                 )}
                 {!isEditing && canChangeStatus && (
-                  <button
+                  <Button
                     type="button"
                     disabled={saving}
                     onClick={handleEdit}
-                    className="flex-1 sm:flex-none px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition text-sm font-medium"
+                    variant="secondary"
                   >
                     {canManageOrder ? 'Edit Details' : 'Change status'}
-                  </button>
+                  </Button>
                 )}
               </div>
             </div>
@@ -199,22 +195,22 @@ export default function OrderDetailModal({
                 </div>}
 
                 <div className="flex gap-3 pt-2">
-                  <button
+                  <Button
                     type="button"
                     onClick={handleSave}
-                    disabled={saving}
-                    className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    loading={saving}
+                    variant="primary" className="flex-1"
                   >
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </button>
-                  <button
+                    Save Changes
+                  </Button>
+                  <Button
                     type="button"
                     onClick={handleCancel}
                     disabled={saving}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                    variant="secondary"
                   >
                     Cancel
-                  </button>
+                  </Button>
                 </div>
               </div>
             ) : (
@@ -371,7 +367,7 @@ export default function OrderDetailModal({
                         </span>
                       </div>
                       {refund.restoration_status === 'manual_review_required' && <p className="text-sm text-amber-800">Inventory restoration requires manual review.</p>}
-                      {canRefund && refund.operation_uuid && !['succeeded', 'failed'].includes(refund.operation_status || refund.status) && <button type="button" disabled={checkingRefund} className="mt-2 text-sm underline disabled:opacity-50" onClick={() => onCheckRefund(refund.operation_uuid!)}>Check refund status</button>}
+                      {canRefund && refund.operation_uuid && !['succeeded', 'failed'].includes(refund.operation_status || refund.status) && <Button type="button" disabled={checkingRefund} variant="ghost" className="mt-2" onClick={() => onCheckRefund(refund.operation_uuid!)}>Check refund status</Button>}
                       {refund.reason && <p className="text-sm text-gray-600 mt-1">{refund.reason}</p>}
                       {refund.admin_user && <p className="text-xs text-gray-500 mt-1">By: {refund.admin_user}</p>}
                     </div>
@@ -392,39 +388,37 @@ export default function OrderDetailModal({
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-3 pt-4 border-t print-hide">
             {canNotify && (order.status === 'ready' || order.status === 'shipped') && (
-              <button
+              <Button
                 type="button"
                 onClick={() => onResendNotification(order.id)}
-                className="flex-1 min-w-[140px] px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+                variant="secondary" className="w-full sm:w-auto"
               >
                 Notify Customer
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               type="button"
               onClick={() => window.print()}
-              className="flex-1 min-w-[140px] px-4 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition font-medium"
+              variant="secondary" className="w-full sm:w-auto"
             >
               Print Packing Slip
-            </button>
-            {canNotify && <button
+            </Button>
+            {canNotify && <Button
               type="button"
-              onClick={() => window.open(`mailto:${order.customer_email}`, '_blank')}
-              className="flex-1 min-w-[140px] px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium inline-flex items-center justify-center gap-2"
+              icon={<Mail />} onClick={() => window.open(`mailto:${order.customer_email}`, '_blank')}
+              variant="secondary" className="w-full sm:w-auto"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8.25l7.485 4.99a2.75 2.75 0 003.03 0L21 8.25M4.5 6.75h15A1.5 1.5 0 0121 8.25v7.5a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 15.75v-7.5a1.5 1.5 0 011.5-1.5z" />
-              </svg>
+
               Email Customer
-            </button>}
+            </Button>}
             {canRefund && (order.payment_status === 'paid' || hasSavedRefund) && (
-              <button
+              <Button
                 type="button"
                 onClick={(event) => onOpenRefundModal(event.currentTarget)}
-                className="flex-1 min-w-[140px] px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-primary-dark transition font-medium"
+                variant="secondary" className="w-full sm:w-auto"
               >
                 {hasSavedRefund ? 'Check saved refund' : 'Refund Order'}
-              </button>
+              </Button>
             )}
           </div>
         </div>

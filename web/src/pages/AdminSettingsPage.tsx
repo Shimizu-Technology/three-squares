@@ -1,6 +1,8 @@
+import { ChoiceGroup } from '../components/ui/ChoiceGroup';
+import { Button } from '../components/ui/Button';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import api, { collectionsApi, type Collection } from '../services/api';
@@ -107,7 +109,6 @@ const TABS: { id: TabType; label: string }[] = [
 
 export default function AdminSettingsPage({ homepageOnly = false }: { homepageOnly?: boolean }) {
   const { getToken } = useAuth();
-  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Get active tab from URL or default to 'general'
@@ -528,36 +529,24 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
-          <button
-            onClick={() => navigate('/admin')}
-            className="text-tsPrimary hover:underline mb-4 flex items-center"
-          >
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <Button
+            to="/admin"
+            icon={<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
+            </svg>}
+            variant="ghost" className="mb-4"
+          >
+
             Back to Admin Dashboard
-          </button>
+          </Button>
           <h1 className="text-3xl font-bold text-gray-900">{homepageOnly ? 'Homepage' : 'Store Settings'}</h1>
           <p className="text-gray-600 mt-2">{homepageOnly ? 'Manage homepage banners and featured content' : 'Manage global settings for your Three Squares store'}</p>
         </div>
 
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-6">
-          <nav className="flex space-x-8">
-            {TABS.filter(tab => !homepageOnly || tab.id === 'homepage').map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm transition ${
-                  activeTab === tab.id
-                    ? 'border-tsPrimary text-tsPrimary'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </nav>
+          <ChoiceGroup label="Settings sections" value={activeTab} onChange={handleTabChange}
+            choices={TABS.filter(tab => !homepageOnly || tab.id === 'homepage').map(tab => ({value:tab.id,label:tab.label}))} />
         </div>
 
         {activeTab === 'general' && <OnlineOrderingSection />}
@@ -567,7 +556,7 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
         {activeTab === 'general' && !loading && !settings && (
           <div role="alert" className="py-8">
             <p className="text-red-600 mb-4">Failed to load settings</p>
-            <button onClick={fetchSettings} className="bg-tsPrimary text-white px-4 py-2 rounded-lg hover:bg-primary-dark">Retry</button>
+            <Button onClick={fetchSettings} variant="primary">Retry</Button>
           </div>
         )}
         {/* Tab Content */}
@@ -659,7 +648,7 @@ function GeneralSettingsTab({
   const saveFeedback = (field: ImmediateField, label: string) => (
     <div className="mt-1 text-sm text-gray-700">
       <p role="status">{fieldSaveStates[field] === 'saving' ? `${label}: Saving…` : fieldSaveStates[field] === 'saved' ? `${label}: Saved` : fieldSaveStates[field] === 'checking' ? `${label}: Save not confirmed. Checking saved value…` : fieldSaveStates[field] === 'checked' ? `${label}: Save was not confirmed. Current saved value loaded; review before changing it again.` : fieldSaveStates[field] === 'uncertain' ? `${label}: Save outcome unknown. Check the saved value before changing it again.` : 'Saves immediately.'}</p>
-      {fieldSaveStates[field] === 'uncertain' && <button type="button" disabled={saving} onClick={() => onCheckSavedField(field)} className="min-h-[44px] rounded px-3 font-medium text-tsPrimary underline disabled:opacity-50">Check saved {label}</button>}
+      {fieldSaveStates[field] === 'uncertain' && <Button type="button" disabled={saving} onClick={() => onCheckSavedField(field)} variant="ghost">Check saved {label}</Button>}
     </div>
   );
   const missingOriginFields = getMissingOriginFields(settings.shipping_origin_address);
@@ -982,22 +971,22 @@ function GeneralSettingsTab({
                   </span>
                 </label>
                 {!isDefaultPlaceholder && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => onUpdatePlaceholderImage(DEFAULT_PLACEHOLDER_IMAGE)}
                     disabled={saving || placeholderUploading}
-                    className="text-sm text-gray-600 hover:text-tsPrimary underline disabled:text-gray-400"
+                    variant="secondary"
                   >
                     Reset to default logo
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
                   type="button"
-                  onClick={onTogglePlaceholderUrlInput}
-                  className="text-xs text-gray-500 hover:text-gray-700"
+                  aria-expanded={showPlaceholderUrlInput} onClick={onTogglePlaceholderUrlInput}
+                  variant="ghost"
                 >
                   {showPlaceholderUrlInput ? 'Hide custom URL' : 'Use a custom URL instead'}
-                </button>
+                </Button>
               </div>
             </div>
             {showPlaceholderUrlInput && (
@@ -1159,24 +1148,22 @@ function GeneralSettingsTab({
               You have unsaved changes.
             </div>
             <div className="flex items-center gap-3">
-              <button
+              <Button
                 type="button"
                 onClick={onDiscardSiteSettings}
                 disabled={saving || immediateSaving}
-                className="min-h-[44px] disabled:opacity-50 px-4 py-2 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50"
+                variant="secondary"
               >
                 Discard
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 onClick={onSaveSiteSettings}
-                disabled={saving || immediateSaving}
-                className={`min-h-[44px] disabled:opacity-50 px-5 py-2 rounded-lg text-sm font-medium text-white bg-tsPrimary hover:bg-primary-dark transition ${
-                  saving ? 'opacity-50 cursor-not-allowed' : ''
-                }`}
+                loading={saving} disabled={immediateSaving}
+                variant="primary"
               >
-                {saving ? 'Saving...' : 'Save changes'}
-              </button>
+                Save changes
+              </Button>
             </div>
           </div>
         </div>
@@ -1325,22 +1312,18 @@ function HomepageSettingsTab({
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 self-start">
-                      <button
+                      <Button
                         onClick={() => onToggleSectionActive(section)}
-                        className={`px-3 py-1 text-sm rounded-lg border ${
-                          section.active
-                            ? 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                            : 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100'
-                        }`}
+                        variant="secondary"
                       >
                         {section.active ? 'Hide' : 'Show'}
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         onClick={() => onSetEditingSection(section)}
-                        className="px-3 py-1 text-sm bg-tsPrimary/10 text-tsPrimary rounded-lg hover:bg-tsPrimary/15"
+                        variant="secondary"
                       >
                         Edit
-                      </button>
+                      </Button>
                       {/* Phase 2: Delete button will be re-enabled when Add Section is implemented */}
                     </div>
                   </div>
@@ -1357,14 +1340,14 @@ function HomepageSettingsTab({
           <p className="font-medium text-blue-900">Preview your homepage</p>
           <p className="text-sm text-blue-700">See how your changes look on the live site</p>
         </div>
-        <a
+        <Button
           href="/"
           target="_blank"
           rel="noopener noreferrer"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          variant="secondary"
         >
           View Homepage
-        </a>
+        </Button>
       </div>
     </div>
   );
@@ -1678,21 +1661,21 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                   </span>
                 </label>
                 {!isDefaultBackground && defaultBackgroundUrl && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setFormData((prev) => ({ ...prev, background_image_url: defaultBackgroundUrl }))}
-                    className="text-xs text-gray-500 hover:text-gray-700 text-left"
+                    variant="secondary"
                   >
                     Reset to default image
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
                   type="button"
-                  onClick={() => setShowBackgroundUrlInput((prev) => !prev)}
-                  className="text-xs text-gray-500 hover:text-gray-700 text-left"
+                  aria-expanded={showBackgroundUrlInput} onClick={() => setShowBackgroundUrlInput((prev) => !prev)}
+                  variant="ghost"
                 >
                   {showBackgroundUrlInput ? 'Hide custom URL' : 'Use a custom URL instead'}
-                </button>
+                </Button>
               </div>
             </div>
             {showBackgroundUrlInput && (
@@ -1745,21 +1728,21 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                   </span>
                 </label>
                 {!isDefaultImage && defaultImageUrl && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => setFormData((prev) => ({ ...prev, image_url: defaultImageUrl }))}
-                    className="text-xs text-gray-500 hover:text-gray-700 text-left"
+                    variant="secondary"
                   >
                     Reset to default image
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
                   type="button"
-                  onClick={() => setShowImageUrlInput((prev) => !prev)}
-                  className="text-xs text-gray-500 hover:text-gray-700 text-left"
+                  aria-expanded={showImageUrlInput} onClick={() => setShowImageUrlInput((prev) => !prev)}
+                  variant="ghost"
                 >
                   {showImageUrlInput ? 'Hide custom URL' : 'Use a custom URL instead'}
-                </button>
+                </Button>
               </div>
             </div>
             {showImageUrlInput && (
@@ -1805,7 +1788,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
               <option value="custom">Custom URL</option>
             </select>
             {!isDefaultLink && defaultButtonLink && (
-              <button
+              <Button
                 type="button"
                 onClick={() => {
                   setFormData((prev) => ({ ...prev, button_link: defaultButtonLink }));
@@ -1820,10 +1803,10 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                     setLinkType('custom');
                   }
                 }}
-                className="mt-2 text-xs text-gray-500 hover:text-gray-700"
+                variant="secondary" className="mt-2"
               >
                 Reset to default link
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -1907,20 +1890,20 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
 
         {/* Actions */}
         <div className="flex gap-3 pt-4 border-t border-gray-200">
-          <button
+          <Button
             type="submit"
-            disabled={saving}
-            className="px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition disabled:opacity-50"
+            loading={saving}
+            variant="primary"
           >
-            {saving ? 'Saving...' : section ? 'Save Changes' : 'Create Section'}
-          </button>
-          <button
+            {section ? 'Save Changes' : 'Create Section'}
+          </Button>
+          <Button
             type="button"
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+            variant="secondary"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>
