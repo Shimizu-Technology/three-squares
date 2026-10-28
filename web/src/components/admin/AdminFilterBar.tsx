@@ -3,9 +3,9 @@ import { Field } from '../ui/Field';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
-export default function AdminFilterBar({children, actions}: {children: ReactNode; actions?: ReactNode}) {
-  return <section aria-label="Filters" className="rounded-xl border border-gray-100 bg-white p-4">
-    <div className="grid grid-cols-1 gap-x-2 gap-y-3 md:grid-cols-2 lg:grid-cols-4">{children}</div>
+export default function AdminFilterBar({children, actions, label = 'Filters', layout = 'grid', labelledBy}: {children: ReactNode; actions?: ReactNode; label?: string; layout?: 'grid' | 'custom'; labelledBy?: string}) {
+  return <section aria-label={labelledBy ? undefined : label} aria-labelledby={labelledBy} className="rounded-xl border border-gray-100 bg-white p-4">
+    <div className={layout === 'grid' ? "grid grid-cols-1 gap-x-2 gap-y-3 md:grid-cols-2 lg:grid-cols-4" : undefined}>{children}</div>
     {actions && <div className="mt-4 flex flex-wrap justify-end gap-x-2 gap-y-3">{actions}</div>}
   </section>;
 }

@@ -1,6 +1,6 @@
+import { NavigationLink } from '../ui/NavigationLink';
 import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useAuth, useUser } from '@clerk/clerk-react';
-import { Link } from 'react-router-dom';
 import { authGet } from '../../services/authApi';
 import { canAccessStaffRoute, hasStaffCapability, needsLocationAssignment, normalizeStaffAccess, staffScopeLabel, type StaffAccessUser, type StaffCapability } from './staffAccess.ts';
 
@@ -73,9 +73,9 @@ export function StaffAccessDenied() {
     <p className="break-words text-sm text-gray-700">Role: {roleLabel} · Scope: {scopeLabel}</p>
     <p>{assignmentRequired ? 'Ask a manager to assign your location' : 'Ask an owner or manager if you need access to this task.'}</p>
     <div className="flex flex-wrap gap-3">
-      {canAccessStaffRoute(user, '/admin/orders/pickup-queue') && <Link to="/admin/orders/pickup-queue" className="btn-primary min-h-11">Open pickup queue</Link>}
-      {canAccessStaffRoute(user, '/admin/devices') && <Link to="/admin/devices" className="inline-flex min-h-11 items-center rounded-lg border border-gray-300 px-3">This device</Link>}
-      <Link to="/" className="inline-flex min-h-11 items-center rounded-lg border border-gray-300 px-3">View store</Link>
+      {canAccessStaffRoute(user, '/admin/orders/pickup-queue') && <NavigationLink context="admin" to="/admin/orders/pickup-queue">Open pickup queue</NavigationLink>}
+      {canAccessStaffRoute(user, '/admin/devices') && <NavigationLink context="admin" to="/admin/devices" >This device</NavigationLink>}
+      <NavigationLink context="admin" to="/" >View store</NavigationLink>
     </div>
   </section>;
 }

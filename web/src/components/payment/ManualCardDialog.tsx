@@ -1,3 +1,5 @@
+import { CheckField } from '../ui/CheckField';
+import { Button } from '../ui/Button';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import Dialog from '../ui/Dialog';
 import { useStaffAccess } from '../admin/StaffAccess.tsx';
@@ -59,16 +61,16 @@ export default function ManualCardDialog({ sessionId, getToken, onClose, onCheck
       <PaymentEnvironmentBadge environment={state.environment} />
       <p className="my-3 font-medium">Order {state.order.order_number} · ${(state.amount_cents / 100).toFixed(2)}</p>
       {simulatorAllowed ? <PaymentCollectionForm ref={form} available={available} configuration={config} onPaymentReady={paymentReady} /> : <p role="status">Simulated card controls require an owner. This saved payment can still be checked or cancelled.</p>}
-      <label className="my-4 flex min-h-11 items-center gap-3"><input type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)} />I reviewed this order and its ${(state.amount_cents / 100).toFixed(2)} total.</label>
-      {hostedUrl ? <a href={reviewed ? hostedUrl : undefined} aria-disabled={!reviewed} target="_blank" rel="noopener noreferrer" className="btn-primary block text-center">Continue to Worldpay</a> :
-        <button type="button" disabled={!simulatorAllowed || !reviewed || !ready || busy || !state.collection_config.client_secret} onClick={() => void pay()} className="btn-primary min-h-11 w-full disabled:opacity-50">{busy ? 'Checking payment…' : 'Pay saved order'}</button>}
+      <CheckField type="checkbox" checked={reviewed} onChange={event => setReviewed(event.target.checked)}>I reviewed this order and its ${(state.amount_cents / 100).toFixed(2)} total.</CheckField>
+      {hostedUrl ? <Button variant="primary" href={hostedUrl} disabled={!reviewed} target="_blank" rel="noopener noreferrer">Continue to Worldpay</Button> :
+        <Button loading={busy} variant="primary" className="w-full" type="button" disabled={!simulatorAllowed || !reviewed || !ready || busy || !state.collection_config.client_secret} onClick={() => void pay()}>Pay saved order</Button>}
       <p role="status" className="my-3 text-sm">Saved payment state: {state.payment_state.replaceAll('_', ' ')}</p>
     </>}
     {!state && !error && <p role="status">Loading saved payment…</p>}
     {error && <p role="alert" className="my-3 text-red-800">{error}</p>}
     <div className="mt-4 flex flex-wrap gap-3">
-      <button type="button" disabled={busy} onClick={() => { setBusy(true); void check().catch(() => setError('Payment remains unresolved. Keep the saved order.')).finally(() => setBusy(false)); }} className="btn-secondary min-h-11">Check saved payment</button>
-      <button type="button" disabled={busy} onClick={onClose} className="btn-secondary min-h-11">Close form</button>
+      <Button variant="secondary" type="button" disabled={busy} onClick={() => { setBusy(true); void check().catch(() => setError('Payment remains unresolved. Keep the saved order.')).finally(() => setBusy(false)); }}>Check saved payment</Button>
+      <Button variant="secondary" type="button" disabled={busy} onClick={onClose}>Close form</Button>
     </div>
   </Dialog>;
 }

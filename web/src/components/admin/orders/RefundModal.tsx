@@ -1,3 +1,10 @@
+import { DialogHeader } from '../../ui/DialogHeader';
+import { DialogActions } from '../../ui/DialogActions';
+import { CheckField } from '../../ui/CheckField';
+import { Button } from '../../ui/Button';
+import { Textarea } from '../../ui/Textarea';
+import { Input } from '../../ui/Input';
+import { Field } from '../../ui/Field';
 import PaymentEnvironmentBadge from '../../payment/PaymentEnvironmentBadge';
 import { useId, useRef, useState, type RefObject } from 'react';
 import type { SavedRefundRequest } from '../../../lib/refundRequest';
@@ -38,18 +45,16 @@ export default function RefundModal({ order, processing, savedRequest, onProcess
       dismissible={!processing} onOpenChange={(open) => { if (!open && !processing) onClose(); }}
       className="admin-scope bg-white rounded-lg max-w-md w-full flex flex-col min-h-0"
     >
-        <div className="p-6 border-b border-gray-200 shrink-0">
-          <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-xl font-bold text-gray-900">Refund Order</h2>
+        <DialogHeader titleId={headingId} headingRef={headingRef} headingTabIndex={-1} title="Refund Order"
+          subtitle={<>Order {order.order_number} — {formatCurrency(order.total_cents)}</>}
+          onClose={onClose} closeLabel="Close refund" disabled={processing}>
           <PaymentEnvironmentBadge environment={order.payment_environment} />
-          <p className="text-sm text-gray-500 mt-1">
-            Order {order.order_number} &mdash; {formatCurrency(order.total_cents)}
-          </p>
-        </div>
+        </DialogHeader>
 
         <div
           role="region"
           aria-label="Refund details"
-          className="flex-1 min-h-0 overflow-y-auto p-6 space-y-4 overscroll-contain"
+          className="flex-auto min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4 overscroll-contain"
         >
           {savedRequest && <div role="status" className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
             A refund of {formatCurrency(savedRequest.payload.amount_cents)} is saved. Check its status before starting another refund. Pending and unknown amounts remain reserved.
@@ -61,28 +66,14 @@ export default function RefundModal({ order, processing, savedRequest, onProcess
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Refund Type</label>
             <div className="flex gap-4">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="refundType"
-                  value="full"
-                  checked={refundType === 'full'}
-                  onChange={() => setRefundType('full')}
-                  className="text-red-600 focus:ring-red-500"
-                />
+              <CheckField type="radio" name="refundType" value="full" checked={refundType === 'full'} onChange={() => setRefundType('full')}>
+
                 <span className="text-sm font-medium">Full Refund</span>
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="radio"
-                  name="refundType"
-                  value="partial"
-                  checked={refundType === 'partial'}
-                  onChange={() => setRefundType('partial')}
-                  className="text-red-600 focus:ring-red-500"
-                />
+              </CheckField>
+              <CheckField type="radio" name="refundType" value="partial" checked={refundType === 'partial'} onChange={() => setRefundType('partial')}>
+
                 <span className="text-sm font-medium">Partial Refund</span>
-              </label>
+              </CheckField>
             </div>
           </div>
 
@@ -99,8 +90,8 @@ export default function RefundModal({ order, processing, savedRequest, onProcess
             </div>
           ) : (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Refund Amount ($)</label>
-              <input
+              <Field label="Refund Amount ($)">
+              <Input
                 type="number"
                 step="0.01"
                 min="0.01"
@@ -108,8 +99,7 @@ export default function RefundModal({ order, processing, savedRequest, onProcess
                 value={refundAmount}
                 onChange={(e) => setRefundAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent"
-              />
+              /></Field>
               <p className="text-xs text-gray-500 mt-1">
                 Max refundable: {formatCurrency(maxRefundable)}
               </p>
@@ -118,20 +108,19 @@ export default function RefundModal({ order, processing, savedRequest, onProcess
 
           {/* Reason */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Reason (optional)</label>
-            <textarea
+            <Field label="Reason (optional)">
+            <Textarea
               value={refundReason}
               onChange={(e) => setRefundReason(e.target.value)}
               placeholder="Enter reason for refund..."
               rows={3}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
-            />
+            /></Field>
           </div>
 
-          <label className="flex items-start gap-2 text-sm">
-            <input type="checkbox" checked={restockItems} onChange={event => setRestockItems(event.target.checked)} className="mt-1" />
+          <CheckField type="checkbox" checked={restockItems} onChange={event => setRestockItems(event.target.checked)}>
+
             <span>Restock all remaining units from this order after the refund is confirmed.<span className="mt-1 block text-xs text-gray-600">Select only for returned or cancelled items. Previously restored units will not be added again.</span></span>
-          </label>
+          </CheckField>
           </fieldset>}
           {/* Warning */}
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
@@ -142,27 +131,25 @@ export default function RefundModal({ order, processing, savedRequest, onProcess
           </div>
         </div>
 
-        <div className="p-6 border-t border-gray-200 flex gap-3 shrink-0">
-          <button
+        <DialogActions>
+          <Button loading={processing} variant={savedRequest ? "secondary" : "destructive"} className="flex-1"
             type="button"
             onClick={handleProcess}
             disabled={
               processing ||
               (!savedRequest && (maxRefundable <= 0 || (refundType === 'partial' && (!refundAmount || parseFloat(refundAmount) <= 0 || Math.round(parseFloat(refundAmount) * 100) > maxRefundable))))
             }
-            className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-primary-dark transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {processing ? 'Checking...' : savedRequest ? 'Check saved refund' : 'Process Refund'}
-          </button>
-          <button
+            {savedRequest ? 'Check saved refund' : 'Process Refund'}
+          </Button>
+          <Button variant="secondary"
             type="button"
             onClick={() => { if (!processing) onClose(); }}
             disabled={processing}
-            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium disabled:opacity-50"
           >
             Close
-          </button>
-        </div>
+          </Button>
+        </DialogActions>
     </Dialog>
   );
 }

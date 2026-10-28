@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom';
+import { Button } from '../ui/Button';
 import { ChevronRight } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { ReactNode, Ref } from 'react';
 
 export interface BreadcrumbItem {
   label: string;
@@ -9,6 +9,8 @@ export interface BreadcrumbItem {
 
 interface AdminPageHeaderProps {
   title: string;
+  headingRef?: Ref<HTMLHeadingElement>;
+  headingTabIndex?: number;
   subtitle?: ReactNode;
   breadcrumbs?: BreadcrumbItem[];
   /** Right-aligned action area (buttons, etc.) */
@@ -17,12 +19,13 @@ interface AdminPageHeaderProps {
 
 export default function AdminPageHeader({
   title,
+  headingRef, headingTabIndex,
   subtitle,
   breadcrumbs,
   actions,
 }: AdminPageHeaderProps) {
   return (
-    <div className="mb-4">
+    <div data-admin-page-header className="min-w-0 flex-1">
       {/* Breadcrumbs */}
       {breadcrumbs && breadcrumbs.length > 0 && (
         <nav className="flex items-center gap-1.5 text-sm mb-3">
@@ -31,12 +34,12 @@ export default function AdminPageHeader({
             return (
               <span key={i} className="flex items-center gap-1.5">
                 {crumb.path && !isLast ? (
-                  <Link
+                  <Button variant="link"
                     to={crumb.path}
-                    className="text-gray-500 hover:text-tsPrimary transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 rounded"
+
                   >
                     {crumb.label}
-                  </Link>
+                  </Button>
                 ) : (
                   <span className={isLast ? 'text-gray-900 font-medium' : 'text-gray-500'}>
                     {crumb.label}
@@ -54,7 +57,7 @@ export default function AdminPageHeader({
       {/* Title + Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-xl leading-7 sm:text-2xl sm:leading-8 font-bold text-gray-900">{title}</h1>
+          <h1 ref={headingRef} tabIndex={headingTabIndex} className="text-xl leading-7 sm:text-2xl sm:leading-8 font-bold text-gray-900">{title}</h1>
           {subtitle && (
             <p className="text-sm text-gray-600 leading-5 mt-1">{subtitle}</p>
           )}

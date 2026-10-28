@@ -1,7 +1,11 @@
+import { RefreshCw } from 'lucide-react';
+import { IconButton } from '../../components/ui/IconButton';
+import { NavigationLink } from '../../components/ui/NavigationLink';
+import { OrderStatusBadge } from '../../components/admin/orders/OrderStatusBadge';
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import { ActionTile } from '../../components/ui/ActionTile';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { Link } from 'react-router-dom';
 import {
   ShoppingCart, DollarSign, Clock, Package, Plus, ClipboardList, FolderOpen,
   BarChart3, ArrowRight,
@@ -41,16 +45,6 @@ const formatDate = (dateString: string) =>
     month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
   });
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  confirmed: 'bg-indigo-100 text-indigo-800',
-  processing: 'bg-blue-100 text-blue-800',
-  ready: 'bg-emerald-100 text-emerald-800',
-  shipped: 'bg-purple-100 text-purple-800',
-  picked_up: 'bg-green-100 text-green-800',
-  delivered: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800',
-};
 
 const BUSINESS_LINE_LABELS: Record<string, string> = {
   three_squares: 'Three Squares',
@@ -98,7 +92,7 @@ export default function AdminDashboardPage() {
 
   if (!stats) {
     return <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+      <AdminPageHeader title="Dashboard" />
       {requestState}
       {loading && <SkeletonDashboard />}
     </div>;
@@ -107,12 +101,7 @@ export default function AdminDashboardPage() {
   return (
     <div className="space-y-8">
       {/* Welcome Header */}
-      <div className="rounded-2xl p-6 sm:p-8 shadow-lg bg-tsPrimary">
-        <h1 className="text-2xl sm:text-3xl font-bold mb-2" style={{ color: '#ffffff' }}>Welcome back!</h1>
-        <p style={{ color: '#ffffff', opacity: 0.9 }}>All-time order totals · {scopeLabel} · All business lines</p>
-        <p className="mt-2 text-sm text-white">Production, non-simulated orders only. Revenue is captured sales minus succeeded refunds. Published products are counted across all locations.</p>
-        <button type="button" onClick={fetchDashboardData} disabled={loading} className="mt-4 min-h-[44px] rounded-lg border border-white px-4 text-white focus-visible:outline-2 focus-visible:outline-offset-2 disabled:opacity-60">Refresh dashboard</button>
-      </div>
+      <AdminPageHeader title="Dashboard" subtitle={<>All-time order totals · {scopeLabel} · All business lines<br />Production, non-simulated orders only. Revenue is captured sales minus succeeded refunds. Published products are counted across all locations.</>} actions={<><IconButton aria-label="Refresh dashboard" type="button" onClick={fetchDashboardData} disabled={loading}><RefreshCw /></IconButton></>} />
 
       {requestState}
 
@@ -168,10 +157,10 @@ export default function AdminDashboardPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
           <div><h2 className="text-lg font-bold text-gray-900">Recent Orders</h2><p className="text-sm text-gray-600">{scopeLabel} · All business lines · Includes test and simulated orders</p></div>
-          <Link to="/admin/orders" className="text-sm link-primary flex items-center gap-1">
+          <NavigationLink context="admin" to="/admin/orders" className="gap-1">
             View All
             <ArrowRight className="w-4 h-4" />
-          </Link>
+          </NavigationLink>
         </div>
         <div className="divide-y divide-gray-50">
           {recentOrders.length === 0 ? (!loadError && !loading && (
@@ -182,10 +171,9 @@ export default function AdminDashboardPage() {
             </div>
           )) : (
             recentOrders.map((order) => (
-              <Link
+              <NavigationLink context="admin"
                 key={order.id}
-                to={`/admin/orders?id=${order.id}`}
-                className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 rounded"
+                to={`/admin/orders?id=${order.id}`} record
               >
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-sm font-semibold text-gray-600">
@@ -197,15 +185,13 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  <span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${STATUS_COLORS[order.status] || 'bg-gray-100 text-gray-800'}`}>
-                    {order.status.charAt(0).toUpperCase() + order.status.slice(1).replace('_', ' ')}
-                  </span>
+                  <OrderStatusBadge order={order} />
                   <div className="text-right">
                     <p className="font-bold text-gray-900 text-sm">{formatCurrency(order.total_cents)}</p>
                     <p className="text-xs text-gray-400">{formatDate(order.created_at)}</p>
                   </div>
                 </div>
-              </Link>
+              </NavigationLink>
             ))
           )}
         </div>

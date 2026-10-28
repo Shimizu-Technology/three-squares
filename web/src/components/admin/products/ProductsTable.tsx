@@ -56,7 +56,7 @@ export default function ProductsTable({
 
   const ProductStatus = ({ product }: { product: Product }) => (
     <div className="flex shrink-0 flex-col items-start gap-1">
-    <StatusBadge tone={product.archived ? 'inactive' : product.published ? 'success' : 'neutral'}>
+    <StatusBadge tone={product.archived ? 'inactive' : product.published ? 'neutral' : 'inactive'}>
       {product.archived ? 'Archived' : product.published ? 'Published' : 'Draft'}
     </StatusBadge>
     {product.needs_pickup_locations && <span className="max-w-36 text-sm font-semibold text-amber-900">Needs pickup locations</span>}
@@ -81,7 +81,7 @@ export default function ProductsTable({
           {stockDisplay.value}
         </span>
         {stockDisplay.outOfStock && (
-          <StatusBadge tone="danger">Out</StatusBadge>
+          <StatusBadge tone="attention">Out</StatusBadge>
         )}
       </div>
     );

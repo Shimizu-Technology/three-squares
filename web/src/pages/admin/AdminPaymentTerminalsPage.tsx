@@ -1,3 +1,13 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { statusTone } from '../../components/ui/workflowStatus';
+import { RefreshCw } from 'lucide-react';
+import { IconButton } from '../../components/ui/IconButton';
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
+import { Field } from '../../components/ui/Field';
+import { CheckField } from '../../components/ui/CheckField';
+import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
+import { Button } from '../../components/ui/Button';
 import { useCallback, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { StaffAccessDenied, useStaffAccess, type StaffAccessUser, type StaffLocation } from '../../components/admin/StaffAccess.tsx';
@@ -12,9 +22,6 @@ import type { GetTokenFn } from '../../services/authApi';
 import type { PaymentEnvironment, PaymentProvider } from '../../types/paymentReceipt';
 
 const storageKey = 'tsq-pending-terminal-administration-v1';
-const control = 'min-h-11 w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base disabled:opacity-60';
-const button = 'min-h-11 touch-manipulation rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 transition-none! active:transform-none! disabled:cursor-not-allowed disabled:opacity-50 active:bg-gray-100 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-gray-50';
-const primary = `${button} border-tsPrimary bg-tsPrimary text-white active:bg-tsNavy [@media(hover:hover)_and_(pointer:fine)]:hover:bg-tsNavy`;
 const states: AdministrationState[] = ['reserved', 'dispatching', 'unknown', 'succeeded', 'failed'];
 interface DeviceSnapshot {
   label: string;
@@ -276,10 +283,7 @@ function TerminalAdministration({ user, getToken }: { user: StaffAccessUser; get
   const dialogDevice = dialogOperation?.device ?? (confirmation?.kind === 'edit' ? confirmation.terminal : null);
   const title = confirmation?.kind === 'edit' ? 'Edit reader settings' : dialogOperation?.kind === 'retire' ? 'Retire this reader?' : dialogOperation?.device.provider === 'stripe' ? 'Verify registered Stripe reader?' : 'Pair this reader?';
   return <div className="min-w-0 space-y-6 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] [overflow-wrap:anywhere]">
-    <header className="flex flex-wrap items-start justify-between gap-3">
-      <div className="space-y-2"><h1 className="text-2xl font-bold">Payment readers</h1><p className="text-sm">Pair and manage readers for authorized locations. Resolve any saved operation before making another change.</p></div>
-      <button type="button" className={button} disabled={busy || loading} onClick={() => void reload()}>Refresh readers</button>
-    </header>
+    <AdminPageHeader title="Payment readers" subtitle={<>Pair and manage readers for authorized locations. Resolve any saved operation before making another change.</>} actions={<><IconButton aria-label="Refresh readers" type="button" disabled={busy || loading} onClick={() => void reload()}><RefreshCw /></IconButton></>} />
     {error && <p role="alert" className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">{error}</p>}
     {notice && <p role="status" className="rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-900">{notice}</p>}
     {saved.blocked && <section role="alert" className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-4">
@@ -295,8 +299,8 @@ function TerminalAdministration({ user, getToken }: { user: StaffAccessUser; get
           : 'The outcome is not yet confirmed. Do not request another code or create another pairing.'}</p>
         <p className="text-xs">Original request reference: {pending.key}</p>
         <div className="flex flex-wrap gap-2">
-          <button type="button" className={button} disabled={busy} onClick={() => void dispatch(pending)}>{busy ? 'Checking saved operation…' : pending.kind === 'retire' ? 'Check saved retirement' : 'Check saved pairing'}</button>
-          {pending.state === 'reserved' && pending.kind !== 'retire' && <button type="button" className={button} disabled={busy} onClick={() => { setActivationCode(''); setConfirmation({ kind: 'operation', operation: pending, saved: true }); }}>Retry reserved pairing</button>}
+          <Button loading={busy} variant="secondary" type="button" disabled={busy} onClick={() => void dispatch(pending)}>{pending.kind === 'retire' ? 'Check saved retirement' : 'Check saved pairing'}</Button>
+          {pending.state === 'reserved' && pending.kind !== 'retire' && <Button variant="secondary" type="button" disabled={busy} onClick={() => { setActivationCode(''); setConfirmation({ kind: 'operation', operation: pending, saved: true }); }}>Retry reserved pairing</Button>}
         </div>
       </>}
     </section>}
@@ -306,25 +310,23 @@ function TerminalAdministration({ user, getToken }: { user: StaffAccessUser; get
       <form onSubmit={prepareCreate} className="space-y-4">
         <fieldset disabled={blocked || loading || !!loadError} className="grid min-w-0 gap-4 sm:grid-cols-2 disabled:opacity-60">
           <legend className="sr-only">New reader details</legend>
-          <label className="min-w-0 space-y-1 text-sm font-medium">Payment profile
-            <select required className={control} value={form.profile} onChange={event => setForm(previous => ({ ...previous, profile: event.target.value }))}>
+          <Field label="Payment profile"><Select required value={form.profile} onChange={event => setForm(previous => ({ ...previous, profile: event.target.value }))}>
               <option value="">Select a payment profile</option>
               {profileChoices.map(profile => <option key={profile.id} value={profile.id}>{profile.provider === 'worldpay' ? 'Worldpay' : 'Stripe'} · {profile.environment} · {profile.presentation} · #{profile.id}</option>)}
-            </select>
-          </label>
-          <label className="min-w-0 space-y-1 text-sm font-medium">Location
-            <select required className={control} value={form.location} onChange={event => setForm(previous => ({ ...previous, location: event.target.value }))}>
+            </Select>
+          </Field>
+          <Field label="Location"><Select required value={form.location} onChange={event => setForm(previous => ({ ...previous, location: event.target.value }))}>
               <option value="">Select a location</option>
               {locationChoices.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}
-            </select>
-          </label>
-          <label className="min-w-0 space-y-1 text-sm font-medium">Reader label<input className={control} required maxLength={120} autoComplete="off" value={form.label} onChange={event => setForm(previous => ({ ...previous, label: event.target.value }))} /></label>
-          <label className="min-w-0 space-y-1 text-sm font-medium">Assigned lane<input className={control} required maxLength={64} autoComplete="off" inputMode={selectedProfile?.provider === 'worldpay' && selectedProfile.environment !== 'simulated' ? 'numeric' : 'text'} value={form.lane} onChange={event => setForm(previous => ({ ...previous, lane: event.target.value }))} /></label>
-          <label className="min-w-0 space-y-1 text-sm font-medium">Assigned reader identifier<input className={control} required maxLength={120} autoComplete="off" value={form.terminal} onChange={event => setForm(previous => ({ ...previous, terminal: event.target.value }))} /></label>
+            </Select>
+          </Field>
+          <Field label="Reader label"><Input required maxLength={120} autoComplete="off" value={form.label} onChange={event => setForm(previous => ({ ...previous, label: event.target.value }))} /></Field>
+          <Field label="Assigned lane"><Input required maxLength={64} autoComplete="off" inputMode={selectedProfile?.provider === 'worldpay' && selectedProfile.environment !== 'simulated' ? 'numeric' : 'text'} value={form.lane} onChange={event => setForm(previous => ({ ...previous, lane: event.target.value }))} /></Field>
+          <Field label="Assigned reader identifier"><Input required maxLength={120} autoComplete="off" value={form.terminal} onChange={event => setForm(previous => ({ ...previous, terminal: event.target.value }))} /></Field>
         </fieldset>
         {selectedProfile && <PaymentEnvironmentBadge environment={selectedProfile.environment} inline />}
         {!loading && !loadError && profiles.length === 0 && <p className="text-sm">No compatible payment profiles are available. A configured profile is required before pairing.</p>}
-        <button type="submit" className={primary} disabled={blocked || loading || !!loadError || !selectedProfile || !form.location}>Review pairing</button>
+        <Button variant="primary" type="submit" disabled={blocked || loading || !!loadError || !selectedProfile || !form.location}>Review pairing</Button>
       </form>
     </section>
     <section aria-labelledby={`${id}-readers`} className="space-y-3">
@@ -337,13 +339,13 @@ function TerminalAdministration({ user, getToken }: { user: StaffAccessUser; get
         const occupied = !!terminal.attempt_id || ['waiting_for_card', 'card_inserted', 'processing'].includes(terminal.status);
         return <article key={terminal.id} aria-label={terminal.label} className="min-w-0 space-y-3 rounded-xl border border-gray-200 bg-white p-4">
           <DeviceFacts device={terminal} locations={locations} />
-          <p className="text-sm">Reader: <strong>{terminal.status.replaceAll('_', ' ')}</strong> · {terminal.enabled ? 'Enabled' : 'Disabled'} · Connection: {terminal.connection_state?.replaceAll('_', ' ') || 'not verified'}</p>
+          <div className="flex flex-wrap gap-2"><StatusBadge tone={statusTone(terminal.status)}>Reader: {terminal.status.replaceAll('_', ' ')}</StatusBadge><StatusBadge tone={terminal.enabled ? 'success' : 'inactive'}>{terminal.enabled ? 'Enabled' : 'Disabled'}</StatusBadge><StatusBadge tone={statusTone(terminal.connection_state || 'unknown')}>Connection: {terminal.connection_state?.replaceAll('_', ' ') || 'not verified'}</StatusBadge></div>
           <p className="text-xs">Connection verified: {terminal.connection_verified_at || 'Not verified'} · Firmware: {terminal.device_firmware || 'Not verified'}</p>
           {occupied && <p className="text-sm font-medium text-amber-950">Reader has an unresolved payment{terminal.order_number ? ` for order ${terminal.order_number}` : ''}. Resolve the original payment in POS before pairing or retiring.</p>}
           <div className="flex flex-wrap gap-2">
-            <button type="button" className={button} disabled={unavailable} onClick={() => { setEditLabel(terminal.label); setEditEnabled(terminal.enabled); setConfirmation({ kind: 'edit', terminal }); }}>Edit label / availability</button>
-            <button type="button" className={button} disabled={unavailable || occupied} onClick={() => openOperation({ kind: 'pair', terminal_id: terminal.id }, terminal)}>Pair reader</button>
-            <button type="button" className={button} disabled={unavailable || occupied || terminal.connection_state === 'unknown'} onClick={() => openOperation({ kind: 'retire', terminal_id: terminal.id }, terminal)}>Retire reader</button>
+            <Button variant="secondary" type="button" disabled={unavailable} onClick={() => { setEditLabel(terminal.label); setEditEnabled(terminal.enabled); setConfirmation({ kind: 'edit', terminal }); }}>Edit label / availability</Button>
+            <Button variant="secondary" type="button" disabled={unavailable || occupied} onClick={() => openOperation({ kind: 'pair', terminal_id: terminal.id }, terminal)}>Pair reader</Button>
+            <Button variant="secondary" type="button" disabled={unavailable || occupied || terminal.connection_state === 'unknown'} onClick={() => openOperation({ kind: 'retire', terminal_id: terminal.id }, terminal)}>Retire reader</Button>
           </div>
         </article>;
       })}
@@ -363,15 +365,15 @@ function TerminalAdministration({ user, getToken }: { user: StaffAccessUser; get
         {dialogDevice && <DeviceFacts device={dialogDevice} locations={locations} />}
         {error && <p role="alert" className="text-sm text-red-800">{error}</p>}
         {confirmation?.kind === 'edit' && <>
-          <label className="block space-y-1 text-sm font-medium">Reader label<input autoComplete="off" required maxLength={120} className={control} disabled={busy} value={editLabel} onChange={event => setEditLabel(event.target.value)} /></label>
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 text-base"><input type="checkbox" className="h-5 w-5" disabled={busy} checked={editEnabled} onChange={event => setEditEnabled(event.target.checked)} />Enabled for new payments</label>
+          <Field label="Reader label"><Input autoComplete="off" required maxLength={120} disabled={busy} value={editLabel} onChange={event => setEditLabel(event.target.value)} /></Field>
+          <CheckField type="checkbox" disabled={busy} checked={editEnabled} onChange={event => setEditEnabled(event.target.checked)}>Enabled for new payments</CheckField>
         </>}
-        {needsCode && <label className="block space-y-1 text-sm font-medium">Activation code<input type="password" autoComplete="off" spellCheck={false} autoCapitalize="none" required maxLength={80} className={control} disabled={busy} value={activationCode} onChange={event => setActivationCode(event.target.value)} /></label>}
+        {needsCode && <Field label="Activation code"><Input type="password" autoComplete="off" spellCheck={false} autoCapitalize="none" required maxLength={80} disabled={busy} value={activationCode} onChange={event => setActivationCode(event.target.value)} /></Field>}
         {needsCode && dialogDevice?.environment === 'simulated' && <p className="text-sm text-amber-950">Simulated profile only — no money moves. Fixtures: SIM-APPROVE, SIM-DECLINE, SIM-TIMEOUT.</p>}
         {needsCode && <p className="text-xs text-gray-600">The activation code is cleared after dispatch and is never saved in browser storage.</p>}
         <div className="flex flex-wrap justify-end gap-2">
-          <button type="button" className={button} disabled={busy} onClick={() => { setConfirmation(null); setActivationCode(''); }}>Back</button>
-          <button type="submit" className={primary} disabled={busy || (needsCode && !activationCode.trim()) || (confirmation?.kind === 'edit' && !editLabel.trim())}>{busy ? 'Saving…' : confirmation?.kind === 'edit' ? 'Save settings' : dialogOperation?.kind === 'retire' ? 'Confirm retirement' : 'Confirm pairing'}</button>
+          <Button variant="secondary" type="button" disabled={busy} onClick={() => { setConfirmation(null); setActivationCode(''); }}>Back</Button>
+          <Button loading={busy} variant="primary" type="submit" disabled={busy || (needsCode && !activationCode.trim()) || (confirmation?.kind === 'edit' && !editLabel.trim())}>{confirmation?.kind === 'edit' ? 'Save settings' : dialogOperation?.kind === 'retire' ? 'Confirm retirement' : 'Confirm pairing'}</Button>
         </div>
       </form>
     </Dialog>

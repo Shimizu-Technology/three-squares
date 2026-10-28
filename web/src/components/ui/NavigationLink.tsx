@@ -1,13 +1,16 @@
 import type { AnchorHTMLAttributes, ReactNode } from 'react';
 import { Link, type LinkProps } from 'react-router-dom';
 
-type NavigationLinkProps = (LinkProps | (AnchorHTMLAttributes<HTMLAnchorElement> & { href: string; to?: never })) & { surface?: 'default' | 'dark' };
+type NavigationLinkProps = {surface?: 'default' | 'dark'; context?: 'public' | 'admin'; brand?: boolean; compact?: boolean; record?: boolean} & (
+  | (LinkProps & {href?: never})
+  | (AnchorHTMLAttributes<HTMLAnchorElement> & {href: string; to?: never})
+);
 
-/** Navigation retains anchor semantics, with a real 44px target on every input. */
-export function NavigationLink({ surface = 'default', ...props }: NavigationLinkProps) {
-  const className = `ui-navigation-link${surface === 'dark' ? ' ui-navigation-link--on-dark' : ''} ${props.className || ''}`.trim();
-  if (props.to !== undefined) return <Link {...props as LinkProps} className={className} data-ui-navigation />;
-  return <a {...props as AnchorHTMLAttributes<HTMLAnchorElement>} className={className} data-ui-navigation />;
+/** Native navigation; the admin context supplies wrapping workspace/record targets. */
+export function NavigationLink({className = '', surface = 'default', context = 'public', brand = false, compact = false, record = false, ...props}: NavigationLinkProps) {
+  const shared = {'data-ui-navigation':true, 'data-ui-control':context === 'admin' ? 'navigation' : undefined, 'data-context':context, 'data-brand':brand || undefined, 'data-compact':compact || undefined, 'data-record':record || undefined, className:`ui-navigation-link${surface === 'dark' ? ' ui-navigation-link--on-dark' : ''} ${className}`.trim()};
+  if (props.href !== undefined) return <a {...props as AnchorHTMLAttributes<HTMLAnchorElement>} {...shared} />;
+  return <Link {...props as LinkProps} {...shared} />;
 }
 
 /** A navigation disclosure changes visibility, so it uses a named native button. */

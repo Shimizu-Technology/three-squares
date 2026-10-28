@@ -1,12 +1,15 @@
-import { cloneElement, isValidElement, useId, useState, type ReactNode } from 'react';
+import { CheckField } from '../../ui/CheckField';
+import { Input } from '../../ui/Input';
+import { Select } from '../../ui/Select';
+import { Button } from '../../ui/Button';
+import { Field } from '../../ui/Field';
+import { useState } from 'react';
 import type { GetTokenFn } from '../../../services/authApi';
 import {
   accountingErrorMessage, accountingErrorStatus, downloadAccountingCSV, formatAccountingCents,
   type AccountingAction, type AccountingContext, type AccountingReport, type PendingAccountingAction,
 } from '../../../services/paymentReconciliation';
 
-const control = 'min-h-11 w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base disabled:opacity-60';
-const button = 'min-h-11 touch-manipulation select-none rounded-lg border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-800 transition-none! active:transform-none! active:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-gray-50';
 const scenarios = ['ordinary', 'combined', 'split', 'weekend', 'missing', 'duplicate', 'mismatch', 'external_refund'] as const;
 interface Props {
   report: AccountingReport; context: AccountingContext; getToken: GetTokenFn;
@@ -51,39 +54,35 @@ export default function SimulatedReconciliationPanel({ report, context, getToken
         : savedMutation.kind === 'simulate_close' ? { action: 'Batch close', scenario: savedMutation.scenario, lag_days: savedMutation.lag_days, fee_cents: savedMutation.fee_cents }
           : savedMutation.kind === 'advance_simulation' ? { action: 'Accounting clock advance', seconds: savedMutation.seconds } : {}, null, 2)}</pre>
       {savedMutation.kind === 'simulate_void' && <p className="text-sm">Original order {savedMutation.order_number} · Attempt #{savedMutation.attempt_id} · Full amount {formatAccountingCents(savedMutation.amount_cents)}. No restocking.</p>}
-      <button type="button" className={button} disabled={busy || downloading} onClick={() => void onRetry(savedMutation)}>Check / retry original simulated action</button>
+      <Button variant="secondary" type="button" disabled={busy || downloading} onClick={() => void onRetry(savedMutation)}>Check / retry original simulated action</Button>
     </div>}
     <form className="space-y-3" onSubmit={event => { event.preventDefault(); if (validClose && !locked) void onStart({ kind: 'simulate_close', scenario, lag_days: lagNumber, fee_cents: feeNumber }); }}>
       <h3 className="font-semibold">Close persisted simulated ledger entries</h3>
       <p className="text-sm">Creates observational batches from new ledger entries. Funding arrives only through a separate CSV import.</p>
       <div className="grid gap-3 sm:grid-cols-3">
-        <Field label="Funding scenario"><select className={control} value={scenario} disabled={locked} onChange={event => setScenario(event.target.value)}>{scenarios.map(value => <option key={value} value={value}>{value}</option>)}</select></Field>
-        <Field label="Funding lag (0–14 days)"><input type="number" min={0} max={14} step={1} required inputMode="numeric" className={control} value={lag} disabled={locked} onChange={event => setLag(event.target.value)} /></Field>
-        <Field label="Synthetic fee (0–10,000 cents)"><input type="number" min={0} max={10000} step={1} required inputMode="numeric" className={control} value={fee} disabled={locked} onChange={event => setFee(event.target.value)} /></Field>
+        <Field label="Funding scenario"><Select value={scenario} disabled={locked} onChange={event => setScenario(event.target.value)}>{scenarios.map(value => <option key={value} value={value}>{value}</option>)}</Select></Field>
+        <Field label="Funding lag (0–14 days)"><Input type="number" min={0} max={14} step={1} required inputMode="numeric" value={lag} disabled={locked} onChange={event => setLag(event.target.value)} /></Field>
+        <Field label="Synthetic fee (0–10,000 cents)"><Input type="number" min={0} max={10000} step={1} required inputMode="numeric" value={fee} disabled={locked} onChange={event => setFee(event.target.value)} /></Field>
       </div>
-      <button className={button} disabled={locked || !validClose}>Close simulated batches</button>
+      <Button type="submit" variant="secondary" disabled={locked || !validClose}>Close simulated batches</Button>
     </form>
     <div className="space-y-3 border-t border-amber-300 pt-4">
       <h3 className="font-semibold">Advance isolated accounting clock</h3>
       <p className="text-sm">Advances accounting time by three days. Payment clocks and payment processing remain unchanged. A lost response preserves the original advance and key.</p>
-      <button type="button" className={button} disabled={locked} onClick={() => void onStart({ kind: 'advance_simulation', seconds: 259200 })}>Advance accounting time by 3 days</button>
+      <Button variant="secondary" type="button" disabled={locked} onClick={() => void onStart({ kind: 'advance_simulation', seconds: 259200 })}>Advance accounting time by 3 days</Button>
     </div>
     <div className="space-y-3 border-t border-amber-300 pt-4">
       <h3 className="font-semibold">Download future funding observations</h3>
       <p className="text-sm">Select a saved simulator close. Once its funding is due, download its deposit/allocation CSV, then select that file in the canonical CSV import above. Downloading does not import it.</p>
-      <Field label="Saved simulator close"><select className={control} value={importId} disabled={busy || downloading} onChange={event => setImportId(event.target.value)}><option value="">Choose a saved close</option>{report.imports.filter(row => row.source === 'simulator').map(row => <option key={row.id} value={row.id}>Import #{row.id} · {row.state} · {row.processed_at ?? 'Not processed'}</option>)}</select></Field>
-      <button type="button" className={button} disabled={busy || downloading || !selectedImport} onClick={() => void download()}>{downloading ? 'Downloading funding CSV…' : 'Download simulated funding CSV'}</button>
+      <Field label="Saved simulator close"><Select value={importId} disabled={busy || downloading} onChange={event => setImportId(event.target.value)}><option value="">Choose a saved close</option>{report.imports.filter(row => row.source === 'simulator').map(row => <option key={row.id} value={row.id}>Import #{row.id} · {row.state} · {row.processed_at ?? 'Not processed'}</option>)}</Select></Field>
+      <Button loading={downloading} variant="secondary" type="button" disabled={busy || downloading || !selectedImport} onClick={() => void download()}>Download funding CSV</Button>
     </div>
     <div className="space-y-3 border-t border-amber-300 pt-4">
       <h3 className="font-semibold">Full current-batch void</h3>
       <p className="text-sm">Only full, unrefunded, unbatched attempts supplied by the report are eligible. Choose the exact attempt and review its full amount. This does not restock items.</p>
-      <Field label="Eligible payment attempt"><select className={control} value={attemptId} disabled={locked} onChange={event => { setAttemptId(event.target.value); setVoidReview(null); }}><option value="">Choose an exact attempt</option>{report.voidable_attempts.map(row => <option key={row.attempt_id} value={row.attempt_id}>{row.order_number} · Attempt #{row.attempt_id} · {formatAccountingCents(row.amount_cents)}</option>)}</select></Field>
+      <Field label="Eligible payment attempt"><Select value={attemptId} disabled={locked} onChange={event => { setAttemptId(event.target.value); setVoidReview(null); }}><option value="">Choose an exact attempt</option>{report.voidable_attempts.map(row => <option key={row.attempt_id} value={row.attempt_id}>{row.order_number} · Attempt #{row.attempt_id} · {formatAccountingCents(row.amount_cents)}</option>)}</Select></Field>
       {!report.voidable_attempts.length && <p className="text-sm">No eligible attempts are available. Refresh after a new simulated payment.</p>}
-      {selectedAttempt && <div className="space-y-2 rounded-lg border border-amber-300 bg-white p-3"><p className="font-semibold">Order {selectedAttempt.order_number} · Attempt #{selectedAttempt.attempt_id}</p><p>Full void amount: {formatAccountingCents(selectedAttempt.amount_cents)} ({selectedAttempt.amount_cents} cents)</p><label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" className="size-5 shrink-0" checked={!!voidFingerprint && voidReview === voidFingerprint} disabled={locked} onChange={event => setVoidReview(event.target.checked ? voidFingerprint : null)} />I reviewed this exact attempt and full amount; no restock is requested.</label><button type="button" className={button} disabled={locked || !voidFingerprint || voidReview !== voidFingerprint} onClick={() => { setVoidReview(null); void onStart({ kind: 'simulate_void', attempt_id: selectedAttempt.attempt_id, order_number: selectedAttempt.order_number, amount_cents: selectedAttempt.amount_cents }); }}>Void this exact simulated attempt in full</button></div>}
+      {selectedAttempt && <div className="space-y-2 rounded-lg border border-amber-300 bg-white p-3"><p className="font-semibold">Order {selectedAttempt.order_number} · Attempt #{selectedAttempt.attempt_id}</p><p>Full void amount: {formatAccountingCents(selectedAttempt.amount_cents)} ({selectedAttempt.amount_cents} cents)</p><CheckField type="checkbox" checked={!!voidFingerprint && voidReview === voidFingerprint} disabled={locked} onChange={event => setVoidReview(event.target.checked ? voidFingerprint : null)}>I reviewed this exact attempt and full amount; no restock is requested.</CheckField><Button variant="secondary" type="button" disabled={locked || !voidFingerprint || voidReview !== voidFingerprint} onClick={() => { setVoidReview(null); void onStart({ kind: 'simulate_void', attempt_id: selectedAttempt.attempt_id, order_number: selectedAttempt.order_number, amount_cents: selectedAttempt.amount_cents }); }}>Void this exact simulated attempt in full</Button></div>}
     </div>
   </section>;
-}
-function Field({ label, children }: { label: string; children: ReactNode }) {
-  const id = useId();
-  return <div className="block min-w-0 space-y-1 text-sm font-medium"><label htmlFor={id} className="block">{label}</label>{isValidElement<{ id?: string }>(children) ? cloneElement(children, { id }) : children}</div>;
 }

@@ -12,13 +12,13 @@ const badgeSource = new URL('../src/components/payment/PaymentEnvironmentBadge.t
 const badgeCompiled = ts.transpileModule(readFileSync(badgeSource, 'utf8'), {
   compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText.replace(/from ["']react\/jsx-runtime["']/g, `from ${JSON.stringify(import.meta.resolve('react/jsx-runtime'))}`);
-const badgeModule = `data:text/javascript;base64,${Buffer.from(badgeCompiled).toString('base64')}`;
+const badgeModule = `data:text/javascript;base64,${Buffer.from(badgeCompiled.replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(uiModules[name] || name)}`)).toString('base64')}`;
 const compiled = ts.transpileModule(readFileSync(source, 'utf8'), {
   compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText.replace(/from ["']react\/jsx-runtime["']/g, `from ${JSON.stringify(import.meta.resolve('react/jsx-runtime'))}`)
   .replace(/from ["']\.\/orderUtils["']/g, `from ${JSON.stringify(new URL('../src/components/admin/orders/orderUtils.ts', import.meta.url).href)}`)
   .replace(/from ["']\.\.\/\.\.\/payment\/PaymentEnvironmentBadge["']/g, `from ${JSON.stringify(badgeModule)}`);
-const resolved = compiled.replace(/from ["']\.\.\/\.\.\/ui\/Button["']/g, `from ${JSON.stringify(uiModules['../../ui/Button'])}`);
+const resolved = compiled.replace(/from ["']([^"']+)["']/g, (_,name)=>`from ${JSON.stringify(uiModules[name] || name)}`);
 const { default: PackingList } = await import(`data:text/javascript;base64,${Buffer.from(resolved).toString('base64')}`);
 const note = 'Severe peanut allergy. Sauce separately. '.repeat(30);
 const order = {
@@ -49,8 +49,8 @@ test('packing renders quantities, variants, full instructions and customer excep
 
 test('packing distinguishes simulated and sandbox payments and omits the badge for production', () => {
   const forEnvironment = payment_environment => render({ orders: [{ ...order, payment_environment }] });
-  assert.ok(forEnvironment('simulated').includes('Simulated payments — no money moves'));
-  assert.ok(forEnvironment('sandbox').includes('Sandbox payments'));
+  assert.match(forEnvironment('simulated'), /Simulated<.*payments — no money moves/);
+  assert.match(forEnvironment('sandbox'), /Sandbox<.*payments/);
   assert.ok(!forEnvironment('sandbox').includes('Simulated payments'));
   assert.ok(!forEnvironment('production').includes('payments'));
   assert.ok(!forEnvironment(undefined).includes('payments'));

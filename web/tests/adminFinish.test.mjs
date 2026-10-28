@@ -1,6 +1,6 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { uiModules, expandUi } from './helpers/uiModules.mjs';
+import { uiModules, expandUi, uiText } from './helpers/uiModules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -15,7 +15,7 @@ const mocks = {
   react: url(['useState', 'useEffect', 'useCallback', 'useRef'].map(name => `export const ${name} = (...args) => ${ctx}.${name}(...args);`).join('\n')),
   '@clerk/clerk-react': url(`export const useAuth = () => ({ getToken: ${ctx}.getToken });`),
   'react-router-dom': url(`export function Link() {}\nexport const useNavigate = () => () => {};\nexport const useSearchParams = () => [new URLSearchParams(), () => {}];`),
-  'lucide-react': stubs(['TrendingUp', 'TrendingDown', 'Minus', 'ShoppingCart', 'DollarSign', 'Clock', 'Package', 'Plus', 'ClipboardList', 'FolderOpen', 'Settings', 'BarChart3', 'ArrowRight', 'Eye', 'Edit', 'MoreVertical', 'Archive', 'ArchiveRestore', 'Copy', 'Globe', 'GlobeLock', 'ArrowUpDown', 'AlertTriangle']),
+  'lucide-react': stubs(['RefreshCw', 'TrendingUp', 'TrendingDown', 'Minus', 'ShoppingCart', 'DollarSign', 'Clock', 'Package', 'Plus', 'ClipboardList', 'FolderOpen', 'Settings', 'BarChart3', 'ArrowRight', 'Eye', 'Edit', 'MoreVertical', 'Archive', 'ArchiveRestore', 'Copy', 'Globe', 'GlobeLock', 'ArrowUpDown', 'AlertTriangle']),
   recharts: stubs(['BarChart', 'Bar', 'XAxis', 'YAxis', 'CartesianGrid', 'Tooltip', 'ResponsiveContainer']),
   '../../components/admin': stubs(['SkeletonBar', 'SkeletonStatCard', 'StatCard', 'SkeletonDashboard']),
   '../../components/admin/AdminRequestState': url('export default function RequestState() {}'),
@@ -44,7 +44,7 @@ const Settings = await load('../src/pages/AdminSettingsPage.tsx');
 const PaymentsPanel = await load('../src/components/payment/PaymentStatusPanel.tsx');
 const Products = await load('../src/components/admin/products/ProductsTable.tsx');
 const nodes = raw => { const node = expandUi(raw); return !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children, node.props?.actions].flat(Infinity).flatMap(nodes)]; };
-const text = node => typeof node === 'string' || typeof node === 'number' ? String(node) : node && typeof node !== 'boolean' ? [node.props?.children].flat(Infinity).map(text).join('') : '';
+const text = uiText;
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 const initialSettings = {
   store_name: 'Synthetic store', store_email: 'store@example.test', store_phone: '555-0100',
@@ -90,7 +90,7 @@ for (const [current, previous, expected] of [[0, 0, 'No activity in either week'
     assert.match(text(h.tree), /Assigned location · All business lines · Production, non-simulated orders/);
     assert.match(text(h.tree), /Revenue is captured sales minus succeeded refunds/);
     const daily = h.find(node => node.props?.['aria-labelledby'] === 'daily-chart-title');
-    for (const label of ['Last 7 days', 'Last 14 days', 'Last 30 days', 'Revenue', 'Orders']) assert.match(h.button(label, daily).props.className, /min-h-\[44px\]/);
+    for (const label of ['Last 7 days', 'Last 14 days', 'Last 30 days', 'Revenue', 'Orders']) assert.match(h.button(label, daily).props.className, /ui-button--md/);
     assert.equal(h.button('Revenue').props['aria-pressed'], true); h.click('Orders'); await h.flush(); assert.equal(h.button('Orders').props['aria-pressed'], true);
     assert.equal(h.find(node => node.type?.name === 'Bar').props.isAnimationActive, false);
     for (const axis of nodes(h.tree).filter(node => ['XAxis', 'YAxis'].includes(node.type?.name))) assert.equal(axis.props.tick.fill, '#4b5563');

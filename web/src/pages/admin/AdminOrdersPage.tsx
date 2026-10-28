@@ -1,3 +1,6 @@
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
+import { IconButton } from '../../components/ui/IconButton';
+import { RefreshCw } from 'lucide-react';
 import { ChoiceGroup } from '../../components/ui/ChoiceGroup';
 import { Button } from '../../components/ui/Button';
 import axios from 'axios';
@@ -503,36 +506,17 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       ? [ 'pending', 'processing', 'shipped', 'delivered' ]
       : [];
 
-  const stageLabel = (status: string) => ({ new_paid: 'New paid', waiting_payment: 'Waiting for payment', all_active: 'All active', confirmed: mode === 'pickup_queue' ? 'Acknowledged' : 'Confirmed' }[status] || formatStatus(status));
+  const stageLabel = (status: string) => ({ new_paid: 'New paid', waiting_payment: 'Waiting for payment', all_active: 'All active', confirmed: 'Acknowledged' }[status] || formatStatus(status));
 
   return (
     <div className={mode === 'pickup_queue' ? 'space-y-4' : 'space-y-6'}>
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 ref={headingRef} tabIndex={-1} className="text-2xl font-bold text-gray-900">{pageTitle}</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {mode === 'default' ? (
-              <>
-                <span className="font-semibold text-gray-700">{hasCurrentData ? totalCount : '—'}</span> total orders
-              </>
-            ) : (
-              pageSubtitle
-            )}
-          </p>
-        </div>
-        {access.can('orders.export') && <Button
-          type="button"
-          onClick={exportOrdersCsv}
-          loading={exporting}
-          variant="secondary"
-        >
-          Export CSV
-        </Button>}
-      </div>
+      <AdminPageHeader title={pageTitle} headingRef={headingRef} headingTabIndex={-1}
+        subtitle={mode === 'default' ? <><span className="font-semibold text-gray-700">{hasCurrentData ? totalCount : '—'}</span> total orders</> : pageSubtitle}
+        actions={access.can('orders.export') && <Button type="button" onClick={exportOrdersCsv} loading={exporting} variant="secondary">Export CSV</Button>} />
 
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <Button type="button" onClick={reconcileOrders} loading={refreshing} variant="secondary">Refresh orders</Button>
+        <IconButton aria-label="Refresh orders" onClick={reconcileOrders} loading={refreshing}><RefreshCw /></IconButton>
         <span role="status">{lastUpdated ? `Last updated ${new Date(lastUpdated).toLocaleTimeString()}` : 'No successful update yet'}{loadError ? ' · Updates unavailable' : stale ? ' · Updates delayed — this snapshot may be stale' : ''}</span>
       </div>
       {loadError && <div role="alert" className="border border-amber-300 bg-amber-50 text-amber-950 p-4 rounded-lg">
@@ -644,6 +628,7 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
       {/* Ship Order Modal */}
         <ShipOrderModal
           open={showShipModal}
+          returnFocusRef={selectedOrder ? orderDetailHeadingRef : undefined}
           saving={saving}
           carrier={shipCarrier}
           trackingNumber={shipTrackingNumber}
