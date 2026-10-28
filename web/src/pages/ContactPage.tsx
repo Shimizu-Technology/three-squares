@@ -1,3 +1,8 @@
+import { Field } from '../components/ui/Field';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
+import { Textarea } from '../components/ui/Textarea';
+import { Button } from '../components/ui/Button';
 import { useEffect, useRef, useState } from 'react';
 import axios from 'axios';
 import FadeIn from '../components/animations/FadeIn';
@@ -95,58 +100,46 @@ export default function ContactPage() {
                   <p className="text-warm-600 mb-6">
                     We've received your message and will get back to you as soon as possible.
                   </p>
-                  <button
+                  <Button
                     onClick={() => { setSubmitted(false); setFormData({ name: '', email: '', subject: '', message: '' }); }}
-                    className="text-tsPrimary hover:text-red-700 font-medium transition"
-                  >
+
+                   variant="secondary">
                     Send another message
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} aria-describedby={error ? 'contact-form-error' : undefined} className="space-y-6">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div>
-                      <label htmlFor="name" className="block text-sm font-medium text-warm-700 mb-2">
-                        Your Name
-                      </label>
-                      <input
+                    <Field label="Your Name">
+                      <Input
                         type="text"
                         id="name"
                         name="name"
                         required
                         value={formData.name}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 rounded-lg border border-warm-200 focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary transition text-warm-900"
                         placeholder="John Doe"
                       />
-                    </div>
-                    <div>
-                      <label htmlFor="email" className="block text-sm font-medium text-warm-700 mb-2">
-                        Email Address
-                      </label>
-                      <input
+                    </Field>
+                    <Field label="Email Address">
+                      <Input
                         type="email"
                         id="email"
                         name="email"
                         required
                         value={formData.email}
                         onChange={handleChange}
-                        className="w-full px-4 py-3 rounded-lg border border-warm-200 focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary transition text-warm-900"
                         placeholder="you@example.com"
                       />
-                    </div>
+                    </Field>
                   </div>
-                  <div>
-                    <label htmlFor="subject" className="block text-sm font-medium text-warm-700 mb-2">
-                      Subject
-                    </label>
-                    <select
+                  <Field label="Subject">
+                    <Select
                       id="subject"
                       name="subject"
                       required
                       value={formData.subject}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg border border-warm-200 focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary transition text-warm-900 bg-white"
                     >
                       <option value="">Select a subject...</option>
                       <option value="general">General Inquiry</option>
@@ -155,35 +148,31 @@ export default function ContactPage() {
                       <option value="returns">Order Issues & Refunds</option>
                       <option value="wholesale">Wholesale / Bulk Orders</option>
                       <option value="other">Other</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label htmlFor="message" className="block text-sm font-medium text-warm-700 mb-2">
-                      Message
-                    </label>
-                    <textarea
+                    </Select>
+                  </Field>
+                  <Field label="Message">
+                    <Textarea
                       id="message"
                       name="message"
                       required
                       rows={6}
                       value={formData.message}
                       onChange={handleChange}
-                      className="w-full px-4 py-3 rounded-lg border border-warm-200 focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary transition text-warm-900 resize-none"
                       placeholder="How can we help you?"
                     />
-                  </div>
+                  </Field>
                   {error && (
                     <div id="contact-form-error" ref={outcomeRef} role="alert" tabIndex={-1} className="rounded-lg p-4 bg-red-50 border border-red-200 text-red-700 text-sm">
                       {error}
                     </div>
                   )}
-                  <button
+                  <Button
                     type="submit"
                     disabled={submitting}
-                    className="w-full sm:w-auto px-8 py-3 bg-warm-900 text-white rounded-lg font-medium hover:bg-warm-800 transition disabled:opacity-60 disabled:cursor-not-allowed"
-                  >
-                    {submitting ? 'Sending...' : 'Send Message'}
-                  </button>
+                    size="lg"
+                    loading={submitting}
+                    className="w-full sm:w-auto"
+                  >Send Message</Button>
                 </form>
               )}
             </FadeIn>

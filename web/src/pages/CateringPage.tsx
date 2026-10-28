@@ -1,3 +1,9 @@
+import { Field } from '../components/ui/Field';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
+import { Textarea } from '../components/ui/Textarea';
+import { Button } from '../components/ui/Button';
+import { IconButton } from '../components/ui/IconButton';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import axios from 'axios';
@@ -155,12 +161,12 @@ export default function CateringPage() {
                   <p className="text-gray-600 mb-6">
                     Your inquiry has been received. The team can review your details and follow up about a quote.
                   </p>
-                  <button
+                  <Button
                     onClick={() => { setShowForm(false); setSubmitted(false); }}
-                    className="bg-warm-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-warm-700 transition"
+
                   >
                     Close
-                  </button>
+                  </Button>
                 </div>
               ) : (
                 <>
@@ -169,15 +175,16 @@ export default function CateringPage() {
                       <h3 id="catering-form-title" className="text-xl sm:text-2xl font-bold text-gray-900">Request a Catering Quote</h3>
                       <p className="text-sm text-gray-500 mt-1">Share your event details so the team can discuss a quote.</p>
                     </div>
-                    <button
+                    <IconButton
                       onClick={() => setShowForm(false)}
-                      className="shrink-0 w-11 h-11 flex items-center justify-center text-warm-500 hover:text-warm-700 transition rounded-md hover:bg-white"
                       aria-label="Close modal"
+                      variant="ghost"
+                      className="shrink-0"
                     >
                       <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
-                    </button>
+                    </IconButton>
                   </div>
                   <form
                     onSubmit={handleSubmit}
@@ -194,52 +201,44 @@ export default function CateringPage() {
                     <div className="space-y-4">
                       <h4 className="font-semibold text-gray-900">Contact Information</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="catering-contact-name" className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
-                          <input
+                        <Field label="Name">
+                          <Input
                             id="catering-contact-name"
                             type="text"
                             name="contact_name"
                             value={formData.contact_name}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500"
                           />
-                        </div>
-                        <div>
-                          <label htmlFor="catering-contact-email" className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
-                          <input
+                        </Field>
+                        <Field label="Email">
+                          <Input
                             id="catering-contact-email"
                             type="email"
                             name="contact_email"
                             value={formData.contact_email}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500"
                           />
-                        </div>
-                        <div>
-                          <label htmlFor="catering-contact-phone" className="block text-sm font-medium text-gray-700 mb-1">Phone</label>
-                          <input
+                        </Field>
+                        <Field label="Phone">
+                          <Input
                             id="catering-contact-phone"
                             type="tel"
                             name="contact_phone"
                             value={formData.contact_phone}
                             onChange={handleInputChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500"
                           />
-                        </div>
-                        <div>
-                          <label htmlFor="catering-company-name" className="block text-sm font-medium text-gray-700 mb-1">Company/Organization</label>
-                          <input
+                        </Field>
+                        <Field label="Company/Organization">
+                          <Input
                             id="catering-company-name"
                             type="text"
                             name="company_name"
                             value={formData.company_name}
                             onChange={handleInputChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500"
                           />
-                        </div>
+                        </Field>
                       </div>
                     </div>
 
@@ -247,25 +246,22 @@ export default function CateringPage() {
                     <div className="space-y-4">
                       <h4 className="font-semibold text-gray-900">Event Details</h4>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                          <label htmlFor="catering-event-type" className="block text-sm font-medium text-gray-700 mb-1">Event Type *</label>
-                          <select
+                        <Field label="Event Type">
+                          <Select
                             id="catering-event-type"
                             name="event_type"
                             value={formData.event_type}
                             onChange={handleInputChange}
                             required
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500"
                           >
                             <option value="">Select type...</option>
                             {EVENT_TYPES.map(type => (
                               <option key={type.value} value={type.value}>{type.label}</option>
                             ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label htmlFor="catering-guest-count" className="block text-sm font-medium text-gray-700 mb-1">Number of Guests *</label>
-                          <input
+                          </Select>
+                        </Field>
+                        <Field label="Number of Guests">
+                          <Input
                             id="catering-guest-count"
                             type="number"
                             name="guest_count"
@@ -273,12 +269,10 @@ export default function CateringPage() {
                             onChange={handleInputChange}
                             required
                             min="1"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500"
                           />
-                        </div>
-                        <div>
-                          <label htmlFor="catering-event-date" className="block text-sm font-medium text-gray-700 mb-1">Event Date *</label>
-                          <input
+                        </Field>
+                        <Field label="Event Date" help="Choose a date at least three days ahead.">
+                          <Input
                             id="catering-event-date"
                             type="date"
                             name="event_date"
@@ -286,101 +280,86 @@ export default function CateringPage() {
                             onChange={handleInputChange}
                             required
                             min={minDateStr}
-                            aria-describedby="catering-date-help"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500"
                           />
-                          <p id="catering-date-help" className="mt-1 text-sm text-warm-500">Choose a date at least three days ahead.</p>
-                        </div>
-                        <div>
-                          <label htmlFor="catering-event-time" className="block text-sm font-medium text-gray-700 mb-1">Event Time</label>
-                          <input
+                        </Field>
+                        <Field label="Event Time">
+                          <Input
                             id="catering-event-time"
                             type="time"
                             name="event_time"
                             value={formData.event_time}
                             onChange={handleInputChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500"
                           />
-                        </div>
-                        <div>
-                          <label htmlFor="catering-budget-range" className="block text-sm font-medium text-gray-700 mb-1">Budget Range</label>
-                          <select
+                        </Field>
+                        <Field label="Budget Range">
+                          <Select
                             id="catering-budget-range"
                             name="budget_range"
                             value={formData.budget_range}
                             onChange={handleInputChange}
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500"
                           >
                             <option value="">Select budget...</option>
                             {BUDGET_RANGES.map(range => (
                               <option key={range} value={range}>{range}</option>
                             ))}
-                          </select>
-                        </div>
-                        <div>
-                          <label htmlFor="catering-venue-address" className="block text-sm font-medium text-gray-700 mb-1">Venue Address</label>
-                          <input
+                          </Select>
+                        </Field>
+                        <Field label="Venue Address">
+                          <Input
                             id="catering-venue-address"
                             type="text"
                             name="venue_address"
                             value={formData.venue_address}
                             onChange={handleInputChange}
                             placeholder="Where is your event?"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500"
                           />
-                        </div>
+                        </Field>
                       </div>
                     </div>
 
                     {/* Additional Info */}
                     <div className="space-y-4">
                       <h4 className="font-semibold text-gray-900">Additional Information</h4>
-                      <div>
-                        <label htmlFor="catering-menu-preferences" className="block text-sm font-medium text-gray-700 mb-1">Menu Preferences</label>
-                        <textarea
+                      <Field label="Menu Preferences">
+                        <Textarea
                           id="catering-menu-preferences"
                           name="menu_preferences"
                           value={formData.menu_preferences}
                           onChange={handleInputChange}
-                          rows={2}
+                          rows={3}
                           placeholder="Any specific dishes or cuisines you're interested in?"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500"
                         />
-                      </div>
-                      <div>
-                        <label htmlFor="catering-dietary-restrictions" className="block text-sm font-medium text-gray-700 mb-1">Dietary Restrictions</label>
-                        <input
+                      </Field>
+                      <Field label="Dietary Restrictions">
+                        <Input
                           id="catering-dietary-restrictions"
                           type="text"
                           name="dietary_restrictions"
                           value={formData.dietary_restrictions}
                           onChange={handleInputChange}
                           placeholder="Vegetarian, gluten-free, allergies, etc."
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500"
                         />
-                      </div>
-                      <div>
-                        <label htmlFor="catering-special-requests" className="block text-sm font-medium text-gray-700 mb-1">Special Requests</label>
-                        <textarea
+                      </Field>
+                      <Field label="Special Requests">
+                        <Textarea
                           id="catering-special-requests"
                           name="special_requests"
                           value={formData.special_requests}
                           onChange={handleInputChange}
-                          rows={2}
+                          rows={3}
                           placeholder="Any other details we should know?"
-                          className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-warm-500 focus:border-warm-500"
                         />
-                      </div>
+                      </Field>
                     </div>
 
                     <div className="pt-4">
-                      <button
+                      <Button
                         type="submit"
                         disabled={submitting}
-                        className="w-full bg-warm-600 text-white py-4 rounded-lg font-semibold hover:bg-warm-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {submitting ? 'Submitting...' : 'Submit Inquiry'}
-                      </button>
+                        size="lg"
+                        loading={submitting}
+                        className="w-full"
+                      >Submit Inquiry</Button>
                       <p className="text-sm text-gray-500 text-center mt-3">
                         Submitting this form requests a quote. It does not confirm availability or place an order.
                       </p>

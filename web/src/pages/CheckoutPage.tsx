@@ -1,3 +1,9 @@
+import { Field } from '../components/ui/Field';
+import { Input } from '../components/ui/Input';
+import { Select } from '../components/ui/Select';
+import { Textarea } from '../components/ui/Textarea';
+import { Button } from '../components/ui/Button';
+import { IconButton } from '../components/ui/IconButton';
 import { useState, useEffect, useCallback, useMemo, useReducer, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
@@ -541,7 +547,12 @@ function CheckoutForm() {
     <h1 className="text-xl font-semibold">Checking your saved checkout</h1>
     <p className="mt-3">Your cart and payment request are saved on this device. Check the original request before starting another payment.</p>
     {error && <p className="mt-3" role="alert">{error}</p>}
-    <button type="button" className="mt-4 min-h-11 underline" onClick={() => setCreationRetry(value => value + 1)}>Check saved checkout</button>
+    <Button
+      type="button"
+      onClick={() => setCreationRetry(value => value + 1)}
+      variant="secondary"
+      className="mt-3 mr-3"
+    >Check saved checkout</Button>
   </div>;
 
   if (configLoading) {
@@ -590,61 +601,96 @@ function CheckoutForm() {
           <div className="lg:col-span-2">
             {pendingPayment && <div className="mb-6 rounded-lg border border-amber-300 bg-amber-50 p-4" role="status">
               <p className="font-semibold">Your order {pendingPayment.orderNumber || pendingPayment.orderId} is saved{pendingPayment.amountCents !== undefined ? ` for $${(pendingPayment.amountCents / 100).toFixed(2)}` : ''}. {resolvedWithoutPayment ? 'Payment is closed. Review your cart before starting again.' : 'Payment status is being checked.'}</p>
-              <button type="button" className="mt-3 underline" onClick={async () => {
-                try {
-                  const token = isSignedIn ? await getToken() : null;
-                  const state = await checkoutApi.confirm(pendingPayment.id, token, pendingPayment.capability);
-                  if (!(await finishCheckout(state))) {
-                    setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
-                    setSavedClientConfig(checkoutClientConfiguration(state));
-                    setCanRetryCollection((state.payment_state === 'collecting' && !!state.collection_config.client_secret) || !!hostedPageUrl(state));
-                    setError(`Payment status: ${state.payment_state}. Order ${state.order.order_number} remains saved.`);
-                  }
-                } catch { setError('We could not check payment status. Your order remains saved.'); }
-              }}>Check payment status</button>
-              {import.meta.env.DEV && savedClientConfig?.payment_environment === 'simulated' && <button type="button" className="mt-3 block min-h-11 underline" onClick={async () => {
-                try {
-                  const state = await checkoutApi.advanceSimulation(pendingPayment.id, isSignedIn ? await getToken() : null, pendingPayment.capability);
-                  if (!(await finishCheckout(state))) { setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state)); setError(`Simulation payment status: ${state.payment_state}`); }
-                } catch { setError('Simulation time could not advance. Your payment remains saved.'); }
-              }}>Advance simulated time by 61 seconds</button>}
+              <Button
+                type="button"
+                onClick={async () => {
+try {
+const token = isSignedIn ? await getToken() : null;
+const state = await checkoutApi.confirm(pendingPayment.id, token, pendingPayment.capability);
+if (!(await finishCheckout(state))) {
+setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
+setSavedClientConfig(checkoutClientConfiguration(state));
+setCanRetryCollection((state.payment_state === 'collecting' && !!state.collection_config.client_secret) || !!hostedPageUrl(state));
+setError(`Payment status: ${state.payment_state}. Order ${state.order.order_number} remains saved.`);
+}
+} catch { setError('We could not check payment status. Your order remains saved.'); }
+}}
+                variant="secondary"
+                className="mt-3 mr-3"
+              >Check payment status</Button>
+              {import.meta.env.DEV && savedClientConfig?.payment_environment === 'simulated' && <Button
+                                                                                                  type="button"
+                                                                                                  onClick={async () => {
+try {
+const state = await checkoutApi.advanceSimulation(pendingPayment.id, isSignedIn ? await getToken() : null, pendingPayment.capability);
+if (!(await finishCheckout(state))) { setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state)); setError(`Simulation payment status: ${state.payment_state}`); }
+} catch { setError('Simulation time could not advance. Your payment remains saved.'); }
+}}
+                                                                                                  variant="secondary"
+                                                                                                  aria-label="Advance simulated time by 61 seconds"
+                                                                                                  className="mt-3 mr-3"
+                                                                                                >Advance simulated time</Button>}
               {canRetryCollection && savedClientConfig?.available !== false && <label className="mt-3 flex min-h-11 items-center gap-3"><input type="checkbox" checked={savedAmountReviewed} onChange={event => setSavedAmountReviewed(event.target.checked)} />I have reviewed the saved order total{pendingPayment.amountCents !== undefined ? ` of $${(pendingPayment.amountCents / 100).toFixed(2)}` : ''}.</label>}
-              {canRetryCollection && savedClientConfig?.available !== false && <button type="button" className="ml-4 mt-3 underline" disabled={loading || !paymentReady || !savedAmountReviewed} onClick={async () => {
-                if (submitting.current) return;
-                submitting.current = true;
-                setLoading(true);
-                try {
-                  const token = isSignedIn ? await getToken() : null;
-                  const state = await checkoutApi.show(pendingPayment.id, token, pendingPayment.capability);
-                  if (state.collection_config.available === false) { setSavedClientConfig(checkoutClientConfiguration(state)); setCanRetryCollection(false); throw new Error(state.collection_config.reason || 'This saved order now requires a catering inquiry'); }
-                  const hostedUrl = hostedPageUrl(state);
-                  if (hostedUrl) { window.location.assign(hostedUrl); return; }
-                  if (!state.collection_config.client_secret || state.payment_state !== 'collecting') throw new Error('Payment status changed. Check the saved order.');
-                  setSavedClientConfig(checkoutClientConfiguration(state));
-                  if (!paymentForm.current) throw new Error('Card collection is not ready. Check the saved order.');
-                  const result = await paymentForm.current.confirm(state.collection_config.client_secret, state.collection_config.payment_identity_id, { name, email, phone });
-                  if (result.error) setError(result.error.message || 'Card payment could not complete.');
-                  const confirmed = await checkoutApi.confirm(state.id, token, pendingPayment.capability);
-                  if (!(await finishCheckout(confirmed))) setPendingPayment(pendingCheckout());
-                } catch (error) { setError(error instanceof Error ? error.message : 'Payment status is being checked.'); }
-                finally { submitting.current = false; setLoading(false); }
-              }}>Retry card payment for this saved order</button>}
-              {!resolvedWithoutPayment && <button type="button" className="mt-3 block underline" disabled={loading} onClick={async () => {
-                try {
-                  const token = isSignedIn ? await getToken() : null;
-                  const state = await checkoutApi.cancel(pendingPayment.id, token, pendingPayment.capability);
-                  if (!(await finishCheckout(state))) {
-                    setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
-                    setCanRetryCollection(false);
-                    setError(`Payment status: ${state.payment_state}. Your order remains saved.`);
-                  }
-                } catch { setError('Cancellation is not confirmed. Check the saved payment before starting another.'); }
-              }}>Cancel saved payment</button>}
-              {resolvedWithoutPayment && <button type="button" className="mt-3 block underline" onClick={() => {
-                clearPendingCheckout(); setSavedClientConfig(null); setPendingPayment(null); setResolvedWithoutPayment(false); setCanRetryCollection(false);
-                creationKey.current = crypto.randomUUID(); capability.current = checkoutCapability(); setError(null);
-              }}>Payment closed — review cart and start again</button>}
-              <button type="button" className="ml-4 mt-3 underline" onClick={() => navigate(`/orders/${pendingPayment.orderId}`)}>View saved order</button>
+              {canRetryCollection && savedClientConfig?.available !== false && <Button
+                                                                                 type="button"
+                                                                                 disabled={loading || !paymentReady || !savedAmountReviewed}
+                                                                                 onClick={async () => {
+if (submitting.current) return;
+submitting.current = true;
+setLoading(true);
+try {
+const token = isSignedIn ? await getToken() : null;
+const state = await checkoutApi.show(pendingPayment.id, token, pendingPayment.capability);
+if (state.collection_config.available === false) { setSavedClientConfig(checkoutClientConfiguration(state)); setCanRetryCollection(false); throw new Error(state.collection_config.reason || 'This saved order now requires a catering inquiry'); }
+const hostedUrl = hostedPageUrl(state);
+if (hostedUrl) { window.location.assign(hostedUrl); return; }
+if (!state.collection_config.client_secret || state.payment_state !== 'collecting') throw new Error('Payment status changed. Check the saved order.');
+setSavedClientConfig(checkoutClientConfiguration(state));
+if (!paymentForm.current) throw new Error('Card collection is not ready. Check the saved order.');
+const result = await paymentForm.current.confirm(state.collection_config.client_secret, state.collection_config.payment_identity_id, { name, email, phone });
+if (result.error) setError(result.error.message || 'Card payment could not complete.');
+const confirmed = await checkoutApi.confirm(state.id, token, pendingPayment.capability);
+if (!(await finishCheckout(confirmed))) setPendingPayment(pendingCheckout());
+} catch (error) { setError(error instanceof Error ? error.message : 'Payment status is being checked.'); }
+finally { submitting.current = false; setLoading(false); }
+}}
+                                                                                 variant="secondary"
+                                                                                 aria-label="Retry card payment for this saved order"
+                                                                                 className="mt-3 mr-3"
+                                                                               >Retry saved payment</Button>}
+              {!resolvedWithoutPayment && <Button
+                                            type="button"
+                                            disabled={loading}
+                                            onClick={async () => {
+try {
+const token = isSignedIn ? await getToken() : null;
+const state = await checkoutApi.cancel(pendingPayment.id, token, pendingPayment.capability);
+if (!(await finishCheckout(state))) {
+setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
+setCanRetryCollection(false);
+setError(`Payment status: ${state.payment_state}. Your order remains saved.`);
+}
+} catch { setError('Cancellation is not confirmed. Check the saved payment before starting another.'); }
+}}
+                                            variant="secondary"
+                                            className="mt-3 mr-3"
+                                          >Cancel saved payment</Button>}
+              {resolvedWithoutPayment && <Button
+                                           type="button"
+                                           onClick={() => {
+clearPendingCheckout(); setSavedClientConfig(null); setPendingPayment(null); setResolvedWithoutPayment(false); setCanRetryCollection(false);
+creationKey.current = crypto.randomUUID(); capability.current = checkoutCapability(); setError(null);
+}}
+                                           variant="secondary"
+                                           aria-label="Payment closed — review cart and start again"
+                                           className="mt-3 mr-3"
+                                         >Review cart and start again</Button>}
+              <Button
+                type="button"
+                onClick={() => navigate(`/orders/${pendingPayment.orderId}`)}
+                variant="secondary"
+                className="mt-3 mr-3"
+              >View saved order</Button>
             </div>}
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Contact Information */}
@@ -658,48 +704,36 @@ function CheckoutForm() {
                   <h2 className="text-xl font-bold text-gray-900">Contact Information</h2>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2">
-                    <label htmlFor="name" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                      Full Name *
-                    </label>
-                    <input
+                  <Field label="Full Name" className="sm:col-span-2">
+                    <Input
                       type="text"
                       id="name"
                       required
                       value={name}
                       onChange={(e) => updateContact({ type: 'edit', field: 'name', value: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="John Doe"
                     />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                      Email *
-                    </label>
-                    <input
+                  </Field>
+                  <Field label="Email" className="sm:col-span-2">
+                    <Input
                       type="email"
                       id="email"
                       required
                       value={email}
                       onChange={(e) => updateContact({ type: 'edit', field: 'email', value: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="your@email.com"
                     />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label htmlFor="phone" className="block text-sm font-semibold text-gray-700 mb-1.5">
-                      Phone *
-                    </label>
-                    <input
+                  </Field>
+                  <Field label="Phone" className="sm:col-span-2">
+                    <Input
                       type="tel"
                       id="phone"
                       required
                       value={phone}
                       onChange={(e) => updateContact({ type: 'edit', field: 'phone', value: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="(555) 123-4567"
                     />
-                  </div>
+                  </Field>
                 </div>
               </div>
 
@@ -715,54 +749,32 @@ function CheckoutForm() {
                 </div>
                 <div className={`grid grid-cols-1 ${cartSupportsShipping && cartSupportsPickup ? 'sm:grid-cols-2' : ''} gap-4`}>
                   {cartSupportsShipping && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       setDeliveryMethod('shipping');
                       setShippingMethod(null);
                       setAvailableShippingRates([]);
                     }}
-                    className={`p-5 border-2 rounded-xl transition-all ${
-                      deliveryMethod === 'shipping'
-                        ? 'border-tsPrimary bg-red-50 ring-4 ring-tsPrimary/10'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="text-left">
-                        <p className="font-bold text-gray-900">Ship to Address</p>
-                        <p className="text-sm text-gray-500 mt-1">Delivered to your door</p>
-                      </div>
-                      <svg className={`w-6 h-6 ${deliveryMethod === 'shipping' ? 'text-tsPrimary' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                  </button>
+                    size="lg"
+                    variant={deliveryMethod === 'shipping' ? 'primary' : 'secondary'}
+                    aria-pressed={deliveryMethod === 'shipping'}
+                    className="w-full"
+                  >Ship to Address</Button>
                   )}
 
                   {cartSupportsPickup && (
-                  <button
+                  <Button
                     type="button"
                     onClick={() => {
                       setDeliveryMethod('pickup');
                       setShippingMethod(null);
                     }}
-                    className={`p-5 border-2 rounded-xl transition-all ${
-                      deliveryMethod === 'pickup'
-                        ? 'border-tsPrimary bg-red-50 ring-4 ring-tsPrimary/10'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="text-left">
-                        <p className="font-bold text-gray-900">Pickup</p>
-                        <p className="text-sm text-gray-500 mt-1">Free — Pickup at store</p>
-                      </div>
-                      <svg className={`w-6 h-6 ${deliveryMethod === 'pickup' ? 'text-tsPrimary' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                  </button>
+                    size="lg"
+                    variant={deliveryMethod === 'pickup' ? 'primary' : 'secondary'}
+                    aria-pressed={deliveryMethod === 'pickup'}
+                    className="w-full"
+                  >Pickup</Button>
                   )}
                 </div>
                 {!cartSupportsShipping && cartSupportsPickup && (
@@ -784,25 +796,24 @@ function CheckoutForm() {
                   {deliveryMethod === 'pickup' && cartSupportsPickup && (
                     <section aria-label="Pickup details">
                       <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                        <label htmlFor="pickupLocation" className="block text-sm font-semibold text-blue-900 mb-2">
-                          Pickup Location *
-                        </label>
-                        <select
-                          id="pickupLocation"
-                          value={pickupLocationId ?? ''}
-                          onChange={(e) => {
-                            const location = compatiblePickupLocations.find((item) => item.id === Number(e.target.value));
-                            if (location) setSelectedLocation(location);
-                          }}
-                          className="w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm text-blue-900 focus:outline-none focus:ring-2 focus:ring-tsPrimary"
-                        >
+                        <Field label="Pickup Location">
+                          <Select
+                            id="pickupLocation"
+                            required
+                            value={pickupLocationId ?? ''}
+                            onChange={(e) => {
+                              const location = compatiblePickupLocations.find((item) => item.id === Number(e.target.value));
+                              if (location) setSelectedLocation(location);
+                            }}
+                          >
                           <option value="" disabled>Select a location</option>
                           {compatiblePickupLocations.map((location) => (
                             <option key={location.id} value={location.id}>
                               {location.name}
                             </option>
                           ))}
-                        </select>
+                        </Select>
+                        </Field>
                         {compatiblePickupLocations.length === 0 && (
                           <p className="text-sm text-red-700 mt-2">
                             No pickup location can fulfill all items in this cart. Remove incompatible items to continue.
@@ -835,102 +846,77 @@ function CheckoutForm() {
                     <h2 className="text-xl font-bold text-gray-900">Shipping Address</h2>
                   </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="sm:col-span-2">
-                    <label htmlFor="street1" className="block text-sm font-medium text-gray-700 mb-1">
-                      Address Line 1 *
-                    </label>
-                    <input
+                  <Field label="Address Line 1" className="sm:col-span-2">
+                    <Input
                       type="text"
                       id="street1"
                       required
                       value={shippingAddress.street1}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, street1: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="123 Main St"
                     />
-                  </div>
-                  <div className="sm:col-span-2">
-                    <label htmlFor="street2" className="block text-sm font-medium text-gray-700 mb-1">
-                      Address Line 2
-                    </label>
-                    <input
+                  </Field>
+                  <Field label="Address Line 2" className="sm:col-span-2">
+                    <Input
                       type="text"
                       id="street2"
                       value={shippingAddress.street2 || ''}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, street2: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="Apt, suite, etc. (optional)"
                     />
-                  </div>
-                  <div>
-                    <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-1">
-                      City *
-                    </label>
-                    <input
+                  </Field>
+                  <Field label="City">
+                    <Input
                       type="text"
                       id="city"
                       required
                       value={shippingAddress.city}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                     />
-                  </div>
-                  <div>
-                    <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
-                      State *
-                    </label>
-                    <input
+                  </Field>
+                  <Field label="State">
+                    <Input
                       type="text"
                       id="state"
                       required
                       value={shippingAddress.state}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="CA"
                       maxLength={2}
                     />
-                  </div>
-                  <div>
-                    <label htmlFor="zip" className="block text-sm font-medium text-gray-700 mb-1">
-                      ZIP Code *
-                    </label>
-                    <input
+                  </Field>
+                  <Field label="ZIP Code">
+                    <Input
                       type="text"
                       id="zip"
                       required
                       value={shippingAddress.zip}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, zip: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                       placeholder="12345"
                     />
-                  </div>
-                  <div>
-                    <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-1">
-                      Country *
-                    </label>
-                    <select
+                  </Field>
+                  <Field label="Country">
+                    <Select
                       id="country"
                       required
                       value={shippingAddress.country}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, country: e.target.value })}
-                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                     >
                       <option value="US">United States</option>
                       <option value="GU">Guam</option>
-                    </select>
-                  </div>
+                    </Select>
+                  </Field>
                 </div>
 
                 {/* Calculate Shipping Button */}
                 <div className="mt-6">
-                  <button
+                  <Button
                     type="button"
                     onClick={handleCalculateShipping}
                     disabled={calculatingShipping || !shippingAddress.street1 || !shippingAddress.city || !shippingAddress.state || !shippingAddress.zip}
-                    className="w-full bg-tsPrimary text-white py-3 px-4 rounded-lg font-medium hover:bg-primary-dark disabled:bg-gray-300 disabled:cursor-not-allowed transition"
-                  >
-                    {calculatingShipping ? 'Calculating...' : 'Calculate Shipping Rates'}
-                  </button>
+                    loading={calculatingShipping}
+                    className="w-full"
+                  >Calculate Shipping Rates</Button>
 
                   {shippingError && (
                     <p className="text-sm text-red-600 mt-2">{shippingError}</p>
@@ -943,28 +929,17 @@ function CheckoutForm() {
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Select Shipping Method:</h3>
                     <div className="space-y-3">
                       {availableShippingRates.map((rate, index) => (
-                        <button
-                          key={index}
+                        <div key={index}>
+                        <Button
                           type="button"
                           onClick={() => setShippingMethod(rate)}
-                          className={`w-full p-4 border-2 rounded-xl text-left transition-all ${
-                            shippingMethod?.carrier === rate.carrier && shippingMethod?.service === rate.service
-                              ? 'border-tsPrimary bg-red-50 ring-4 ring-tsPrimary/10'
-                              : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <p className="font-semibold text-gray-900">{rate.carrier} - {rate.service}</p>
-                              {rate.delivery_days && (
-                                <p className="text-sm text-gray-600 mt-1">
-                                  Estimated delivery: {rate.delivery_days} business days
-                                </p>
-                              )}
-                            </div>
-                            <p className="text-lg font-bold text-gray-900">{formatPrice(rate.rate_cents)}</p>
-                          </div>
-                        </button>
+                          size="lg"
+                          variant={shippingMethod?.carrier === rate.carrier && shippingMethod?.service === rate.service ? "primary" : "secondary"}
+                          aria-pressed={shippingMethod?.carrier === rate.carrier && shippingMethod?.service === rate.service}
+                          className="w-full"
+                        ><span className="min-w-0 truncate" title={`${rate.carrier} - ${rate.service}`}>{rate.carrier} - {rate.service}</span><span className="shrink-0">{formatPrice(rate.rate_cents)}</span></Button>
+                        {rate.delivery_days && <p className="mt-1 text-sm text-gray-600">Estimated delivery: {rate.delivery_days} business days</p>}
+                        </div>
                       ))}
                     </div>
                   </div>
@@ -994,17 +969,15 @@ function CheckoutForm() {
                     <p className="text-sm text-gray-500">{deliveryMethod === 'pickup' ? 'Optional - meal preferences and pickup notes.' : 'Optional - delivery instructions and preferences.'}</p>
                   </div>
                 </div>
-                <textarea
+                <Field label="Additional notes" help={orderNotes.length > 0 ? `${orderNotes.length}/500` : undefined}>
+                <Textarea
                   value={orderNotes}
                   onChange={(e) => setOrderNotes(e.target.value)}
                   placeholder={deliveryMethod === 'pickup' ? 'e.g., Food allergies or pickup instructions.' : 'e.g., Delivery instructions or food allergies.'}
                   rows={3}
                   maxLength={500}
-                  className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition resize-none text-sm"
                 />
-                {orderNotes.length > 0 && (
-                  <p className="text-xs text-gray-400 mt-1 text-right">{orderNotes.length}/500</p>
-                )}
+                </Field>
               </div>
 
               {/* HAF-118: Validation Issues - Show cart sync problems before checkout */}
@@ -1024,7 +997,7 @@ function CheckoutForm() {
                           <li key={issue.cart_item_id} className="flex items-center justify-between text-sm">
                             <span className="text-amber-700">{issue.message}</span>
                             {issue.action === 'remove' && (
-                              <button
+                              <Button
                                 type="button"
                                 onClick={async () => {
                                   await removeItem(issue.cart_item_id);
@@ -1034,10 +1007,11 @@ function CheckoutForm() {
                                     prev?.filter((i) => i.cart_item_id !== issue.cart_item_id) || null
                                   );
                                 }}
-                                className="ml-2 text-xs bg-amber-100 hover:bg-amber-200 text-amber-800 px-2 py-1 rounded transition-colors"
+                                variant="ghost"
+                                className="ml-2"
                               >
                                 Remove
-                              </button>
+                              </Button>
                             )}
                           </li>
                         ))}
@@ -1059,29 +1033,23 @@ function CheckoutForm() {
                 </div>
               )}
 
-              {cart?.items.filter(item => item.pricing?.purchasable === false).map(item => <p key={item.id} role="alert" className="mb-3 text-sm text-red-700">{item.product.name}: {item.pricing?.reason || 'Contact us for a price before ordering'}. Remove this item to continue. <a href="/catering" className="underline">Start a catering inquiry</a>.</p>)}
+              {cart?.items.filter(item => item.pricing?.purchasable === false).map(item => <p key={item.id} role="alert" className="mb-3 text-sm text-red-700">{item.product.name}: {item.pricing?.reason || 'Contact us for a price before ordering'}. Remove this item to continue. <Button to="/catering" variant="link">Start a catering inquiry</Button>.</p>)}
               {pricePending && !pricingError && <p role="status" className="mb-3 text-sm text-warm-700">Updating your total for {deliveryMethod === 'pickup' ? storedLocation?.name || 'pickup' : 'shipping'}…</p>}
-              {pricingError && <div role="alert" className="mb-3 text-sm text-red-700">{pricingError} <button type="button" className="underline min-h-11" onClick={() => void fetchCart({ fulfillment_type: deliveryMethod, location_id: deliveryMethod === 'pickup' ? pickupLocationId : null })}>Refresh price</button></div>}
-              <label className="mb-4 flex items-start gap-3 text-sm text-warm-900"><input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={reviewed} onChange={event => setReviewed(event.target.checked)} /><span>I have reviewed my items, {deliveryMethod === 'pickup' ? `pickup at ${storedLocation?.name || 'the selected location'}` : 'shipping address'}, and total of {formatPrice(totalCents)}.</span></label>
+              {pricingError && <div role="alert" className="mb-3 text-sm text-red-700">{pricingError} <Button
+                                                                                                        type="button"
+                                                                                                        onClick={() => void fetchCart({ fulfillment_type: deliveryMethod, location_id: deliveryMethod === 'pickup' ? pickupLocationId : null })}
+                                                                                                        variant="link"
+                                                                                                      >Refresh price</Button></div>}
+              <label className="mb-4 flex min-h-11 items-start gap-3 py-2 text-sm text-warm-900"><input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={reviewed} onChange={event => setReviewed(event.target.checked)} /><span>I have reviewed my items, {deliveryMethod === 'pickup' ? `pickup at ${storedLocation?.name || 'the selected location'}` : 'shipping address'}, and total of {formatPrice(totalCents)}.</span></label>
               {orderingBlocked && !pendingPayment && <p role="status" className="mb-3 text-sm text-warm-700">{orderingMessage}</p>}
               {/* Submit Button */}
-              <button
+              <Button
                 type="submit"
                 disabled={orderingBlocked || loading || !isFormValid() || !!pendingPayment || !reviewed}
-                className="w-full bg-tsPrimary text-white py-4 px-6 rounded-lg font-semibold text-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-              >
-                {loading ? (
-                  <>
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    Processing...
-                  </>
-                ) : (
-                  pendingPayment ? 'Payment status pending' : pricingError ? 'Refresh price to continue' : pricePending ? 'Updating price…' : `Pay ${formatPrice(totalCents)}`
-                )}
-              </button>
+                size="lg"
+                loading={loading}
+                className="w-full"
+              >{pendingPayment ? 'Payment status pending' : pricingError ? 'Refresh price to continue' : pricePending ? 'Updating price…' : `Pay ${formatPrice(totalCents)}`}</Button>
             </form>
           </div>
 
@@ -1114,19 +1082,20 @@ function CheckoutForm() {
                       </div>
                       <p className="text-sm font-medium text-gray-900">{formatPrice(item.subtotal_cents)}</p>
                     </div>
-                    <div className="ml-20 mt-1">
+                    <div className="mt-2">
                       {expandedInstructions[item.id] ? (
-                        <div className="flex items-center gap-1">
-                          <input
+                        <div className="flex items-end gap-1">
+                          <Field label={`Instructions for ${item.product.name}`} className="flex-1 min-w-0">
+                          <Input
                             type="text"
                             value={specialInstructions[item.id] || ''}
                             onChange={(e) => setSpecialInstructions((prev) => ({ ...prev, [item.id]: e.target.value }))}
                             placeholder="e.g., no onions, extra sauce"
                             maxLength={200}
-                            className="w-full px-2 py-1 text-xs bg-gray-50 border border-gray-200 rounded focus:ring-1 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
                             autoFocus
                           />
-                          <button
+                          </Field>
+                          <IconButton
                             type="button"
                             onClick={() => {
                               setExpandedInstructions((prev) => ({ ...prev, [item.id]: false }));
@@ -1136,20 +1105,19 @@ function CheckoutForm() {
                                 return next;
                               });
                             }}
-                            className="text-xs text-gray-400 hover:text-gray-600 transition p-1"
                             aria-label="Remove special instructions"
-                          >
-                            &times;
-                          </button>
+                            variant="ghost"
+                            className="shrink-0"
+                          ><span aria-hidden="true">×</span></IconButton>
                         </div>
                       ) : (
-                        <button
+                        <Button
                           type="button"
                           onClick={() => setExpandedInstructions((prev) => ({ ...prev, [item.id]: true }))}
-                          className="text-xs text-tsPrimary hover:text-tsPrimary/80 transition"
+                          variant="link"
                         >
                           + Special instructions
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
