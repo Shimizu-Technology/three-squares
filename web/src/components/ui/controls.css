@@ -100,7 +100,7 @@
 /* Public destinations and navigation disclosures retain their native roles. */
 @layer components {
 
-  .ui-navigation-link { box-sizing: border-box; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; min-width: 44px; max-width: 100%; padding: 8px 0; color: var(--color-warm-700); font: 500 14px/20px var(--font-sans); text-decoration: none; overflow-wrap: anywhere; touch-action: manipulation; }
+  .ui-navigation-link { box-sizing: border-box; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; min-width: 44px; max-width: 100%; padding: 0; color: var(--color-warm-700); font: 500 14px/20px var(--font-sans); text-decoration: none; overflow-wrap: anywhere; touch-action: manipulation; }
   .ui-navigation-link:focus-visible { outline: 2px solid var(--color-tsPrimary); outline-offset: 2px; }
   .ui-navigation-link:active { color: var(--color-tsPrimary); text-decoration: underline; }
   @media (hover: hover) and (pointer: fine) { .ui-navigation-link:hover { color: var(--color-tsPrimary); text-decoration: underline; } }

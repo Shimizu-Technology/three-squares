@@ -1,4 +1,7 @@
+import { CustomerCardFrame } from '../components/ui/CustomerCard';
+import OptimizedImage from '../components/ui/OptimizedImage';
 import { Button } from '../components/ui/Button';
+import { NavigationLink } from '../components/ui/NavigationLink';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { MapPin, Clock, Phone, MessageCircle, ChevronRight, ClipboardList } from 'lucide-react';
 import FadeIn from '../components/animations/FadeIn';
@@ -107,10 +110,10 @@ function LocationCard({ location }: LocationCardProps) {
   const mapUrl = `https://www.google.com/maps/search/?api=1&query=${location.mapAddress}`;
   
   return (
-    <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-warm-100 h-full flex flex-col">
+    <CustomerCardFrame>
       {/* Image */}
-      <div className="relative h-56 sm:h-64 overflow-hidden">
-        <img
+      <div className="customer-card__media">
+        <OptimizedImage context="card"
           src={location.image}
           alt={location.imageAlt}
           className="w-full h-full object-cover"
@@ -121,7 +124,7 @@ function LocationCard({ location }: LocationCardProps) {
       </div>
 
       {/* Content */}
-      <div className="p-6 sm:p-8 flex-1 flex flex-col">
+      <div className="customer-card__body">
         <h3 className="text-2xl font-bold text-warm-900 mb-4">{location.name}</h3>
         
         {/* Address */}
@@ -129,15 +132,14 @@ function LocationCard({ location }: LocationCardProps) {
           <MapPin className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" />
           <div>
             <p className="text-warm-700">{location.address}</p>
-            <a
+            <NavigationLink
               href={mapUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-tsPrimary hover:text-primary-dark text-sm font-medium mt-1 transition-colors"
             >
               Get Directions
               <ChevronRight className="w-4 h-4" />
-            </a>
+            </NavigationLink>
           </div>
         </div>
 
@@ -156,37 +158,35 @@ function LocationCard({ location }: LocationCardProps) {
           </div>
         </div>
 
+        <div className="mt-auto pt-4">
         {/* Contact */}
         {(location.phone || location.whatsapp) && (
-          <div className="flex items-start gap-3 mt-auto pt-4 border-t border-warm-100">
+          <div className="flex items-start gap-3 pt-4 border-t border-warm-100">
             <Phone className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" />
             <div className="space-y-1">
               {location.phone && (
-                <a
+                <NavigationLink
                   href={`tel:+1${location.phone.replace(/\D/g, '')}`}
-                  className="block text-warm-700 hover:text-tsPrimary transition-colors"
                 >
                   {location.phone}
-                </a>
+                </NavigationLink>
               )}
               {location.whatsapp && (
-                <a
+                <NavigationLink
                   href={`https://wa.me/1${location.whatsapp.replace(/\D/g, '')}`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-green-600 hover:text-green-700 transition-colors"
                 >
                   <MessageCircle className="w-4 h-4" />
                   WhatsApp: {location.whatsapp}
-                </a>
+                </NavigationLink>
               )}
             </div>
           </div>
         )}
-        <Button to={`/menu/${location.slug}`} aria-label={`View ${location.name} menu`} className="mt-6" icon={<ChevronRight />}>View Menu</Button>
+        <Button to={`/menu/${location.slug}`} aria-label={`View ${location.name} menu`} className="mt-6 w-full" icon={<ChevronRight />}>View Menu</Button>
+        </div>
       </div>
-
-
-    </div>
+    </CustomerCardFrame>
   );
 }

@@ -442,8 +442,8 @@ export default function OrderConfirmationPage() {
 
         {/* Actions - Hidden when printing */}
         <div className="flex flex-col sm:flex-row gap-4 print:hidden">
-          <Button to="/products" size="lg" className="flex-1" icon={<ArrowLeft />}>Continue shopping</Button>
-          <Button onClick={() => window.print()} variant="secondary" size="lg" className="flex-1" icon={<Printer />}>Print Order</Button>
+          <Button to="/products" size="lg" className="sm:flex-1" icon={<ArrowLeft />}>Continue shopping</Button>
+          <Button onClick={() => window.print()} variant="secondary" size="lg" className="sm:flex-1" icon={<Printer />}>Print Order</Button>
         </div>
 
         {/* Help Text - Hidden when printing */}

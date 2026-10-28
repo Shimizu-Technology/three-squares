@@ -3002,26 +3002,6 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/pages/LocationsPage.tsx|LocationCard|button-like-link|6c5b3e38b1445bd58431|1",
-      "file": "src/pages/LocationsPage.tsx",
-      "component": "LocationCard",
-      "line": 132,
-      "column": 13,
-      "hash": "6c5b3e38b1445bd58431",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/LocationsPage.tsx|LocationCard|button-like-link|e466fdc57c3c2464b558|1",
-      "file": "src/pages/LocationsPage.tsx",
-      "component": "LocationCard",
-      "line": 173,
-      "column": 17,
-      "hash": "e466fdc57c3c2464b558",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
       "key": "src/pages/NotFoundPage.tsx|NotFoundPage|raw-button|70fd6514f7a919342204|1",
       "file": "src/pages/NotFoundPage.tsx",
       "component": "NotFoundPage",

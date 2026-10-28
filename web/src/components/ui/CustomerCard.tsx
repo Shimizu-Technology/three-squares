@@ -17,3 +17,8 @@ export function CustomerCard({
     </Link>
   );
 }
+
+/** Display cards contain their own named links/actions rather than one outer link. */
+export function CustomerCardFrame({ children }: { children: ReactNode }) {
+  return <article className="customer-card customer-card--location" data-customer-card="location">{children}</article>;
+}

@@ -99,3 +99,22 @@ test('dark-surface controls preserve roles and geometry without leaking recipe p
   assert.match(css, /\.ui-button--on-dark\.ui-button--secondary \{ background: transparent; border-color: rgb\(255 255 255 \/ 50%\); color: white/);
   assert.match(css, /\.ui-button--on-dark:focus-visible \{ outline-color: white/);
 });
+
+
+const { module: { NavigationLink, NavigationDisclosure } } = await compile('../src/components/ui/NavigationLink.tsx');
+test('navigation stays native anchors while disclosures stay named non-submit buttons', () => {
+  for (const props of [{to:'/menu'},{href:'/menu'}]) {
+    const html = render(NavigationLink, {...props, children:'Browse menu'});
+    assert.match(html, /<a[^>]+href="\/menu"/);
+    assert.match(html, /data-ui-navigation/);
+    assert.doesNotMatch(html, /role="button"/);
+  }
+  for (const expanded of [false, true]) {
+    const html = render(NavigationDisclosure, {expanded, onToggle:()=>{}, controlsId:'shop-destinations', children:'Shop'});
+    assert.match(html, /<button[^>]+type="button"/);
+    assert.match(html, new RegExp(`aria-expanded="${expanded}"`));
+    assert.match(html, /aria-controls="shop-destinations"/);
+    assert.match(html, /Shop/);
+    assert.match(html, /aria-hidden="true"/);
+  }
+});

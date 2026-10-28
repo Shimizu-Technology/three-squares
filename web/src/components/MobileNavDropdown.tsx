@@ -82,8 +82,9 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
       <NavigationDisclosure expanded={isExpanded} onToggle={() => setIsExpanded(!isExpanded)} controlsId={menuId} surface={darkMode ? 'dark' : 'default'}>Shop</NavigationDisclosure>
 
       {/* Expandable Sub-menu */}
+      <div id={menuId} hidden={!isExpanded}>
       {isExpanded && (
-        <div id={menuId} className="animate-slide-down">
+        <div className="animate-slide-down">
           {/* Collections List */}
           <div className={`pl-3 space-y-1 ml-1 ${darkMode ? 'border-l-2 border-white/20' : 'border-l-2 border-tsPrimary/30'}`}>
             {/* All Products */}
@@ -168,6 +169,7 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -10,6 +10,7 @@ const mocks={react:url(['useState','useEffect','useCallback','useRef','useId'].m
   '../../hooks/useAppConfig':url(`export const invalidateAppConfig=()=>${ctx}.invalidations++;`),
   './StaffAccess.tsx':url(`export const useStaffAccess=()=>({can:()=>${ctx}.owner});`),
   '../ui/Dialog':url('export default function Dialog() {}'),
+  './ui/Button':url('export function Button() {}'),
   '../store/cartStore':url(`export const useCartStore=selector=>selector({cart:${ctx}.cart});`),
   'react-router-dom':url(`export const useLocation=()=>({pathname:${ctx}.pathname});`),
   './useBackendAvailability':url(`export const useBackendAvailability=()=>${ctx}.availability;`),
