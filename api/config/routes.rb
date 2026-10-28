@@ -111,6 +111,9 @@ Rails.application.routes.draw do
           end
         end
 
+        get "products/:product_id/offerings", to: "product_offerings#show"
+        patch "products/:product_id/offerings", to: "product_offerings#update"
+
         # Products
         resources :products, except: [ :new, :edit ] do
           member do

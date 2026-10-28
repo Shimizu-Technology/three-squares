@@ -131,6 +131,19 @@ class Product < ApplicationRecord
     published? ? product_variants.where(available: true) : product_variants
   end
 
+  # Zero rows retain the legacy all-location contract. Explicit rows are a
+  # membership list: a missing row or offered=false is never carried there.
+  scope :offered_at, ->(location_id) {
+    where.not(id: ProductLocation.select(:product_id))
+      .or(where(id: ProductLocation.offered.where(location_id: location_id).select(:product_id)))
+  }
+
+  def offered_for_location?(location_id)
+    return false unless allow_pickup? && location_id.present?
+    rows = product_locations.to_a
+    rows.empty? || rows.any? { |row| row.location_id == location_id.to_i && row.offered? }
+  end
+
   def available_for_location?(location_id)
     return false unless allow_pickup?
     return false if location_id.blank?
