@@ -30,7 +30,7 @@ class QrCodeService
 
   def validated_origin(value)
     uri = URI.parse(value.to_s)
-    local = !Rails.env.production? && %w[localhost 127.0.0.1].include?(uri.host)
+    local = !(Rails.env.production? || Rails.env.staging?) && %w[localhost 127.0.0.1].include?(uri.host)
     # WHATWG browsers interpret shortened, octal and hex numeric hosts as IPv4.
     numeric_host = uri.host.to_s.split(".").last.to_s.match?(/\A(?:[0-9]+|0x[0-9a-f]+)\z/i)
     public_host = !numeric_host && uri.host.present? && uri.host.match?(/\A[a-z0-9](?:[a-z0-9-]*[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]*[a-z0-9])?)+\z/i) && !uri.host.downcase.end_with?(".local", ".localhost", ".internal", ".test", ".invalid")

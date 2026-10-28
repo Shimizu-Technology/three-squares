@@ -5,11 +5,19 @@ module Payments
     class UnsafeConfiguration < StandardError; end
 
     def self.production?
+      return false if Rails.env.staging?
+
       Rails.env.production? || ENV["APP_DEPLOYMENT_ENV"] == "production"
     end
 
     def self.validate_environment!
       deployment = ENV["APP_DEPLOYMENT_ENV"]
+      if Rails.env.staging?
+        raise UnsafeConfiguration, "Staging requires APP_DEPLOYMENT_ENV=staging" unless deployment == "staging"
+        if ENV.any? { |name, value| name.start_with?("STRIPE_") && value.start_with?("sk_live_", "rk_live_", "pk_live_") }
+          raise UnsafeConfiguration, "Staging cannot use live Stripe credentials"
+        end
+      end
       if production?
         raise UnsafeConfiguration, "Production requires APP_DEPLOYMENT_ENV=production" unless deployment == "production"
         raise UnsafeConfiguration, "Production cannot enable simulation or legacy test mode" if
@@ -35,6 +43,9 @@ module Payments
 
     def self.validate_database!
       validate_environment!
+      if Rails.env.staging? && PaymentProfile.table_exists? && PaymentProfile.joins(:payment_identity).where(enabled: true).where.not(payment_identities: { environment: "sandbox" }).exists?
+        raise UnsafeConfiguration, "Staging requires sandbox enabled payment profiles"
+      end
       return unless production?
       if SiteSetting.table_exists? && SiteSetting.where(payment_test_mode: true).exists?
         raise UnsafeConfiguration, "Disable legacy payment_test_mode before production boot"

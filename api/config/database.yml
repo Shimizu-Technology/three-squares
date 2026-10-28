@@ -13,7 +13,7 @@ test:
   # Fixtures are owned by specs; restaurant demo data is not test data.
   seeds: false
 
-production:
+production: &production
   primary:
     <<: *default
     url: <%= ENV["DATABASE_URL"] %>
@@ -27,3 +27,7 @@ production:
     url: <%= ENV["DATABASE_URL"] %>
     migrations_paths: db/cable_migrate
     schema_dump: cable_schema.rb
+
+# Same durable database topology; staging must supply its own URLs.
+staging:
+  <<: *production

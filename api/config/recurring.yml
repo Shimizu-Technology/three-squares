@@ -9,7 +9,7 @@
 #     priority: 2
 #     schedule: at 5am every day
 
-production:
+production: &production
   recover_payments:
     class: PaymentRecoveryJob
     schedule: every minute
@@ -24,3 +24,6 @@ production:
     class: RefundRecoveryJob
     queue: payments
     schedule: every minute
+
+staging:
+  <<: *production
