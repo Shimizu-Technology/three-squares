@@ -99,3 +99,19 @@ Use StatusBadge `tone="attention|info|success|neutral|danger|inactive"`; it carr
 Run `npm run ui:check` after changes and `npm run ui:ratchet` to remove retired entries and refresh locations. Ratcheting **refuses added debt**; there is no update command that blesses new sites. The initial baseline cannot be reinitialized over an existing file. Review any manual baseline change as an exception. Approved specialized implementations are exact file/component pairs in `specializedControls` in the checker: POSProductTile and QuantityStepper. Add Tabs, Disclosure, navigation and other specialized primitives only with semantics, geometry tests and a specific reason; a whole page is never exempt.
 
 Run `npm run test:ci-tools` for enforcement tests and `npm run test:unit` for component props/recipe tests. The standalone `fixtures/ui-controls.html` development page uses the actual primitives, recovery components and retained legacy specimens; it is not a production app route. With the isolated demo running, execute the geometry fixture as documented in `web/fixtures/README.md`. Extend it in every migration slice; screenshots do not replace assertions or saved journey checks.
+
+## Shared form fields (P5a)
+
+Use named `Field`, `Input`, `Select` and `Textarea` exports from their respective files in `components/ui`. Field wraps exactly one control and associates a visible label with its existing ID or a generated unique ID. Help and error slots add their IDs to existing `aria-describedby` references; errors set `aria-invalid`. The caller retains values, handlers, refs, validation and request state. Static errors are not automatically live regions. Native required semantics remain on the control, with a visible required marker in the label.
+
+```tsx
+<Field label="Device name" help="Use a name staff recognize." error={nameError}>
+  <Input value={name} onChange={event => setName(event.target.value)} required />
+</Field>
+<Field label="Location"><Select value={location} onChange={changeLocation}>{options}</Select></Field>
+<Field label="Notes"><Textarea value={notes} onChange={changeNotes} /></Field>
+```
+
+Input and single-choice Select are exactly44px border-box high,1px neutral border,8px radius,12px horizontal padding and14/20 type; coarse pointers use16/24 type. Field labels sit above controls with4px gaps. Textarea is multiline: default3 rows, minimum96px,12px padding and native vertical resize. It does not force multiline content into a44px box. Help/error type is14/20. Controls have the shared2px focus outline/2px offset and one disabled opacity rule. Keep field `className` layout-only; the existing AST gate rejects geometry/color overrides, inline styles and spread props at adoption sites. Checkboxes, switches, file pickers and multi-select lists keep separate semantic recipes.
+
+Current Device name/location plus Refresh/Save adopt these recipes first. Other forms migrate in the remaining admin/customer slices. The dev-only `fixtures/ui-fields.html` provides label/help/error, native submission, disabled and geometry acceptance; it is excluded from the normal production entry.

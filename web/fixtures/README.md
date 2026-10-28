@@ -29,3 +29,20 @@ after the phase. No real authentication/provider is needed by this fixture.
 Extend this runner and fixture for later slices. Add real screen-specific
 assertions and saved-outcome journey QA where applicable; this component fixture
 does not certify POS payments, stock, customer checkout, or physical Safari.
+
+For shared fields, open `fixtures/ui-fields.html` on the same isolated demo and run:
+
+```sh
+UI_FIXTURE_URL=http://localhost:5593/fixtures/ui-fields.html \
+UI_EVIDENCE_DIR=/absolute/private/evidence \
+DEV_LIFECYCLE_SESSION=<your-session-id> \
+node scripts/run-with-project-node.mjs node scripts/measure-ui-fields.mjs
+```
+
+This runner checks all four sizes with fine/touch Chromium and WebKit: 44px
+single-line fields, 16px touch type, 4px label gap, explicit labels, help/error
+association, native form values, disabled controls and keyboard focus. Textarea
+has a 96px minimum and native vertical resize. Select uses a shared chevron and
+CSS appearance while retaining its native picker and keyboard behavior. Screenshot
+capture is followed by pointer/height checks. Real saved admin/customer journeys
+remain separate QA; these development fixtures do not provide authentication.
