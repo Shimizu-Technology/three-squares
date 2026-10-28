@@ -1,3 +1,4 @@
+import { Button } from '../../ui/Button';
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
 import { useStaffAccess } from '../../admin/StaffAccess.tsx';
@@ -46,7 +47,7 @@ export default function SimulatedTerminalPanel({ locationId, attemptId, terminal
     <label className="block">Simulated reader<select value={selected} disabled={!!attemptId || busy} onChange={event => onSelect(event.target.value ? Number(event.target.value) : null)} className="block w-full bg-white border rounded p-2 min-h-11 text-base">{terminals.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
     <p className="my-2" role="status">{terminal?.status.replaceAll('_', ' ') || 'No reader configured'}{terminal?.order_number ? ` · ${terminal.order_number}` : ''}</p>
     {!attemptId && <p className="mb-2 text-sm">Add items and press Card to save an order, then take payment here.</p>}
-    <div className="grid grid-cols-2 gap-2">{[['take','Take card payment'],['tap','Tap card'],['approve','Approve'],['decline','Decline'],['wrong_pin','Enter wrong PIN'],['disconnect','Disconnect'],['reconnect','Reconnect'],['lose_response','Lose response']].filter(([value]) => can(value === 'take' ? 'payments.collect' : 'payments.simulate')).map(([value,label]) => <button type="button" key={value} disabled={busy || !selected || (value !== 'reconnect' && (!attemptId || (value !== 'take' && terminal?.attempt_id !== attemptId) || (['tap', 'approve', 'decline', 'wrong_pin', 'lose_response'].includes(value) && (!terminal?.collection_ready || !['waiting_for_card', 'card_inserted'].includes(terminal?.status || '')))))} className="min-h-11 rounded border border-amber-500 bg-white px-2 py-2 disabled:opacity-50" onClick={() => void act(value)}>{label}</button>)}</div>
+    <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-2">{[['take','Take payment'],['tap','Tap card'],['approve','Approve'],['decline','Decline'],['wrong_pin','Wrong PIN'],['disconnect','Disconnect'],['reconnect','Reconnect'],['lose_response','Lose response']].filter(([value]) => can(value === 'take' ? 'payments.collect' : 'payments.simulate')).map(([value,label]) => <Button variant="secondary" key={value} disabled={busy || !selected || (value !== 'reconnect' && (!attemptId || (value !== 'take' && terminal?.attempt_id !== attemptId) || (['tap', 'approve', 'decline', 'wrong_pin', 'lose_response'].includes(value) && (!terminal?.collection_ready || !['waiting_for_card', 'card_inserted'].includes(terminal?.status || '')))))} onClick={() => void act(value)}>{label}</Button>)}</div>
     {error && <p role="alert" className="mt-3 text-sm break-words">{error}</p>}
   </details>;
 }
