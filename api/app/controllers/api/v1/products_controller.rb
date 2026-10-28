@@ -97,9 +97,6 @@ module Api
 
       # GET /api/v1/products/:id
       def show
-        if params[:location_id].present? && @product.allow_pickup? && !@product.offered_for_location?(params[:location_id])
-          return render json: { error: "Product not found" }, status: :not_found
-        end
         render json: serialize_product_full(@product)
       end
 
@@ -153,6 +150,7 @@ module Api
       end
 
       def serialize_product_full(product)
+        locations = offered_locations(product)
         {
           id: product.id,
           name: product.name,
@@ -171,6 +169,8 @@ module Api
           allow_pickup: product.allow_pickup,
           allow_shipping: product.allow_shipping,
           available_location_ids: product.product_locations.available.pluck(:location_id),
+          offered_location_ids: locations.map { |location| location[:id] },
+          offered_locations: locations,
           product_stock_quantity: product.product_stock_quantity,
           product_low_stock_threshold: product.product_low_stock_threshold,
           in_stock: product.in_stock?,
@@ -190,6 +190,17 @@ module Api
           created_at: product.created_at,
           updated_at: product.updated_at
         }
+      end
+
+      # Direct links remain useful at a different counter. Disclose active menu
+      # locations independently of daily sold-out flags so the customer can switch.
+      def offered_locations(product)
+        return [] unless product.allow_pickup?
+
+        rows = product.product_locations.to_a
+        locations = Location.active.by_name
+        locations = locations.where(id: rows.select(&:offered?).map(&:location_id)) if rows.any?
+        locations.map { |location| { id: location.id, name: location.name, slug: location.slug } }
       end
 
       def serialize_variant(variant)

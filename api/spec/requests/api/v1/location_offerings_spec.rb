@@ -29,16 +29,35 @@ RSpec.describe "Location menu offerings", type: :request do
     response.parsed_body.fetch("categories").flat_map { |category| category.fetch("items") }
   end
 
-  it "hides non-carried items in public lists, collection menus, direct URLs and both POS modes" do
+  it "hides non-carried items in public lists, collection menus and both POS modes" do
     get "/api/v1/products", params: {location_id: donki.id}
     expect(response.parsed_body.fetch("products")).to be_empty
     get "/api/v1/collections/#{collection.slug}", params: {location_id: donki.id}
     expect(response.parsed_body.fetch("products")).to be_empty
-    get "/api/v1/products/#{meal.slug}", params: {location_id: donki.id}
-    expect(response).to have_http_status(:not_found)
     expect(pos_items(donki)).to be_empty
     expect(pos_items(donki, manage: false)).to be_empty
     expect(pos_items(main).map { |item| item.fetch("id") }).to include(meal.id)
+  end
+
+  it "keeps a shared product URL readable at another counter with non-purchasable pricing and offered locations" do
+    get "/api/v1/products/#{meal.slug}", params: {location_id: donki.id}
+    expect(response).to have_http_status(:ok)
+    body = response.parsed_body
+    expect(body).to include("id" => meal.id, "offered_location_ids" => [main.id],
+      "offered_locations" => [{"id" => main.id, "name" => main.name, "slug" => main.slug}])
+    expect(body.fetch("pricing")).to include("purchasable" => false, "unit_price_cents" => nil, "reason" => "Not offered at this location")
+    expect(body.fetch("variants").sole.fetch("pricing")).to include("purchasable" => false, "reason" => "Not offered at this location")
+  end
+
+  it "discloses legacy all-location membership using active locations, even when an offered item is sold out" do
+    meal.product_locations.delete_all
+    inactive = create(:location, active: false)
+    get "/api/v1/products/#{meal.slug}", params: {location_id: donki.id}
+    expect(response.parsed_body.fetch("offered_location_ids")).to match_array([main.id, donki.id])
+    expect(response.parsed_body.fetch("offered_location_ids")).not_to include(inactive.id)
+    ProductLocation.create!(product: meal, location: main, offered: true, available: false)
+    get "/api/v1/products/#{meal.slug}", params: {location_id: donki.id}
+    expect(response.parsed_body.fetch("offered_location_ids")).to eq([main.id])
   end
 
   it "keeps offered sold-out items visible to customers and manageable at POS" do

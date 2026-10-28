@@ -18,7 +18,7 @@ New catalog creation/import retains the existing scoped initial location assignm
 - `PATCH /api/v1/admin/products/:product_id/offerings`: `catalog.offerings.manage`; JSON `{"offering":{"location_id":1,"offered":false}}`. Only those two keys are accepted; `offered` is a JSON boolean.
 - Admin product summaries expose `offered_location_ids` separately from effective daily `location_ids`; list controls use membership to distinguish not carried from sold out.
 - The existing `/availability` endpoint changes only `available`, requires `availability.manage` and location authorization, and rejects non-carried items.
-- Public product/collection `location_id` filters use membership and return offered sold-out items with `actually_available: false`. A direct non-carried product URL with `location_id` returns 404. Pricing cannot provide a payable location price for a non-carried item.
+- Public product/collection `location_id` filters use membership and return offered sold-out items with `actually_available: false`. A direct product URL remains readable with a non-carried `location_id`: it returns non-purchasable pricing with “Not offered at this location”, plus `offered_location_ids` and `offered_locations` (active location IDs/names/slugs, independent of daily sold-out state). Pricing cannot provide a payable location price for a non-carried item.
 - POS excludes non-carried items in both modes. Sale mode retains disabled sold-out tiles; **Manage availability** restores offered items. The location is an authorized saved preference, otherwise Main, otherwise the active location with the most offered published pickup items. Pending payment recovery retains its original location validation.
 
 ## Production launch checklist
