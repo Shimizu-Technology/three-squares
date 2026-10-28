@@ -121,7 +121,7 @@
 .public-site [role="button"]:not([data-ui-control]):active { opacity: 0.88; }
 
 @media (pointer: coarse) {
-  input, textarea, select { font-size: max(16px, 1em) !important; }
+  input:not([data-ui-control]), textarea:not([data-ui-control]), select:not([data-ui-control]) { font-size: max(16px, 1em) !important; }
 }
 
 @media (prefers-reduced-motion: reduce) {

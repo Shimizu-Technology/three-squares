@@ -255,14 +255,12 @@ module Api
             unless product.product_locations.exists?
               Location.find_each { |location| product.product_locations.create!(location: location, available: true) }
             end
-            record = product.product_locations.find_or_initialize_by(location_id: attrs[:location_id])
-            if record.persisted?
-              # A local flag must not be blocked by unrelated legacy price data.
-              record.update_columns(available: attrs[:available], updated_at: Time.current)
-            else
-              record.available = attrs[:available]
-              record.save!
+            record = product.product_locations.find_by(location_id: attrs[:location_id])
+            unless record&.offered?
+              return render_error("This item is not offered at this location. Change its menu offering first.", status: :unprocessable_entity)
             end
+            # A local flag must not be blocked by unrelated legacy price data.
+            record.update_columns(available: attrs[:available], updated_at: Time.current)
           end
           render_success({ product_id: product.id, location_id: attrs[:location_id].to_i, available: attrs[:available] })
         rescue ActiveRecord::RecordNotFound
@@ -307,18 +305,26 @@ module Api
           Location.find_each do |location|
             next if had_rows && !authorized_ids.include?(location.id)
             record = product.product_locations.find_or_initialize_by(location_id: location.id)
+            # Once explicit rows exist, a missing row means not carried. Legacy
+            # daily-flag payloads must not create membership as a side effect.
+            record.offered = false if !new_product && had_rows && record.new_record?
             record.available = if !new_product && !had_rows && !authorized_ids.include?(location.id)
               true
             else
               location_ids.include?(location.id)
             end
+            if !new_product && !record.offered? && (record.new_record? || record.available_changed?) && record.available?
+              product.errors.add(:base, "Item is not offered at this location. Change its menu offering first.")
+              raise ActiveRecord::RecordInvalid, product
+            end
+            record.offered = location_ids.include?(location.id) if new_product
             record.save!
           end
         end
 
         def ensure_pickup_location_if_required!(product)
           return unless product.allow_pickup?
-          return if product.product_locations.available.exists?
+          return if product.product_locations.empty? || product.product_locations.offered.exists?
 
           product.errors.add(:base, "Select at least one pickup location for pickup-enabled products.")
           raise ActiveRecord::RecordInvalid, product
@@ -354,7 +360,7 @@ module Api
 
         def serialize_product_summary(product)
           local_rows = product.product_locations.to_a
-          location_ids = local_rows.empty? ? Location.ids : local_rows.select(&:available?).map(&:location_id)
+          location_ids = local_rows.empty? ? Location.ids : local_rows.select { |row| row.offered? && row.available? }.map(&:location_id)
           needs_pickup_locations = product.allow_pickup? && !product.published? && !product.archived? && location_ids.empty?
           total_variant_stock = if product.inventory_level == "variant"
             product.product_variants.sum(:stock_quantity)
@@ -377,6 +383,7 @@ module Api
             allow_pickup: product.allow_pickup,
             allow_shipping: product.allow_shipping,
             location_ids: location_ids,
+            offered_location_ids: local_rows.empty? ? Location.ids : local_rows.select(&:offered?).map(&:location_id),
             needs_pickup_locations: needs_pickup_locations,
             product_stock_quantity: product.product_stock_quantity,
             product_low_stock_threshold: product.product_low_stock_threshold,
@@ -416,7 +423,8 @@ module Api
             id: location.id,
             name: location.name,
             slug: location.slug,
-            available: product_location&.available || false
+            offered: product.product_locations.empty? || product_location&.offered? == true,
+            available: product.product_locations.empty? || product_location&.available? == true
           }
         end
 

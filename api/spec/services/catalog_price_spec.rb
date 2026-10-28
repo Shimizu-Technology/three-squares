@@ -71,3 +71,15 @@ RSpec.describe CatalogPrice do
     expect(variant.price_cents).to eq(995)
   end
 end
+
+RSpec.describe "Non-carried location prices" do
+  it "rejects Ruby and SQL prices even with an available legacy override; sold-out membership keeps catalog pricing" do
+    location = create(:location)
+    product = create(:product)
+    row = ProductLocation.create!(product: product, location: location, offered: false, available: true, price_override_cents: 900)
+    expect(CatalogPrice.resolve(product: product, location_id: location.id).to_h).to include(purchasable: false, unit_price_cents: nil, reason: "Not offered at this location")
+    expect(Product.where(id: product.id).pick(Arel.sql(CatalogPrice.sql(location_id: location.id)))).to be_nil
+    row.update!(offered: true, available: false)
+    expect(CatalogPrice.resolve(product: product.reload, location_id: location.id).purchasable).to be(true)
+  end
+end

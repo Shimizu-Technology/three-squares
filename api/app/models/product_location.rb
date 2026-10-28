@@ -14,6 +14,7 @@ class ProductLocation < ApplicationRecord
     errors.add(:base, "This dish has sizes with different prices, so a single #{location&.name || 'location'} price can't be set. Edit each size's price instead.")
   end
 
-  scope :available, -> { where(available: true) }
+  scope :offered, -> { where(offered: true) }
+  scope :available, -> { offered.where(available: true) }
 end
 

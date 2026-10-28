@@ -19,7 +19,7 @@ export function CompletedSale({ order, onDismiss }: {order: CompletedSaleFacts; 
     <div className="flex items-start gap-2">
       <Check aria-hidden="true" className="mt-2 h-5 w-5 shrink-0 text-green-800" />
       <div role="status" aria-atomic="true" className="min-w-0 flex-1 text-green-950">
-        <p className="font-semibold text-green-950">Order {order.order_number} completed</p>
+        <p className="font-semibold text-green-950"><span className="block">Order completed</span><span className="block text-sm">{order.order_number}</span></p>
         <p className="text-sm text-green-950">{order.total_formatted}</p>
         {order.change_due_formatted && <p className="text-lg font-semibold text-green-950">Change: {order.change_due_formatted}</p>}
       </div>
