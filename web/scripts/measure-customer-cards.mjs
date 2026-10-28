@@ -1,3 +1,4 @@
+import { expect, expectHash } from './geometry-assertions.mjs';
 import { launchGeometryBrowser } from './geometry-browser.mjs';
 import { prepareGeometryContext } from './geometry-context.mjs';
 import { chromium, webkit } from "@playwright/test";
@@ -120,17 +121,42 @@ try {
               assert.equal(new URL(await card.getAttribute('href'), page.url()).hash, '#home-category-destination');
               assert.equal(await card.locator('[data-photo-state="unavailable"]').count(), 1);
             }
-            await homeCards.first().focus(); await page.keyboard.press('Enter');
-            assert.equal(new URL(page.url()).hash, '#home-category-destination');
+            const navigation = {};
+            const recordActivation = async (card, name) => {
+              await card.scrollIntoViewIfNeeded();
+              navigation[name] = await card.evaluate(el => {
+                const rect = el.getBoundingClientRect();
+                const point = { x: rect.x + rect.width / 2, y: rect.y + rect.height / 2 };
+                const hit = document.elementFromPoint(point.x, point.y);
+                return { rect: rect.toJSON(), point, href: el.href,
+                  focused: document.activeElement === el,
+                  hit: hit ? { tag: hit.tagName, className: hit.className,
+                    link: hit.closest('a')?.getAttribute('href'), insideCard: el.contains(hit) } : null };
+              });
+              writeFileSync(path.join(output, `navigation-${engine}-${width}-${touch ? 'touch' : 'fine'}.json`), JSON.stringify(navigation, null, 2) + '\n');
+            };
+            await homeCards.first().focus(); await expect(homeCards.first()).toBeFocused();
+            await recordActivation(homeCards.first(), 'keyboard');
+            await page.keyboard.press('Enter');
+            navigation.keyboard.immediateURL = page.url();
+            await expectHash(page, '#home-category-destination');
+            navigation.keyboard.settledURL = page.url();
+            // Reset the destination so pointer activation cannot pass on the keyboard result.
+            await page.evaluate(() => { location.hash = ''; });
+            await expectHash(page, '');
+            await recordActivation(homeCards.last(), 'pointer');
             if (touch) await homeCards.last().tap(); else await homeCards.last().click();
-            assert.equal(new URL(page.url()).hash, '#home-category-destination');
+            navigation.pointer.immediateURL = page.url();
+            await expectHash(page, '#home-category-destination');
+            navigation.pointer.settledURL = page.url();
+            writeFileSync(path.join(output, `navigation-${engine}-${width}-${touch ? 'touch' : 'fine'}.json`), JSON.stringify(navigation, null, 2) + '\n');
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
             await page.screenshot({
               path: path.join(output, `cards-${engine}-${width}-${touch ? "touch" : "fine"}.png`),
               fullPage: false,
             });
             assert.equal(await page.evaluate(() => matchMedia('(pointer:coarse)').matches), touch);
-            results.push({ engine, width, height, touch, geometry, collections, status: "passed" });
+            results.push({ engine, width, height, touch, geometry, collections, navigation, status: "passed" });
             writeFileSync(path.join(output, "card-geometry.json"), JSON.stringify(results, null, 2) + "\n");
             console.log(`${engine} ${width}x${height} ${touch ? "touch" : "fine"} passed`);
           } finally {

@@ -1,3 +1,4 @@
+import { expect } from './geometry-assertions.mjs';
 import { launchGeometryBrowser } from './geometry-browser.mjs';
 import { prepareGeometryContext } from './geometry-context.mjs';
 import {chromium,webkit} from '@playwright/test';
@@ -16,16 +17,16 @@ async function checkDialog(page){
   const opener=page.getByRole('button',{name:'Choose fixture reader',exact:true});
   await opener.click();const dialog=page.getByRole('dialog',{name:'Select Card Reader'});await dialog.waitFor();
   await page.keyboard.press('Tab');await page.keyboard.press('Shift+Tab');
-  assert.equal(await dialog.evaluate(el=>el.contains(document.activeElement)),true);
+  await expect.poll(() => dialog.evaluate(el=>el.contains(document.activeElement))).toBe(true);
   await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
-  assert.equal(await opener.evaluate(el=>el===document.activeElement),true);
+  await expect(opener).toBeFocused();
   await opener.click();await page.getByRole('dialog').getByRole('button',{name:'Connect reader Fixture reader',exact:true}).click();
-  await dialog.waitFor({state:'hidden'});assert.equal(await opener.evaluate(el=>el===document.activeElement),true);
+  await dialog.waitFor({state:'hidden'});await expect(opener).toBeFocused();
   await opener.click();await page.getByRole('button',{name:'Close Select Card Reader'}).click();await dialog.waitFor({state:'hidden'});
-  await opener.click();await page.mouse.click(2,2);await dialog.waitFor({state:'hidden'});
-  assert.equal(await opener.evaluate(el=>el===document.activeElement),true);
-  await opener.click();const box=await dialog.boundingBox();await page.mouse.move(box.x+20,box.y+20);await page.mouse.down();await page.mouse.move(2,2);await page.mouse.up();assert.equal(await dialog.isVisible(),true);await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
-  await page.getByRole('button',{name:'Choose busy fixture reader',exact:true}).click();await dialog.waitFor();assert.equal(await page.getByRole('button',{name:'Close Select Card Reader'}).isDisabled(),true);await page.keyboard.press('Escape');assert.equal(await dialog.isVisible(),true);await page.evaluate(()=>window.dispatchEvent(new Event('fixture-reader-finished')));await page.getByRole('button',{name:'Close Select Card Reader'}).click();await dialog.waitFor({state:'hidden'});
+  await opener.click();await expect(dialog).toBeVisible();await page.mouse.click(2,2);await dialog.waitFor({state:'hidden'});
+  await expect(opener).toBeFocused();
+  await opener.click();await expect(dialog).toBeVisible();const box=await dialog.boundingBox();await page.mouse.move(box.x+20,box.y+20);await page.mouse.down();await page.mouse.move(2,2);await page.mouse.up();await expect(dialog).toBeVisible();await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
+  await page.getByRole('button',{name:'Choose busy fixture reader',exact:true}).click();await dialog.waitFor();await expect(page.getByRole('button',{name:'Close Select Card Reader'})).toBeDisabled();await page.keyboard.press('Escape');await expect(dialog).toBeVisible();await page.evaluate(()=>window.dispatchEvent(new Event('fixture-reader-finished')));await page.getByRole('button',{name:'Close Select Card Reader'}).click();await dialog.waitFor({state:'hidden'});
 }
 try{
   for(const [width,height]of[[768,1024],[1024,768],[1440,900],[390,844]])for(const touch of[false,true]){
@@ -37,8 +38,8 @@ try{
       const group=page.getByRole('group',{name:'Quantity of Fixture meal',exact:true}),count=group.locator('output');const before=await count.boundingBox();
       const targets=await group.getByRole('button').evaluateAll(nodes=>nodes.map(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height})));
       assert.ok(targets.every(t=>t.width===44&&t.height===44));
-      await group.getByRole('button',{name:'Increase quantity of Fixture meal',exact:true}).click();assert.equal(await count.textContent(),'10');assert.equal((await count.boundingBox()).width,before.width);
-      await page.getByRole('button',{name:'Toggle pending quantity'}).click();assert.equal(await group.getAttribute('aria-busy'),'true');assert.equal(await group.getByRole('button').first().isDisabled(),true);assert.equal((await count.boundingBox()).width,before.width);
+      await group.getByRole('button',{name:'Increase quantity of Fixture meal',exact:true}).click();await expect(count).toHaveText('10');assert.equal((await count.boundingBox()).width,before.width);
+      await page.getByRole('button',{name:'Toggle pending quantity'}).click();await expect(group).toHaveAttribute('aria-busy', 'true');await expect(group.getByRole('button').first()).toBeDisabled();assert.equal((await count.boundingBox()).width,before.width);
       const large=await page.getByRole('group',{name:'Quantity of Large fixture meal'}).getByRole('button').first().boundingBox();assert.equal(large.height,52);assert.equal(large.width,52);
       assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
       await page.screenshot({path:path.join(out,`controls-${width}-${touch?'touch':'fine'}.png`)});
