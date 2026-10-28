@@ -148,9 +148,9 @@ export default function CateringPage() {
         </div>
       </section>
 
-      {/* Catering Inquiry Form */}
+      {/* The caller's desktop cap overrides Dialog's viewport max-width utility. */}
       <Dialog open={showForm} onOpenChange={setShowForm} labelledBy="catering-form-title"
-        className={`w-[calc(100vw-2rem)] max-w-3xl rounded-2xl border border-warm-200 overflow-hidden flex flex-col ${submitted ? '' : 'h-[calc(100dvh-2rem)]'}`}>
+        className={`w-[calc(100vw-2rem)] max-w-3xl! rounded-2xl border border-warm-200 overflow-hidden flex flex-col ${submitted ? '' : 'h-[calc(100dvh-2rem)]'}`}>
               {submitted ? (
                 <div ref={outcomeRef} role="status" tabIndex={-1} className="p-8 text-center overflow-y-auto">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
