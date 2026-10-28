@@ -1,3 +1,6 @@
+import { NavigationLink } from '../ui/NavigationLink';
+import { Disclosure } from '../ui/Disclosure';
+import { Button } from '../ui/Button';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
@@ -13,6 +16,13 @@ export default function LocationQrCode({ id, name, slug }: { id: number; name: s
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const pending = useRef<AbortController | null>(null);
+  const focusAfterBusy = useRef<HTMLButtonElement | null>(null);
+  useEffect(() => {
+    if (busy !== null || !focusAfterBusy.current) return;
+    const trigger = focusAfterBusy.current;
+    focusAfterBusy.current = null;
+    if (trigger.isConnected) { window.focus(); trigger.focus(); }
+  }, [busy]);
   const closeEmptyPopup = useRef<(() => void) | null>(null);
 
   useEffect(() => () => {
@@ -28,7 +38,10 @@ export default function LocationQrCode({ id, name, slug }: { id: number; name: s
     setNotice('');
     // Reserve the window in the click event, before authentication or network work.
     let popup: Window | null = null;
-    const restoreFocus = () => { if (trigger.isConnected) { window.focus(); trigger.focus(); } };
+    const restoreFocus = () => {
+      if (trigger.disabled) focusAfterBusy.current = trigger;
+      else if (trigger.isConnected) { window.focus(); trigger.focus(); }
+    };
     const closeEmpty = () => {
       try {
         if (popup && !popup.closed && popup.location.href === 'about:blank' && !popup.document.body.childNodes.length) popup.close();
@@ -145,21 +158,20 @@ export default function LocationQrCode({ id, name, slug }: { id: number; name: s
 
   return <div className="space-y-3" aria-busy={busy !== null}>
     <div className="flex flex-wrap gap-2">
-      {(['View menu', 'Copy URL', 'Print QR'] as const).map(action => <button key={action} type="button"
-        aria-label={`${action} for ${name}`} aria-disabled={busy !== null}
-        onClick={event => void run(action, event.currentTarget)}
-        className="min-h-11 rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-800 aria-disabled:opacity-50">{action}</button>)}
+      {(['View menu', 'Copy URL', 'Print QR'] as const).map(action => <Button variant="secondary" key={action} type="button"
+        aria-label={`${action} for ${name}`} disabled={busy !== null}
+        onClick={event => void run(action, event.currentTarget)}>{action}</Button>)}
     </div>
     <p role="status" className="text-sm text-gray-600 break-words">{busy ? `${busy}: preparing saved menu…` : notice || 'Menu actions use saved location details.'}</p>
     {error && <p role="alert" className="text-sm text-red-700 break-words">{error}</p>}
-    {qr && <details open={error ? true : undefined}>
-      <summary className="min-h-11 py-3 cursor-pointer text-sm text-tsPrimary">Saved menu URL and QR</summary>
+    {qr && <Disclosure open={error ? true : undefined} title={<>Saved menu URL and QR</>}>
+
       <div className="space-y-3 pt-2">
-        <a href={qr.menu_url} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center text-sm text-tsPrimary underline break-all">{qr.menu_url}</a>
+        <NavigationLink href={qr.menu_url} target="_blank" rel="noopener noreferrer" >{qr.menu_url}</NavigationLink>
         <img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr.svg)}`} alt={`${name} menu QR code`} className="w-48 max-w-full bg-white border border-gray-200" />
-        <button type="button" aria-label={`Download SVG for ${name}`} aria-disabled={busy !== null}
-          onClick={event => void run('Download SVG', event.currentTarget)} className="min-h-11 border border-gray-300 rounded-lg px-4 py-2 text-sm aria-disabled:opacity-50">Download SVG</button>
+        <Button variant="secondary" type="button" aria-label={`Download SVG for ${name}`} disabled={busy !== null}
+          onClick={event => void run('Download SVG', event.currentTarget)}>Download SVG</Button>
       </div>
-    </details>}
+    </Disclosure>}
   </div>;
 }

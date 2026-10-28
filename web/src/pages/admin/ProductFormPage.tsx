@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import { CheckField } from '../../components/ui/CheckField';
 import { Disclosure } from '../../components/ui/Disclosure';
@@ -1030,15 +1031,9 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                           </td>
                           <td className="py-3 px-2 text-gray-600">{audit.user}</td>
                           <td className="py-3 px-2">
-                            <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${
-                              audit.audit_type === 'order_placed' ? 'bg-orange-100 text-orange-700' :
-                              audit.audit_type === 'order_cancelled' ? 'bg-red-100 text-red-700' :
-                              audit.audit_type === 'restock' ? 'bg-green-100 text-green-700' :
-                              audit.audit_type === 'manual_adjustment' ? 'bg-blue-100 text-blue-700' :
-                              'bg-gray-100 text-gray-700'
-                            }`}>
+                            <StatusBadge tone="neutral">
                               {audit.audit_type.replace(/_/g, ' ')}
-                            </span>
+                            </StatusBadge>
                           </td>
                           <td className="py-3 px-2 text-gray-600">
                             {audit.variant?.display_name || '-'}

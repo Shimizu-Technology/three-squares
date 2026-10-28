@@ -1,5 +1,8 @@
+import { NavigationLink } from '../components/ui/NavigationLink';
+import { Button } from '../components/ui/Button';
+import { IconButton } from '../components/ui/IconButton';
 import { useRef, useState, useEffect } from 'react';
-import { Link, Navigate, Outlet, useLocation } from 'react-router-dom';
+import { Navigate, Outlet, useLocation } from 'react-router-dom';
 import { useUser } from '@clerk/clerk-react';
 import { ChevronLeft, ChevronRight, ExternalLink, Menu, X } from 'lucide-react';
 import AdminIcon from '../components/admin/AdminIconMap';
@@ -45,11 +48,11 @@ const ROUTE_META: Record<string, RouteMeta> = {
 function getRouteMeta(pathname: string): RouteMeta {
   // Exact match first
   if (ROUTE_META[pathname]) return ROUTE_META[pathname];
-  
+
   // Dynamic patterns
   if (/^\/admin\/products\/\d+\/edit$/.test(pathname))
     return { title: 'Edit Product', parent: '/admin/products' };
-  
+
   // Fallback
   return { title: '', parent: '/admin' };
 }
@@ -62,7 +65,7 @@ interface Crumb {
 function buildBreadcrumbs(pathname: string): Crumb[] {
   const crumbs: Crumb[] = [];
   let current = pathname;
-  
+
   // Walk up the parent chain
   while (current) {
     const meta = getRouteMeta(current);
@@ -70,12 +73,12 @@ function buildBreadcrumbs(pathname: string): Crumb[] {
     crumbs.unshift({ label: meta.title, path: current });
     current = meta.parent || '';
   }
-  
+
   // Last crumb is current page (no link)
   if (crumbs.length > 0) {
     delete crumbs[crumbs.length - 1].path;
   }
-  
+
   return crumbs;
 }
 
@@ -159,7 +162,7 @@ function AdminShell() {
     <div role="alert" className="mx-auto max-w-lg space-y-4 rounded-xl border border-gray-300 bg-white p-6">
       <h1 className="text-xl font-bold">Admin access unavailable</h1>
       <p>We couldn’t check your access. Try again to continue where you left off.</p>
-      <button type="button" disabled={access.loading} onClick={access.reload} className="btn-primary min-h-11">{access.loading ? 'Checking…' : 'Retry access check'}</button>
+      <Button variant="primary" type="button" disabled={access.loading} onClick={access.reload}>{access.loading ? 'Checking…' : 'Retry access check'}</Button>
     </div>
   </main>;
   if (access.loading) return <div role="status" className="min-h-dvh bg-gray-50 p-6">Checking staff access…</div>;
@@ -183,15 +186,14 @@ function AdminShell() {
   // navigation subtree or removes keyboard focus.
   const renderNavigation = (compact: boolean) => navigation.map(group => <div key={group.title} className="mb-5">
     <p className={`mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-500 ${compact ? 'sr-only' : ''}`}>{group.title}</p>
-    <div className="space-y-1">{group.items.map(item => <Link
-      key={item.path} to={item.path} aria-label={item.name} aria-current={activePath === item.path ? 'page' : undefined}
+    <div className="space-y-1">{group.items.map(item => <NavigationLink
+      key={item.path} compact={compact} to={item.path} aria-label={item.name} aria-current={activePath === item.path ? 'page' : undefined}
       onClick={() => { setSidebarOpen(false); setTooltip(null); }}
       onFocus={event => { if (compact) showTooltip(event.currentTarget, item.name); }}
       onBlur={() => setTooltip(null)}
       onMouseEnter={event => { if (compact) showTooltip(event.currentTarget, item.name); }}
       onMouseLeave={() => setTooltip(null)}
-      className={`flex min-h-11 items-center gap-3 rounded-lg px-3 py-2.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tsPrimary ${compact ? 'justify-center' : ''} ${activePath === item.path ? 'bg-tsPrimary text-white' : 'text-gray-700 hover:bg-gray-100'}`}
-    ><AdminIcon name={item.icon} className="h-5 w-5 shrink-0" /><span className={`text-sm font-medium ${compact ? 'sr-only' : ''}`}>{item.name}</span></Link>)}</div>
+    ><AdminIcon name={item.icon} className="h-5 w-5 shrink-0" /><span className={`text-sm font-medium ${compact ? 'sr-only' : ''}`}>{item.name}</span></NavigationLink>)}</div>
   </div>);
   const account = (compact: boolean) => <div className={`flex items-center gap-3 border-t border-gray-200 bg-gray-50 p-3 ${compact ? 'justify-center' : ''}`}>
     <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-tsPrimary font-bold text-white" aria-hidden="true">{access.roleLabel.charAt(0)}</span>
@@ -199,9 +201,9 @@ function AdminShell() {
   </div>;
 
   return <div className="admin-scope min-h-dvh bg-gray-100">
-    <a href="#admin-main" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-20 focus:z-60 focus:rounded focus:bg-white focus:p-3">Skip to content</a>
+    <span className="sr-only focus-within:not-sr-only focus-within:fixed focus-within:left-4 focus-within:top-20 focus-within:z-60"><Button variant="secondary" href="#admin-main">Skip to content</Button></span>
     <aside id="admin-sidebar" aria-label="Admin sidebar" className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-gray-200 bg-white md:flex ${collapsed ? 'w-20' : 'w-64'}`}>
-      <Link to="/admin" aria-label="Three Squares Admin" className="flex h-16 shrink-0 items-center justify-center bg-tsPrimary px-3 text-lg font-bold text-white">{collapsed ? 'TS' : 'Three Squares Admin'}</Link>
+      <NavigationLink to="/admin" aria-label="Three Squares Admin" brand className="shrink-0">{collapsed ? 'TS' : 'Three Squares Admin'}</NavigationLink>
       <nav aria-label="Admin navigation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3" onScroll={event => {
         const focused = document.activeElement;
         if (collapsed && focused instanceof HTMLElement && event.currentTarget.contains(focused)) {
@@ -214,21 +216,21 @@ function AdminShell() {
     {tooltip && collapsed && <div role="tooltip" className="pointer-events-none fixed z-60 rounded-lg bg-gray-950 px-3 py-2 text-sm font-medium text-white shadow-lg" style={{ top: tooltip.top, left: tooltip.left }}>{tooltip.name}</div>}
     <Dialog open={sidebarOpen} onOpenChange={setSidebarOpen} labelledBy="admin-navigation-title" initialFocusRef={closeButton} returnFocusRef={menuButton} className="fixed inset-y-0 left-0 m-0! h-dvh max-h-none! w-[min(88vw,20rem)] max-w-none! rounded-none">
       <div id="admin-mobile-navigation" className="flex h-full flex-col bg-white">
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 px-4"><h2 id="admin-navigation-title" className="font-bold">Three Squares Admin</h2><button ref={closeButton} type="button" aria-label="Close admin navigation" onClick={() => setSidebarOpen(false)} className="btn-icon min-h-11 min-w-11"><X className="h-5 w-5" /></button></div>
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-gray-200 px-4"><h2 id="admin-navigation-title" className="font-bold">Three Squares Admin</h2><IconButton variant="ghost" ref={closeButton} type="button" aria-label="Close admin navigation" onClick={() => setSidebarOpen(false)}><X /></IconButton></div>
         <nav aria-label="Admin navigation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">{renderNavigation(false)}</nav>
         {account(false)}
       </div>
     </Dialog>
     <div className={collapsed ? 'md:pl-20' : 'md:pl-64'}>
       <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-gray-200 bg-white px-4">
-        <button ref={menuButton} type="button" aria-label="Open admin navigation" aria-expanded={sidebarOpen} aria-controls="admin-mobile-navigation" onClick={() => setSidebarOpen(true)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tsPrimary md:hidden"><Menu className="h-6 w-6" /></button>
-        <button type="button" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} aria-controls="admin-sidebar" onClick={toggleCollapse} className="hidden min-h-11 min-w-11 items-center justify-center rounded-lg hover:bg-gray-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tsPrimary md:inline-flex">{collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}</button>
-        <nav aria-label="Breadcrumb" className="hidden min-w-0 flex-1 items-center justify-center gap-1.5 md:flex">{breadcrumbs.map((crumb, index) => <span key={crumb.path || pageTitle} className="flex min-w-0 items-center gap-1.5">{index > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-500" />}{crumb.path && canAccessStaffRoute(access.user, crumb.path) ? <Link to={crumb.path} className="truncate text-sm text-gray-600 hover:text-tsPrimary">{crumb.label}</Link> : <span aria-current={index === breadcrumbs.length - 1 ? 'page' : undefined} className="truncate text-sm font-semibold text-gray-900">{crumb.label}</span>}</span>)}</nav>
+        <span className="md:hidden"><IconButton variant="ghost" ref={menuButton} type="button" aria-label="Open admin navigation" aria-expanded={sidebarOpen} aria-controls="admin-mobile-navigation" onClick={() => setSidebarOpen(true)}><Menu /></IconButton></span>
+        <span className="hidden md:inline-flex"><IconButton variant="ghost" type="button" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} aria-controls="admin-sidebar" onClick={toggleCollapse}>{collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft />}</IconButton></span>
+        <nav aria-label="Breadcrumb" className="hidden min-w-0 flex-1 items-center justify-center gap-1.5 md:flex">{breadcrumbs.map((crumb, index) => <span key={crumb.path || pageTitle} className="flex min-w-0 items-center gap-1.5">{index > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-500" />}{crumb.path && canAccessStaffRoute(access.user, crumb.path) ? <NavigationLink to={crumb.path} >{crumb.label}</NavigationLink> : <span aria-current={index === breadcrumbs.length - 1 ? 'page' : undefined} className="truncate text-sm font-semibold text-gray-900">{crumb.label}</span>}</span>)}</nav>
         <p className="min-w-0 flex-1 py-2 text-xs text-gray-700 md:max-w-56 md:flex-none"><span className="block font-semibold">{access.roleLabel}</span><span className="block break-words">{access.scopeLabel}</span></p>
-        <Link to="/" className="flex min-h-11 shrink-0 items-center gap-2 rounded-lg bg-gray-50 px-3 text-sm font-medium text-gray-700 hover:bg-gray-100"><ExternalLink className="h-4 w-4" />View Store</Link>
+        <NavigationLink to="/" className="shrink-0 gap-2"><ExternalLink className="h-4 w-4" />View Store</NavigationLink>
       </header>
       {/* Routine operational navigation uses native scroll and immediate content. */}
-      <main id="admin-main" tabIndex={-1} className="p-4 xl:p-8">{routeAllowed ? <Outlet /> : <StaffAccessDenied />}</main>
+      <main id="admin-main" tabIndex={-1} className="admin-main p-4 sm:p-6">{routeAllowed ? <Outlet /> : <StaffAccessDenied />}</main>
     </div>
   </div>;
 }

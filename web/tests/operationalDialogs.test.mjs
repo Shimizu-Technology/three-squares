@@ -83,7 +83,7 @@ test('shipping is controlled and labels its fields while disabling pending actio
   const tree = render(Ship, { open: false, saving: true, carrier: 'USPS', trackingNumber: 'SYNTHETIC' }).render();
   assert.equal(tree.props.open, false); assert.equal(tree.props.dismissible, false);
   assert.ok(nodes(tree).filter(node => ['select', 'input', 'button'].includes(node.type)).every(node => node.props.disabled));
-  assert.equal(nodes(tree).filter(node => node.type === 'label' && node.props.htmlFor).length, 2);
+  assert.equal(nodes(tree).filter(node => node.type?.name === 'Field' && node.props.label).length, 2);
 });
 
 test('cash dialog preserves cents/change calculations and disables pending tender edits', () => {

@@ -1,6 +1,7 @@
 import { useId } from 'react';
 import type { ReactNode, RefObject } from 'react';
-import { X } from 'lucide-react';
+import { DialogHeader } from '../ui/DialogHeader';
+import { DialogActions } from '../ui/DialogActions';
 import Dialog from '../ui/Dialog';
 
 interface AdminModalProps {
@@ -73,28 +74,12 @@ export default function AdminModal({
           }
         `}</style>
       )}
-      {/* Header */}
-      <div className="bg-white px-6 py-4 border-b border-gray-200 flex justify-between items-center rounded-t-xl shrink-0">
-        <div className="min-w-0">
-          <h2 id={titleId} className="text-xl font-bold text-gray-900 break-words">{title}</h2>
-          {subtitle && (
-            <p id={subtitleId} className="text-sm text-gray-500 mt-0.5 break-words">{subtitle}</p>
-          )}
-        </div>
-        <button
-          type="button"
-          onClick={requestClose}
-          disabled={!dismissible}
-          className="text-gray-400 hover:text-gray-600 transition shrink-0 min-w-[44px] min-h-[44px] p-2 rounded-lg hover:bg-gray-100 print-hide"
-          aria-label={`Close ${title}`}
-        >
-          <X className="w-5 h-5" />
-        </button>
-      </div>
+      <DialogHeader titleId={titleId} title={title} subtitle={subtitle} subtitleId={subtitleId}
+        onClose={requestClose} closeLabel={`Close ${title}`} disabled={!dismissible} />
 
       {/* Body */}
       <div
-        className={`flex-1 min-h-0 overflow-y-auto p-6 overscroll-contain ${
+        className={`flex-auto min-h-0 overflow-y-auto p-4 sm:p-6 overscroll-contain ${
           printable ? 'print:overflow-visible' : ''
         }`}
       >
@@ -102,11 +87,7 @@ export default function AdminModal({
       </div>
 
       {/* Footer */}
-      {footer && (
-        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 rounded-b-xl print-hide shrink-0">
-          {footer}
-        </div>
-      )}
+      {footer && <DialogActions>{footer}</DialogActions>}
     </Dialog>
   );
 }

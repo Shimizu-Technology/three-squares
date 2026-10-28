@@ -1,3 +1,4 @@
+import { uiModules, expandUi, uiText } from './helpers/uiModules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -19,13 +20,13 @@ const mocks = {
 async function load(path) {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8');
   const code = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
-    .replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(mocks[name] || import.meta.resolve(name))}`);
+    .replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(mocks[name] || uiModules[name] || import.meta.resolve(name))}`);
   return (await import(moduleUrl(code))).default;
 }
 const Page = await load('../src/pages/admin/AdminLocationsPage.tsx');
 const QrActions = await load('../src/components/admin/LocationQrCode.tsx');
-const elements = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(elements)];
-const text = node => typeof node === 'string' ? node : node && typeof node !== 'boolean' ? [node?.props?.children].flat(Infinity).map(text).join('') : '';
+const elements = value => {const node=expandUi(value);return !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(elements)];};
+const text = uiText;
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 const saved = { id: 2, name: 'Donki <long location>', slug: 'donki', active: true, hours_json: { Monday: '10:00 - 22:00' }, address: 'Guam', phone: '671', admin_email: 'owner@example.test', admin_sms_phones: [] };
 const qr = { menu_url: 'https://configured.example.test/order/donki?source=qr', svg: '<svg xmlns="http://www.w3.org/2000/svg"/>' };
@@ -61,7 +62,7 @@ function harness(t, Component, owner = true) {
     async flush() { for (let i = 0; i < 20; i++) { h.render(); for (const fn of effects.splice(0)) fn(); await Promise.resolve(); } },
     find(predicate, root = tree) { const found = elements(root).find(predicate); assert.ok(found, 'Expected location control'); return found; },
     button(label, root = tree) { return h.find(node => node.type === 'button' && (text(node).trim() === label || node.props['aria-label'] === label), root); },
-    field(label, root = tree) { const row = h.find(node => node.type === 'label' && text(node).trim() === label, root); return h.find(node => node.type === 'input' || node.type === 'textarea', row); },
+    field(label, root = tree) { const row = h.find(node => (node.type?.name === 'Field' && node.props.label === label) || (node.type === 'label' && text(node).trim() === label), root); return h.find(node => node.type === 'input' || node.type === 'textarea', row); },
     click(label) { h.trigger = { isConnected: true, focus: () => { h.focused = label; } }; h.button(label).props.onClick({ currentTarget: h.trigger }); },
     region() { return h.find(node => node.props?.role === 'region'); },
     get tree() { return tree; },
@@ -148,7 +149,7 @@ test('late load cannot replace newer saved list or revive an unmounted page', as
 
 for (const action of ['View menu', 'Print QR']) test(`${action}: synchronous popup reservation, authoritative URL and named print sheet`, async t => {
   const h = harness(t, QrActions); await h.flush(); assert.equal(h.calls.length, 0);
-  for (const label of ['View menu', 'Copy URL', 'Print QR']) assert.ok(h.button(`${label} for ${saved.name}`).props.className.includes('min-h-11'));
+  for (const label of ['View menu', 'Copy URL', 'Print QR']) assert.ok(h.button(`${label} for ${saved.name}`).props.className.includes('ui-button--md'));
   const pending = deferred(); h.post = (...args) => { h.calls.push(args); assert.equal(h.popups.length, 1); return pending.promise; };
   h.click(`${action} for ${saved.name}`);
   assert.equal(h.popups.length, 1); assert.equal(h.popups[0].opener, null); assert.equal(h.popups[0].location.href, 'about:blank');
@@ -180,7 +181,7 @@ for (const action of ['View menu', 'Print QR']) test(`${action}: popup block avo
   h.click(`${action} for ${saved.name}`); await h.flush(); assert.equal(h.calls.length, 0); assert.match(text(h.tree), /Allow pop-ups/);
   window.open = () => h.open(); h.post = async () => { throw Error('Server unavailable'); };
   h.click(`${action} for ${saved.name}`); await h.flush(); assert.equal(h.popups[0].closed, true);
-  assert.equal(h.focused, `${action} for ${saved.name}`); assert.equal(h.button(`${action} for ${saved.name}`).props['aria-disabled'], false);
+  assert.equal(h.focused, `${action} for ${saved.name}`); assert.equal(h.button(`${action} for ${saved.name}`).props.disabled, false);
   h.post = async () => ({ data: { data: qr } });
   h.click(`${action} for ${saved.name}`); await h.flush(); assert.equal(h.popups[1].closed, false);
 });
@@ -244,7 +245,7 @@ test('image load has the same bounded deadline and never prints after timeout', 
   h.click(`Print QR for ${saved.name}`); await h.flush();
   t.mock.timers.tick(20000); await h.flush();
   assert.equal(h.popups[0].closed, true); assert.equal(h.printed, undefined);
-  assert.equal(h.button(`Print QR for ${saved.name}`).props['aria-disabled'], false);
+  assert.equal(h.button(`Print QR for ${saved.name}`).props.disabled, false);
 });
 
 

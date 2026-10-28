@@ -10,7 +10,7 @@ The cart header uses an explicit `bg-tsPrimary`/white pair (12.41:1). Its close 
 
 ## Migration status
 
-This is the contract for new work. Button, IconButton, QuantityStepper, StatusBadge and Notice are implemented in `web/src/components/ui`; the two recovery controls use Button. POS tiles/cart/toolbar and reader controls use the shared recipes; see [POS uniformity](POS-UNIFORMITY.md). Other admin and customer controls, headers/toolbars, form rows and workflow label mappings are **not yet migrated**. Location offering semantics are implemented in P4; see [Location offerings](LOCATION-OFFERINGS.md). Visible admin groups are adopted in P3, remaining admin/labels in P5 and customer surfaces in P6. Device acceptance closes in P7. A documented recipe below is not a claim that its consumers already conform.
+This is the contract for new work. Button, IconButton, QuantityStepper, StatusBadge and Notice are implemented in `web/src/components/ui`; the two recovery controls use Button. POS tiles/cart/toolbar and reader controls use the shared recipes; see [POS uniformity](POS-UNIFORMITY.md). Operational admin headers, filters, fields, row actions and order dialogs use the shared recipes. Customer controls and customer form adoption remain in P6. Location offering semantics are implemented in P4; see [Location offerings](LOCATION-OFFERINGS.md). Visible admin groups were adopted in P3 and the remaining admin surfaces and workflow labels in P5. Device acceptance closes in P7. A documented recipe below is not a claim that its consumers already conform.
 
 ## Button and IconButton
 
@@ -135,3 +135,15 @@ Catalog and menu editors, product list actions/filters/pagination, CSV entry poi
 - `Pagination` and the existing `AdminPagination` export share md targets, current-page semantics and a bounded set of numbered actions, even for large page counts. The controls wrap on narrow screens.
 
 The existing AdminPageHeader and AdminFilterBar are adopted for these routes; the remaining operational routes and shell gutter contract migrate in P5c. The dev-only `fixtures/ui-admin.html` extends geometry and native interaction acceptance.
+
+## Operational admin adoption (P5c)
+
+The admin shell owns page gutters: 16px below 640px and 24px above. Routes use `AdminPageHeader` and `AdminFilterBar`; page content must not add another page padding layer. POS keeps its dedicated workspace and compact toolbar, with the shared header and matching gutters.
+
+`NavigationLink` is a wrapping native/router navigation or record link with a 44px minimum target. Use Button for commands. `DialogHeader` and `DialogActions` provide common spacing and named close controls. Put scrollable content between them with `min-h-0 overflow-y-auto` and `flex-auto`; this preserves intrinsic form height in WebKit. Actions remain outside the scrolling body. Pending restrictions and saved requests belong to each dialog's caller. Ship over order detail returns focus to the stable detail heading, including when successful shipment removes the Ship action.
+
+`workflowStatus` maps stored facts to role-specific wording without changing stored states. Staff see Acknowledged for confirmed orders and legacy processing pickups, New paid for paid pending orders, and Waiting for payment for pending unpaid orders. Customer confirmed remains Confirmed. Missing payment facts do not imply a paid order. Catering retains Needs quote and Quote recorded; declined/cancelled use danger and completed uses neutral. `OrderStatusBadge` applies this map to admin order views. Payment environments use a concise attention badge with persistent explanatory text; larger contexts use Notice for “no money moves.”
+
+Admin product availability checks `offered_location_ids` before presenting daily availability actions. A non-offered location displays Not offered here. An offered item marked unavailable retains Restore, which changes only the daily availability flag. The offering editor continues to own membership changes.
+
+The unreferenced `pages/AdminPage.tsx` prototype is deleted. P5c retires every remaining admin/payment-control baseline entry; the remaining customer inventory belongs to P6. This migration does not certify physical iPad Safari, installed PWA or screen-reader acceptance; those remain release checks.

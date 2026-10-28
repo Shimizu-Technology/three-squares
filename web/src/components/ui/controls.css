@@ -143,3 +143,30 @@
 @layer components {
   .ui-action-menu[data-side="top"] > .ui-action-menu__commands { top: auto; bottom: 100%; }
 }
+
+@layer components {
+  .ui-dialog-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; flex-shrink: 0; padding: 16px; border-bottom: 1px solid #E5E7EB; background: white; overflow-wrap: anywhere; }
+  .ui-dialog-header h2 { margin: 0; font: 700 20px/28px var(--font-sans); color: #111827; }
+  .ui-dialog-header__subtitle { margin-top: 4px; font: 400 14px/20px var(--font-sans); color: #4B5563; }
+  .ui-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; flex-shrink: 0; padding: 16px; border-top: 1px solid #E5E7EB; background: #F9FAFB; }
+  .ui-dialog-actions > div { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+  .ui-navigation-link { display: flex; align-items: center; gap: 12px; min-height: 44px; min-width: 44px; padding: 8px 12px; border-radius: 8px; font: 500 14px/20px var(--font-sans); color: #374151; overflow-wrap: anywhere; }
+  .ui-navigation-link[aria-current="page"] { background: var(--color-tsPrimary); color: white; }
+  .ui-navigation-link:focus-visible { outline: 2px solid var(--color-tsPrimary); outline-offset: 2px; }
+  @media (hover: hover) and (pointer: fine) { .ui-navigation-link:not([aria-current="page"]):not([data-brand]):hover { background: #F3F4F6; } }
+  @media (min-width: 640px) { .ui-dialog-header, .ui-dialog-actions { padding: 16px 24px; } }
+  @media (max-width: 639px) { .ui-dialog-actions .ui-button { width: 100%; flex: auto; } }
+}
+
+@layer components {
+  .ui-navigation-link[data-brand] { height: 64px; flex-shrink: 0; justify-content: center; background: var(--color-tsPrimary); color: white; font-size: 18px; font-weight: 700; }
+  .admin-main [data-admin-page-header] + * { margin-top: 16px; }
+}
+
+@layer components {
+  .ui-navigation-link[data-compact] { justify-content: center; }
+}
+
+@layer components {
+  .ui-navigation-link[data-record] { justify-content: space-between; flex-wrap: wrap; }
+}

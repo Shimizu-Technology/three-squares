@@ -223,7 +223,7 @@ export default function ProductDetailModal({ product, loading, onClose, onEdit, 
                                   }`}>
                                     {variant.stock_quantity}
                                     {variant.stock_quantity === 0 && (
-                                      <StatusBadge tone="danger">Out</StatusBadge>
+                                      <StatusBadge tone="attention">Out</StatusBadge>
                                     )}
                                   </span>
                                 ) : (

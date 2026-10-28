@@ -12,7 +12,7 @@ const compiled = ts.transpileModule(readFileSync(source, 'utf8'), {
   compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText.replace(/from ["']react\/jsx-runtime["']/g, `from ${JSON.stringify(import.meta.resolve('react/jsx-runtime'))}`)
   .replace(/from ["']\.\/orderUtils["']/g, `from ${JSON.stringify(new URL('../src/components/admin/orders/orderUtils.ts', import.meta.url).href)}`);
-const resolved = compiled.replace(/from ["']\.\.\/\.\.\/ui\/Button["']/g, `from ${JSON.stringify(uiModules['../../ui/Button'])}`);
+const resolved = compiled.replace(/from ["']([^"']+)["']/g, (_,name)=>`from ${JSON.stringify(uiModules[name] || name)}`);
 const { default: PackingList } = await import(`data:text/javascript;base64,${Buffer.from(resolved).toString('base64')}`);
 
 const itemNote = 'Pack each box separately. Keep fragile cookies on top.\n'.repeat(25);
@@ -69,7 +69,7 @@ test('shipping stages and primary actions come from authoritative next options',
     ['shipped', 'delivered', 'Delivered'],
   ]) {
     const html = render({ orders: [{ ...order, status, next_status_options: ['cancelled', next] }] });
-    assert.ok(html.includes(`>${status[0].toUpperCase() + status.slice(1)}<`));
+    assert.ok(html.includes(`>${status === 'pending' ? 'New paid' : status[0].toUpperCase() + status.slice(1)}<`));
     assert.ok(html.includes(`>${label}<`));
   }
   // Do not infer Ship merely because the current status is Processing.
@@ -80,7 +80,7 @@ test('shipping stages and primary actions come from authoritative next options',
 test('unpaid, failed, refunded and terminal orders retain Details without an unauthorized action', () => {
   for (const [payment_status, label] of [
     ['pending', 'Waiting for payment'], ['failed', 'Payment failed'],
-    ['refunded', 'Payment refunded'], ['partially_refunded', 'Payment partially_refunded'],
+    ['refunded', 'Refunded'], ['partially_refunded', 'Partially refunded'],
   ]) {
     const html = render({ orders: [{ ...order, payment_status, next_status_options: ['cancelled'] }] });
     assert.ok(html.includes(label));

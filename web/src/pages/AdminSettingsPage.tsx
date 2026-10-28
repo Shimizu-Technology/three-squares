@@ -1,3 +1,4 @@
+import { StatusBadge } from '../components/ui/StatusBadge';
 import AdminPageHeader from '../components/admin/AdminPageHeader';
 import { CheckField } from '../components/ui/CheckField';
 import { Textarea } from '../components/ui/Textarea';
@@ -821,7 +822,7 @@ function GeneralSettingsTab({
         <h2 id="catering-ordering-title" className="text-lg font-semibold text-gray-900">Catering online ordering</h2>
         <p className="mt-2 text-sm text-gray-700">Off by default. Customers can browse catering items and submit an inquiry. Enable only when the menu is ready for direct online orders. This does not add minimum quantities, lead times or capacity rules.</p>
         <CheckField type="checkbox" role="switch" checked={settings.enable_catering_online_ordering === true} disabled={saving || fieldUnavailable('enable_catering_online_ordering')} onChange={() => onToggleStorefront('enable_catering_online_ordering')}>
-          
+
           <span>Allow catering online orders</span>
         </CheckField>
         <p role="status" className="mt-2 text-sm text-gray-700">{fieldSaveStates.enable_catering_online_ordering === 'checking' || fieldSaveStates.enable_catering_online_ordering === 'uncertain' ? 'Saved ordering status is unconfirmed.' : settings.enable_catering_online_ordering ? 'Online orders enabled. Saves immediately.' : 'Inquiry only. Saves immediately.'}</p>
@@ -1196,11 +1197,9 @@ function HomepageSettingsTab({
                         <h4 className="font-medium text-gray-900 truncate">
                           {section.title || 'Untitled Section'}
                         </h4>
-                        <span className={`px-2 py-0.5 text-xs rounded-full ${
-                          section.active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
-                        }`}>
+                        <StatusBadge tone={section.active ? 'success' : 'inactive'}>
                           {section.active ? 'Active' : 'Hidden'}
-                        </span>
+                        </StatusBadge>
                       </div>
                       {section.subtitle && (
                         <p className="text-sm text-gray-600 truncate">{section.subtitle}</p>

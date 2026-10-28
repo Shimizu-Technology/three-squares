@@ -1,3 +1,4 @@
+import { orderStatus, type WorkflowAudience } from '../../ui/workflowStatus.ts';
 import type { PaymentReceiptFacts } from '../../../types/paymentReceipt';
 // Shared types, formatters, and helpers for admin orders
 
@@ -70,28 +71,6 @@ export interface Order {
   refundable_amount_cents?: number;
 }
 
-export const STATUS_BADGES: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  confirmed: 'bg-indigo-100 text-indigo-800',
-  processing: 'bg-blue-100 text-blue-800',
-  ready: 'bg-emerald-100 text-emerald-800',
-  shipped: 'bg-purple-100 text-purple-800',
-  picked_up: 'bg-green-100 text-green-800',
-  delivered: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800',
-};
-
-export const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pending',
-  confirmed: 'Confirmed',
-  processing: 'Processing',
-  ready: 'Ready',
-  shipped: 'Shipped',
-  picked_up: 'Picked Up',
-  delivered: 'Delivered',
-  cancelled: 'Cancelled',
-};
-
 export const formatCurrency = (cents: number) => `$${(cents / 100).toFixed(2)}`;
 
 export const formatDate = (dateString: string) =>
@@ -103,11 +82,7 @@ export const formatDate = (dateString: string) =>
     minute: '2-digit',
   });
 
-export const getStatusBadge = (status: string) =>
-  STATUS_BADGES[status] || 'bg-gray-100 text-gray-800';
-
-export const formatStatus = (status: string) =>
-  STATUS_LABELS[status] || status;
+export const formatStatus = (status: string, audience: WorkflowAudience = 'staff') => orderStatus({status}, audience).label;
 
 export interface NextStatusAction {
   label: string;

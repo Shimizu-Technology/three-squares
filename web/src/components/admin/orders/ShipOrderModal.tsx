@@ -1,9 +1,13 @@
+import { Input } from '../../ui/Input';
+import { Select } from '../../ui/Select';
+import { Field } from '../../ui/Field';
 import { Button } from '../../ui/Button';
-import { useId, useRef } from 'react';
+import { useId, useRef, type RefObject } from 'react';
 import AdminModal from '../AdminModal';
 
 interface ShipOrderModalProps {
   open: boolean;
+  returnFocusRef?: RefObject<HTMLElement | null>;
   saving: boolean;
   carrier: string;
   trackingNumber: string;
@@ -15,6 +19,7 @@ interface ShipOrderModalProps {
 
 export default function ShipOrderModal({
   open,
+  returnFocusRef,
   saving,
   carrier,
   trackingNumber,
@@ -29,7 +34,7 @@ export default function ShipOrderModal({
 
   return (
     <AdminModal open={open} title="Ship Order" subtitle="Add tracking information and mark as shipped"
-      maxWidth="max-w-md" onClose={onClose} dismissible={!saving} initialFocusRef={carrierRef}
+      maxWidth="max-w-md" onClose={onClose} dismissible={!saving} initialFocusRef={carrierRef} returnFocusRef={returnFocusRef}
       footer={(
         <div className="flex gap-3">
           <Button
@@ -53,14 +58,13 @@ export default function ShipOrderModal({
     >
       <div className="space-y-4">
           <div>
-            <label htmlFor={carrierId} className="block text-sm font-medium text-gray-700 mb-1">Shipping Carrier</label>
-            <select
+            <Field label="Shipping Carrier">
+            <Select
               id={carrierId}
               ref={carrierRef}
               disabled={saving}
               value={carrier}
               onChange={(e) => onCarrierChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
             >
               <option value="">Select carrier...</option>
               <option value="USPS">USPS</option>
@@ -68,20 +72,19 @@ export default function ShipOrderModal({
               <option value="FedEx">FedEx</option>
               <option value="DHL">DHL</option>
               <option value="Other">Other</option>
-            </select>
+            </Select></Field>
           </div>
 
           <div>
-            <label htmlFor={trackingId} className="block text-sm font-medium text-gray-700 mb-1">Tracking Number</label>
-            <input
+            <Field label="Tracking Number">
+            <Input
               id={trackingId}
               disabled={saving}
               type="text"
               value={trackingNumber}
               onChange={(e) => onTrackingChange(e.target.value)}
               placeholder="Enter tracking number..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
-            />
+            /></Field>
           </div>
 
           <p className="text-sm text-gray-500">

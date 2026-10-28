@@ -1,6 +1,9 @@
+import { StatusBadge } from '../../ui/StatusBadge';
+import { paymentStatus } from '../../ui/workflowStatus';
+import { OrderStatusBadge } from './OrderStatusBadge';
 import { Button } from '../../ui/Button';
 import type { Order } from './orderUtils';
-import { formatCurrency, formatDate, formatStatus, getNextStatusAction, getStatusBadge, pickupOrderAge as orderAge } from './orderUtils';
+import { formatCurrency, formatDate, getNextStatusAction, pickupOrderAge as orderAge } from './orderUtils';
 
 interface Props {
   orders: Order[];
@@ -30,8 +33,8 @@ export default function ShippingPackingList({ orders, saving, page, totalPages, 
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          <span className={`rounded-md px-2 py-1 font-semibold ${getStatusBadge(order.status)}`}>{formatStatus(order.status)}</span>
-          <span className={`rounded-md px-2 py-1 font-semibold ${order.payment_status === 'paid' ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-900'}`}>{order.payment_status === 'paid' ? 'Paid' : order.payment_status === 'pending' ? 'Waiting for payment' : `Payment ${order.payment_status}`}</span>
+          <OrderStatusBadge order={order} />
+          <StatusBadge tone={paymentStatus(order.payment_status).tone}>{paymentStatus(order.payment_status).label}</StatusBadge>
           <span className="font-semibold text-gray-800 tabular-nums">{order.item_count} {order.item_count === 1 ? 'item' : 'items'} · {order.line_count} {order.line_count === 1 ? 'line' : 'lines'}</span>
           <span className="text-gray-600 tabular-nums">{formatCurrency(order.total_cents)}</span>
         </div>

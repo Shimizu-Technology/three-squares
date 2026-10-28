@@ -1,3 +1,8 @@
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
+import { IconButton } from '../../components/ui/IconButton';
+import { Input } from '../../components/ui/Input';
+import { Field } from '../../components/ui/Field';
+import { Button } from '../../components/ui/Button';
 import axios from 'axios';
 // src/pages/admin/AdminVariantPresetsPage.tsx
 // Admin page for managing variant presets (reusable option templates)
@@ -5,8 +10,8 @@ import axios from 'axios';
 import { useRef, useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { toast } from 'react-hot-toast';
-import variantPresetsService, { 
-  formatPriceAdjustment 
+import variantPresetsService, {
+  formatPriceAdjustment
 } from '../../services/variantPresets';
 import type { VariantPreset, PresetValue } from '../../services/variantPresets';
 import AdminModal from '../../components/admin/AdminModal';
@@ -27,13 +32,13 @@ const emptyFormData: PresetFormData = {
 
 export default function AdminVariantPresetsPage() {
   const { getToken } = useAuth();
-  
+
   // State
   const [groupedPresets, setGroupedPresets] = useState<Record<string, VariantPreset[]>>({});
   const [optionTypes, setOptionTypes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  
+
   // Modal state
   const [showModal, setShowModal] = useState(false);
   const [editingPreset, setEditingPreset] = useState<VariantPreset | null>(null);
@@ -41,7 +46,7 @@ export default function AdminVariantPresetsPage() {
   const savePending = useRef(false);
   const newPresetRef = useRef<HTMLButtonElement>(null);
   const [focusAfterSave, setFocusAfterSave] = useState(false);
-  
+
   // New value input
   const [newValueName, setNewValueName] = useState('');
   const [newValuePrice, setNewValuePrice] = useState('0');
@@ -135,7 +140,7 @@ export default function AdminVariantPresetsPage() {
     savePending.current = true;
     try {
       setSaving(true);
-      
+
       if (editingPreset) {
         await variantPresetsService.update(editingPreset.id, formData, getToken);
         toast.success('Preset updated');
@@ -143,7 +148,7 @@ export default function AdminVariantPresetsPage() {
         await variantPresetsService.create(formData, getToken);
         toast.success('Preset created');
       }
-      
+
       setShowModal(false);
       // Restore only after the refreshed groups have committed to the DOM.
       void loadPresets(true).then(() => setFocusAfterSave(true));
@@ -161,15 +166,15 @@ export default function AdminVariantPresetsPage() {
       toast.error('Enter a value name');
       return;
     }
-    
+
     // Check for duplicate
     if (formData.values.some(v => v.name.toLowerCase() === newValueName.trim().toLowerCase())) {
       toast.error('Value already exists');
       return;
     }
-    
+
     const priceAdjustment = Math.round(parseFloat(newValuePrice || '0') * 100);
-    
+
     setFormData(prev => ({
       ...prev,
       values: [...prev.values, { name: newValueName.trim(), price_adjustment_cents: priceAdjustment }]
@@ -189,7 +194,7 @@ export default function AdminVariantPresetsPage() {
     const priceAdjustment = Math.round(parseFloat(priceStr || '0') * 100);
     setFormData(prev => ({
       ...prev,
-      values: prev.values.map((v, i) => 
+      values: prev.values.map((v, i) =>
         i === index ? { ...v, price_adjustment_cents: priceAdjustment } : v
       )
     }));
@@ -219,24 +224,17 @@ export default function AdminVariantPresetsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Variant Presets</h1>
-          <p className="text-gray-600 mt-1">
+      <AdminPageHeader title="Variant Presets" subtitle={<>
             Create reusable option templates for product variants
-          </p>
-        </div>
-        <button
+          </>} actions={<><Button icon={<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+          </svg>} variant="primary"
           ref={newPresetRef}
           onClick={handleCreate}
-          className="px-5 py-2.5 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium flex items-center gap-2"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-            <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-          </svg>
+
           New Preset
-        </button>
-      </div>
+        </Button></>} />
 
       {/* Presets by Option Type */}
       {optionTypes.length === 0 ? (
@@ -250,12 +248,11 @@ export default function AdminVariantPresetsPage() {
           <p className="text-gray-600 mb-6">
             Create your first preset to quickly add option groups to products
           </p>
-          <button
+          <Button variant="primary"
             onClick={handleCreate}
-            className="px-6 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition-colors"
           >
             Create First Preset
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="space-y-8">
@@ -297,33 +294,24 @@ export default function AdminVariantPresetsPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 ml-4">
-                        <button
+                        <IconButton variant="secondary"
                           onClick={() => handleDuplicate(preset)}
-                          className="btn-icon min-h-[44px] min-w-[44px] text-gray-400 hover:text-gray-600 hover:bg-gray-100"
-                          title="Duplicate"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          aria-label={`Duplicate ${preset.name}`}
+                        ><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                        </button>
-                        <button
+                          </svg></IconButton>
+                        <IconButton variant="secondary"
                           onClick={() => handleEdit(preset)}
-                          className="btn-icon min-h-[44px] min-w-[44px] text-blue-600 hover:text-blue-800 hover:bg-blue-50"
-                          title="Edit"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          aria-label={`Edit ${preset.name}`}
+                        ><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        </button>
-                        <button
+                          </svg></IconButton>
+                        <IconButton variant="destructive"
                           onClick={() => handleDelete(preset)}
-                          className="btn-icon min-h-[44px] min-w-[44px] text-red-600 hover:text-red-800 hover:bg-red-50"
-                          title="Delete"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          aria-label={`Delete ${preset.name}`}
+                        ><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                          </svg>
-                        </button>
+                          </svg></IconButton>
                       </div>
                     </div>
                   </div>
@@ -342,27 +330,18 @@ export default function AdminVariantPresetsPage() {
         dismissible={!saving}
         footer={(
           <div className="flex flex-wrap justify-end gap-3">
-            <button
+            <Button variant="secondary"
               onClick={closeModal}
               disabled={saving}
-              className="min-h-[44px] px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button variant="primary"
               onClick={handleSave}
-              disabled={saving}
-              className="min-h-[44px] px-6 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              loading={saving} disabled={saving}
             >
-              {saving ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                  Saving...
-                </>
-              ) : (
-                editingPreset ? 'Update Preset' : 'Create Preset'
-              )}
-            </button>
+              {editingPreset ? 'Update Preset' : 'Create Preset'}
+            </Button>
           </div>
         )}
       >
@@ -370,31 +349,25 @@ export default function AdminVariantPresetsPage() {
               {/* Basic Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="preset-name" className="block text-sm font-medium text-gray-700 mb-1">
-                    Preset Name *
-                  </label>
-                  <input
+                  <Field label="Preset Name *">
+                  <Input
                     id="preset-name"
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                     placeholder="e.g., Adult Sizes Only"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
-                  />
+                  /></Field>
                 </div>
                 <div>
-                  <label htmlFor="preset-option-type" className="block text-sm font-medium text-gray-700 mb-1">
-                    Option Type *
-                  </label>
-                  <input
+                  <Field label="Option Type *">
+                  <Input
                     id="preset-option-type"
                     type="text"
                     value={formData.option_type}
                     onChange={(e) => setFormData(prev => ({ ...prev, option_type: e.target.value }))}
                     placeholder="e.g., Size, Color, Material"
                     list="option-types-list"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
-                  />
+                  /></Field>
                   <datalist id="option-types-list">
                     <option value="Size" />
                     <option value="Color" />
@@ -406,17 +379,14 @@ export default function AdminVariantPresetsPage() {
               </div>
 
               <div>
-                <label htmlFor="preset-description" className="block text-sm font-medium text-gray-700 mb-1">
-                  Description (optional)
-                </label>
-                <input
+                <Field label="Description (optional)">
+                <Input
                   id="preset-description"
                   type="text"
                   value={formData.description}
                   onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                   placeholder="When to use this preset"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
-                />
+                /></Field>
               </div>
 
               {/* Values */}
@@ -424,7 +394,7 @@ export default function AdminVariantPresetsPage() {
                 <p className="block text-sm font-medium text-gray-700 mb-3">
                   Values ({formData.values.length})
                 </p>
-                
+
                 {/* Existing values */}
                 {formData.values.length > 0 && (
                   <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
@@ -433,25 +403,21 @@ export default function AdminVariantPresetsPage() {
                         <span className="min-w-0 break-words flex-1 font-medium text-gray-900">{value.name}</span>
                         <div className="flex items-center gap-1">
                           <span className="text-gray-500 text-sm">+$</span>
-                          <input
+                          <Field label={`Price adjustment for ${value.name}`}><Input
                             type="number"
                             step="0.01"
                             min="0"
                             aria-label={`Price adjustment for ${value.name}`}
                             value={(value.price_adjustment_cents / 100).toFixed(2)}
                             onChange={(e) => updateValuePrice(index, e.target.value)}
-                            className="w-20 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
-                          />
+                          /></Field>
                         </div>
-                        <button
+                        <IconButton variant="destructive"
                           aria-label={`Remove ${value.name}`}
                           onClick={() => removeValue(index)}
-                          className="btn-icon min-h-[44px] min-w-[44px] text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        ><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
+                          </svg></IconButton>
                       </div>
                     ))}
                   </div>
@@ -459,18 +425,17 @@ export default function AdminVariantPresetsPage() {
 
                 {/* Add new value */}
                 <div className="flex flex-wrap items-center gap-3 p-3 border-2 border-dashed border-gray-300 rounded-lg">
-                  <input
+                  <Field label="New value name"><Input
                     type="text"
                     aria-label="New value name"
                     value={newValueName}
                     onChange={(e) => setNewValueName(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && addValue()}
                     placeholder="Value name (e.g., XL)"
-                    className="min-w-0 flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
-                  />
+                  /></Field>
                   <div className="flex items-center gap-1">
                     <span className="text-gray-500 text-sm">+$</span>
-                    <input
+                    <Field label="Price adjustment ($)"><Input
                       type="number"
                       step="0.01"
                       min="0"
@@ -478,15 +443,13 @@ export default function AdminVariantPresetsPage() {
                       value={newValuePrice}
                       onChange={(e) => setNewValuePrice(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && addValue()}
-                      className="w-20 px-2 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-tsPrimary focus:border-tsPrimary"
-                    />
+                    /></Field>
                   </div>
-                  <button
+                  <Button variant="secondary"
                     onClick={addValue}
-                    className="min-h-[44px] px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                   >
                     Add
-                  </button>
+                  </Button>
                 </div>
               </div>
         </fieldset>
