@@ -118,6 +118,10 @@
   .ui-field__help { color: #4B5563; }
   .ui-field__error { color: #991B1B; }
   .ui-input, .ui-select, .ui-textarea { box-sizing: border-box; display: block; width: 100%; min-width: 0; height: 44px; padding: 0 12px; border: 1px solid #D1D5DB; border-radius: 8px; background: white; color: #111827; font: 400 14px/20px var(--font-sans); }
+  .ui-field-control { display: block; position: relative; min-width: 0; width: 100%; }
+  .ui-field-affix { position: absolute; left: 12px; top: 0; bottom: 0; display: flex; align-items: center; pointer-events: none; color: #4B5563; }
+  .ui-field-affix svg { width: 16px; height: 16px; }
+  .ui-input[data-leading], .ui-select[data-leading] { padding-left: 32px; }
   .ui-select { appearance: none; padding-right: 32px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234B5563' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-position: right 12px center; background-repeat: no-repeat; background-size: 16px; }
   .ui-textarea { height: auto; min-height: 96px; padding: 12px; resize: vertical; }
   .ui-input:focus-visible, .ui-select:focus-visible, .ui-textarea:focus-visible { outline: 2px solid var(--color-tsPrimary); outline-offset: 2px; }
@@ -204,4 +208,12 @@
 
 @layer components {
   .ui-navigation-link[data-context="admin"][data-record] { justify-content: space-between; flex-wrap: wrap; }
+}
+
+@layer components {
+  .ui-home-category { touch-action: manipulation; }
+  .ui-home-category:focus-visible { outline: 2px solid var(--color-tsPrimary); outline-offset: 2px; }
+  .ui-home-category__image { transition: transform 200ms ease-out; }
+  @media (hover: hover) and (pointer: fine) { .ui-home-category:hover .ui-home-category__image { transform: scale(1.05); } }
+  @media (prefers-reduced-motion: reduce) { .ui-home-category__image { transition: none; transform: none; } }
 }

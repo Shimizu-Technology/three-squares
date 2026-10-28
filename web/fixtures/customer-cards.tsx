@@ -1,5 +1,6 @@
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
+import { HomeCategoryCard } from "../src/components/ui/HomeCategoryCard";
 import ProductCard from "../src/components/ProductCard";
 import type { Product, CatalogPricing } from "../src/services/api";
 import { CustomerCard } from "../src/components/ui/CustomerCard";
@@ -75,6 +76,10 @@ export function Fixture() {
           </CustomerCard>
         ))}
       </section>
+      <section aria-label="Home category specimens" className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+        {(['feature', 'half', 'lead', 'standard'] as const).map(layout => <HomeCategoryCard key={layout} layout={layout} card={{title:`Fictional ${layout} menu`,subtitle:'Browse the fictional menu',button_text:'View fictional menu',button_link:'#home-category-destination',image_url:null}} />)}
+      </section>
+      <p id="home-category-destination">Fictional home destination</p>
     </main>
   );
 }

@@ -1,3 +1,5 @@
+import { launchGeometryBrowser } from './geometry-browser.mjs';
+import { prepareGeometryContext } from './geometry-context.mjs';
 import { chromium, webkit } from '@playwright/test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -9,9 +11,9 @@ const out=path.resolve(process.env.UI_EVIDENCE_DIR||'../tmp/ui-fields'),session=
 mkdirSync(out,{recursive:true});if(session)execFileSync('dev-lifecycle',['claim','--session',session,'process',String(process.pid),'--reason','Shared fields geometry and browser descendants']);
 let browser;const results=[];
 try{for(const engine of ['chromium','webkit']){
- browser=await ({chromium,webkit}[engine]).launch({headless:true});
+ browser=await launchGeometryBrowser({chromium,webkit}[engine],{headless:true});
  for(const [width,height]of [[768,1024],[1024,768],[1440,900],[390,844]])for(const touch of [false,true]){
-  const context=await browser.newContext({viewport:{width,height},hasTouch:touch,deviceScaleFactor:1});
+  const context=await browser.newContext({viewport:{width,height},hasTouch:touch,deviceScaleFactor:1});await prepareGeometryContext(context, base);
   try{
    const page=await context.newPage(),activate=loc=>touch?loc.tap():loc.click();await page.goto(base);await page.getByRole('heading',{name:'Shared fields',exact:true}).waitFor();await page.evaluate(()=>document.fonts.ready);
    const coarse=await page.evaluate(()=>matchMedia('(pointer:coarse)').matches);assert.equal(coarse,touch);

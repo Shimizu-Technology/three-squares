@@ -1,3 +1,5 @@
+import { launchGeometryBrowser } from './geometry-browser.mjs';
+import { prepareGeometryContext } from './geometry-context.mjs';
 import { chromium, webkit } from "@playwright/test";
 import assert from "node:assert/strict";
 import { mkdirSync, writeFileSync } from "node:fs";
@@ -24,7 +26,7 @@ try {
     ["chromium", chromium],
     ["webkit", webkit],
   ]) {
-    const browser = await type.launch();
+    const browser = await launchGeometryBrowser(type, );
     try {
       for (const [width, height] of [
         [768, 1024],
@@ -39,6 +41,7 @@ try {
             hasTouch: touch,
             deviceScaleFactor: 1,
           });
+          await prepareGeometryContext(context, url);
           try {
             const page = await context.newPage();
             await page.goto(url);
@@ -108,11 +111,25 @@ try {
                 }))
               );
             for (const media of collections) assert.ok(Math.abs(media.width / media.height - 4 / 3) < 0.01);
+            const homeCards = page.locator('[data-home-category-card]');
+            assert.equal(await homeCards.count(), 4);
+            for (const card of await homeCards.all()) {
+              const box = await card.boundingBox();
+              assert.ok(box.width >= 44 && box.height >= 44 && box.x >= 0 && box.x + box.width <= width, JSON.stringify({engine,width,box}));
+              assert.equal(await card.locator('a,button,input').count(), 0);
+              assert.equal(new URL(await card.getAttribute('href'), page.url()).hash, '#home-category-destination');
+              assert.equal(await card.locator('[data-photo-state="unavailable"]').count(), 1);
+            }
+            await homeCards.first().focus(); await page.keyboard.press('Enter');
+            assert.equal(new URL(page.url()).hash, '#home-category-destination');
+            if (touch) await homeCards.last().tap(); else await homeCards.last().click();
+            assert.equal(new URL(page.url()).hash, '#home-category-destination');
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
             await page.screenshot({
               path: path.join(output, `cards-${engine}-${width}-${touch ? "touch" : "fine"}.png`),
-              fullPage: true,
+              fullPage: false,
             });
+            assert.equal(await page.evaluate(() => matchMedia('(pointer:coarse)').matches), touch);
             results.push({ engine, width, height, touch, geometry, collections, status: "passed" });
             writeFileSync(path.join(output, "card-geometry.json"), JSON.stringify(results, null, 2) + "\n");
             console.log(`${engine} ${width}x${height} ${touch ? "touch" : "fine"} passed`);

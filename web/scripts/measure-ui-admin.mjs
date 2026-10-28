@@ -1,3 +1,5 @@
+import { launchGeometryBrowser } from './geometry-browser.mjs';
+import { prepareGeometryContext } from './geometry-context.mjs';
 import {chromium, webkit} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdirSync, writeFileSync} from 'node:fs';
@@ -6,10 +8,10 @@ const output = process.argv[3] || 'tmp/ui-admin';
 mkdirSync(output,{recursive:true});
 const records=[];
 for(const [engine, factory] of Object.entries({chromium,webkit})) {
-  const browser=await factory.launch();
+  const browser=await launchGeometryBrowser(factory, );
   try {
     for(const [width,height] of [[768,1024],[1024,768],[1440,900],[390,844]]) for(const touch of [false,true]) {
-      const context=await browser.newContext({viewport:{width,height},hasTouch:touch});
+      const context=await browser.newContext({viewport:{width,height},hasTouch:touch});await prepareGeometryContext(context, origin);
       const page=await context.newPage();
       const activate=locator=>touch?locator.tap():locator.click();
       try {
@@ -24,9 +26,9 @@ for(const [engine, factory] of Object.entries({chromium,webkit})) {
         const menu=page.locator('summary[aria-label="More actions for fictional lunch"]');
         await menu.focus();await page.keyboard.press('Enter');
         await page.getByRole('button',{name:'Duplicate',exact:true}).waitFor({state:'visible'});
-        await page.keyboard.press(engine === 'webkit' ? 'Alt+Tab' : 'Tab');assert.equal(await page.getByRole('button',{name:'Duplicate',exact:true}).evaluate(el=>document.activeElement===el),true);
-        await page.keyboard.press(engine === 'webkit' ? 'Alt+Tab' : 'Tab');assert.equal(await page.getByRole('button',{name:'Archive',exact:true}).evaluate(el=>document.activeElement===el),true);
-        await page.keyboard.press(engine === 'webkit' ? 'Alt+Shift+Tab' : 'Shift+Tab');assert.equal(await page.getByRole('button',{name:'Duplicate',exact:true}).evaluate(el=>document.activeElement===el),true);
+        await page.keyboard.press(engine === 'webkit' && process.platform === 'darwin' ? 'Alt+Tab' : 'Tab');assert.equal(await page.getByRole('button',{name:'Duplicate',exact:true}).evaluate(el=>document.activeElement===el),true);
+        await page.keyboard.press(engine === 'webkit' && process.platform === 'darwin' ? 'Alt+Tab' : 'Tab');assert.equal(await page.getByRole('button',{name:'Archive',exact:true}).evaluate(el=>document.activeElement===el),true);
+        await page.keyboard.press(engine === 'webkit' && process.platform === 'darwin' ? 'Alt+Shift+Tab' : 'Shift+Tab');assert.equal(await page.getByRole('button',{name:'Duplicate',exact:true}).evaluate(el=>document.activeElement===el),true);
         await page.keyboard.press('Escape');assert.equal(await menu.evaluate(el=>document.activeElement===el && !el.parentElement.open),true);
         await activate(menu);await activate(page.getByRole('button',{name:'Archive',exact:true}));
         await page.getByText('Command: Archive',{exact:true}).waitFor();assert.equal(await menu.evaluate(el=>document.activeElement===el && !el.parentElement.open),true);

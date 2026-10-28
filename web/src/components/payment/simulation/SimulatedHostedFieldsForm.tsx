@@ -1,3 +1,4 @@
+import { Select } from '../../ui/Select';
 import { forwardRef, useEffect, useImperativeHandle, useState, useRef } from 'react';
 import type { CardPaymentHandle } from '../PaymentForm';
 import type { CollectionFormProps } from '../PaymentCollectionForm';
@@ -37,8 +38,8 @@ export default forwardRef<CardPaymentHandle, CollectionFormProps>(function Simul
   return <section ref={container} className="rounded-xl border border-amber-300 bg-amber-50 p-6 space-y-4" aria-label="Simulated payment">
     <h2 className="font-bold text-lg text-amber-950">Simulated payments — no money moves</h2>
     <p className="text-sm text-amber-950">Use a fictional card outcome. Do not enter real card details.</p>
-    <label className="block font-medium">Card outcome<select className="block mt-2 w-full min-h-11 rounded border bg-white p-2 text-base" value={scenario} onChange={event => setScenario(event.target.value)}>{scenarios.map(value => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}</select></label>
-    <label className="block font-medium">Collection contract<select className="block mt-2 w-full min-h-11 rounded border bg-white p-2 text-base" value={mode} onChange={event => setMode(event.target.value as 'token' | 'hosted')}><option value="token">Opaque instrument handle</option><option value="hosted">Hosted execution</option></select></label>
+    <label className="block font-medium">Card outcome<Select className="mt-2" value={scenario} onChange={event => setScenario(event.target.value)}>{scenarios.map(value => <option key={value} value={value}>{value.replaceAll('_', ' ')}</option>)}</Select></label>
+    <label className="block font-medium">Collection contract<Select className="mt-2" value={mode} onChange={event => setMode(event.target.value as 'token' | 'hosted')}><option value="token">Opaque instrument handle</option><option value="hosted">Hosted execution</option></Select></label>
     <p className="text-sm">Simulation card •••• 4242 · Ready</p>
   </section>;
 });

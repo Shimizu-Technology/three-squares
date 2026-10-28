@@ -1,3 +1,5 @@
+import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import { initialPOSLocation, posLocationPreferenceKey } from '../../components/pos/initialLocation';
 import { useState, useEffect, useMemo, useCallback, useRef, useId, lazy, Suspense, type RefObject } from 'react';
@@ -209,9 +211,9 @@ function CashModal({
           <div>
             <label htmlFor={cashId} className="block text-sm font-medium text-gray-700 mb-1">Cash Received</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-lg">$</span>
-              <input
+              <Input
                 id={cashId}
+                leading="$"
                 ref={cashRef}
                 disabled={submitting}
                 type="number"
@@ -219,7 +221,7 @@ function CashModal({
                 value={cashInput}
                 onChange={(e) => setCashInput(e.target.value)}
                 onFocus={(e) => e.target.select()}
-                className="w-full pl-8 pr-4 py-3 border-2 border-gray-200 rounded-lg text-lg font-medium focus:outline-none focus:border-tsPrimary"
+
               />
             </div>
           </div>
@@ -1018,23 +1020,22 @@ function AdminPOSWorkspace() {
           <div aria-label="Menu toolbar" className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px] items-end gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)_44px]">
             <label className="block min-w-0 text-xs font-semibold text-slate-700">Sale location
               <span className="relative mt-1 block h-11 min-w-0">
-                <MapPin aria-hidden="true" className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2" />
-                <select aria-label="Sale location" title={locations.find(location => location.id === selectedLocation)?.name}
+                  <Select leading={<MapPin />} aria-label="Sale location" title={locations.find(location => location.id === selectedLocation)?.name}
                   disabled={access.user?.operational_scope === 'specific' || hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)}
-                  value={selectedLocation || ''} onChange={event => setSelectedLocation(Number(event.target.value))} className="h-11 min-w-0 w-full rounded-lg border border-slate-300 bg-white pl-7 pr-2 text-base text-slate-900">
+                  value={selectedLocation || ''} onChange={event => setSelectedLocation(Number(event.target.value))} >
                   {locations.map(location => <option key={location.id} value={location.id}>{locationLabel(location.name)}</option>)}
-                </select>
+                </Select>
               </span>
             </label>
             <label className="block min-w-0 text-xs font-semibold text-slate-700">Find a menu item
-              <span className="relative mt-1 block"><Search aria-hidden="true" className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <input ref={searchRef} type="search" placeholder="Search menu" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} className="h-11 w-full rounded-lg border border-slate-300 bg-white pl-8 pr-2 text-base focus:outline-none focus:ring-2 focus:ring-tsPrimary" />
+              <span className="relative mt-1 block">
+                <Input leading={<Search />} ref={searchRef} type="search" placeholder="Search menu" value={searchQuery} onChange={event => setSearchQuery(event.target.value)}  />
               </span>
             </label>
             <label className="col-span-2 row-start-2 block min-w-0 text-xs font-semibold text-slate-700 lg:col-auto lg:row-auto">Category
-              <select aria-label="Category" value={activeCategory} onChange={event => setActiveCategory(event.target.value)} className="mt-1 h-11 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-2 text-base">
+              <Select className="mt-1" aria-label="Category" value={activeCategory} onChange={event => setActiveCategory(event.target.value)} >
                 {categoryNames.map(name => <option key={name} value={name}>{name}</option>)}
-              </select>
+              </Select>
             </label>
             <IconButton variant="secondary" aria-label="Refresh menu" loading={loading} disabled={!hasMenu || submitting || terminalCollecting} onClick={() => void loadMenu()}><RefreshCw /></IconButton>
           </div>
@@ -1071,7 +1072,7 @@ function AdminPOSWorkspace() {
       <div ref={cartRef} tabIndex={-1} aria-label="Current sale" className="min-h-0 w-full md:w-80 xl:w-104 md:overflow-y-auto bg-white border-l border-slate-200 flex flex-col shrink-0">
         <div className="flex items-center justify-between gap-2 px-4 pt-3 md:hidden"><h2 className="text-lg font-semibold">Current sale</h2><Button variant="secondary" onClick={() => {menuRef.current?.scrollIntoView();searchRef.current?.focus({preventScroll:true});}}>Back to menu</Button></div>
         <div className="space-y-3 border-b border-slate-200 p-4">
-          <label className="block text-sm font-medium">Customer name<input type="text" value={customerName} onChange={event => setCustomerName(event.target.value)} className="mt-1 h-11 w-full min-w-0 rounded-lg border border-slate-300 px-3 text-base" /></label>
+          <label className="block text-sm font-medium">Customer name<span className="mt-1 block"><Input type="text" value={customerName} onChange={event => setCustomerName(event.target.value)}  /></span></label>
           <div role="group" aria-label="Order type" className="grid grid-cols-2 gap-2">{(['pickup','dine_in'] as const).map(type => <Button key={type} variant="secondary" aria-pressed={orderType === type} icon={orderType === type ? <Check /> : undefined} className="w-full" onClick={() => setOrderType(type)}>{type === 'dine_in' ? 'Dine In' : 'Pickup'}</Button>)}</div>
         </div>
         <div className="shrink-0 flex-1 p-4">

@@ -86,10 +86,11 @@ test('POS practice reader is docked inside the scrollable sale column and starts
   const dock = elements(sale).find(node => node.props?.terminalId === 1 && 'attemptId' in node.props);
   assert.ok(dock, 'practice reader must be a descendant of the sale column');
   const panel = Panel({ locationId: 1, attemptId: null, terminalId: 1, onSelect() {}, getToken: async () => null, onChange: async () => {} });
-  assert.equal(panel.type, 'details');
-  assert.equal(panel.props.open, false);
+  const disclosure = elements(panel).find(node => 'onToggle' in node.props && 'open' in node.props);
+  assert.ok(disclosure);
+  assert.equal(disclosure.props.open, false);
   assert.doesNotMatch(panel.props.className, /fixed|absolute/);
-  assert.equal(text(elements(panel).find(node => node.type === 'summary')), 'Simulated payments — no money moves');
+  assert.equal(disclosure.props.title, 'Simulated payments — no money moves');
   const empty = elements(sale).find(node => node.type === 'div' && node.props.className?.includes('border-dashed') && text(node) === 'Cart is emptyTap items to add');
   assert.ok(empty);
   assert.match(empty.props.className, /min-h-44/);

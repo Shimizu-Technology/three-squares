@@ -1,3 +1,5 @@
+import { launchGeometryBrowser } from './geometry-browser.mjs';
+import { prepareGeometryContext } from './geometry-context.mjs';
 import {chromium,webkit} from '@playwright/test';
 import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
@@ -7,7 +9,7 @@ const base=process.env.POS_FIXTURE_URL??'http://localhost:5391/fixtures/pos-cont
 if(!['localhost','127.0.0.1'].includes(new URL(base).hostname))throw Error('Local fixture required');
 const out=path.resolve(process.env.UI_EVIDENCE_DIR??'../tmp/pos-controls');mkdirSync(out,{recursive:true});
 const session=process.env.DEV_LIFECYCLE_SESSION;
-const browser=await chromium.launch();
+const browser=await launchGeometryBrowser(chromium, );
 if(session)execFileSync('dev-lifecycle',['claim','--session',session,'process',String(process.pid),'--reason','POS geometry and dialog acceptance runner']);
 const results=[];
 async function checkDialog(page){
@@ -23,11 +25,11 @@ async function checkDialog(page){
   await opener.click();await page.mouse.click(2,2);await dialog.waitFor({state:'hidden'});
   assert.equal(await opener.evaluate(el=>el===document.activeElement),true);
   await opener.click();const box=await dialog.boundingBox();await page.mouse.move(box.x+20,box.y+20);await page.mouse.down();await page.mouse.move(2,2);await page.mouse.up();assert.equal(await dialog.isVisible(),true);await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
-  await page.getByRole('button',{name:'Choose busy fixture reader',exact:true}).click();await dialog.waitFor();assert.equal(await page.getByRole('button',{name:'Close Select Card Reader'}).isDisabled(),true);await page.keyboard.press('Escape');assert.equal(await dialog.isVisible(),true);await page.getByRole('button',{name:'Close Select Card Reader'}).click();await dialog.waitFor({state:'hidden'});
+  await page.getByRole('button',{name:'Choose busy fixture reader',exact:true}).click();await dialog.waitFor();assert.equal(await page.getByRole('button',{name:'Close Select Card Reader'}).isDisabled(),true);await page.keyboard.press('Escape');assert.equal(await dialog.isVisible(),true);await page.evaluate(()=>window.dispatchEvent(new Event('fixture-reader-finished')));await page.getByRole('button',{name:'Close Select Card Reader'}).click();await dialog.waitFor({state:'hidden'});
 }
 try{
   for(const [width,height]of[[768,1024],[1024,768],[1440,900],[390,844]])for(const touch of[false,true]){
-    const context=await browser.newContext({viewport:{width,height},hasTouch:touch});try{
+    const context=await browser.newContext({viewport:{width,height},hasTouch:touch});await prepareGeometryContext(context, base);try{
       const page=await context.newPage();await page.goto(base);await page.getByRole('heading',{name:'POS geometry fixture'}).waitFor();
       const tiles=await page.locator('.pos-product-tile').evaluateAll(nodes=>nodes.map(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return{height:r.height,radius:s.borderRadius,padding:s.padding,slots:['title','price','state'].map(name=>{const box=el.querySelector(`.pos-product-tile__${name}`).getBoundingClientRect();return{top:box.top-r.top,height:box.height};})}}));
       assert.equal(tiles.length,4);for(const tile of tiles){assert.ok(Math.abs(tile.height-128)<=1);assert.equal(tile.radius,'12px');assert.equal(tile.padding,'12px');assert.deepEqual(tile.slots.map(slot=>slot.height),[40,20,24]);for(let i=0;i<3;i++)assert.ok(Math.abs(tile.slots[i].top-tiles[0].slots[i].top)<=1);}
@@ -44,6 +46,6 @@ try{
       await checkDialog(page);results.push({width,height,touch,tiles,targets,quantity:'9→10; stable pending',dialog:'keyboard, Escape, return, choose, close, backdrop passed'});console.log(`${width} ${touch?'touch':'fine'} passed`);
     }finally{await context.close();}
   }
-  const safari=await webkit.launch();try{const page=await safari.newPage({viewport:{width:390,height:844}});await page.goto(base);await checkDialog(page);results.push({browser:'WebKit',width:390,height:844,dialog:'passed'});}finally{await safari.close();}
+  const safari=await launchGeometryBrowser(webkit, );try{const context=await safari.newContext({viewport:{width:390,height:844}});await prepareGeometryContext(context, base);const page=await context.newPage();await page.goto(base);await checkDialog(page);results.push({browser:'WebKit',width:390,height:844,dialog:'passed'});}finally{await safari.close();}
   writeFileSync(path.join(out,'geometry.json'),JSON.stringify(results,null,2)+'\n');
 }finally{await browser.close();if(session)execFileSync('dev-lifecycle',['release','--session',session,'process',String(process.pid)]);}

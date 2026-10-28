@@ -1,3 +1,4 @@
+import { Disclosure } from '../ui/Disclosure';
 import { useEffect, useRef } from 'react';
 import { Check, X } from 'lucide-react';
 import type { PaymentReceiptFacts } from '../../types/paymentReceipt';
@@ -25,8 +26,7 @@ export function CompletedSale({ order, onDismiss }: {order: CompletedSaleFacts; 
       </div>
       <IconButton aria-label="Dismiss completed sale" onClick={onDismiss}><X /></IconButton>
     </div>
-    <details className="min-w-0">
-      <summary className="min-h-11 cursor-pointer text-sm font-semibold">Receipt for {order.order_number}</summary>
+    <div className="min-w-0"><Disclosure title={<>Receipt for {order.order_number}</>}>
       <div className="max-h-[35dvh] space-y-3 overflow-y-auto">
         {order.payment_receipt ? <PaymentReceipt receipt={order.payment_receipt} orderReference={order.order_number} onPrint={() => window.print()} /> :
           <div className="space-y-2 text-sm"><p>{order.change_due_formatted !== undefined ? 'Cash sale' : 'Sale'} · {order.order_number} · {order.total_formatted}</p>
@@ -34,6 +34,6 @@ export function CompletedSale({ order, onDismiss }: {order: CompletedSaleFacts; 
             {order.change_due_formatted && <p>Change: {order.change_due_formatted}</p>}
             <Button variant="secondary" onClick={() => window.print()}>Reprint receipt</Button></div>}
       </div>
-    </details>
+    </Disclosure></div>
   </section>;
 }

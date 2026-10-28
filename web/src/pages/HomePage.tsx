@@ -1,9 +1,8 @@
 import { Button } from '../components/ui/Button';
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { HomeCategoryCard } from '../components/ui/HomeCategoryCard';
 import { UtensilsCrossed, MapPin, Phone, Clock, ChevronRight } from 'lucide-react';
 import FeaturedProducts from '../components/FeaturedProducts';
-import OptimizedImage from '../components/ui/OptimizedImage';
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 import { homepageApi, type HomepageSection } from '../services/api';
@@ -241,17 +240,17 @@ export default function HomePage() {
             {/* Bento grid — layout adapts to number of cards */}
             {cardsContent.length === 1 && (
               <FadeIn>
-                <CategoryCard card={cardsContent[0]} className="aspect-video md:aspect-21/9" />
+                <HomeCategoryCard card={cardsContent[0]} layout="feature" />
               </FadeIn>
             )}
 
             {cardsContent.length === 2 && (
               <StaggerContainer className="grid grid-cols-1 md:grid-cols-12 gap-6">
                 <StaggerItem className="md:col-span-6">
-                  <CategoryCard card={cardsContent[0]} className="aspect-4/3 min-h-[280px]" />
+                  <HomeCategoryCard card={cardsContent[0]} layout="half" />
                 </StaggerItem>
                 <StaggerItem className="md:col-span-6">
-                  <CategoryCard card={cardsContent[1]} className="aspect-4/3 min-h-[280px]" />
+                  <HomeCategoryCard card={cardsContent[1]} layout="half" />
                 </StaggerItem>
               </StaggerContainer>
             )}
@@ -259,17 +258,17 @@ export default function HomePage() {
             {cardsContent.length >= 3 && (
               <StaggerContainer className="grid grid-cols-1 md:grid-cols-12 gap-6">
                 <StaggerItem className="md:col-span-7 md:row-span-2">
-                  <CategoryCard card={cardsContent[0]} className="aspect-4/3 md:aspect-auto md:h-full min-h-[280px]" />
+                  <HomeCategoryCard card={cardsContent[0]} layout="lead" />
                 </StaggerItem>
                 <StaggerItem className="md:col-span-5">
-                  <CategoryCard card={cardsContent[1]} className="aspect-4/3" />
+                  <HomeCategoryCard card={cardsContent[1]} />
                 </StaggerItem>
                 <StaggerItem className="md:col-span-5">
-                  <CategoryCard card={cardsContent[2]} className="aspect-4/3" />
+                  <HomeCategoryCard card={cardsContent[2]} />
                 </StaggerItem>
                 {cardsContent.slice(3).map((card, i) => (
                   <StaggerItem key={card.id || i + 3} className="md:col-span-4">
-                    <CategoryCard card={card} className="aspect-4/3" />
+                    <HomeCategoryCard card={card} />
                   </StaggerItem>
                 ))}
               </StaggerContainer>
@@ -413,63 +412,5 @@ export default function HomePage() {
       </section>
 
     </div>
-  );
-}
-
-/* ================================================================== */
-/* CategoryCard — reusable bento card for What We Offer section       */
-/* ================================================================== */
-interface CategoryCardProps {
-  card: {
-    id?: number;
-    title: string | null;
-    subtitle?: string | null;
-    button_text?: string | null;
-    button_link?: string | null;
-    image_url?: string | null;
-  };
-  className?: string;
-}
-
-function CategoryCard({ card, className = '' }: CategoryCardProps) {
-  return (
-    <Link
-      to={card.button_link || "/products"}
-      className={`group relative overflow-hidden rounded-2xl block ${className}`}
-    >
-      <span className="absolute inset-0" aria-hidden="true">
-        <OptimizedImage src={card.image_url} alt="" context="card"
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-      </span>
-      {/* Balanced overlay: keeps photos visible while preserving text readability */}
-      <div className="absolute inset-0 bg-black/32" />
-      <div className="absolute inset-0 bg-linear-to-t from-black/72 via-black/28 to-transparent" />
-      {/* Text overlay */}
-      <div className="absolute inset-0 flex flex-col justify-end p-6 sm:p-8">
-        <div className="rounded-xl bg-black/52 backdrop-blur-md border border-white/12 p-4 sm:p-5">
-          <h3
-            className="text-xl sm:text-2xl font-bold text-white mb-1"
-            style={{ color: '#ffffff', textShadow: '0 2px 10px rgba(0,0,0,0.9), 0 4px 20px rgba(0,0,0,0.5)' }}
-          >
-            {card.title}
-          </h3>
-          {card.subtitle && (
-            <p
-              className="text-white/95 text-sm mb-2"
-              style={{ color: '#ffffff', textShadow: '0 1px 8px rgba(0,0,0,0.85)' }}
-            >
-              {card.subtitle}
-            </p>
-          )}
-          <span
-            className="text-white/95 text-sm font-semibold inline-flex items-center gap-1"
-            style={{ color: '#ffffff', textShadow: '0 1px 6px rgba(0,0,0,0.75)' }}
-          >
-            {card.button_text || "Learn More"}
-            <ChevronRight className="w-4 h-4" />
-          </span>
-        </div>
-      </div>
-    </Link>
   );
 }

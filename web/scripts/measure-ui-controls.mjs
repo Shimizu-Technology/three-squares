@@ -1,3 +1,5 @@
+import { launchGeometryBrowser } from './geometry-browser.mjs';
+import { prepareGeometryContext } from './geometry-context.mjs';
 import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -10,7 +12,7 @@ if (!['localhost','127.0.0.1'].includes(new URL(base).hostname)) throw new Error
 const output = path.resolve(process.env.UI_EVIDENCE_DIR ?? '../tmp/ui-controls');
 mkdirSync(output, {recursive:true});
 const lifecycle = process.env.DEV_LIFECYCLE_SESSION;
-const browser = await chromium.launch({headless:true});
+const browser = await launchGeometryBrowser(chromium, {headless:true});
 if (lifecycle) execFileSync('dev-lifecycle', ['claim','--session',lifecycle,'process',String(process.pid),'--reason','Shared controls geometry runner and its Chromium descendants']);
 const luminance = rgb => rgb.map(c => {const x=c/255;return x<=0.04045?x/12.92:((x+0.055)/1.055)**2.4}).reduce((sum,x,i)=>sum+x*[0.2126,0.7152,0.0722][i],0);
 const contrast = (foreground, background) => {
@@ -22,7 +24,7 @@ const results = [];
 try {
   for (const [width,height] of [[768,1024],[1024,768],[1440,900],[390,844]]) {
     for (const touch of [false,true]) {
-      const context = await browser.newContext({viewport:{width,height},hasTouch:touch,deviceScaleFactor:1});
+      const context = await browser.newContext({viewport:{width,height},hasTouch:touch,deviceScaleFactor:1});await prepareGeometryContext(context, base);
       try {
         const page = await context.newPage();
         const activate = locator => touch ? locator.tap() : locator.click();

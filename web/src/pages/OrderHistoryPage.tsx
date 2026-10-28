@@ -1,3 +1,5 @@
+import { Field } from '../components/ui/Field';
+import { Select } from '../components/ui/Select';
 import { Button } from '../components/ui/Button';
 import { useState, useEffect } from 'react';
 import { SignInButton } from '@clerk/clerk-react';
@@ -61,7 +63,7 @@ export default function OrderHistoryPage() {
     try {
       setIsLoading(true);
       const token = await getToken();
-      
+
       let url = `${API_BASE_URL}/api/v1/orders/my?page=${page}&per_page=10`;
       if (statusFilter) {
         url += `&status=${statusFilter}`;
@@ -146,11 +148,10 @@ export default function OrderHistoryPage() {
 
         {/* Filter */}
         <div className="mb-6 flex flex-wrap gap-4 items-center">
-          <label className="text-sm font-medium text-warm-700">Filter by status:</label>
-          <select
+          <Field label="Filter by status:">
+          <Select id="order-history-status"
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-md border-warm-300 shadow-sm focus:border-tsPrimary focus:ring-tsPrimary text-sm"
           >
             <option value="">All Orders</option>
             <option value="pending">Pending</option>
@@ -158,7 +159,8 @@ export default function OrderHistoryPage() {
             <option value="shipped">Shipped</option>
             <option value="delivered">Delivered</option>
             <option value="cancelled">Cancelled</option>
-          </select>
+          </Select>
+          </Field>
         </div>
 
         {/* Loading State */}
@@ -188,7 +190,7 @@ export default function OrderHistoryPage() {
             <div className="mb-4"><svg className="w-16 h-16 mx-auto text-warm-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 7.5l-9-5.25L3 7.5m18 0l-9 5.25m9-5.25v9l-9 5.25M3 7.5l9 5.25M3 7.5v9l9 5.25m0-9v9" /></svg></div>
             <h2 className="text-xl font-semibold text-warm-900 mb-2">No orders yet</h2>
             <p className="text-warm-600 mb-6">
-              {statusFilter 
+              {statusFilter
                 ? `You don't have any ${statusFilter} orders.`
                 : "You haven't placed any orders yet. Start shopping!"}
             </p>

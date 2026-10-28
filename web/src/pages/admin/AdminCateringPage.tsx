@@ -1,3 +1,4 @@
+import { Disclosure } from '../../components/ui/Disclosure';
 import AdminFilterBar from '../../components/admin/AdminFilterBar';
 import { NavigationLink } from '../../components/ui/NavigationLink';
 import { RefreshCw } from 'lucide-react';
@@ -169,7 +170,7 @@ export default function AdminCateringPage() {
               <section className="space-y-3 rounded-lg border border-gray-200 p-4"><Field label="Follow-up notes (staff recorded)"><Textarea value={adminNotes} onChange={event => updateDraft({ notes: event.target.value })} rows={5} placeholder="Record the actual contact channel, date/time and outcome." /></Field><Button variant="secondary" type="button" disabled={!canWrite} onClick={() => void mutate('notes')}>Save Notes</Button></section>
               {(transitions[current.status] || []).length > 0 && <section className="space-y-3 rounded-lg border border-gray-200 p-4"><h3 className="font-semibold text-gray-900">Record the actual outcome</h3><p className="text-sm text-gray-700">Record acceptance or decline only after the customer tells you. These actions do not take a payment or confirm a deposit.</p><div className="flex flex-wrap gap-2">{transitions[current.status].map(([status,label]) => <Button variant="secondary" key={status} type="button" disabled={!canWrite} onClick={() => void mutate('status', status)}>{label}</Button>)}</div></section>}
             </fieldset>
-            {draft?.notesDirty && adminNotes !== (current.admin_notes || '') && <details className="rounded-lg border border-gray-200 p-3"><summary className="min-h-11 cursor-pointer py-2 font-medium text-gray-800">Latest saved notes — compare with your draft</summary><p className="whitespace-pre-wrap break-words text-gray-700">{current.admin_notes || 'No saved notes.'}</p></details>}
+            {draft?.notesDirty && adminNotes !== (current.admin_notes || '') && <div className="rounded-lg border border-gray-200 p-3"><Disclosure title={<>Latest saved notes — compare with your draft</>}><p className="whitespace-pre-wrap break-words text-gray-700">{current.admin_notes || 'No saved notes.'}</p></Disclosure></div>}
           </>}
         </div><footer className="flex shrink-0 justify-end border-t border-gray-200 p-4"><Button variant="secondary" type="button" aria-label="Close modal" disabled={saving} onClick={closeDetails}>Close</Button></footer>
       </div>

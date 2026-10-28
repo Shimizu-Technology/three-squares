@@ -1,3 +1,5 @@
+import { Disclosure } from '../ui/Disclosure';
+import { Select } from '../ui/Select';
 import { Button } from '../ui/Button';
 import { useId } from 'react';
 import type { PaymentTerminalHookState } from '../../hooks/usePaymentTerminal';
@@ -32,15 +34,15 @@ export default function TerminalControls({ terminals, selected, selectedId, sele
     <div className="flex flex-wrap items-end gap-2">
       <label htmlFor={id} className="min-w-0 flex-1 space-y-1 font-medium">
         <span>Payment reader</span>
-        <select id={id} value={selectedId ?? ''} disabled={busy || locked || !!pending || loading}
+        <Select id={id} value={selectedId ?? ''} disabled={busy || locked || !!pending || loading}
           onChange={event => select(event.target.value ? Number(event.target.value) : null)}
-          className="min-h-11 w-full min-w-0 rounded-lg border border-gray-300 bg-white px-3 py-2 text-base disabled:opacity-60">
+          >
           <option value="">Choose a reader</option>
           {unavailable && <option value={selectedId!}>Saved reader #{selectedId} — unavailable</option>}
           {terminals.map(row => <option key={row.id} value={row.id} disabled={!row.enabled || row.status === 'retired' || row.collectable === false}>
             {row.label} · Lane {row.lane_id} · {row.environment}{!row.enabled ? ' · disabled' : ''}
           </option>)}
-        </select>
+        </Select>
       </label>
       <Button variant="secondary" loading={loading} disabled={busy} onClick={() => void reload()}>Refresh readers</Button>
     </div>
@@ -67,9 +69,8 @@ export default function TerminalControls({ terminals, selected, selectedId, sele
     {onCancel && <p className="text-xs text-gray-600">A cancellation request does not confirm that a charge was stopped or reversed.</p>}
   </>;
   return <section aria-label="Payment reader" aria-busy={loading || busy} className="min-w-0 rounded-lg border border-gray-200 bg-white p-3 text-sm [overflow-wrap:anywhere]">
-    {compact ? <details>
-      <summary className="min-h-11 cursor-pointer font-medium">Reader: {selected?.label || 'Choose a reader'} · {busy ? 'Processing' : selected ? statuses[selected.status] : 'Unavailable'}{selected?.environment !== 'production' && selected ? ` · ${selected.environment}` : ''}</summary>
+    {compact ? <div><Disclosure title={<>Reader: {selected?.label || 'Choose a reader'} · {busy ? 'Processing' : selected ? statuses[selected.status] : 'Unavailable'}{selected?.environment !== 'production' && selected ? ` · ${selected.environment}` : ''}</>}>
       <div className="max-h-[35dvh] space-y-3 overflow-y-auto pt-2">{body}</div>
-    </details> : <div className="space-y-3">{body}</div>}
+    </Disclosure></div> : <div className="space-y-3">{body}</div>}
   </section>;
 }

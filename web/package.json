@@ -25,7 +25,7 @@
     "test:comprehensive:headed": "node ./scripts/run-with-project-node.mjs playwright test --project=comprehensive --headed",
     "test:unit": "node ./scripts/run-with-project-node.mjs node --experimental-strip-types --test tests/*.test.mjs",
     "ui:check": "node ./scripts/run-with-project-node.mjs node scripts/check-ui-controls.mjs",
-    "ui:ratchet": "node ./scripts/run-with-project-node.mjs node scripts/check-ui-controls.mjs --ratchet"
+    "ui:geometry": "node ./scripts/run-with-project-node.mjs node scripts/run-ui-geometry.mjs"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.58.1",
