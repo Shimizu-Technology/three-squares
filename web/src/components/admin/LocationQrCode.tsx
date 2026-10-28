@@ -167,7 +167,7 @@ export default function LocationQrCode({ id, name, slug }: { id: number; name: s
     {qr && <Disclosure open={error ? true : undefined} title={<>Saved menu URL and QR</>}>
 
       <div className="space-y-3 pt-2">
-        <NavigationLink href={qr.menu_url} target="_blank" rel="noopener noreferrer" >{qr.menu_url}</NavigationLink>
+        <NavigationLink context="admin" href={qr.menu_url} target="_blank" rel="noopener noreferrer" >{qr.menu_url}</NavigationLink>
         <img src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(qr.svg)}`} alt={`${name} menu QR code`} className="w-48 max-w-full bg-white border border-gray-200" />
         <Button variant="secondary" type="button" aria-label={`Download SVG for ${name}`} disabled={busy !== null}
           onClick={event => void run('Download SVG', event.currentTarget)}>Download SVG</Button>

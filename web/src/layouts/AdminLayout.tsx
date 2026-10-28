@@ -186,7 +186,7 @@ function AdminShell() {
   // navigation subtree or removes keyboard focus.
   const renderNavigation = (compact: boolean) => navigation.map(group => <div key={group.title} className="mb-5">
     <p className={`mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-gray-500 ${compact ? 'sr-only' : ''}`}>{group.title}</p>
-    <div className="space-y-1">{group.items.map(item => <NavigationLink
+    <div className="space-y-1">{group.items.map(item => <NavigationLink context="admin"
       key={item.path} compact={compact} to={item.path} aria-label={item.name} aria-current={activePath === item.path ? 'page' : undefined}
       onClick={() => { setSidebarOpen(false); setTooltip(null); }}
       onFocus={event => { if (compact) showTooltip(event.currentTarget, item.name); }}
@@ -203,7 +203,7 @@ function AdminShell() {
   return <div className="admin-scope min-h-dvh bg-gray-100">
     <span className="sr-only focus-within:not-sr-only focus-within:fixed focus-within:left-4 focus-within:top-20 focus-within:z-60"><Button variant="secondary" href="#admin-main">Skip to content</Button></span>
     <aside id="admin-sidebar" aria-label="Admin sidebar" className={`fixed inset-y-0 left-0 z-40 hidden flex-col border-r border-gray-200 bg-white md:flex ${collapsed ? 'w-20' : 'w-64'}`}>
-      <NavigationLink to="/admin" aria-label="Three Squares Admin" brand className="shrink-0">{collapsed ? 'TS' : 'Three Squares Admin'}</NavigationLink>
+      <NavigationLink context="admin" to="/admin" aria-label="Three Squares Admin" brand className="shrink-0">{collapsed ? 'TS' : 'Three Squares Admin'}</NavigationLink>
       <nav aria-label="Admin navigation" className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3" onScroll={event => {
         const focused = document.activeElement;
         if (collapsed && focused instanceof HTMLElement && event.currentTarget.contains(focused)) {
@@ -225,9 +225,9 @@ function AdminShell() {
       <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between gap-3 border-b border-gray-200 bg-white px-4">
         <span className="md:hidden"><IconButton variant="ghost" ref={menuButton} type="button" aria-label="Open admin navigation" aria-expanded={sidebarOpen} aria-controls="admin-mobile-navigation" onClick={() => setSidebarOpen(true)}><Menu /></IconButton></span>
         <span className="hidden md:inline-flex"><IconButton variant="ghost" type="button" aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!collapsed} aria-controls="admin-sidebar" onClick={toggleCollapse}>{collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft />}</IconButton></span>
-        <nav aria-label="Breadcrumb" className="hidden min-w-0 flex-1 items-center justify-center gap-1.5 md:flex">{breadcrumbs.map((crumb, index) => <span key={crumb.path || pageTitle} className="flex min-w-0 items-center gap-1.5">{index > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-500" />}{crumb.path && canAccessStaffRoute(access.user, crumb.path) ? <NavigationLink to={crumb.path} >{crumb.label}</NavigationLink> : <span aria-current={index === breadcrumbs.length - 1 ? 'page' : undefined} className="truncate text-sm font-semibold text-gray-900">{crumb.label}</span>}</span>)}</nav>
+        <nav aria-label="Breadcrumb" className="hidden min-w-0 flex-1 items-center justify-center gap-1.5 md:flex">{breadcrumbs.map((crumb, index) => <span key={crumb.path || pageTitle} className="flex min-w-0 items-center gap-1.5">{index > 0 && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-gray-500" />}{crumb.path && canAccessStaffRoute(access.user, crumb.path) ? <NavigationLink context="admin" to={crumb.path} >{crumb.label}</NavigationLink> : <span aria-current={index === breadcrumbs.length - 1 ? 'page' : undefined} className="truncate text-sm font-semibold text-gray-900">{crumb.label}</span>}</span>)}</nav>
         <p className="min-w-0 flex-1 py-2 text-xs text-gray-700 md:max-w-56 md:flex-none"><span className="block font-semibold">{access.roleLabel}</span><span className="block break-words">{access.scopeLabel}</span></p>
-        <NavigationLink to="/" className="shrink-0 gap-2"><ExternalLink className="h-4 w-4" />View Store</NavigationLink>
+        <NavigationLink context="admin" to="/" className="shrink-0 gap-2"><ExternalLink className="h-4 w-4" />View Store</NavigationLink>
       </header>
       {/* Routine operational navigation uses native scroll and immediate content. */}
       <main id="admin-main" tabIndex={-1} className="admin-main p-4 sm:p-6">{routeAllowed ? <Outlet /> : <StaffAccessDenied />}</main>

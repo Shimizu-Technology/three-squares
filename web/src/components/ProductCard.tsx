@@ -1,11 +1,11 @@
-import { Link } from 'react-router-dom';
 import type { Product } from '../services/api';
 import CatalogPrice from './CatalogPrice';
 import { useCartStore } from '../store/cartStore';
 import { evaluateCartCompatibility } from '../utils/cartCompatibility';
 import ProductBadge from './ProductBadge';
-import PlaceholderImage from './ui/PlaceholderImage';
 import OptimizedImage from './ui/OptimizedImage';
+import { CustomerCard } from './ui/CustomerCard';
+import { StatusBadge } from './ui/StatusBadge';
 
 const EMPTY_CART_ITEMS: Array<{ product: { allow_pickup?: boolean; allow_shipping?: boolean; available_location_ids?: number[] } }> = [];
 
@@ -26,46 +26,39 @@ export default function ProductCard({ product, locationNameById = {} }: ProductC
     : 'Pickup location conflicts with current cart';
 
   return (
-    <Link
-      to={`/products/${product.slug}`}
-      className="group flex flex-col rounded-xl p-2 bg-white border border-warm-200 hover:border-warm-300 hover:shadow-md transition h-full"
-    >
+    <CustomerCard to={`/products/${product.slug}`}>
       {/* Image */}
-      <div className="relative bg-warm-100 overflow-hidden rounded-lg" style={{ aspectRatio: '1/1' }}>
-        {product.primary_image_url ? (
-          <OptimizedImage
-            src={product.primary_image_url}
-            alt={product.name}
-            context="card"
-            className="w-full h-full object-cover object-center bg-warm-50 group-hover:scale-105 transition-transform duration-500"
-          />
-        ) : (
-          <PlaceholderImage variant="card" className="bg-warm-50" />
-        )}
+      <div className="customer-card__media">
+        <OptimizedImage
+          src={product.primary_image_url}
+          alt={product.name}
+          context="card"
+          className="w-full h-full object-cover object-center"
+        />
 
         {/* Badges */}
         <div className="absolute top-3 left-3 flex flex-col gap-2">
           {!product.actually_available && <ProductBadge type="sold-out" />}
           {isOnSale && <ProductBadge type="sale" />}
         </div>
+        {cartCompatibility.reason === 'pickup_location' && (
+          <div className="absolute bottom-2 left-2 right-2" title={conflictText}>
+            <StatusBadge tone="attention">Pickup conflict</StatusBadge>
+            <span className="sr-only">{conflictText}</span>
+          </div>
+        )}
       </div>
 
       {/* Content */}
-      <div className="pt-3 pb-1 flex flex-col grow">
-        <h3 className="font-medium text-sm sm:text-base text-warm-900 mb-2 line-clamp-2 group-hover:text-tsPrimary transition">
+      <div className="customer-card__body">
+        <h3 className="customer-card__title">
           {product.name}
         </h3>
 
-        <div className="mt-auto">
-          <CatalogPrice pricing={product.pricing} productType={product.product_type} />
-
-          {cartCompatibility.reason === 'pickup_location' && (
-            <p className="mt-2 text-xs font-medium text-amber-700">
-              {conflictText}
-            </p>
-          )}
+        <div className="customer-card__price">
+          <CatalogPrice pricing={product.pricing} productType={product.product_type} compact />
         </div>
       </div>
-    </Link>
+    </CustomerCard>
   );
 }

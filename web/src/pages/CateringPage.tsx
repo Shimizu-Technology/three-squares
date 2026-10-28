@@ -1,5 +1,7 @@
+import { Button } from '../components/ui/Button';
+import { ClipboardList, Phone } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useSearchParams } from 'react-router-dom';
 import axios from 'axios';
 import FadeIn from '../components/animations/FadeIn';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -116,8 +118,8 @@ export default function CateringPage() {
           <h1 className="text-4xl sm:text-5xl font-bold text-warm-900 tracking-tight leading-tight">Food for your gathering</h1>
           <p className="mt-5 text-lg text-warm-700 leading-relaxed max-w-xl">Tell us about your event and the food you have in mind. A catering inquiry starts a conversation about availability and a quote.</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <button onClick={openInquiry} className="btn-primary">Request a quote</button>
-            <Link to="/products?business_line=catering" className="btn-secondary inline-flex items-center">Browse catering items</Link>
+            <Button onClick={openInquiry} size="lg">Request a quote</Button>
+            <Button to="/products?business_line=catering" variant="secondary" size="lg">Browse catering items</Button>
           </div>
           <p className="mt-5 text-sm text-warm-600">Submitting an inquiry does not place or pay for an order.</p>
         </div>
@@ -131,12 +133,12 @@ export default function CateringPage() {
           <div className="rounded-2xl border border-warm-200 p-6 sm:p-8">
             <h2 className="text-2xl font-bold text-warm-900">Choosing from the menu?</h2>
             <p className="mt-3 text-warm-700">Browse the catering items currently listed online, then choose a pickup location when ordering.</p>
-            <Link to="/products?business_line=catering" className="inline-block mt-5 font-semibold text-tsPrimary underline underline-offset-4">View catering items</Link>
+            <Button to="/products?business_line=catering" className="mt-6" variant="link">View catering items</Button>
           </div>
           <div className="rounded-2xl border border-warm-200 p-6 sm:p-8">
             <h2 className="text-2xl font-bold text-warm-900">Planning an event?</h2>
             <p className="mt-3 text-warm-700">Share the date, guest count and menu preferences. The team can review your request and discuss a quote.</p>
-            <button onClick={openInquiry} className="mt-5 font-semibold text-tsPrimary underline underline-offset-4">Open inquiry form</button>
+            <Button onClick={openInquiry} className="mt-6" variant="link">Open inquiry form</Button>
           </div>
         </div>
       </section>
@@ -395,7 +397,7 @@ export default function CateringPage() {
           <p className="text-sm font-semibold uppercase tracking-widest text-tsPrimary mb-4">From the kitchen</p>
           <h2 className="text-3xl sm:text-4xl font-bold text-warm-900 tracking-tight">Tell us what your table needs</h2>
           <p className="mt-4 text-warm-700 leading-relaxed">The inquiry form has room for your event date, guest count, food preferences and other details. The team will need to confirm the menu, availability and price with you.</p>
-          <button onClick={openInquiry} className="btn-primary mt-7">Request a quote</button>
+          <Button onClick={openInquiry} className="mt-6" size="lg">Request a quote</Button>
         </div>
         <img src="/images/Mini_Bentos.jpg" alt="Boxed meals from Three Squares" className="w-full aspect-[4/3] object-cover rounded-2xl" loading="eager" />
       </section>
@@ -418,24 +420,8 @@ export default function CateringPage() {
                 Send your event details so the team can discuss a quote with you.
               </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <button
-                onClick={openInquiry}
-                className="inline-flex items-center justify-center gap-2 bg-white text-warm-700 px-8 py-4 rounded-lg font-semibold hover:bg-gray-100 transition shadow-lg"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                Request a Quote
-              </button>
-              <a
-                href="tel:+16716462652"
-                className="inline-flex items-center justify-center gap-2 bg-white/10 text-white px-8 py-4 rounded-lg font-semibold hover:bg-white/20 transition border border-white/25"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                </svg>
-                Call (671) 646-2652
-              </a>
+              <Button onClick={openInquiry} size="lg" surface="dark" icon={<ClipboardList />}>Request a Quote</Button>
+              <Button href="tel:+16716462652" variant="secondary" size="lg" surface="dark" icon={<Phone />}>Call (671) 646-2652</Button>
             </div>
             </div>
           </FadeIn>

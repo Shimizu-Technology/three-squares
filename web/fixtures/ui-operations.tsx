@@ -19,8 +19,8 @@ export function Fixture() {
   return <main className="admin-main space-y-6 p-4 sm:p-6">
     <AdminPageHeader title="Operational acceptance" subtitle="Fictional workflows and nested dialog recovery." actions={<Button onClick={() => setOuter(true)} ref={opener}>Open order</Button>} />
     <AdminFilterBar><Field label="Order search"><Input type="search" /></Field></AdminFilterBar>
-    <NavigationLink brand to="/fixtures/ui-operations.html">Fictional admin brand</NavigationLink>
-    <NavigationLink to="/fixtures/ui-operations.html" aria-current="page">A long fictional operational navigation destination that wraps on narrow screens</NavigationLink>
+    <NavigationLink context="admin" brand to="/fixtures/ui-operations.html">Fictional admin brand</NavigationLink>
+    <NavigationLink context="admin" to="/fixtures/ui-operations.html" aria-current="page">A long fictional operational navigation destination that wraps on narrow screens</NavigationLink>
     <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
     <AdminModal open={outer} onClose={() => setOuter(false)} title="Fictional order" returnFocusRef={opener} footer={<Button variant="secondary" onClick={() => setOuter(false)}>Close order</Button>}>
       <Button ref={nested} onClick={() => setInner(true)}>Open shipment</Button>

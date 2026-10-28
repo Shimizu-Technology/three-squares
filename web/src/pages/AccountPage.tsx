@@ -1,3 +1,5 @@
+import { IconButton } from '../components/ui/IconButton';
+import { Button } from '../components/ui/Button';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useUser, useAuth, SignInButton, UserProfile } from '@clerk/clerk-react';
@@ -105,9 +107,9 @@ export default function AccountPage() {
               Sign in to view your profile, order history, and manage your account settings.
             </p>
             <SignInButton mode="modal">
-              <button className="w-full py-3 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition font-medium">
+              <Button variant="primary" className="w-full">
                 Sign In
-              </button>
+              </Button>
             </SignInButton>
             <p className="text-sm text-warm-500 mt-4">
               Don&apos;t have an account? Signing in will create one automatically.
@@ -183,13 +185,13 @@ export default function AccountPage() {
                   <Package className="w-5 h-5 text-warm-500" />
                   <h2 className="text-lg font-semibold text-warm-900">Recent Orders</h2>
                 </div>
-                <Link
+                <Button icon={<ChevronRight />}
                   to="/orders"
-                  className="text-sm text-tsPrimary hover:text-red-700 font-medium flex items-center gap-1 transition"
+                  variant="link"
                 >
                   View All
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
+
+                </Button>
               </div>
               <div className="p-6">
                 {ordersLoading && (
@@ -202,12 +204,12 @@ export default function AccountPage() {
                 {ordersError && (
                   <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-center">
                     <p className="text-sm text-red-700">{ordersError}</p>
-                    <button
+                    <Button
                       onClick={fetchRecentOrders}
-                      className="mt-2 text-sm text-red-600 underline hover:text-red-800"
+                      variant="secondary" className="mt-2"
                     >
                       Try again
-                    </button>
+                    </Button>
                   </div>
                 )}
 
@@ -215,12 +217,12 @@ export default function AccountPage() {
                   <div className="text-center py-8">
                     <ShoppingBag className="w-12 h-12 mx-auto text-warm-300 mb-3" />
                     <p className="text-warm-600 mb-4">You haven&apos;t placed any orders yet.</p>
-                    <Link
+                    <Button
                       to="/products"
-                      className="inline-flex items-center px-5 py-2.5 bg-tsPrimary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition"
+                      variant="primary"
                     >
                       Start Shopping
-                    </Link>
+                    </Button>
                   </div>
                 )}
 
@@ -270,13 +272,13 @@ export default function AccountPage() {
                 <p className="text-warm-600 text-sm mb-4">
                   Update your profile information, change your password, or manage connected accounts.
                 </p>
-                <button
+                <Button icon={<Settings />}
                   onClick={() => setShowUserProfile(true)}
-                  className="inline-flex items-center px-5 py-2.5 bg-warm-100 text-warm-700 text-sm font-medium rounded-lg hover:bg-warm-200 transition"
+                  variant="secondary"
                 >
-                  <Settings className="w-4 h-4 mr-2" />
+
                   Manage Account
-                </button>
+                </Button>
               </div>
             </section>
           </FadeIn>
@@ -287,13 +289,12 @@ export default function AccountPage() {
       {showUserProfile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="relative bg-white rounded-2xl shadow-xl max-w-2xl w-full max-h-[90dvh] overflow-y-auto">
-            <button
+            <div className="absolute top-4 right-4 z-10"><IconButton
               onClick={() => setShowUserProfile(false)}
-              className="absolute top-4 right-4 z-10 p-2 bg-white rounded-full shadow-md hover:bg-warm-50 transition"
               aria-label="Close"
             >
-              <X className="w-5 h-5 text-warm-600" />
-            </button>
+              <X  />
+            </IconButton></div>
             <UserProfile
               appearance={{
                 elements: {

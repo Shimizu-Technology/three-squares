@@ -7,6 +7,7 @@ import { RefreshCw } from 'lucide-react';
 import { Button, type ButtonSize, type ButtonVariant } from '../src/components/ui/Button';
 import { IconButton } from '../src/components/ui/IconButton';
 import { StatusBadge } from '../src/components/ui/StatusBadge';
+import { NavigationLink } from '../src/components/ui/NavigationLink';
 import { Notice } from '../src/components/ui/Notice';
 import AdminRequestState from '../src/components/admin/AdminRequestState';
 import RouteErrorBoundary from '../src/components/RouteErrorBoundary';
@@ -42,6 +43,16 @@ export function Fixture() {
         <Button href="#blocked" disabled>Disabled link</Button>
         <IconButton to="#icon-target" aria-label="Open linked target"><RefreshCw/></IconButton>
       </div>
+    </section>
+    <section className="bg-tsNavy p-6 space-y-4" aria-label="Dark surface actions">
+      <div className="flex flex-wrap gap-4">
+        <Button size="lg" surface="dark" data-dark-control="primary">View menu</Button>
+        <Button size="lg" surface="dark" variant="secondary" data-dark-control="secondary">Ask about catering</Button>
+      </div>
+    </section>
+    <section aria-label="Navigation links" className="flex flex-wrap gap-4">
+      <NavigationLink to="#router-target">Navigate within app</NavigationLink>
+      <NavigationLink href="#anchor-target">Navigate with anchor</NavigationLink>
     </section>
     <section className="space-y-3" aria-label="Status and notice">
       <div className="flex flex-wrap gap-2">{(['attention','info','success','neutral','danger','inactive'] as const).map(tone => <StatusBadge key={tone} tone={tone}>{tone}</StatusBadge>)}</div>

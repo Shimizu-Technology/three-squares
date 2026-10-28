@@ -73,9 +73,9 @@ export function StaffAccessDenied() {
     <p className="break-words text-sm text-gray-700">Role: {roleLabel} · Scope: {scopeLabel}</p>
     <p>{assignmentRequired ? 'Ask a manager to assign your location' : 'Ask an owner or manager if you need access to this task.'}</p>
     <div className="flex flex-wrap gap-3">
-      {canAccessStaffRoute(user, '/admin/orders/pickup-queue') && <NavigationLink to="/admin/orders/pickup-queue">Open pickup queue</NavigationLink>}
-      {canAccessStaffRoute(user, '/admin/devices') && <NavigationLink to="/admin/devices" >This device</NavigationLink>}
-      <NavigationLink to="/" >View store</NavigationLink>
+      {canAccessStaffRoute(user, '/admin/orders/pickup-queue') && <NavigationLink context="admin" to="/admin/orders/pickup-queue">Open pickup queue</NavigationLink>}
+      {canAccessStaffRoute(user, '/admin/devices') && <NavigationLink context="admin" to="/admin/devices" >This device</NavigationLink>}
+      <NavigationLink context="admin" to="/" >View store</NavigationLink>
     </div>
   </section>;
 }

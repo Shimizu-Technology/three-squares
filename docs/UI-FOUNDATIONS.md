@@ -88,6 +88,8 @@ import { IconButton } from '../components/ui/IconButton';
 <IconButton aria-label="Refresh menu" onClick={refresh}><RefreshCw /></IconButton>
 ```
 
+Use `surface="dark"` on a dark brand surface: secondary stays transparent with a white outline/text, ghost/link use white text, and keyboard focus uses white. Size, padding, primary fill, disabled/loading behavior and semantics are unchanged. This is a shared recipe; do not add local inverse color classes.
+
 Button defaults to a native `type="button"`. Supply `type="submit"` for form submission; use `href` for an anchor or `to` for a router Link. Icons use the `icon` prop. IconButton requires `aria-label`, defaults to ghost, and accepts the same variants/sizes/link props. Loading overlays its spinner in a reserved overlay slot while retaining the original label/icon in layout and the accessible name; dimensions never change. Disabled/loading native buttons cannot activate. Disabled/loading links have no href, remain named links, and leave the tab order. The label must stay unchanged while loading; put detailed progress beside the control.
 
 `className` is for static layout utilities only (width, margins, alignment, layout gaps). Do not override color, padding, radius, font, height, border, movement or opacity, including via inline styles. Extend a shared recipe with tests when a new requirement is needed. New recipes live in the components layer; legacy unlayered `.btn-*` and broad admin/public focus/active styles exclude `data-ui-control`. This preserves unmigrated behavior without overriding shared recipes. Never combine legacy classes with shared controls.
@@ -123,6 +125,17 @@ Use named `Field`, `Input`, `Select` and `Textarea` exports from their respectiv
 Input and single-choice Select are exactly44px border-box high,1px neutral border,8px radius,12px horizontal padding and14/20 type; coarse pointers use16/24 type. Field labels sit above controls with4px gaps. Textarea is multiline: default3 rows, minimum96px,12px padding and native vertical resize. It does not force multiline content into a44px box. Help/error type is14/20. Controls have the shared2px focus outline/2px offset and one disabled opacity rule. Keep field `className` layout-only; the existing AST gate rejects geometry/color overrides, inline styles and spread props at adoption sites. Checkboxes, switches, file pickers and multi-select lists keep separate semantic recipes.
 
 Current Device name/location plus Refresh/Save adopt these recipes first. Other forms migrate in the remaining admin/customer slices. The dev-only `fixtures/ui-fields.html` provides label/help/error, native submission, disabled and geometry acceptance; it is excluded from the normal production entry.
+
+
+### Customer location membership
+
+A product not offered at the selected location is distinct from an offered item sold out today. The detail page uses the server's `Not offered at this location` reason to show “Not available at {location}”, without a payable price, inquiry wording, quantity or Add to cart. Active carrying locations appear under “On the menu at”; membership does not promise today's stock. Each switch preserves the product URL and uses the existing location picker's cart check, confirmation and clear-failure handling. An offered sold-out item retains stock wording, and a genuine inquiry-only item retains its full pricing reason and inquiry destination.
+
+### Customer navigation and location cards
+
+`NavigationLink` renders a router or native anchor for public header/footer/menu destinations. It has a real 44px minimum target, native link semantics, visible keyboard focus and capability-gated hover. `NavigationDisclosure` uses a native non-submit button with an accessible name, expanded state and a stable controlled panel ID; it only changes visibility. Keep field/command buttons on Button/IconButton, and prose links inline.
+
+`CustomerCardFrame` shares the 12px/8px-inset shell for location details, with 4:3 stable media and a bottom action region. It renders an article so separate menu/directions/contact actions remain valid links. It has no whole-card hover/press cue. Product/collection whole-card navigation still uses CustomerCard without nested controls.
 
 ## Admin editors (P5b)
 

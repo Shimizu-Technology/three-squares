@@ -35,7 +35,7 @@ export default function StatCard({
             {value}
           </p>
           {link && (
-            <NavigationLink
+            <NavigationLink context="admin"
               to={link.to} className="mt-3"
             >
               {link.text} &rarr;

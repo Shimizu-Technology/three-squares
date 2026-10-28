@@ -1,5 +1,5 @@
-import { useState, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { useState, useEffect, useId, type MouseEvent as ReactMouseEvent } from 'react';
+import { NavigationLink, NavigationDisclosure } from './ui/NavigationLink';
 import { collectionsApi, type Collection } from '../services/api';
 import { useCartStore } from '../store/cartStore';
 import useAppConfig from '../hooks/useAppConfig';
@@ -12,6 +12,7 @@ interface MobileNavDropdownProps {
 
 export default function MobileNavDropdown({ onItemClick, darkMode = false }: MobileNavDropdownProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const menuId = useId();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [loading, setLoading] = useState(true);
   const cart = useCartStore((state) => state.cart);
@@ -78,45 +79,25 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
   return (
     <div className="space-y-1">
       {/* Shop Header with Toggle */}
-      <button
-        onClick={() => setIsExpanded(!isExpanded)}
-        className={`w-full flex items-center justify-between font-semibold py-2 ${
-          darkMode 
-            ? 'text-white hover:text-tsGold' 
-            : 'text-warm-700 hover:text-tsPrimary'
-        }`}
-      >
-        <span>Shop</span>
-        <svg
-          className={`w-5 h-5 transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+      <NavigationDisclosure expanded={isExpanded} onToggle={() => setIsExpanded(!isExpanded)} controlsId={menuId} surface={darkMode ? 'dark' : 'default'}>Shop</NavigationDisclosure>
 
       {/* Expandable Sub-menu */}
+      <div id={menuId} hidden={!isExpanded}>
       {isExpanded && (
         <div className="animate-slide-down">
           {/* Collections List */}
           <div className={`pl-3 space-y-1 ml-1 ${darkMode ? 'border-l-2 border-white/20' : 'border-l-2 border-tsPrimary/30'}`}>
             {/* All Products */}
-            <Link
+            <NavigationLink
               to="/products"
-              className={`flex items-center gap-2 py-2 font-medium ${
-                darkMode 
-                  ? 'text-white/90 hover:text-tsGold' 
-                  : 'text-warm-700 hover:text-tsPrimary'
-              }`}
+              surface={darkMode ? 'dark' : 'default'} className="w-full"
               onClick={onItemClick}
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
               All Products
-            </Link>
+            </NavigationLink>
 
             {storefrontCount > 1 && (
               <>
@@ -124,43 +105,31 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
                   Browse by menu
                 </p>
                 {showThreeSquares && (
-                  <Link
+                  <NavigationLink
                     to="/shop/three-squares"
-                    className={`flex items-center gap-2 py-2 ${
-                      darkMode
-                        ? 'text-white/80 hover:text-tsGold'
-                        : 'text-warm-700 hover:text-tsPrimary'
-                    }`}
+                    surface={darkMode ? 'dark' : 'default'} className="w-full"
                     onClick={(event) => handleStorefrontClick(event, 'three_squares', 'Three Squares')}
                   >
                     Three Squares
-                  </Link>
+                  </NavigationLink>
                 )}
                 {showLatteStone && (
-                  <Link
+                  <NavigationLink
                     to="/shop/latte-stone-cookies"
-                    className={`flex items-center gap-2 py-2 ${
-                      darkMode
-                        ? 'text-white/80 hover:text-tsGold'
-                        : 'text-warm-700 hover:text-tsPrimary'
-                    }`}
+                    surface={darkMode ? 'dark' : 'default'} className="w-full"
                     onClick={(event) => handleStorefrontClick(event, 'latte_stone', 'Latte Stone Cookies')}
                   >
                     Latte Stone Cookies
-                  </Link>
+                  </NavigationLink>
                 )}
                 {showCatering && (
-                  <Link
+                  <NavigationLink
                     to="/shop/catering"
-                    className={`flex items-center gap-2 py-2 ${
-                      darkMode
-                        ? 'text-white/80 hover:text-tsGold'
-                        : 'text-warm-700 hover:text-tsPrimary'
-                    }`}
+                    surface={darkMode ? 'dark' : 'default'} className="w-full"
                     onClick={(event) => handleStorefrontClick(event, 'catering', 'Catering')}
                   >
                     Catering
-                  </Link>
+                  </NavigationLink>
                 )}
               </>
             )}
@@ -170,14 +139,10 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
               <div className={`text-sm py-2 ${darkMode ? 'text-white/50' : 'text-warm-400'}`}>Loading collections...</div>
             ) : (
               collections.slice(0, 6).map((collection) => (
-                <Link
+                <NavigationLink
                   key={collection.id}
                   to={`/collections/${collection.slug}`}
-                  className={`flex items-center gap-2 py-2 ${
-                    darkMode 
-                      ? 'text-white/70 hover:text-tsGold' 
-                      : 'text-warm-600 hover:text-tsPrimary'
-                  }`}
+                  surface={darkMode ? 'dark' : 'default'} className="w-full"
                   onClick={onItemClick}
                 >
                   <span className="text-tsGold text-xs">●</span>
@@ -187,25 +152,24 @@ export default function MobileNavDropdown({ onItemClick, darkMode = false }: Mob
                       {collection.product_count}
                     </span>
                   )}
-                </Link>
+                </NavigationLink>
               ))
             )}
 
             {/* View All Collections */}
             {collections.length > 0 && (
-              <Link
+              <NavigationLink
                 to="/collections"
-                className={`block py-2 font-medium hover:underline ${
-                  darkMode ? 'text-tsGold' : 'text-tsPrimary'
-                }`}
+                surface={darkMode ? 'dark' : 'default'} className="w-full"
                 onClick={onItemClick}
               >
                 View All Collections →
-              </Link>
+              </NavigationLink>
             )}
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

@@ -79,6 +79,24 @@
   .ui-tone--inactive { color: #475569; background: #F1F5F9; border-color: #CBD5E1; }
 }
 
+/* Dark surfaces keep secondary actions outlined and keyboard focus visible. */
+@layer components {
+  .ts-dialog[data-keyboard-navigation] :is(button, a, input, select, textarea, summary, [tabindex]):focus {
+    outline: 2px solid var(--ui-focus-color, var(--color-tsPrimary));
+    outline-offset: 2px;
+  }
+  .ui-button--on-dark { --ui-focus-color: white; }
+  .ui-button--on-dark.ui-button--secondary { background: transparent; border-color: rgb(255 255 255 / 50%); color: white; }
+  .ui-button--on-dark.ui-button--ghost, .ui-button--on-dark.ui-button--link { color: white; }
+  .ui-button--on-dark:focus-visible { outline-color: white; }
+  .ui-button--on-dark.ui-button--secondary:active:not([aria-disabled="true"]), .ui-button--on-dark.ui-button--ghost:active:not([aria-disabled="true"]) { background: rgb(255 255 255 / 15%); }
+  .ui-button--on-dark.ui-button--link:active:not([aria-disabled="true"]) { color: white; }
+  @media (hover: hover) and (pointer: fine) {
+    .ui-button--on-dark.ui-button--secondary:hover:not([aria-disabled="true"]), .ui-button--on-dark.ui-button--ghost:hover:not([aria-disabled="true"]) { background: rgb(255 255 255 / 15%); }
+    .ui-button--on-dark.ui-button--link:hover:not([aria-disabled="true"]) { color: white; }
+  }
+}
+
 @layer components {
   .ui-choice-group { display: flex; flex-wrap: wrap; gap: 8px; }
   .ui-choice { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; height: 44px; min-width: 44px; padding: 0 16px; border: 1px solid #D1D5DB; border-radius: 8px; background: white; color: #1F2937; font: 600 14px/20px var(--font-sans); white-space: nowrap; cursor: pointer; touch-action: manipulation; }
@@ -108,6 +126,23 @@
   @media (pointer: coarse) {
     .ui-input, .ui-select, .ui-textarea { font-size: 16px; line-height: 24px; }
   }
+}
+
+/* Public destinations and navigation disclosures retain their native roles. */
+@layer components {
+
+  .ui-navigation-link { box-sizing: border-box; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; min-width: 44px; max-width: 100%; padding: 0; color: var(--color-warm-700); font: 500 14px/20px var(--font-sans); text-decoration: none; overflow-wrap: anywhere; touch-action: manipulation; }
+  .ui-navigation-link:focus-visible { outline: 2px solid var(--color-tsPrimary); outline-offset: 2px; }
+  .ui-navigation-link:not([data-context="admin"]):active { color: var(--color-tsPrimary); text-decoration: underline; }
+  @media (hover: hover) and (pointer: fine) { .ui-navigation-link:not([data-context="admin"]):hover { color: var(--color-tsPrimary); text-decoration: underline; } }
+  .ui-navigation-disclosure { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 44px; width: 100%; padding: 8px 0; border: 0; background: transparent; color: var(--color-warm-700); font: 600 14px/20px var(--font-sans); cursor: pointer; touch-action: manipulation; user-select: none; }
+  .ui-navigation-disclosure:focus-visible { outline: 2px solid var(--color-tsPrimary); outline-offset: 2px; }
+  .ui-navigation-disclosure:active { color: var(--color-tsPrimary); }
+  .ui-navigation-link--on-dark { color: white; }
+  .ui-navigation-link--on-dark:focus-visible { outline-color: white; }
+  .ui-navigation-link--on-dark:active { color: white; }
+  .ui-navigation-link.ui-navigation-link--on-dark:active { color: white; }
+  @media (hover: hover) and (pointer: fine) { .ui-navigation-link--on-dark:hover, .ui-navigation-link.ui-navigation-link--on-dark:hover { color: white; } }
 }
 
 @layer components {
@@ -150,23 +185,23 @@
   .ui-dialog-header__subtitle { margin-top: 4px; font: 400 14px/20px var(--font-sans); color: #4B5563; }
   .ui-dialog-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 8px; flex-shrink: 0; padding: 16px; border-top: 1px solid #E5E7EB; background: #F9FAFB; }
   .ui-dialog-actions > div { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
-  .ui-navigation-link { display: flex; align-items: center; gap: 12px; min-height: 44px; min-width: 44px; padding: 8px 12px; border-radius: 8px; font: 500 14px/20px var(--font-sans); color: #374151; overflow-wrap: anywhere; }
-  .ui-navigation-link[aria-current="page"] { background: var(--color-tsPrimary); color: white; }
-  .ui-navigation-link:focus-visible { outline: 2px solid var(--color-tsPrimary); outline-offset: 2px; }
-  @media (hover: hover) and (pointer: fine) { .ui-navigation-link:not([aria-current="page"]):not([data-brand]):hover { background: #F3F4F6; } }
+  .ui-navigation-link[data-context="admin"] { display: flex; align-items: center; gap: 12px; min-height: 44px; min-width: 44px; padding: 8px 12px; border-radius: 8px; font: 500 14px/20px var(--font-sans); color: #374151; overflow-wrap: anywhere; }
+  .ui-navigation-link[data-context="admin"][aria-current="page"] { background: var(--color-tsPrimary); color: white; }
+  .ui-navigation-link[data-context="admin"]:focus-visible { outline: 2px solid var(--color-tsPrimary); outline-offset: 2px; }
+  @media (hover: hover) and (pointer: fine) { .ui-navigation-link[data-context="admin"]:not([aria-current="page"]):not([data-brand]):hover { background: #F3F4F6; } }
   @media (min-width: 640px) { .ui-dialog-header, .ui-dialog-actions { padding: 16px 24px; } }
   @media (max-width: 639px) { .ui-dialog-actions .ui-button { width: 100%; flex: auto; } }
 }
 
 @layer components {
-  .ui-navigation-link[data-brand] { height: 64px; flex-shrink: 0; justify-content: center; background: var(--color-tsPrimary); color: white; font-size: 18px; font-weight: 700; }
+  .ui-navigation-link[data-context="admin"][data-brand] { height: 64px; flex-shrink: 0; justify-content: center; background: var(--color-tsPrimary); color: white; font-size: 18px; font-weight: 700; }
   .admin-main [data-admin-page-header] + * { margin-top: 16px; }
 }
 
 @layer components {
-  .ui-navigation-link[data-compact] { justify-content: center; }
+  .ui-navigation-link[data-context="admin"][data-compact] { justify-content: center; }
 }
 
 @layer components {
-  .ui-navigation-link[data-record] { justify-content: space-between; flex-wrap: wrap; }
+  .ui-navigation-link[data-context="admin"][data-record] { justify-content: space-between; flex-wrap: wrap; }
 }

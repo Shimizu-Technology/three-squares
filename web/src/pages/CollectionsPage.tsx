@@ -8,7 +8,7 @@ import type { Collection as ApiCollection } from '../services/api';
 import { CollectionCardSkeleton, PageHeaderSkeleton } from '../components/Skeleton';
 import FadeIn from '../components/animations/FadeIn';
 import OptimizedImage from '../components/ui/OptimizedImage';
-import PlaceholderImage from '../components/ui/PlaceholderImage';
+import { CustomerCard } from '../components/ui/CustomerCard';
 import useAppConfig from '../hooks/useAppConfig';
 
 type Collection = ApiCollection;
@@ -173,22 +173,10 @@ export default function CollectionsPage() {
       {featuredCollection && !searchQuery && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-8 relative z-10 mb-4">
           <FadeIn delay={0.15}>
-            <Link
-              to={`/collections/${featuredCollection.slug}`}
-              className="group block bg-white rounded-2xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow duration-300"
-            >
+            <CustomerCard to={`/collections/${featuredCollection.slug}`} kind="collection">
               <div className="grid grid-cols-1 md:grid-cols-2">
-                <div className="aspect-4/3 md:aspect-auto bg-warm-100 relative overflow-hidden">
-                  {featuredCollection.thumbnail_url ? (
-                    <OptimizedImage
-                      src={featuredCollection.thumbnail_url}
-                      alt={featuredCollection.name}
-                      context="hero"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
-                  ) : (
-                    <PlaceholderImage variant="detail" className="min-h-[240px]" />
-                  )}
+                <div className="customer-card__media">
+                  <OptimizedImage src={featuredCollection.thumbnail_url} alt={featuredCollection.name} context="card" className="w-full h-full object-cover" />
                 </div>
                 <div className="p-8 sm:p-10 lg:p-12 flex flex-col justify-center">
                   <span className="inline-flex items-center gap-1.5 bg-tsGold/20 text-yellow-800 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider w-fit mb-4">
@@ -197,7 +185,7 @@ export default function CollectionsPage() {
                     </svg>
                     Featured Collection
                   </span>
-                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 mb-3 group-hover:text-tsPrimary transition-colors">
+                  <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-gray-900 mb-3">
                     {featuredCollection.name}
                   </h2>
                   {featuredCollection.description && (
@@ -207,7 +195,7 @@ export default function CollectionsPage() {
                   <p className="text-sm text-warm-400 mt-3">
                     {featuredCollection.product_count} {featuredCollection.product_count === 1 ? 'product' : 'products'}
                   </p>
-                  <span className="mt-6 inline-flex items-center gap-2 text-tsPrimary font-semibold group-hover:gap-3 transition-all">
+                  <span className="mt-6 inline-flex items-center gap-2 text-tsPrimary font-semibold">
                     {featuredCollection.available === false ? 'View ended menu' : 'Browse menu'}
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -215,7 +203,7 @@ export default function CollectionsPage() {
                   </span>
                 </div>
               </div>
-            </Link>
+            </CustomerCard>
           </FadeIn>
         </div>
       )}
@@ -299,23 +287,10 @@ export default function CollectionsPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-8">
               {(searchQuery ? collections : regularCollections).map((collection) => (
-                <Link
-                  key={collection.id}
-                  to={`/collections/${collection.slug}`}
-                  className="group bg-white rounded-2xl shadow-sm overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 block border border-warm-100"
-                >
+                <CustomerCard key={collection.id} to={`/collections/${collection.slug}`} kind="collection">
                   {/* Thumbnail */}
-                  <div className="aspect-4/3 bg-warm-100 relative overflow-hidden">
-                    {collection.thumbnail_url ? (
-                      <OptimizedImage
-                        src={collection.thumbnail_url}
-                        alt={collection.name}
-                        context="card"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                      />
-                    ) : (
-                      <PlaceholderImage variant="card" />
-                    )}
+                  <div className="customer-card__media">
+                    <OptimizedImage src={collection.thumbnail_url} alt={collection.name} context="card" className="w-full h-full object-cover" />
                     {collection.featured && (
                       <div className="absolute top-3 right-3 inline-flex items-center gap-1 bg-tsGold text-gray-900 px-3 py-1 rounded-full text-xs font-bold shadow-lg">
                         <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -327,21 +302,17 @@ export default function CollectionsPage() {
                   </div>
 
                   {/* Collection Info */}
-                  <div className="p-5 sm:p-6">
-                    <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-2 group-hover:text-tsPrimary transition-colors">
+                  <div className="customer-card__body">
+                    <h3 className="customer-card__title">
                       {collection.name}
                     </h3>
-                    {collection.description && (
-                      <p className="text-sm text-warm-500 mb-3 line-clamp-2">
-                        {collection.description}
-                      </p>
-                    )}
+                    <p className="h-10 text-sm leading-5 text-warm-500 line-clamp-2">{collection.description}</p>
                     <div className="mb-3"><CollectionScheduleNotice collection={collection} /></div>
-                    <div className="flex items-center justify-between">
+                    <div className="mt-auto flex min-h-11 items-center justify-between gap-2">
                       <p className="text-sm text-warm-400">
                         {collection.product_count} {collection.product_count === 1 ? 'product' : 'products'}
                       </p>
-                      <span className="text-tsPrimary opacity-0 group-hover:opacity-100 transition-opacity text-sm font-medium flex items-center gap-1">
+                      <span className="text-tsPrimary text-sm font-medium flex items-center gap-1">
                         Browse
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -349,7 +320,7 @@ export default function CollectionsPage() {
                       </span>
                     </div>
                   </div>
-                </Link>
+                </CustomerCard>
               ))}
             </div>
 

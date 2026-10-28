@@ -157,7 +157,7 @@ export default function AdminDashboardPage() {
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
           <div><h2 className="text-lg font-bold text-gray-900">Recent Orders</h2><p className="text-sm text-gray-600">{scopeLabel} · All business lines · Includes test and simulated orders</p></div>
-          <NavigationLink to="/admin/orders" className="gap-1">
+          <NavigationLink context="admin" to="/admin/orders" className="gap-1">
             View All
             <ArrowRight className="w-4 h-4" />
           </NavigationLink>
@@ -171,7 +171,7 @@ export default function AdminDashboardPage() {
             </div>
           )) : (
             recentOrders.map((order) => (
-              <NavigationLink
+              <NavigationLink context="admin"
                 key={order.id}
                 to={`/admin/orders?id=${order.id}`} record
               >

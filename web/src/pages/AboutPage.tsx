@@ -1,3 +1,4 @@
+import { Button } from '../components/ui/Button';
 import { Link } from 'react-router-dom';
 import Breadcrumbs from '../components/Breadcrumbs';
 
@@ -18,8 +19,8 @@ export default function AboutPage() {
             Three Squares is a Guam comfort food restaurant and catering service, part of B&amp;G Pacific LLC. Food and the people sharing it are at the center of the story.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <Link to="/products" className="btn-primary inline-flex items-center justify-center">Explore the menu</Link>
-            <Link to="/locations" className="btn-secondary inline-flex items-center justify-center">Find a location</Link>
+            <Button to="/products" size="lg">Explore the menu</Button>
+            <Button to="/locations" variant="secondary" size="lg">Find a location</Button>
           </div>
         </div>
         <figure className="overflow-hidden rounded-2xl bg-warm-100">
@@ -38,8 +39,8 @@ export default function AboutPage() {
             <h2 className="text-3xl sm:text-4xl font-bold text-warm-900 tracking-tight">Meals for today. Food for gatherings.</h2>
             <p className="mt-5 text-warm-700 leading-relaxed">Browse the restaurant menu for a meal, or tell us about an event through the catering inquiry. The team can discuss a quote after reviewing your details.</p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link to="/products" className="font-semibold text-tsPrimary underline underline-offset-4">View the menu</Link>
-              <Link to="/catering" className="font-semibold text-tsPrimary underline underline-offset-4">Ask about catering</Link>
+              <Button to="/products" variant="link">View the menu</Button>
+              <Button to="/catering" variant="link">Ask about catering</Button>
             </div>
           </div>
         </div>
