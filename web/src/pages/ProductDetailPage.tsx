@@ -1,4 +1,5 @@
 import { Button } from '../components/ui/Button';
+import { Notice } from '../components/ui/Notice';
 import { QuantityStepper } from '../components/ui/QuantityStepper';
 import { ShoppingCart } from 'lucide-react';
 import CatalogPrice from '../components/CatalogPrice';
@@ -47,7 +48,9 @@ const getColorCSS = (colorName: string): string | null => {
 
 // ── Component ───────────────────────────────────────────────────────────────
 export default function ProductDetailPage() {
-  const locationId = useLocationStore((state) => state.selectedLocation?.id);
+  const selectedLocation = useLocationStore((state) => state.selectedLocation);
+  const locationId = selectedLocation?.id;
+  const requestLocation = useLocationStore((state) => state.requestLocation);
   const { slug } = useParams<{ slug: string }>();
   const [product, setProduct] = useState<ProductFull | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
@@ -63,7 +66,7 @@ export default function ProductDetailPage() {
   const sizeGuideContentRef = useRef<HTMLDivElement | null>(null);
   const sizeGuideTriggerRef = useRef<HTMLButtonElement | null>(null);
   
-  const { addItem, cart, openCart } = useCartStore();
+  const { addItem, cart, openCart, isLoading: isCartLoading } = useCartStore();
   
   // Extract size chart image URL from product description
   const getSizeChartUrl = (): string | null => {
@@ -274,6 +277,8 @@ export default function ProductDetailPage() {
   }
 
   const pricing = selectedVariant?.pricing || product.pricing;
+  const isNotOffered = product.pricing?.purchasable === false && product.pricing.reason === 'Not offered at this location';
+  const offeredLocations = (product.offered_locations || []).filter(location => location.id !== locationId);
   const displayImages = product.images.length > 0 ? product.images : [{ id: 0, url: '', alt_text: product.name, position: 0, primary: true }];
   const cartItems = cart?.items || [];
   
@@ -313,7 +318,7 @@ export default function ProductDetailPage() {
   
   // For products WITH variants: require selectedVariant
   // For products WITHOUT variants (product-level inventory): no variant needed
-  const canAddToCart = pricing?.purchasable && (hasVariants
+  const canAddToCart = !isNotOffered && pricing?.purchasable && (hasVariants
     ? (isProductAvailable && isVariantAvailable && selectedVariant && quantity > 0 && quantity <= maxQuantity && !cartCompatibility.hasConflict)
     : (isProductAvailable && quantity > 0 && quantity <= maxQuantity && !cartCompatibility.hasConflict));
   
@@ -565,10 +570,31 @@ export default function ProductDetailPage() {
 
               {/* Name & Price */}
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-warm-900 mb-3">{product.name}</h1>
-              <div className="flex items-baseline gap-3 mb-6">
-                <div className="text-2xl"><CatalogPrice pricing={pricing} productType={product.product_type} /></div>
-                {!pricing?.purchasable && <Link to="/catering" className="mt-3 inline-flex min-h-11 items-center text-tsPrimary underline">Ask about this dish</Link>}
-              </div>
+              {isNotOffered ? (
+                <Notice tone="attention" role="status" className="mb-6">
+                  <p className="font-semibold">Not available at {selectedLocation?.name || 'this location'}</p>
+                  {offeredLocations.length > 0 ? (
+                    <>
+                      <p className="mt-2">On the menu at:</p>
+                      <ul className="mt-2 space-y-3">
+                        {offeredLocations.map(location => (
+                          <li key={location.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <span>{location.name}</span>
+                            <Button onClick={() => requestLocation(useLocationStore.getState().locations.find(item => item.id === location.id) || location)} loading={isCartLoading} className="self-start shrink-0">
+                              Order from {location.name.replace(/^Three Squares\s*(?:@\s*)?/, '') || location.name}
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : <p className="mt-2">No locations currently offer this item.</p>}
+                </Notice>
+              ) : (
+                <div className="flex flex-wrap items-baseline gap-3 mb-6">
+                  <div className="text-2xl"><CatalogPrice pricing={pricing} productType={product.product_type} /></div>
+                  {!pricing?.purchasable && <Button to="/catering" variant="link">Ask about this dish</Button>}
+                </div>
+              )}
 
               {/* Description */}
               <div className="mb-8">
@@ -594,7 +620,7 @@ export default function ProductDetailPage() {
               </div>
 
               {/* ── Variant / Option Selectors ────────────────────────── */}
-              {showVariantSelectors &&
+              {!isNotOffered && showVariantSelectors &&
                 (hasFlexibleOptions ? (
                   /* Grouped option selectors (Size, Color, Material, etc.) */
                   <div className="mb-8 space-y-5">
@@ -668,7 +694,7 @@ export default function ProductDetailPage() {
                 ))}
 
               {/* Quantity Selector */}
-              {isVariantAvailable && selectedVariant && (
+              {!isNotOffered && isVariantAvailable && selectedVariant && (
                 <div className="mb-6">
                   <p className="text-sm font-semibold text-warm-900 mb-3">Quantity:</p>
                   <div className="flex items-center gap-4">
@@ -684,6 +710,7 @@ export default function ProductDetailPage() {
               )}
 
               {/* Add to Cart Button */}
+              {!isNotOffered && (
               <div className="mt-auto pt-6">
                 <Button
                   onClick={handleAddToCart}
@@ -699,13 +726,7 @@ export default function ProductDetailPage() {
                 {cartCompatibilityMessage && (
                   <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                     <p>{cartCompatibilityMessage}</p>
-                    <button
-                      type="button"
-                      className="mt-1 font-semibold text-amber-900 underline underline-offset-2 hover:text-amber-700"
-                      onClick={openCart}
-                    >
-                      Review cart
-                    </button>
+                    <Button variant="link" className="mt-1" onClick={openCart}>Review cart</Button>
                   </div>
                 )}
 
@@ -734,6 +755,8 @@ export default function ProductDetailPage() {
                   )}
                 </div>
               </div>
+
+              )}
 
               {/* Product Details */}
               <div className="mt-8 pt-6 border-t border-warm-100">

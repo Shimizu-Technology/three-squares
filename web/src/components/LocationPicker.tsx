@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { MapPin, Clock, Phone, AlertTriangle, X } from 'lucide-react';
 import { locationsApi } from '../services/api';
 import { useLocationStore } from '../store/locationStore';
@@ -13,7 +13,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
  * Also handles the cart-clear confirmation when switching locations.
  */
 export default function LocationPicker() {
-  const { selectedLocation, locations, showPicker, setSelectedLocation, setLocations, setShowPicker } = useLocationStore();
+  const { selectedLocation, locations, showPicker, setSelectedLocation, setLocations, setShowPicker, requestedLocation, requestLocation } = useLocationStore();
   const { clearCart, fetchCart } = useCartStore();
   const [switching, setSwitching] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -104,15 +104,7 @@ export default function LocationPicker() {
     };
   }, [showModal, showConfirm, selectedLocation, setShowPicker, switching]);
 
-  if (locations.length <= 1) return null;
-
-  const today = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'Pacific/Guam' }).format(new Date());
-
-  const selectLocation = (loc: LocationInfo) => {
-    setSelectedLocation(loc);
-  };
-
-  const handleLocationSelect = async (loc: LocationInfo) => {
+  const handleLocationSelect = useCallback(async (loc: LocationInfo) => {
     if (directMenu) {
       // The route checks the server cart before changing global selection.
       setShowPicker(false);
@@ -137,14 +129,24 @@ export default function LocationPicker() {
       return;
     }
     const compatible = checkout && state.cart.items.every((item) => item.product.allow_pickup && item.product.available_location_ids?.includes(loc.id));
-    if (compatible) { selectLocation(loc); return; }
+    if (compatible) { setSelectedLocation(loc); return; }
     if (state.cart.items.length > 0) {
       setPendingLocation(loc);
       setShowConfirm(true);
     } else {
-      selectLocation(loc);
+      setSelectedLocation(loc);
     }
-  };
+  }, [directMenu, navigate, selectedLocation?.id, switching, fetchCart, checkout, setShowPicker, setSelectedLocation]);
+
+  useEffect(() => {
+    if (!requestedLocation) return;
+    requestLocation(null);
+    void handleLocationSelect(requestedLocation);
+  }, [requestedLocation, requestLocation, handleLocationSelect]);
+
+  if (locations.length <= 1) return null;
+
+  const today = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'Pacific/Guam' }).format(new Date());
 
   const confirmSwitch = async () => {
     const nextLocation = pendingLocation;
@@ -162,7 +164,7 @@ export default function LocationPicker() {
     try {
       await clearCart();
       if (selectionVersion.current === version && useLocationStore.getState().selectedLocation?.id === previousLocationId) {
-        selectLocation(nextLocation);
+        setSelectedLocation(nextLocation);
       }
     } catch {
       if (selectionVersion.current === version) toast.error('Unable to clear cart. Please check your connection and try again.');

@@ -117,3 +117,8 @@ Use named `Field`, `Input`, `Select` and `Textarea` exports from their respectiv
 Input and single-choice Select are exactly44px border-box high,1px neutral border,8px radius,12px horizontal padding and14/20 type; coarse pointers use16/24 type. Field labels sit above controls with4px gaps. Textarea is multiline: default3 rows, minimum96px,12px padding and native vertical resize. It does not force multiline content into a44px box. Help/error type is14/20. Controls have the shared2px focus outline/2px offset and one disabled opacity rule. Keep field `className` layout-only; the existing AST gate rejects geometry/color overrides, inline styles and spread props at adoption sites. Checkboxes, switches, file pickers and multi-select lists keep separate semantic recipes.
 
 Current Device name/location plus Refresh/Save adopt these recipes first. Other forms migrate in the remaining admin/customer slices. The dev-only `fixtures/ui-fields.html` provides label/help/error, native submission, disabled and geometry acceptance; it is excluded from the normal production entry.
+
+
+### Customer location membership
+
+A product not offered at the selected location is distinct from an offered item sold out today. The detail page uses the server's `Not offered at this location` reason to show “Not available at {location}”, without a payable price, inquiry wording, quantity or Add to cart. Active carrying locations appear under “On the menu at”; membership does not promise today's stock. Each switch preserves the product URL and uses the existing location picker's cart check, confirmation and clear-failure handling. An offered sold-out item retains stock wording, and a genuine inquiry-only item retains its full pricing reason and inquiry destination.
