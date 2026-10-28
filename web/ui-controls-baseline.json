@@ -142,36 +142,6 @@
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
     },
     {
-      "key": "src/components/admin/AdminTable.tsx|AdminPagination|raw-button|361fb2cf93dad203c50f|1",
-      "file": "src/components/admin/AdminTable.tsx",
-      "component": "AdminPagination",
-      "line": 213,
-      "column": 9,
-      "hash": "361fb2cf93dad203c50f",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/AdminTable.tsx|AdminPagination|raw-button|7059b9014a63961c85d1|1",
-      "file": "src/components/admin/AdminTable.tsx",
-      "component": "AdminPagination",
-      "line": 229,
-      "column": 17,
-      "hash": "7059b9014a63961c85d1",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/AdminTable.tsx|AdminPagination|raw-button|291dfce5f24aaa004ba1|1",
-      "file": "src/components/admin/AdminTable.tsx",
-      "component": "AdminPagination",
-      "line": 252,
-      "column": 9,
-      "hash": "291dfce5f24aaa004ba1",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/components/admin/LocationQrCode.tsx|LocationQrCode|raw-button|a4169fc589663a789afc|1",
       "file": "src/components/admin/LocationQrCode.tsx",
       "component": "LocationQrCode",
@@ -198,36 +168,6 @@
       "line": 160,
       "column": 9,
       "hash": "7270442a6c1e401ec9d7",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/menus/MenuItemsEditor.tsx|MenuItemsEditor|raw-button|e4babc38f877963bf40b|1",
-      "file": "src/components/admin/menus/MenuItemsEditor.tsx",
-      "component": "MenuItemsEditor",
-      "line": 29,
-      "column": 11,
-      "hash": "e4babc38f877963bf40b",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/menus/MenuItemsEditor.tsx|MenuItemsEditor|raw-button|3405e2354329fd97a2b5|1",
-      "file": "src/components/admin/menus/MenuItemsEditor.tsx",
-      "component": "MenuItemsEditor",
-      "line": 30,
-      "column": 11,
-      "hash": "3405e2354329fd97a2b5",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/menus/MenuItemsEditor.tsx|MenuItemsEditor|raw-button|9c8c3dfbf7c6cbfbd9a9|1",
-      "file": "src/components/admin/menus/MenuItemsEditor.tsx",
-      "component": "MenuItemsEditor",
-      "line": 31,
-      "column": 11,
-      "hash": "9c8c3dfbf7c6cbfbd9a9",
       "kind": "raw-button",
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
@@ -582,166 +522,6 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/components/admin/products/ProductDetailModal.tsx|ProductDetailModal|raw-button|5ec29e76014d7d6c35d2|1",
-      "file": "src/components/admin/products/ProductDetailModal.tsx",
-      "component": "ProductDetailModal",
-      "line": 28,
-      "column": 11,
-      "hash": "5ec29e76014d7d6c35d2",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductDetailModal.tsx|ProductDetailModal|raw-button|9de9361c6fe62df9bbdd|1",
-      "file": "src/components/admin/products/ProductDetailModal.tsx",
-      "component": "ProductDetailModal",
-      "line": 31,
-      "column": 11,
-      "hash": "9de9361c6fe62df9bbdd",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductDetailModal.tsx|ProductDetailModal|raw-button|0fee1292db07c17af4c5|1",
-      "file": "src/components/admin/products/ProductDetailModal.tsx",
-      "component": "ProductDetailModal",
-      "line": 74,
-      "column": 29,
-      "hash": "0fee1292db07c17af4c5",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductFilters.tsx|ProductFilters|raw-button|4a8d8fda3d86c5238cde|1",
-      "file": "src/components/admin/products/ProductFilters.tsx",
-      "component": "ProductFilters",
-      "line": 81,
-      "column": 11,
-      "hash": "4a8d8fda3d86c5238cde",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductsTable.tsx|ActionMenu|raw-button|1b255a4fadb0da0dae29|1",
-      "file": "src/components/admin/products/ProductsTable.tsx",
-      "component": "ActionMenu",
-      "line": 48,
-      "column": 7,
-      "hash": "1b255a4fadb0da0dae29",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductsTable.tsx|ActionMenu|raw-button|77582b65fbef2866c901|1",
-      "file": "src/components/admin/products/ProductsTable.tsx",
-      "component": "ActionMenu",
-      "line": 61,
-      "column": 13,
-      "hash": "77582b65fbef2866c901",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductsTable.tsx|ActionMenu|raw-button|11f390dca793928c43dc|1",
-      "file": "src/components/admin/products/ProductsTable.tsx",
-      "component": "ActionMenu",
-      "line": 67,
-      "column": 13,
-      "hash": "11f390dca793928c43dc",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductsTable.tsx|ActionMenu|raw-button|8ab49efe6393c30a1617|1",
-      "file": "src/components/admin/products/ProductsTable.tsx",
-      "component": "ActionMenu",
-      "line": 74,
-      "column": 15,
-      "hash": "8ab49efe6393c30a1617",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductsTable.tsx|ActionMenu|raw-button|125492b311e2beca6cb7|1",
-      "file": "src/components/admin/products/ProductsTable.tsx",
-      "component": "ActionMenu",
-      "line": 81,
-      "column": 15,
-      "hash": "125492b311e2beca6cb7",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductsTable.tsx|ProductsTable|raw-button|129615e708f63a977494|1",
-      "file": "src/components/admin/products/ProductsTable.tsx",
-      "component": "ProductsTable",
-      "line": 180,
-      "column": 21,
-      "hash": "129615e708f63a977494",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductsTable.tsx|ProductsTable|raw-button|0f01b353ad4bf1d43563|1",
-      "file": "src/components/admin/products/ProductsTable.tsx",
-      "component": "ProductsTable",
-      "line": 183,
-      "column": 21,
-      "hash": "0f01b353ad4bf1d43563",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductsTable.tsx|ProductsTable|raw-button|341873c63dc8d131647e|1",
-      "file": "src/components/admin/products/ProductsTable.tsx",
-      "component": "ProductsTable",
-      "line": 227,
-      "column": 15,
-      "hash": "341873c63dc8d131647e",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductsTable.tsx|ProductsTable|raw-button|b574a1114ac7ecf9bf50|1",
-      "file": "src/components/admin/products/ProductsTable.tsx",
-      "component": "ProductsTable",
-      "line": 230,
-      "column": 15,
-      "hash": "b574a1114ac7ecf9bf50",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductsTable.tsx|ProductsTable|raw-button|cb1c2204e7453c0ae03d|1",
-      "file": "src/components/admin/products/ProductsTable.tsx",
-      "component": "ProductsTable",
-      "line": 248,
-      "column": 13,
-      "hash": "cb1c2204e7453c0ae03d",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductsTable.tsx|ProductsTable|raw-button|89c4a80aa0806b8b068d|1",
-      "file": "src/components/admin/products/ProductsTable.tsx",
-      "component": "ProductsTable",
-      "line": 260,
-      "column": 21,
-      "hash": "89c4a80aa0806b8b068d",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/products/ProductsTable.tsx|ProductsTable|raw-button|a2118b85dbc988534406|1",
-      "file": "src/components/admin/products/ProductsTable.tsx",
-      "component": "ProductsTable",
-      "line": 276,
-      "column": 13,
-      "hash": "a2118b85dbc988534406",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/components/admin/StaffAccess.tsx|StaffAccessDenied|button-like-link|b1b58009b573c7444d20|1",
       "file": "src/components/admin/StaffAccess.tsx",
       "component": "StaffAccessDenied",
@@ -920,26 +700,6 @@
       "hash": "62d1894626a17450e2c5",
       "kind": "button-like-link",
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/components/ImageUpload.tsx|ImageUpload|raw-button|c79258358657fdaabf01|1",
-      "file": "src/components/ImageUpload.tsx",
-      "component": "ImageUpload",
-      "line": 259,
-      "column": 19,
-      "hash": "c79258358657fdaabf01",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/ImageUpload.tsx|ImageUpload|raw-button|5353d1bf1bec38d9ed25|1",
-      "file": "src/components/ImageUpload.tsx",
-      "component": "ImageUpload",
-      "line": 273,
-      "column": 19,
-      "hash": "5353d1bf1bec38d9ed25",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
       "key": "src/components/LocationContextBar.tsx|LocationContextBar|raw-button|f846ed84e9e55d281a43|1",
@@ -1272,116 +1032,6 @@
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
     },
     {
-      "key": "src/components/VariantManager.tsx|VariantManager|raw-button|50c3d5373e64d7abc55b|1",
-      "file": "src/components/VariantManager.tsx",
-      "component": "VariantManager",
-      "line": 537,
-      "column": 23,
-      "hash": "50c3d5373e64d7abc55b",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/VariantManager.tsx|VariantManager|raw-button|84007717fda8652afd05|1",
-      "file": "src/components/VariantManager.tsx",
-      "component": "VariantManager",
-      "line": 555,
-      "column": 25,
-      "hash": "84007717fda8652afd05",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/VariantManager.tsx|VariantManager|raw-button|8e8d3bc264072530e3d9|1",
-      "file": "src/components/VariantManager.tsx",
-      "component": "VariantManager",
-      "line": 562,
-      "column": 25,
-      "hash": "8e8d3bc264072530e3d9",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/VariantManager.tsx|VariantManager|raw-button|9248605a5f860cc30cd3|1",
-      "file": "src/components/VariantManager.tsx",
-      "component": "VariantManager",
-      "line": 597,
-      "column": 15,
-      "hash": "9248605a5f860cc30cd3",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/VariantManager.tsx|VariantManager|raw-button|0a12e2acea822925d2f1|1",
-      "file": "src/components/VariantManager.tsx",
-      "component": "VariantManager",
-      "line": 647,
-      "column": 21,
-      "hash": "0a12e2acea822925d2f1",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/VariantManager.tsx|VariantManager|raw-button|635cc4280e6029fff278|1",
-      "file": "src/components/VariantManager.tsx",
-      "component": "VariantManager",
-      "line": 673,
-      "column": 23,
-      "hash": "635cc4280e6029fff278",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/VariantManager.tsx|VariantManager|raw-button|1500cf783654f49802f5|1",
-      "file": "src/components/VariantManager.tsx",
-      "component": "VariantManager",
-      "line": 702,
-      "column": 17,
-      "hash": "1500cf783654f49802f5",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/VariantManager.tsx|VariantManager|raw-button|7727f4c6e476b14f6739|1",
-      "file": "src/components/VariantManager.tsx",
-      "component": "VariantManager",
-      "line": 738,
-      "column": 15,
-      "hash": "7727f4c6e476b14f6739",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/VariantManager.tsx|VariantManager|raw-button|c57eebfb9c3dc1d85aea|1",
-      "file": "src/components/VariantManager.tsx",
-      "component": "VariantManager",
-      "line": 776,
-      "column": 13,
-      "hash": "c57eebfb9c3dc1d85aea",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/VariantManager.tsx|VariantManager|raw-button|40950401931d7d89cb13|1",
-      "file": "src/components/VariantManager.tsx",
-      "component": "VariantManager",
-      "line": 821,
-      "column": 13,
-      "hash": "40950401931d7d89cb13",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/VariantManager.tsx|VariantManager|raw-button|685838939cc30e658583|1",
-      "file": "src/components/VariantManager.tsx",
-      "component": "VariantManager",
-      "line": 822,
-      "column": 13,
-      "hash": "685838939cc30e658583",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/layouts/AdminLayout.tsx|AdminShell|raw-button|36f05b3e182f7af5fb2c|1",
       "file": "src/layouts/AdminLayout.tsx",
       "component": "AdminShell",
@@ -1712,126 +1362,6 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/pages/admin/AdminCollectionsPage.tsx|AdminCollectionsPage|raw-button|7b80e72e8bdd51174bfc|1",
-      "file": "src/pages/admin/AdminCollectionsPage.tsx",
-      "component": "AdminCollectionsPage",
-      "line": 116,
-      "column": 45,
-      "hash": "7b80e72e8bdd51174bfc",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminCollectionsPage.tsx|AdminCollectionsPage|raw-button|902954654b8a5a0f9661|1",
-      "file": "src/pages/admin/AdminCollectionsPage.tsx",
-      "component": "AdminCollectionsPage",
-      "line": 117,
-      "column": 9,
-      "hash": "902954654b8a5a0f9661",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminCollectionsPage.tsx|AdminCollectionsPage|raw-button|4f14b19b8d3581739cd9|1",
-      "file": "src/pages/admin/AdminCollectionsPage.tsx",
-      "component": "AdminCollectionsPage",
-      "line": 121,
-      "column": 145,
-      "hash": "4f14b19b8d3581739cd9",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminCollectionsPage.tsx|AdminCollectionsPage|raw-button|fe2af4873c92db27b589|1",
-      "file": "src/pages/admin/AdminCollectionsPage.tsx",
-      "component": "AdminCollectionsPage",
-      "line": 129,
-      "column": 9,
-      "hash": "fe2af4873c92db27b589",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminCollectionsPage.tsx|AdminCollectionsPage|raw-button|baa278ffb843610157e9|1",
-      "file": "src/pages/admin/AdminCollectionsPage.tsx",
-      "component": "AdminCollectionsPage",
-      "line": 130,
-      "column": 9,
-      "hash": "baa278ffb843610157e9",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminCollectionsPage.tsx|AdminCollectionsPage|raw-button|da2b4bf3a75e2daf69b9|1",
-      "file": "src/pages/admin/AdminCollectionsPage.tsx",
-      "component": "AdminCollectionsPage",
-      "line": 131,
-      "column": 9,
-      "hash": "da2b4bf3a75e2daf69b9",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminCollectionsPage.tsx|AdminCollectionsPage|raw-button|dc6e837e3c944987fd94|1",
-      "file": "src/pages/admin/AdminCollectionsPage.tsx",
-      "component": "AdminCollectionsPage",
-      "line": 132,
-      "column": 9,
-      "hash": "dc6e837e3c944987fd94",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminCollectionsPage.tsx|AdminCollectionsPage|raw-button|5d89ecf5a4e4c6d6faa5|1",
-      "file": "src/pages/admin/AdminCollectionsPage.tsx",
-      "component": "AdminCollectionsPage",
-      "line": 139,
-      "column": 206,
-      "hash": "5d89ecf5a4e4c6d6faa5",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminCollectionsPage.tsx|AdminCollectionsPage|raw-button|03d54f00f7b85a570136|1",
-      "file": "src/pages/admin/AdminCollectionsPage.tsx",
-      "component": "AdminCollectionsPage",
-      "line": 169,
-      "column": 107,
-      "hash": "03d54f00f7b85a570136",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminCollectionsPage.tsx|AdminCollectionsPage|raw-button|cf17c3689e4cfc6e989e|1",
-      "file": "src/pages/admin/AdminCollectionsPage.tsx",
-      "component": "AdminCollectionsPage",
-      "line": 169,
-      "column": 234,
-      "hash": "cf17c3689e4cfc6e989e",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminCollectionsPage.tsx|AdminCollectionsPage|raw-button|c54b215f3dd805e92415|1",
-      "file": "src/pages/admin/AdminCollectionsPage.tsx",
-      "component": "AdminCollectionsPage",
-      "line": 173,
-      "column": 286,
-      "hash": "c54b215f3dd805e92415",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminCollectionsPage.tsx|AdminCollectionsPage|raw-button|6a81b06888103828e2ee|1",
-      "file": "src/pages/admin/AdminCollectionsPage.tsx",
-      "component": "AdminCollectionsPage",
-      "line": 173,
-      "column": 416,
-      "hash": "6a81b06888103828e2ee",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/pages/admin/AdminDashboardPage.tsx|AdminDashboardPage|raw-button|e3a68db821a5c03c495f|1",
       "file": "src/pages/admin/AdminDashboardPage.tsx",
       "component": "AdminDashboardPage",
@@ -1945,19 +1475,9 @@
       "key": "src/pages/admin/AdminImportPage.tsx|AdminImportPage|button-like-link|d03ea66ad54b748ce860|1",
       "file": "src/pages/admin/AdminImportPage.tsx",
       "component": "AdminImportPage",
-      "line": 39,
+      "line": 42,
       "column": 7,
       "hash": "d03ea66ad54b748ce860",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminImportPage.tsx|MenuCsvImport|button-like-link|47b585a2d37b9caaaac8|1",
-      "file": "src/pages/admin/AdminImportPage.tsx",
-      "component": "MenuCsvImport",
-      "line": 129,
-      "column": 7,
-      "hash": "47b585a2d37b9caaaac8",
       "kind": "button-like-link",
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
     },
@@ -1975,27 +1495,17 @@
       "key": "src/pages/admin/AdminImportPage.tsx|MenuCsvImport|button-like-link|764c03ccb5a128892e4a|1",
       "file": "src/pages/admin/AdminImportPage.tsx",
       "component": "MenuCsvImport",
-      "line": 157,
+      "line": 155,
       "column": 23,
       "hash": "764c03ccb5a128892e4a",
       "kind": "button-like-link",
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
     },
     {
-      "key": "src/pages/admin/AdminImportPage.tsx|MenuCsvImport|raw-button|6621f3e002da796081c1|1",
-      "file": "src/pages/admin/AdminImportPage.tsx",
-      "component": "MenuCsvImport",
-      "line": 159,
-      "column": 7,
-      "hash": "6621f3e002da796081c1",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/pages/admin/AdminImportPage.tsx|MenuCsvImport|button-like-link|9e86e0c6ae7fb6387c9d|1",
       "file": "src/pages/admin/AdminImportPage.tsx",
       "component": "MenuCsvImport",
-      "line": 169,
+      "line": 167,
       "column": 22,
       "hash": "9e86e0c6ae7fb6387c9d",
       "kind": "button-like-link",
@@ -2005,7 +1515,7 @@
       "key": "src/pages/admin/AdminImportPage.tsx|MenuImportResults|button-like-link|586f5ceda440bfd1d0f5|1",
       "file": "src/pages/admin/AdminImportPage.tsx",
       "component": "MenuImportResults",
-      "line": 186,
+      "line": 184,
       "column": 7,
       "hash": "586f5ceda440bfd1d0f5",
       "kind": "button-like-link",
@@ -2015,7 +1525,7 @@
       "key": "src/pages/admin/AdminImportPage.tsx|MenuImportResults|button-like-link|d251255f877cb6c2852e|1",
       "file": "src/pages/admin/AdminImportPage.tsx",
       "component": "MenuImportResults",
-      "line": 187,
+      "line": 185,
       "column": 30,
       "hash": "d251255f877cb6c2852e",
       "kind": "button-like-link",
@@ -2025,7 +1535,7 @@
       "key": "src/pages/admin/AdminImportPage.tsx|MenuImportResults|button-like-link|df5f12e92457e6aeb9c8|1",
       "file": "src/pages/admin/AdminImportPage.tsx",
       "component": "MenuImportResults",
-      "line": 197,
+      "line": 195,
       "column": 11,
       "hash": "df5f12e92457e6aeb9c8",
       "kind": "button-like-link",
@@ -2472,64 +1982,14 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/pages/admin/AdminShopifyMigration.tsx|ImportLogSection|raw-button|9cb9d22f988159c2c1c7|1",
-      "file": "src/pages/admin/AdminShopifyMigration.tsx",
-      "component": "ImportLogSection",
-      "line": 97,
-      "column": 11,
-      "hash": "9cb9d22f988159c2c1c7",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminShopifyMigration.tsx|ImportLogSection|raw-button|4a7badaf23e931ac568d|1",
-      "file": "src/pages/admin/AdminShopifyMigration.tsx",
-      "component": "ImportLogSection",
-      "line": 142,
-      "column": 11,
-      "hash": "4a7badaf23e931ac568d",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/pages/admin/AdminShopifyMigration.tsx|AdminShopifyMigration|button-like-link|7d26f4e2b763737cd267|1",
       "file": "src/pages/admin/AdminShopifyMigration.tsx",
       "component": "AdminShopifyMigration",
-      "line": 417,
+      "line": 416,
       "column": 9,
       "hash": "7d26f4e2b763737cd267",
       "kind": "button-like-link",
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminShopifyMigration.tsx|AdminShopifyMigration|raw-button|8d7b9399bc57c03276c6|1",
-      "file": "src/pages/admin/AdminShopifyMigration.tsx",
-      "component": "AdminShopifyMigration",
-      "line": 529,
-      "column": 13,
-      "hash": "8d7b9399bc57c03276c6",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminShopifyMigration.tsx|AdminShopifyMigration|raw-button|6f574110bda0b92c362f|1",
-      "file": "src/pages/admin/AdminShopifyMigration.tsx",
-      "component": "AdminShopifyMigration",
-      "line": 667,
-      "column": 25,
-      "hash": "6f574110bda0b92c362f",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminShopifyMigration.tsx|AdminShopifyMigration|raw-button|bf83ba868a568eef0468|1",
-      "file": "src/pages/admin/AdminShopifyMigration.tsx",
-      "component": "AdminShopifyMigration",
-      "line": 689,
-      "column": 13,
-      "hash": "bf83ba868a568eef0468",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
       "key": "src/pages/admin/AdminUsersPage.tsx|renderAccessEditor|raw-button|3a189f6f8fcc28c53787|1",
@@ -2652,126 +2112,6 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/pages/admin/ProductFormPage.tsx|ProductFormEditor|raw-button|b864da6b2e3af85698e4|1",
-      "file": "src/pages/admin/ProductFormPage.tsx",
-      "component": "ProductFormEditor",
-      "line": 519,
-      "column": 9,
-      "hash": "b864da6b2e3af85698e4",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/ProductFormPage.tsx|ProductFormEditor|raw-button|9318b28f0c4a32628e2c|1",
-      "file": "src/pages/admin/ProductFormPage.tsx",
-      "component": "ProductFormEditor",
-      "line": 531,
-      "column": 13,
-      "hash": "9318b28f0c4a32628e2c",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/ProductFormPage.tsx|ProductFormEditor|raw-button|a96f629983ec2f055a3e|1",
-      "file": "src/pages/admin/ProductFormPage.tsx",
-      "component": "ProductFormEditor",
-      "line": 548,
-      "column": 15,
-      "hash": "a96f629983ec2f055a3e",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/ProductFormPage.tsx|ProductFormEditor|raw-button|ec730b116aa2161b0476|1",
-      "file": "src/pages/admin/ProductFormPage.tsx",
-      "component": "ProductFormEditor",
-      "line": 561,
-      "column": 15,
-      "hash": "ec730b116aa2161b0476",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/ProductFormPage.tsx|ProductFormEditor|raw-button|2526be9c7f927c0d9af0|1",
-      "file": "src/pages/admin/ProductFormPage.tsx",
-      "component": "ProductFormEditor",
-      "line": 584,
-      "column": 13,
-      "hash": "2526be9c7f927c0d9af0",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/ProductFormPage.tsx|ProductFormEditor|raw-button|ac7daa1e9a122f825072|1",
-      "file": "src/pages/admin/ProductFormPage.tsx",
-      "component": "ProductFormEditor",
-      "line": 615,
-      "column": 13,
-      "hash": "ac7daa1e9a122f825072",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/ProductFormPage.tsx|ProductFormEditor|raw-button|e48386d02d3940e3a7bd|1",
-      "file": "src/pages/admin/ProductFormPage.tsx",
-      "component": "ProductFormEditor",
-      "line": 1055,
-      "column": 15,
-      "hash": "e48386d02d3940e3a7bd",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/ProductFormPage.tsx|ProductFormEditor|raw-button|90de1b026f7b18914637|1",
-      "file": "src/pages/admin/ProductFormPage.tsx",
-      "component": "ProductFormEditor",
-      "line": 1072,
-      "column": 15,
-      "hash": "90de1b026f7b18914637",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/ProductFormPage.tsx|ProductFormEditor|raw-button|5c6d5a6f498390839982|1",
-      "file": "src/pages/admin/ProductFormPage.tsx",
-      "component": "ProductFormEditor",
-      "line": 1081,
-      "column": 15,
-      "hash": "5c6d5a6f498390839982",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/ProductFormPage.tsx|ProductFormEditor|raw-button|1432b440892bb4f57dd5|1",
-      "file": "src/pages/admin/ProductFormPage.tsx",
-      "component": "ProductFormEditor",
-      "line": 1113,
-      "column": 13,
-      "hash": "1432b440892bb4f57dd5",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/ProductFormPage.tsx|ProductFormEditor|raw-button|f923e19bc0718da7088a|1",
-      "file": "src/pages/admin/ProductFormPage.tsx",
-      "component": "ProductFormEditor",
-      "line": 1121,
-      "column": 13,
-      "hash": "f923e19bc0718da7088a",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/ProductFormPage.tsx|ProductFormEditor|raw-button|cb9b7c0751f40cac7c88|1",
-      "file": "src/pages/admin/ProductFormPage.tsx",
-      "component": "ProductFormEditor",
-      "line": 1161,
-      "column": 13,
-      "hash": "cb9b7c0751f40cac7c88",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/pages/AdminPage.tsx|AdminPage|raw-button|7ef2c1190e7bd46bebd0|1",
       "file": "src/pages/AdminPage.tsx",
       "component": "AdminPage",
@@ -2812,224 +2152,14 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/pages/AdminSettingsPage.tsx|AdminSettingsPage|raw-button|4539e4f09dd33fe3c7a9|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "AdminSettingsPage",
-      "line": 531,
-      "column": 11,
-      "hash": "4539e4f09dd33fe3c7a9",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|AdminSettingsPage|raw-button|cd6d56cbc1acb4f24900|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "AdminSettingsPage",
-      "line": 548,
-      "column": 15,
-      "hash": "cd6d56cbc1acb4f24900",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|AdminSettingsPage|raw-button|a5c6b908c9e21f568ddb|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "AdminSettingsPage",
-      "line": 570,
-      "column": 13,
-      "hash": "a5c6b908c9e21f568ddb",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|saveFeedback|raw-button|da0080910682f7115dcc|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "saveFeedback",
-      "line": 662,
-      "column": 50,
-      "hash": "da0080910682f7115dcc",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|GeneralSettingsTab|raw-button|d34f79822d116285a721|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "GeneralSettingsTab",
-      "line": 686,
-      "column": 13,
-      "hash": "d34f79822d116285a721",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|GeneralSettingsTab|raw-button|d9cfd4f3b9f5dfff1920|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "GeneralSettingsTab",
-      "line": 780,
-      "column": 13,
-      "hash": "d9cfd4f3b9f5dfff1920",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|GeneralSettingsTab|raw-button|74602d2cbdf87ddb0409|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "GeneralSettingsTab",
-      "line": 806,
-      "column": 13,
-      "hash": "74602d2cbdf87ddb0409",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|GeneralSettingsTab|raw-button|9a4ddbcbddf2b59efee6|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "GeneralSettingsTab",
-      "line": 860,
-      "column": 15,
-      "hash": "9a4ddbcbddf2b59efee6",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|GeneralSettingsTab|raw-button|75dbc7164591c7ff3c0e|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "GeneralSettingsTab",
-      "line": 985,
-      "column": 19,
-      "hash": "75dbc7164591c7ff3c0e",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|GeneralSettingsTab|raw-button|bbfca4444de223443c39|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "GeneralSettingsTab",
-      "line": 994,
-      "column": 17,
-      "hash": "bbfca4444de223443c39",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|GeneralSettingsTab|raw-button|aad5231b6858479abcec|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "GeneralSettingsTab",
-      "line": 1162,
-      "column": 15,
-      "hash": "aad5231b6858479abcec",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|GeneralSettingsTab|raw-button|5bc666dc8e3928511c57|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "GeneralSettingsTab",
-      "line": 1170,
-      "column": 15,
-      "hash": "5bc666dc8e3928511c57",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|HomepageSettingsTab|raw-button|7819d519c9122dcca1c7|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "HomepageSettingsTab",
-      "line": 1328,
-      "column": 23,
-      "hash": "7819d519c9122dcca1c7",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|HomepageSettingsTab|raw-button|81d3da386f808ad89a38|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "HomepageSettingsTab",
-      "line": 1338,
-      "column": 23,
-      "hash": "81d3da386f808ad89a38",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/pages/AdminSettingsPage.tsx|HomepageSettingsTab|button-like-link|4b55fa7a0ea472102fa7|1",
       "file": "src/pages/AdminSettingsPage.tsx",
       "component": "HomepageSettingsTab",
-      "line": 1360,
+      "line": 1244,
       "column": 9,
       "hash": "4b55fa7a0ea472102fa7",
       "kind": "button-like-link",
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|SectionForm|raw-button|22c44bd28b18c4dd1c6e|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "SectionForm",
-      "line": 1681,
-      "column": 19,
-      "hash": "22c44bd28b18c4dd1c6e",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|SectionForm|raw-button|b5833c23b304bae69b56|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "SectionForm",
-      "line": 1689,
-      "column": 17,
-      "hash": "b5833c23b304bae69b56",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|SectionForm|raw-button|933daa7fe3fbf6799230|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "SectionForm",
-      "line": 1748,
-      "column": 19,
-      "hash": "933daa7fe3fbf6799230",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|SectionForm|raw-button|fa016362cc0b729c91ec|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "SectionForm",
-      "line": 1756,
-      "column": 17,
-      "hash": "fa016362cc0b729c91ec",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|SectionForm|raw-button|7c3d6f6c4cd1c79ff37a|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "SectionForm",
-      "line": 1808,
-      "column": 15,
-      "hash": "7c3d6f6c4cd1c79ff37a",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|SectionForm|raw-button|d30684eadc4c03989f0f|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "SectionForm",
-      "line": 1910,
-      "column": 11,
-      "hash": "d30684eadc4c03989f0f",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|SectionForm|raw-button|1b4fe9810e4385477c9a|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "SectionForm",
-      "line": 1917,
-      "column": 11,
-      "hash": "1b4fe9810e4385477c9a",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
       "key": "src/pages/CateringPage.tsx|CateringPage|raw-button|cd8d1f09df30b623d79b|1",

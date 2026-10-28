@@ -1,3 +1,10 @@
+import { CheckField } from '../../components/ui/CheckField';
+import { Field } from '../../components/ui/Field';
+import { Disclosure } from '../../components/ui/Disclosure';
+import { Select } from '../../components/ui/Select';
+import { Textarea } from '../../components/ui/Textarea';
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
 import axios from 'axios';
 import { useRef, useState, useEffect, useCallback, type FormEvent } from 'react';
 import { useAuth } from '@clerk/clerk-react';
@@ -113,12 +120,12 @@ export default function AdminCollectionsPage() {
   return <div className="space-y-6">
     <header className="flex flex-wrap items-start justify-between gap-4">
       <div><h1 className="text-2xl font-bold text-gray-900">Menus &amp; specials</h1><p className="mt-1 text-gray-700">Manage menu items and their Guam schedules together.</p></div>
-      <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void fetchCollections()} disabled={loading || busy} className="btn-secondary min-h-11 disabled:opacity-50">Refresh menus</button>
-        <button type="button" disabled={busy} onClick={event => void openEditor(null, 'schedule', event.currentTarget)} className="btn-primary min-h-11 disabled:opacity-50">Add menu</button></div>
+      <div className="flex flex-wrap gap-2"><Button variant="secondary" type="button" onClick={() => void fetchCollections()} disabled={loading || busy}>Refresh menus</Button>
+        <Button variant="secondary" type="button" disabled={busy} onClick={event => void openEditor(null, 'schedule', event.currentTarget)}>Add menu</Button></div>
     </header>
     <AdminRequestState resource="Menus" loading={loading} error={loadError} hasData={hasLoaded} onRetry={fetchCollections} />
     {opening && <p role="status" className="text-gray-700">Loading saved menu and item choices…</p>}
-    {openError && <div role="alert" className="space-y-2 rounded-lg border border-red-300 bg-red-50 p-4 text-red-900"><p>{openError.message}</p><button type="button" onClick={() => void openEditor(openError.collection, openError.section)} className="btn-secondary min-h-11">Retry opening menu</button></div>}
+    {openError && <div role="alert" className="space-y-2 rounded-lg border border-red-300 bg-red-50 p-4 text-red-900"><p>{openError.message}</p><Button variant="secondary" type="button" onClick={() => void openEditor(openError.collection, openError.section)}>Retry opening menu</Button></div>}
     {hasLoaded && collections.length === 0 && !loading && !loadError && <p className="rounded-xl border border-gray-200 bg-white p-6 text-gray-700">No menus yet. Add a menu, choose its items and set a schedule.</p>}
     <div className="grid gap-4 xl:grid-cols-2">{collections.map(menu => <article key={menu.id} aria-label={menu.name} className="min-w-0 space-y-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-2"><h2 className="min-w-0 break-words text-xl font-semibold text-gray-900">{menu.name}</h2>
@@ -126,33 +133,33 @@ export default function AdminCollectionsPage() {
       {menu.description && <p className="break-words text-gray-700">{menu.description}</p>}
       <p className="text-sm text-gray-700">{menu.starts_at ? `Starts ${formatGuamDate(menu.starts_at)}` : 'No start limit'}<br />{menu.ends_at ? `Ends ${formatGuamDate(menu.ends_at)}` : 'No end limit'}</p>
       <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={busy} onClick={event => void openEditor(menu, 'items', event.currentTarget)} className="btn-primary min-h-11 disabled:opacity-50">Manage items ({menu.product_count})</button>
-        <button type="button" disabled={busy} onClick={event => void openEditor(menu, 'schedule', event.currentTarget)} className="btn-secondary min-h-11 disabled:opacity-50">Edit schedule</button>
-        <button type="button" disabled={busy} onClick={event => void openEditor(menu, 'preview', event.currentTarget)} className="btn-secondary min-h-11 disabled:opacity-50">Staff preview</button>
-        <button type="button" disabled={busy} onClick={() => setDeleteTarget(menu)} aria-label={`Delete ${menu.name}`} className="min-h-11 rounded-lg px-3 text-red-800 underline disabled:opacity-50">Delete</button>
+        <Button variant="secondary" type="button" disabled={busy} onClick={event => void openEditor(menu, 'items', event.currentTarget)}>Manage items ({menu.product_count})</Button>
+        <Button variant="secondary" type="button" disabled={busy} onClick={event => void openEditor(menu, 'schedule', event.currentTarget)}>Edit schedule</Button>
+        <Button variant="secondary" type="button" disabled={busy} onClick={event => void openEditor(menu, 'preview', event.currentTarget)}>Staff preview</Button>
+        <Button variant="destructive" type="button" disabled={busy} onClick={() => setDeleteTarget(menu)} aria-label={`Delete ${menu.name}`}>Delete</Button>
       </div>
     </article>)}</div>
 
     <Dialog open={editorOpen} onOpenChange={setEditorOpen} dismissible={!saving} labelledBy="menu-editor-title" returnFocusRef={editorOpener} initialFocusRef={nameRef} className="w-full rounded-xl sm:w-3xl">
       <form onSubmit={save} className="flex max-h-[calc(100dvh-2rem)] flex-col">
         <header className="shrink-0 space-y-3 border-b border-gray-200 p-4 sm:p-6"><h2 id="menu-editor-title" className="break-words text-2xl font-bold text-gray-900">{selected ? `Edit ${selected.name}` : 'Create menu'}</h2>
-          <nav aria-label="Menu editor sections" className="flex flex-wrap gap-2">{([['schedule', 'Menu & schedule'], ['items', 'Menu items'], ['preview', 'Staff preview']] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={section === key} disabled={saving} onClick={() => setSection(key)} className={`min-h-11 rounded-lg px-3 py-2 font-medium ${section === key ? 'bg-tsPrimary text-white' : 'border border-gray-300 text-gray-800'}`}>{label}</button>)}</nav>
+          <nav aria-label="Menu editor sections" className="flex flex-wrap gap-2">{([['schedule', 'Menu & schedule'], ['items', 'Menu items'], ['preview', 'Staff preview']] as const).map(([key, label]) => <Button variant="primary" key={key} type="button" aria-pressed={section === key} disabled={saving} onClick={() => setSection(key)}>{label}</Button>)}</nav>
         </header>
         <div ref={editorBodyRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-6">
           {formError && <p ref={errorRef} tabIndex={-1} role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-red-900">{formError}</p>}
           <fieldset disabled={saving} className="min-w-0 space-y-4">
             <div hidden={section !== 'schedule'} className="space-y-4">
-              <label className="block space-y-1"><span className="font-medium text-gray-800">Menu name</span><input ref={nameRef} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
-              <label className="block space-y-1"><span className="font-medium text-gray-800">Description</span><textarea rows={2} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
-              <label className="block space-y-1"><span className="font-medium text-gray-800">Menu type</span><select aria-label="Menu type" value={form.collection_type} onChange={event => setForm({ ...form, collection_type: event.target.value as CollectionType })} className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base"><option value="standard">Standard</option><option value="seasonal">Seasonal</option><option value="event">Special occasion</option><option value="limited_time">Limited time</option></select></label>
+              <Field label="Menu name"><Input ref={nameRef} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></Field>
+              <Field label="Description"><Textarea rows={2} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></Field>
+              <Field label="Menu type"><Select aria-label="Menu type" value={form.collection_type} onChange={event => setForm({ ...form, collection_type: event.target.value as CollectionType })}><option value="standard">Standard</option><option value="seasonal">Seasonal</option><option value="event">Special occasion</option><option value="limited_time">Limited time</option></Select></Field>
               <p className="text-sm text-gray-700">All dates use Guam time (UTC+10). Leave a date blank for no limit. Unchanged saved timestamps retain their precision.</p>
-              <div className="grid gap-4 sm:grid-cols-2"><label className="block min-w-0 space-y-1"><span className="font-medium text-gray-800">Starts at (Guam)</span><input type="datetime-local" value={form.starts_at} onChange={event => setForm({ ...form, starts_at: event.target.value })} className="min-h-11 w-full min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
-                <label className="block min-w-0 space-y-1"><span className="font-medium text-gray-800">Ends at (Guam)</span><input type="datetime-local" value={form.ends_at} onChange={event => setForm({ ...form, ends_at: event.target.value })} className="min-h-11 w-full min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-base" /></label></div>
-              <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={form.published} onChange={event => setForm({ ...form, published: event.target.checked })} className="h-5 w-5" />Published during its schedule</label>
-              <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={form.auto_hide} onChange={event => setForm({ ...form, auto_hide: event.target.checked })} className="h-5 w-5" />Hide menu after it ends</label>
+              <div className="grid gap-4 sm:grid-cols-2"><Field label="Starts at (Guam)"><Input type="datetime-local" value={form.starts_at} onChange={event => setForm({ ...form, starts_at: event.target.value })} /></Field>
+                <Field label="Ends at (Guam)"><Input type="datetime-local" value={form.ends_at} onChange={event => setForm({ ...form, ends_at: event.target.value })} /></Field></div>
+              <CheckField type="checkbox" checked={form.published} onChange={event => setForm({ ...form, published: event.target.checked })}>Published during its schedule</CheckField>
+              <CheckField type="checkbox" checked={form.auto_hide} onChange={event => setForm({ ...form, auto_hide: event.target.checked })}>Hide menu after it ends</CheckField>
               <p className="text-sm text-gray-700">Upcoming menus stay hidden. Turning off auto-hide keeps an ended page visible; ordering still closes. Items shared with another available menu can remain orderable.</p>
-              <label className="block space-y-1"><span className="font-medium text-gray-800">Customer notice (optional)</span><textarea rows={2} maxLength={200} value={form.banner_text} onChange={event => setForm({ ...form, banner_text: event.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
-              <details className="rounded-lg border border-gray-200 p-3"><summary className="min-h-11 cursor-pointer font-medium text-gray-800">Menu placement</summary><label className="block space-y-1"><span>Sort order — lower appears first</span><input type="number" value={form.sort_order} onChange={event => setForm({ ...form, sort_order: Number(event.target.value) || 0 })} className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label><label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={form.featured} onChange={event => setForm({ ...form, featured: event.target.checked })} className="h-5 w-5" />Featured menu</label></details>
+              <Field label="Customer notice (optional)"><Textarea rows={2} maxLength={200} value={form.banner_text} onChange={event => setForm({ ...form, banner_text: event.target.value })} /></Field>
+              <Disclosure title={<>Menu placement</>}><Field label="Sort order — lower appears first"><Input type="number" value={form.sort_order} onChange={event => setForm({ ...form, sort_order: Number(event.target.value) || 0 })} /></Field><CheckField type="checkbox" checked={form.featured} onChange={event => setForm({ ...form, featured: event.target.checked })}>Featured menu</CheckField></Disclosure>
             </div>
             <div hidden={section !== 'items'}><MenuItemsEditor products={products} selectedIds={ids} onChange={setIds} disabled={saving} /></div>
             <section hidden={section !== 'preview'} aria-labelledby="menu-preview-title" className="space-y-4">
@@ -166,11 +173,11 @@ export default function AdminCollectionsPage() {
             </section>
           </fieldset>
         </div>
-        <footer className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-gray-200 p-4 sm:p-6"><button type="button" disabled={saving} onClick={() => setEditorOpen(false)} className="btn-secondary min-h-11">Cancel</button><button type="submit" disabled={saving} className="btn-primary min-h-11 disabled:opacity-50">{saving ? 'Saving…' : 'Save menu & items'}</button></footer>
+        <footer className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-gray-200 p-4 sm:p-6"><Button variant="secondary" type="button" disabled={saving} onClick={() => setEditorOpen(false)}>Cancel</Button><Button variant="secondary" type="submit" disabled={saving}>{saving ? 'Saving…' : 'Save menu & items'}</Button></footer>
       </form>
     </Dialog>
     <Dialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }} dismissible={!deleting} labelledBy="delete-menu-title" className="w-full rounded-xl p-6 sm:w-lg">
-      <h2 id="delete-menu-title" className="text-xl font-semibold text-gray-900">Delete {deleteTarget?.name}?</h2><p className="my-4 text-gray-700">Items stay in Products and other menus. This menu and its schedule will be removed.</p><div className="flex flex-wrap justify-end gap-3"><button type="button" disabled={deleting} onClick={() => setDeleteTarget(null)} className="btn-secondary min-h-11">Cancel</button><button type="button" disabled={deleting} onClick={() => void deleteMenu()} className="min-h-11 rounded-lg bg-red-700 px-4 py-2 text-white">{deleting ? 'Deleting…' : 'Delete menu'}</button></div>
+      <h2 id="delete-menu-title" className="text-xl font-semibold text-gray-900">Delete {deleteTarget?.name}?</h2><p className="my-4 text-gray-700">Items stay in Products and other menus. This menu and its schedule will be removed.</p><div className="flex flex-wrap justify-end gap-3"><Button variant="secondary" type="button" disabled={deleting} onClick={() => setDeleteTarget(null)}>Cancel</Button><Button variant="destructive" type="button" disabled={deleting} onClick={() => void deleteMenu()}>{deleting ? 'Deleting…' : 'Delete menu'}</Button></div>
     </Dialog>
   </div>;
 }

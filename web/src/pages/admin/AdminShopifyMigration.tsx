@@ -1,3 +1,4 @@
+import { Button } from '../../components/ui/Button';
 import axios from 'axios';
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
@@ -94,9 +95,8 @@ function ImportLogSection({ warnings }: { warnings: string[] }) {
       {/* Warnings - Collapsible, expanded by default */}
       {(skippedVariants.length > 0 || skippedProducts.length > 0) && (
         <div className="border border-orange-200 rounded-lg overflow-hidden">
-          <button
+          <Button variant="secondary" className="w-full"
             onClick={() => setShowWarnings(!showWarnings)}
-            className="w-full bg-orange-50 px-4 py-3 flex items-center justify-between hover:bg-orange-100 transition"
           >
             <div className="flex items-center">
               <AlertCircle className="w-5 h-5 text-orange-600 mr-2" />
@@ -108,7 +108,7 @@ function ImportLogSection({ warnings }: { warnings: string[] }) {
               </span>
             </div>
             {showWarnings ? <ChevronUp className="w-5 h-5 text-orange-600" /> : <ChevronDown className="w-5 h-5 text-orange-600" />}
-          </button>
+          </Button>
           {showWarnings && (
             <div className="bg-white divide-y divide-orange-100">
               {groupedVariantWarnings.map(([productName, items]) => (
@@ -139,9 +139,8 @@ function ImportLogSection({ warnings }: { warnings: string[] }) {
       {/* Success - Collapsible, collapsed by default */}
       {created.length > 0 && (
         <div className="border border-green-200 rounded-lg overflow-hidden">
-          <button
+          <Button variant="secondary" className="w-full"
             onClick={() => setShowSuccess(!showSuccess)}
-            className="w-full bg-green-50 px-4 py-3 flex items-center justify-between hover:bg-green-100 transition"
           >
             <div className="flex items-center">
               <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
@@ -150,7 +149,7 @@ function ImportLogSection({ warnings }: { warnings: string[] }) {
               </span>
             </div>
             {showSuccess ? <ChevronUp className="w-5 h-5 text-green-600" /> : <ChevronDown className="w-5 h-5 text-green-600" />}
-          </button>
+          </Button>
           {showSuccess && (
             <ul className="bg-white divide-y divide-green-100 max-h-48 overflow-y-auto">
               {created.map((warning, index) => (
@@ -526,10 +525,9 @@ export default function AdminShopifyMigration() {
             </div>
 
             {/* Submit Button */}
-            <button
+            <Button variant="secondary" className="w-full"
               type="submit"
               disabled={!productsFile || isUploading}
-              className="btn-primary w-full flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isUploading ? (
                 <>
@@ -542,7 +540,7 @@ export default function AdminShopifyMigration() {
                   Start Import
                 </>
               )}
-            </button>
+            </Button>
           </form>
         </div>
 
@@ -664,12 +662,11 @@ export default function AdminShopifyMigration() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button
+                        <Button variant="secondary"
                           onClick={(event) => viewImportDetails(imp.id, event.currentTarget)}
-                          className="link-primary min-h-[44px] inline-flex items-center"
                         >
                           View Details
-                        </button>
+                        </Button>
                       </td>
                     </tr>
                   ))
@@ -686,7 +683,7 @@ export default function AdminShopifyMigration() {
           title="Import Details"
           returnFocusRef={importReturnFocusRef}
           footer={(
-            <button type="button" onClick={() => setSelectedImport(null)} className="btn-secondary min-h-[44px] w-full">Close</button>
+            <Button variant="secondary" className="w-full" type="button" onClick={() => setSelectedImport(null)}>Close</Button>
           )}
         >
           {selectedImport && <div className="space-y-4">

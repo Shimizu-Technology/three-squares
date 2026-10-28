@@ -1,3 +1,6 @@
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
+import { FileButton } from '../../components/ui/FileButton';
+import { Button } from '../../components/ui/Button';
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
@@ -124,12 +127,9 @@ function MenuCsvImport({ userId, getToken, returnTo, onReturn, canMigrate }: {
     }
   }
 
-  return <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8 [overflow-wrap:anywhere]">
-    <header className="space-y-2">
-      <Link to={returnTo} onClick={onReturn} className={linkStyle}>Back to Products</Link>
-      <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Import menu items</h1>
-      <p className="text-gray-700">Add menu items from a Menu CSV, then review the created items and finish any drafts.</p>
-    </header>
+  return <div className="space-y-6 [overflow-wrap:anywhere]">
+    <Button variant="ghost" to={returnTo} onClick={onReturn}>Back to Products</Button>
+    <AdminPageHeader title="Import menu items" subtitle="Add menu items from a Menu CSV, then review the created items and finish any drafts." />
 
     <section aria-labelledby="csv-format-heading" className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
       <h2 id="csv-format-heading" className="text-xl font-semibold text-gray-900">Prepare your Menu CSV</h2>
@@ -146,19 +146,17 @@ function MenuCsvImport({ userId, getToken, returnTo, onReturn, canMigrate }: {
 
     <form onSubmit={importFile} aria-busy={uploading} className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
       <div className="space-y-2">
-        <label htmlFor="menu-csv-file" className="block font-semibold text-gray-900">Menu CSV file</label>
-        <input ref={inputRef} id="menu-csv-file" name="file" type="file" accept=".csv,text/csv" disabled={uploading}
-          aria-describedby="menu-csv-help" className="block min-h-11 w-full min-w-0 rounded-lg border border-gray-300 p-2 text-base file:mr-3 file:min-h-11 file:rounded-lg file:border-0 file:px-3"
-          onChange={event => { setFile(event.target.files?.[0] ?? null); setError(null); }} />
+        <FileButton ref={inputRef} id="menu-csv-file" name="file" accept=".csv,text/csv" disabled={uploading}
+          aria-describedby="menu-csv-help" onChange={event => { setFile(event.target.files?.[0] ?? null); setError(null); }}>Choose Menu CSV file</FileButton>
         <p id="menu-csv-help" className="text-sm text-gray-700">Choose one CSV file, up to 2 MB. Correct and re-upload only skipped rows after a partial import.</p>
         {file && <p className="text-sm text-gray-700">Selected: {file.name}</p>}
       </div>
       {error && <div ref={errorRef} tabIndex={-1} role="alert" className="space-y-2 rounded-lg border border-red-300 bg-red-50 p-4 text-red-900">
         <p>{error}</p><Link to="/admin/products" className={linkStyle}>Check Products</Link>
       </div>}
-      <button type="submit" disabled={uploading || !file} className="btn-primary min-h-11 disabled:cursor-not-allowed disabled:opacity-60">
+      <Button variant="primary" type="submit" disabled={uploading || !file}>
         {uploading ? 'Importing menu items…' : 'Import Menu CSV'}
-      </button>
+      </Button>
       {uploading && <p role="status" className="text-sm text-gray-700">Waiting for the import result. Keep this page open until it is confirmed.</p>}
     </form>
 

@@ -1,3 +1,4 @@
+import { uiModules, expandUi } from './helpers/uiModules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -17,9 +18,9 @@ const imports = {
 const source = readFileSync(new URL('../src/components/VariantManager.tsx', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, {
   compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
-}).outputText.replace(/^(import .+? from )["']([^"']+)["']/gm, (_, prefix, name) => `${prefix}${JSON.stringify(imports[name] || import.meta.resolve(name))}`);
+}).outputText.replace(/^(import .+? from )["']([^"']+)["']/gm, (_, prefix, name) => `${prefix}${JSON.stringify(imports[name] || uiModules[name] || import.meta.resolve(name))}`);
 const { default: Manager } = await import(moduleUrl(compiled));
-const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children, node.props?.footer].flat(Infinity).flatMap(nodes)];
+const nodes = raw => { const node = expandUi(raw); return !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children, node.props?.footer].flat(Infinity).flatMap(nodes)]; };
 const text = node => typeof node === 'string' ? node : node && typeof node === 'object' ? [node.props?.children].flat(Infinity).map(text).join('') : '';
 const cookieBox = Object.freeze({
   id: 11, sku: 'COOKIE-6-COCONUT', variant_name: 'Box of 6 / Coconut', display_name: 'Box of 6 / Coconut',
@@ -61,7 +62,7 @@ function harness(canManageStock = false) {
       }
     },
     find(predicate) { const node = nodes(tree).find(predicate); assert.ok(node, 'Expected variant control'); return node; },
-    button(label) { return h.find(node => node.type === 'button' && text(node).trim() === label); },
+    button(label) { return h.find(node => node.type === 'button' && (text(node).trim() === label || node.props['aria-label'] === label)); },
     get tree() { return tree; },
   };
   return h;
@@ -79,7 +80,7 @@ test('existing cookie choices remain visible while SKU and generation stay insid
   const generator = h.find(node => node.type === 'details' && text(node).includes('Generate Variants'));
   assert.notEqual(generator.props.open, true);
   assert.equal(nodes(generator).includes(table), false);
-  assert.ok(h.button('Edit'));
+  assert.ok(h.button('Edit Box of 6 / Coconut'));
   assert.deepEqual(cookieBox.options, { 'Box size': '6 cookies', Flavor: 'Coconut' }, 'legacy extraction must not mutate saved options');
   assert.equal(h.requests.length, 0, 'viewing never rewrites existing variants');
   for (const button of nodes(h.tree).filter(node => node.type === 'button')) assert.equal(button.props.type, 'button');
@@ -103,7 +104,7 @@ test('adding a food option with Enter consumes the key instead of submitting the
 test('editing a variant price preserves options and omits protected stock for scoped managers', async () => {
   const h = harness(false);
   await h.flush();
-  h.button('Edit').props.onClick();
+  h.button('Edit Box of 6 / Coconut').props.onClick({ currentTarget: null });
   await h.flush();
   const inputs = nodes(h.tree).filter(node => node.type === 'input' && node.props.type === 'number');
   assert.equal(inputs[1].props.disabled, true);

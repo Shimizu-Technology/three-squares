@@ -1,3 +1,5 @@
+import { Button } from '../../ui/Button';
+import { IconButton } from '../../ui/IconButton';
 import { useState, type RefObject } from 'react';
 import AdminModal from '../AdminModal';
 import { Edit, AlertTriangle } from 'lucide-react';
@@ -25,10 +27,10 @@ export default function ProductDetailModal({ product, loading, onClose, onEdit, 
       returnFocusRef={returnFocusRef}
       footer={!loading && (
         <div className="flex gap-3">
-          <button type="button" onClick={() => onEdit(product)} className="btn-primary min-h-[44px] flex-1 inline-flex items-center justify-center">
+          <Button variant="secondary" className="flex-1" type="button" onClick={() => onEdit(product)}>
             <Edit className="w-5 h-5 mr-2" /> Edit Product
-          </button>
-          <button type="button" onClick={onClose} className="btn-secondary min-h-[44px]">Close</button>
+          </Button>
+          <Button variant="secondary" type="button" onClick={onClose}>Close</Button>
         </div>
       )}
     >
@@ -71,28 +73,24 @@ export default function ProductDetailModal({ product, loading, onClose, onEdit, 
                       {product.images.length > 1 && (
                         <div className="grid grid-cols-4 gap-2">
                           {product.images.map((image, index) => (
-                            <button
+                            <IconButton variant="secondary"
                               key={image.id}
                               type="button"
                               aria-label={`View image ${index + 1} of ${product.name}`}
                               aria-pressed={selectedImageIndex === index}
                               onClick={() => setSelectedImageIndex(index)}
-                              className={`min-h-[44px] min-w-[44px] bg-white rounded-lg overflow-hidden border-2 transition ${
-                                selectedImageIndex === index ? 'border-tsPrimary' : 'border-gray-200 hover:border-gray-300'
-                              }`}
-                              style={{ aspectRatio: '1/1' }}
                             >
                               {image.url ? (
                                 <img
                                   src={image.url}
                                   alt={image.alt_text || product.name}
-                                  className="w-full h-full"
+                                  className="w-5 h-5 object-contain"
                                   style={{ objectFit: 'contain', backgroundColor: 'white' }}
                                 />
                               ) : (
                                 <PlaceholderImage variant="thumbnail" className="bg-gray-100" />
                               )}
-                            </button>
+                            </IconButton>
                           ))}
                         </div>
                       )}

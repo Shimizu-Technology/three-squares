@@ -1,3 +1,4 @@
+import { uiModules, requireUi, expandUi } from './helpers/uiModules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -12,7 +13,7 @@ const source = ts.transpileModule(readFileSync(new URL('../src/components/admin/
   compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX, target: ts.ScriptTarget.ES2022 },
 }).outputText;
 const module = { exports: {} };
-new Function('require', 'module', 'exports', source)(name => name === 'react' ? { ...React, useState: () => [query, value => { query = value; }] } : name === './menuItems' ? helpers : require(name), module, module.exports);
+new Function('require', 'module', 'exports', source)(name => name === 'react' ? { ...React, useState: () => [query, value => { query = value; }] } : name === './menuItems' ? helpers : uiModules[name] ? requireUi(name, require) : require(name), module, module.exports);
 const { default: Editor } = module.exports;
 const { moveMenuItem, menuProductPrice } = helpers;
 const products = [
@@ -20,7 +21,7 @@ const products = [
   { id: 2, name: 'Draft meal', published: false, archived: false, base_price_cents: 0 },
   { id: 3, name: 'Archived box', published: false, archived: true, base_price_cents: 2400 },
 ];
-const elements = value => !value || typeof value !== 'object' ? [] : [value, ...[value.props?.children].flat(Infinity).flatMap(elements)];
+const elements = raw => { const value = expandUi(raw); return !value || typeof value !== 'object' ? [] : [value, ...[value.props?.children].flat(Infinity).flatMap(elements)]; };
 const render = props => { const tree = Editor({ products, selectedIds: [3, 1], onChange() {}, disabled: false, ...props }); return { tree, nodes: elements(tree), html: renderToStaticMarkup(tree) }; };
 
 test('saved menu order moves only the requested item and leaves boundaries unchanged', () => {

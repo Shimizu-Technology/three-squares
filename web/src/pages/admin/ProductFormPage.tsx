@@ -1,3 +1,11 @@
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
+import { CheckField } from '../../components/ui/CheckField';
+import { Disclosure } from '../../components/ui/Disclosure';
+import { Select } from '../../components/ui/Select';
+import { Textarea } from '../../components/ui/Textarea';
+import { Input } from '../../components/ui/Input';
+import { Field } from '../../components/ui/Field';
+import { Button } from '../../components/ui/Button';
 import axios from 'axios';
 import { useRef, useState, useEffect } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
@@ -130,7 +138,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
   const [images, setImages] = useState<ProductImage[]>([]);
   const [allCollections, setAllCollections] = useState<Collection[]>([]);
   const [allLocations, setAllLocations] = useState<LocationOption[]>([]);
-  
+
   // Inventory History Modal state
   const [showInventoryModal, setShowInventoryModal] = useState(false);
   const [inventoryAudits, setInventoryAudits] = useState<InventoryAudit[]>([]);
@@ -216,13 +224,13 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
       setLoading(true);
       setDraftReady(false);
       const response = await authGet<ProductDetailsResponse>(`/admin/products/${id}`, getToken);
-      
+
       if (!alive.current || request !== productRequest.current) return;
       // Backend wraps response in { success: true, data: {...} }
       const product = response.data.data || response.data;
-      
+
       setIsArchived(product.archived || false);
-      
+
       const fresh: ProductFormData = {
         name: product.name || '',
         description: product.description || '',
@@ -246,7 +254,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
       };
       setFormData(fresh);
       prepareDraft(fresh);
-      
+
       // Load images
       setImages(product.images || []);
     } catch (err) {
@@ -261,7 +269,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value, type } = e.target;
-    
+
     if (type === 'checkbox') {
       updateFormData(prev => ({
         ...prev,
@@ -269,7 +277,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
       }));
     } else if (name === 'base_price_cents' || name === 'weight_oz') {
       // Convert dollars to cents for price
-      const numValue = name === 'base_price_cents' 
+      const numValue = name === 'base_price_cents'
         ? Math.round(parseFloat(value || '0') * 100)
         : parseFloat(value || '0');
       updateFormData(prev => ({
@@ -293,7 +301,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
 
   const fetchInventoryAudits = async () => {
     if (!id) return;
-    
+
     setLoadingAudits(true);
     try {
       const response = await authGet<InventoryAuditsResponse>(`/admin/products/${id}/inventory_audits`, getToken);
@@ -369,7 +377,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
     const submittedDraft = readProductDraft(userId, draftId);
     try {
       setSaving(true);
-      
+
       const productPayload: Partial<ProductFormData> = { ...formData };
       if (!canManageStock) {
         delete productPayload.inventory_level;
@@ -382,7 +390,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
         const response = await authPut<ProductDetailsResponse>(`/admin/products/${id}`, payload, getToken);
         discardSubmittedProductDraft(userId, draftId, submittedDraft);
         if (!alive.current) return;
-        
+
         // Update form data with latest from server (in case anything changed)
         const updatedProduct = response.data.data || response.data;
         const saved: ProductFormData = {
@@ -409,7 +417,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
         baseline.current = JSON.stringify(saved);
         setFormData(saved);
         setDraftMessage('');
-        
+
         toast.success('Product updated successfully!', {
           duration: 3000,
           position: 'top-right',
@@ -418,12 +426,12 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
         const response = await authPost<ProductDetailsResponse>('/admin/products', payload, getToken);
         discardSubmittedProductDraft(userId, draftId, submittedDraft);
         if (!alive.current) return;
-        
+
         toast.success('Product created successfully!', {
           duration: 3000,
           position: 'top-right',
         });
-        
+
         // For new products, redirect to edit page so they can continue adding images/variants
         const newProduct = response.data.data || response.data;
         baseline.current = JSON.stringify(formData);
@@ -451,16 +459,16 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
   const handleDelete = async () => {
     if (!id || archivePending.current) return;
     archivePending.current = true;
-    
+
     try {
       setDeleting(true);
       await authDelete(`/admin/products/${id}`, getToken);
-      
+
       toast.success('Product archived successfully!', {
         duration: 3000,
         position: 'top-right',
       });
-      
+
       // Redirect to products list
       returnToProducts();
     } catch (err) {
@@ -475,19 +483,19 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
       setDeleting(false);
     }
   };
-  
+
   const handleUnarchive = async () => {
     if (!id) return;
-    
+
     try {
       setDeleting(true);
       await authPost(`/admin/products/${id}/unarchive`, {}, getToken);
-      
+
       toast.success('Product unarchived successfully!', {
         duration: 3000,
         position: 'top-right',
       });
-      
+
       // Refresh product data
       setIsArchived(false);
       await fetchProduct();
@@ -513,39 +521,18 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
   }
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="mb-6">
-        <button
-          onClick={returnToProducts}
-          className="flex items-center text-gray-600 hover:text-gray-900 mb-4"
-        >
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Products
-        </button>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-3xl font-bold text-gray-900">
-            {isEditMode ? 'Edit Product' : 'Add New Product'}
-          </h1>
-          {isEditMode && (
-            <button
-              type="button"
-              onClick={handleOpenInventoryModal}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-            >
-              <History className="w-4 h-4" />
-              View Inventory History
-            </button>
-          )}
-        </div>
-      </div>
+    <div className="space-y-6">
+      <Button variant="ghost" icon={<ArrowLeft />} onClick={returnToProducts}>Back to Products</Button>
+      <AdminPageHeader title={isEditMode ? 'Edit Product' : 'Add New Product'} actions={isEditMode &&
+        <Button variant="secondary" icon={<History />} onClick={handleOpenInventoryModal}>View Inventory History</Button>
+      } />
 
       <div className="mb-4 space-y-2 text-sm text-gray-700" aria-live="polite">
         {draftOffer ? (
           <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
             <p>A draft from this tab is available. {isEditMode ? 'Fresh product data is loaded.' : 'The new product form is ready.'} Restore the main form fields or discard the draft. Images and variants save separately.</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button type="button" className="btn-secondary min-h-[44px]" onClick={() => {
+              <Button variant="secondary" type="button" onClick={() => {
                 const allowed = new Set(access.user?.authorized_locations.map(location => location.id) || []);
                 const location_ids = access.user?.operational_scope === 'all' ? draftOffer.data.location_ids : [
                   ...draftOffer.data.location_ids.filter(id => allowed.has(id)),
@@ -557,12 +544,12 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                 } : {}) });
                 setDraftOffer(null);
                 setDraftMessage('Draft restored to the main form. Review it before saving. Images and variants were not restored.');
-              }}>Restore draft</button>
-              <button type="button" className="btn-secondary min-h-[44px]" onClick={() => {
+              }}>Restore draft</Button>
+              <Button variant="secondary" type="button" onClick={() => {
                 discardProductDraft(userId, draftId);
                 setDraftOffer(null);
                 setDraftMessage('Draft discarded. Showing freshly loaded form fields.');
-              }}>Discard draft</button>
+              }}>Discard draft</Button>
             </div>
           </div>
         ) : <p className="rounded-lg border border-gray-200 bg-gray-50 p-3">{draftMessage || 'Main form drafts cover text and selections. Images and variants save separately.'}</p>}
@@ -581,11 +568,10 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                 </p>
               </div>
             </div>
-            <button
+            <Button variant="primary" className="ml-4 shrink-0"
               type="button"
               onClick={handleUnarchive}
               disabled={deleting}
-              className="ml-4 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition flex items-center shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {deleting ? (
                 <>
@@ -598,7 +584,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                   Unarchive Product
                 </>
               )}
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -612,14 +598,13 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
             {formData.import_notes && (
               <p className="text-sm text-amber-700 mt-1">{formData.import_notes}</p>
             )}
-            <button
+            <Button variant="secondary" className="mt-2"
               type="button"
               disabled={!draftReady || !!draftOffer || saving}
               onClick={() => updateFormData(prev => ({ ...prev, needs_attention: false, import_notes: '' }))}
-              className="mt-2 text-sm font-medium text-amber-600 hover:text-amber-800 underline"
             >
               Mark as resolved
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -629,31 +614,26 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
         {/* Basic Information */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Menu item</h2>
-          
+
           <div className="space-y-4">
             {/* Product Name */}
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                Product Name *
-              </label>
-              <input
+              <Field label="Product Name">
+              <Input
                 type="text"
                 id="name"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 placeholder="e.g., Three Squares Fried Chicken"
-              />
+              /></Field>
             </div>
 
             {/* Price */}
             <div>
-              <label htmlFor="base_price_cents" className="block text-sm font-medium text-gray-700 mb-1">
-                Price * ($)
-              </label>
-              <input
+              <Field label="Price ($)">
+              <Input
                 type="number"
                 id="base_price_cents"
                 name="base_price_cents"
@@ -662,41 +642,20 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                 step="0.01"
                 min="0"
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 placeholder="12.00"
-              />
+              /></Field>
             </div>
 
             {/* Availability */}
             <h3 className="text-sm font-semibold text-gray-900">Store availability</h3>
             <div className="space-y-3 pt-2">
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="published"
-                  name="published"
-                  checked={formData.published}
-                  onChange={handleChange}
-                  className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
-                />
-                <label htmlFor="published" className="ml-2 text-sm font-medium text-gray-700">
+              <CheckField type="checkbox" id="published" name="published" checked={formData.published} onChange={handleChange}>
                   Published — visible in the store
-                </label>
-              </div>
+                </CheckField>
 
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  id="featured"
-                  name="featured"
-                  checked={formData.featured}
-                  onChange={handleChange}
-                  className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
-                />
-                <label htmlFor="featured" className="ml-2 text-sm font-medium text-gray-700">
+              <CheckField type="checkbox" id="featured" name="featured" checked={formData.featured} onChange={handleChange}>
                   Featured (show on homepage)
-                </label>
-              </div>
+                </CheckField>
             </div>
           </div>
         </div>
@@ -709,19 +668,9 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
           </p>
 
           <div className="space-y-4">
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                id="allow_pickup"
-                name="allow_pickup"
-                checked={formData.allow_pickup}
-                onChange={handleChange}
-                className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
-              />
-              <label htmlFor="allow_pickup" className="ml-2 text-sm font-medium text-gray-700">
+            <CheckField type="checkbox" id="allow_pickup" name="allow_pickup" checked={formData.allow_pickup} onChange={handleChange}>
                 Allow Pickup
-              </label>
-            </div>
+              </CheckField>
 
             {formData.allow_pickup && (
               <div className="pt-2">
@@ -731,45 +680,23 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 border border-gray-300 rounded-lg p-4 bg-gray-50">
                     {allLocations.map((location) => (
-                      <div key={location.id} className="flex items-center">
-                        <input
-                          type="checkbox"
-                          id={`location_${location.id}`}
-                          checked={formData.location_ids.includes(location.id)}
-                          onChange={() => handleLocationToggle(location.id)}
-                          className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
-                        />
-                        <label htmlFor={`location_${location.id}`} className="ml-2 text-sm text-gray-700 cursor-pointer select-none">
+                      <CheckField type="checkbox" id={`location_${location.id}`} checked={formData.location_ids.includes(location.id)} onChange={() => handleLocationToggle(location.id)}>
                           {location.name}
-                        </label>
-                      </div>
+                        </CheckField>
                     ))}
                   </div>
                 )}
               </div>
             )}
-            <details ref={shippingDisclosureRef} open={formData.allow_shipping} className="rounded-lg border border-gray-200 p-4">
-              <summary className="cursor-pointer font-medium text-gray-900">Advanced shipping{formData.allow_shipping ? ' — enabled' : ' — pickup only'}</summary>
+            <Disclosure ref={shippingDisclosureRef} open={formData.allow_shipping} title={<>Advanced shipping{formData.allow_shipping ? ' — enabled' : ' — pickup only'}</>}>
               <div className="mt-4 space-y-4">
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="allow_shipping"
-                    name="allow_shipping"
-                    checked={formData.allow_shipping}
-                    onChange={handleChange}
-                    className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
-                  />
-                  <label htmlFor="allow_shipping" className="ml-2 text-sm font-medium text-gray-700">
+                <CheckField type="checkbox" id="allow_shipping" name="allow_shipping" checked={formData.allow_shipping} onChange={handleChange}>
                     Allow Shipping
-                  </label>
-                </div>
+                  </CheckField>
 
                 <div>
-                  <label htmlFor="weight_oz" className="block text-sm font-medium text-gray-700 mb-1">
-                    Shipping weight{formData.allow_shipping ? ' *' : ' (optional)'} (oz)
-                  </label>
-                  <input
+                  <Field label={formData.allow_shipping ? 'Shipping weight (oz)' : 'Shipping weight (optional, oz)'}>
+                  <Input
                     type="number"
                     id="weight_oz"
                     name="weight_oz"
@@ -786,14 +713,13 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                     onInvalid={event => { event.preventDefault(); showShippingWeightError(); }}
                     aria-invalid={!!shippingWeightError && formData.allow_shipping && formData.weight_oz <= 0}
                     aria-describedby="shipping-weight-help shipping-weight-error"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     placeholder="8.0"
-                  />
+                  /></Field>
                   {shippingWeightError && formData.allow_shipping && formData.weight_oz <= 0 && <p id="shipping-weight-error" role="alert" className="mt-2 text-sm text-red-800">{shippingWeightError}</p>}
                   <p id="shipping-weight-help" className="text-xs text-gray-500 mt-1">{formData.allow_shipping ? 'Enter a weight greater than zero. Options without a saved weight inherit this weight; existing option weights are kept.' : 'Pickup-only items do not need a shipping weight. Any saved weight is kept.'}</p>
                 </div>
               </div>
-            </details>
+            </Disclosure>
           </div>
         </div>
 
@@ -802,31 +728,25 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
           <div className="space-y-4">
             {/* Description */}
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                Description
-              </label>
-              <textarea
+              <Field label="Description">
+              <Textarea
                 id="description"
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 rows={4}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 placeholder="Describe your product..."
-              />
+              /></Field>
             </div>
 
             {/* Product Type */}
             <div>
-              <label htmlFor="product_type" className="block text-sm font-medium text-gray-700 mb-1">
-                Product Type
-              </label>
-              <select
+              <Field label="Product Type">
+              <Select
                 id="product_type"
                 name="product_type"
                 value={formData.product_type}
                 onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               >
                 <option value="local">Local menu item</option>
                 <option value="shippable">Shippable item (cookies / boxes)</option>
@@ -837,7 +757,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                 {!['local', 'shippable', 'retail', 'market_price', 'quote_only', 'complimentary_with_meal'].includes(formData.product_type) && (
                   <option value={formData.product_type}>{formData.product_type || '(blank)'} — saved type</option>
                 )}
-              </select>
+              </Select></Field>
               {['market_price', 'quote_only'].includes(formData.product_type) && <p className="text-xs text-gray-600 mt-1">Customers contact you for pricing. This type cannot be paid online; a zero catalog price is allowed.</p>}
               {formData.product_type === 'complimentary_with_meal' && <p className="text-xs text-gray-600 mt-1">A zero price is allowed for this item.</p>}
             </div>
@@ -851,69 +771,36 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
           <p className="text-sm text-gray-600 mb-4">
             Choose how to track inventory for this product
           </p>
-          
+
           <div className="space-y-4">
             {/* Inventory Level Radio Buttons */}
             <div className="space-y-3">
-              <div className="flex items-start">
-                <input
-                  type="radio"
-                  id="inventory_none"
-                  name="inventory_level"
-                  value="none"
-                  checked={formData.inventory_level === 'none'}
-                  onChange={handleChange}
-                  className="mt-1 w-4 h-4 text-tsPrimary border-gray-300 focus:ring-tsPrimary"
-                />
-                <label htmlFor="inventory_none" className="ml-3">
+              <CheckField type="radio" id="inventory_none" name="inventory_level" value="none" checked={formData.inventory_level === 'none'} onChange={handleChange}>
                   <span className="block text-sm font-medium text-gray-900">
                     No Tracking
                   </span>
                   <span className="block text-xs text-gray-600">
                     Do not track a quantity. Store visibility and pickup locations still apply.
                   </span>
-                </label>
-              </div>
+                </CheckField>
 
-              <div className="flex items-start">
-                <input
-                  type="radio"
-                  id="inventory_product"
-                  name="inventory_level"
-                  value="product"
-                  checked={formData.inventory_level === 'product'}
-                  onChange={handleChange}
-                  className="mt-1 w-4 h-4 text-tsPrimary border-gray-300 focus:ring-tsPrimary"
-                />
-                <label htmlFor="inventory_product" className="ml-3">
+              <CheckField type="radio" id="inventory_product" name="inventory_level" value="product" checked={formData.inventory_level === 'product'} onChange={handleChange}>
                   <span className="block text-sm font-medium text-gray-900">
                     Product Level
                   </span>
                   <span className="block text-xs text-gray-600">
                     Track one total quantity (e.g., 50 lunch portions, with optional portion choices)
                   </span>
-                </label>
-              </div>
+                </CheckField>
 
-              <div className="flex items-start">
-                <input
-                  type="radio"
-                  id="inventory_variant"
-                  name="inventory_level"
-                  value="variant"
-                  checked={formData.inventory_level === 'variant'}
-                  onChange={handleChange}
-                  className="mt-1 w-4 h-4 text-tsPrimary border-gray-300 focus:ring-tsPrimary"
-                />
-                <label htmlFor="inventory_variant" className="ml-3">
+              <CheckField type="radio" id="inventory_variant" name="inventory_level" value="variant" checked={formData.inventory_level === 'variant'} onChange={handleChange}>
                   <span className="block text-sm font-medium text-gray-900">
                     Variant Level
                   </span>
                   <span className="block text-xs text-gray-600">
                     Track stock for each option (e.g., 10 boxes of 6 cookies, 5 boxes of 12)
                   </span>
-                </label>
-              </div>
+                </CheckField>
             </div>
 
             {/* Product-Level Inventory Fields */}
@@ -921,35 +808,29 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
               <div className="mt-4 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label htmlFor="product_stock_quantity" className="block text-sm font-medium text-gray-700 mb-1">
-                      Stock Quantity
-                    </label>
-                    <input
+                    <Field label="Stock Quantity">
+                    <Input
                       type="number"
                       id="product_stock_quantity"
                       name="product_stock_quantity"
                       value={formData.product_stock_quantity ?? ''}
                       onChange={handleChange}
                       min="0"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                       placeholder="0"
-                    />
+                    /></Field>
                   </div>
 
                   <div>
-                    <label htmlFor="product_low_stock_threshold" className="block text-sm font-medium text-gray-700 mb-1">
-                      Low Stock Threshold
-                    </label>
-                    <input
+                    <Field label="Low Stock Threshold">
+                    <Input
                       type="number"
                       id="product_low_stock_threshold"
                       name="product_low_stock_threshold"
                       value={formData.product_low_stock_threshold ?? 5}
                       onChange={handleChange}
                       min="0"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                       placeholder="5"
-                    />
+                    /></Field>
                     <p className="text-xs text-gray-500 mt-1">
                       Get a warning when stock falls to or below this number
                     </p>
@@ -975,7 +856,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
           <p className="text-sm text-gray-600 mb-4">
             Assign this product to one or more collections (categories)
           </p>
-          
+
           {allCollections.length === 0 ? (
             <p className="text-gray-500 italic">No collections available. Create collections first.</p>
           ) : (
@@ -984,21 +865,12 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                 className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 border border-gray-300 rounded-lg p-4 bg-gray-50 max-h-60 overflow-y-auto overscroll-contain touch-pan-y"
               >
                 {allCollections.map((collection) => (
-                  <div key={collection.id} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      id={`collection_${collection.id}`}
-                      checked={(formData.collection_ids || []).includes(collection.id)}
-                      onChange={() => handleCollectionToggle(collection.id)}
-                      className="w-4 h-4 text-tsPrimary border-gray-300 rounded focus:ring-tsPrimary"
-                    />
-                    <label htmlFor={`collection_${collection.id}`} className="ml-2 text-sm text-gray-700 cursor-pointer select-none">
+                  <CheckField type="checkbox" id={`collection_${collection.id}`} checked={(formData.collection_ids || []).includes(collection.id)} onChange={() => handleCollectionToggle(collection.id)}>
                       {collection.name}
                       {collection.product_count !== undefined && (
                         <span className="text-xs text-gray-500 ml-1">({collection.product_count})</span>
                       )}
-                    </label>
-                  </div>
+                    </CheckField>
                 ))}
               </div>
               {allCollections.length > 18 && (
@@ -1052,35 +924,28 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
           <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 px-4 sm:px-6 py-3 sm:py-4">
             {/* Archive Button - Full width on mobile, left side on desktop */}
             {isEditMode && (
-              <button
+              <Button variant="destructive"
                 type="button"
                 onClick={() => setShowDeleteModal(true)}
-                className={`w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 rounded-lg transition flex items-center justify-center ${
-                  isArchived
-                    ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                    : 'bg-red-100 text-red-700 hover:bg-red-200'
-                } disabled:opacity-50 disabled:cursor-not-allowed`}
                 disabled={saving || deleting}
               >
                 <Archive className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                 <span className="text-sm sm:text-base">{isArchived ? 'Unarchive' : 'Archive'}</span>
-              </button>
+              </Button>
             )}
-            
+
             {/* Right side buttons - Stack on mobile, row on desktop */}
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:ml-auto w-full sm:w-auto">
-              <button
+              <Button variant="secondary" className="w-full"
                 type="button"
                 onClick={returnToProducts}
-                className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition flex items-center justify-center"
                 disabled={saving || deleting}
               >
                 <X className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
                 <span className="text-sm sm:text-base">Cancel</span>
-              </button>
-              <button
+              </Button>
+              <Button variant="primary" className="w-full"
                 type="submit"
-                className="w-full sm:w-auto px-4 sm:px-6 py-2 sm:py-3 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed shadow-md"
                 disabled={saving || deleting || !draftReady || !!draftOffer}
               >
                 {saving ? (
@@ -1094,7 +959,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
                     <span className="text-sm sm:text-base">{isEditMode ? 'Update Product' : 'Create Product'}</span>
                   </>
                 )}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -1110,23 +975,21 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
         dismissible={!deleting}
         footer={(
           <div className="flex flex-wrap justify-end gap-3">
-            <button
+            <Button variant="secondary"
               type="button"
               onClick={() => { if (!archivePending.current) setShowDeleteModal(false); }}
-              className="min-h-[44px] px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition"
               disabled={deleting}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button variant="destructive"
               type="button"
               onClick={handleDelete}
-              className="min-h-[44px] px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-primary-dark transition flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={deleting}
             >
               <Archive className="w-4 h-4 mr-2" />
               {deleting ? 'Archiving...' : 'Archive Product'}
-            </button>
+            </Button>
           </div>
         )}
       >
@@ -1158,7 +1021,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
         maxWidth="max-w-4xl"
         footer={(
           <div className="flex justify-end">
-            <button type="button" onClick={() => setShowInventoryModal(false)} className="min-h-[44px] px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition">Close</button>
+            <Button variant="secondary" type="button" onClick={() => setShowInventoryModal(false)}>Close</Button>
           </div>
         )}
       >
