@@ -1,3 +1,5 @@
+import { Button } from '../ui/Button';
+import { StatusBadge } from '../ui/StatusBadge';
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { authPatch } from '../../services/authApi';
@@ -9,11 +11,13 @@ interface Props {
   locationName: string;
   available: boolean;
   disabled?: boolean;
+  compact?: boolean;
+  onError?: (message: string) => void;
   onSaved: (productId: number, locationId: number, available: boolean) => void;
 }
 
 /** Changes one counter's pickup flag, using the narrow scoped server operation. */
-export default function LocalAvailabilityToggle({ productId, productName, locationId, locationName, available, disabled = false, onSaved }: Props) {
+export default function LocalAvailabilityToggle({ productId, productName, locationId, locationName, available, disabled = false, compact = false, onError, onSaved }: Props) {
   const { getToken } = useAuth();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -29,17 +33,18 @@ export default function LocalAvailabilityToggle({ productId, productName, locati
       if (result.product_id !== productId || result.location_id !== locationId || typeof result.available !== 'boolean') throw new Error('Invalid availability response');
       onSaved(productId, locationId, result.available);
     } catch {
-      if (alive.current) setError(`Couldn’t change availability at ${locationName}. Try again.`);
+      if (alive.current) { const message = `Couldn’t change availability for ${productName} at ${locationName}. Try again.`; setError(message); onError?.(message); }
     } finally {
       pending.current = false;
       if (alive.current) setSaving(false);
     }
   };
   return <div className="space-y-2 whitespace-normal [overflow-wrap:anywhere]">
-    <p role="status" className={`text-sm font-semibold ${available ? 'text-green-800' : 'text-amber-900'}`}>{available ? 'Available' : 'Sold out'} at {locationName}</p>
-    <button type="button" aria-label={`${available ? 'Mark' : 'Restore'} ${productName} ${available ? 'sold out at' : 'at'} ${locationName}`} disabled={disabled || saving} onClick={() => void save()} className="min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-semibold text-gray-900 hover:bg-gray-50 disabled:opacity-50">
-      {saving ? 'Saving…' : `${available ? 'Mark sold out' : 'Restore'} at ${locationName}`}
-    </button>
-    {error && <p role="alert" className="text-sm text-red-800">{error}</p>}
+    {compact ? <StatusBadge tone={available ? 'success' : 'attention'}>{available ? 'Available' : 'Sold out today'}</StatusBadge> :
+      <p role="status" className={`text-sm font-semibold ${available ? 'text-green-800' : 'text-amber-900'}`}>{available ? 'Available' : 'Sold out'} at {locationName}</p>}
+    <Button variant="secondary" aria-label={`${available ? 'Mark' : 'Restore'} ${productName} ${available ? 'sold out at' : 'at'} ${locationName}`} disabled={disabled} loading={saving} onClick={() => void save()} className="w-full">
+      {compact ? (available ? 'Mark sold out' : 'Restore') : `${available ? 'Mark sold out' : 'Restore'} at ${locationName}`}
+    </Button>
+    {error && !compact && <p role="alert" className="text-sm text-red-800">{error}</p>}
   </div>;
 }

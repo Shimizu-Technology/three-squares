@@ -8,7 +8,6 @@ import { fileURLToPath } from 'node:url';
 // primitive's semantics/geometry tests when introducing a specialized control.
 export const specializedControls = [
   { file: 'src/components/pos/POSProductTile.tsx', component: 'POSProductTile', reason: '128px sale tile with reserved title/price/state slots' },
-  { file: 'src/components/pos/QuantityStepper.tsx', component: 'QuantityStepper', reason: 'Grouped quantity controls with 44px targets' },
 ];
 const printer = ts.createPrinter({ removeComments: true });
 const hash = value => createHash('sha256').update(value).digest('hex').slice(0, 20);

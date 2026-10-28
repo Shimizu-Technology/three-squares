@@ -26,7 +26,7 @@ const Refund = await component('RefundModal');
 const Ship = await component('ShipOrderModal');
 const pos = readFileSync(new URL('../src/pages/admin/AdminPOSPage.tsx', import.meta.url), 'utf8');
 const cashSource = `import {useId,useRef,useState} from 'react';
-  import AdminModal from 'modal'; const Banknote = () => null;
+  import AdminModal from 'modal'; const Button = 'button'; const Banknote = () => null;
   ${pos.slice(pos.indexOf('function CashModal'), pos.indexOf('// ─── Main POS Page'))}
   export { CashModal, VariantPickerModal };`;
 const { CashModal, VariantPickerModal } = await compile(cashSource, { react: hooks, modal: dialog });

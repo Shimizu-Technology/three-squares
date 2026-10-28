@@ -1,12 +1,19 @@
 import { useState, useEffect, useMemo, useCallback, useRef, useId, lazy, Suspense, type RefObject } from 'react';
+import { Button } from '../../components/ui/Button';
+import { IconButton } from '../../components/ui/IconButton';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { Notice } from '../../components/ui/Notice';
+import { POSProductTile } from '../../components/pos/POSProductTile';
+import { CartLine } from '../../components/pos/CartLine';
+import { CompletedSale, type CompletedSaleFacts } from '../../components/pos/CompletedSale';
+import { ReaderPickerDialog } from '../../components/pos/ReaderPickerDialog';
+import '../../components/pos/pos.css';
 import AdminModal from '../../components/admin/AdminModal';
-import { useNavigate } from 'react-router-dom';
 import { useAuth, SignInButton } from '@clerk/clerk-react';
 import { StaffAccessProvider, StaffAccessDenied, useStaffAccess } from '../../components/admin/StaffAccess.tsx';
 import {
-  ArrowLeft, Search, ShoppingCart, Plus, Minus, Trash2,
-  Banknote, MapPin, Check, X, ChefHat, AlertCircle,
-  Wifi, WifiOff, Loader2, Smartphone
+  ArrowLeft, Search, ShoppingCart, Banknote, MapPin, Check, ChefHat, AlertCircle,
+  Wifi, WifiOff, Smartphone, RefreshCw
 } from 'lucide-react';
 import {
   initializeTerminal,
@@ -23,10 +30,8 @@ import {
   startTerminalPayment,
 } from '../../services/terminal';
 import { usePaymentTerminal } from '../../hooks/usePaymentTerminal';
-import PaymentReceipt from '../../components/payment/PaymentReceipt';
 import TerminalControls from '../../components/payment/TerminalControls';
 import ManualCardDialog from '../../components/payment/ManualCardDialog';
-import type { PaymentReceiptFacts } from '../../types/paymentReceipt';
 import AdminRequestState from '../../components/admin/AdminRequestState';
 import LocalAvailabilityToggle from '../../components/admin/LocalAvailabilityToggle';
 import { reconcilePOSCart, remainingPOSCapacity, type POSProduct, type POSVariant, type POSCategory, type CartItem } from '../../components/admin/posCart';
@@ -177,14 +182,10 @@ function CashModal({
     <AdminModal open title="Cash Payment" subtitle={`$${totalDollars.toFixed(2)}`} maxWidth="max-w-md"
       onClose={onClose} dismissible={!submitting} initialFocusRef={cashRef} returnFocusRef={returnFocusRef}
       footer={(
-          <button
-            onClick={() => onComplete(Math.round(cashReceived * 100))}
-            disabled={submitting || cashReceived < totalDollars}
-            className="w-full py-4 bg-amber-700 text-white rounded-xl text-lg font-semibold hover:bg-amber-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-          >
-            <Banknote className="w-5 h-5" />
-            {submitting ? 'Saving cash payment…' : 'Complete Cash Payment'}
-          </button>
+          <Button size="lg" className="w-full" icon={<Banknote />} loading={submitting}
+            onClick={() => onComplete(Math.round(cashReceived * 100))} disabled={submitting || cashReceived < totalDollars}>
+            Complete Cash Payment
+          </Button>
       )}
     >
       <div className="space-y-4">
@@ -193,30 +194,11 @@ function CashModal({
             <label className="block text-sm font-medium text-gray-700 mb-2">Quick Amount</label>
             <div className="grid grid-cols-3 gap-2">
               {denominations.map((amt) => (
-                <button
-                  key={amt}
-                  disabled={submitting}
-                  onClick={() => setCashInput(amt.toFixed(2))}
-                  className={`py-3 rounded-lg text-sm font-semibold transition-colors border-2 ${
-                    cashInput === amt.toFixed(2)
-                      ? 'border-tsPrimary bg-yellow-50 text-tsPrimary'
-                      : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  ${amt}
-                </button>
+                <Button variant="secondary" key={amt} disabled={submitting} aria-pressed={cashInput === amt.toFixed(2)}
+                  onClick={() => setCashInput(amt.toFixed(2))}>${amt}</Button>
               ))}
-              <button
-                disabled={submitting}
-                onClick={() => setCashInput(totalDollars.toFixed(2))}
-                className={`py-3 rounded-lg text-sm font-semibold transition-colors border-2 ${
-                  cashInput === totalDollars.toFixed(2)
-                    ? 'border-tsPrimary bg-yellow-50 text-tsPrimary'
-                    : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Exact
-              </button>
+              <Button variant="secondary" disabled={submitting} aria-pressed={cashInput === totalDollars.toFixed(2)}
+                onClick={() => setCashInput(totalDollars.toFixed(2))}>Exact</Button>
             </div>
           </div>
 
@@ -274,19 +256,12 @@ function VariantPickerModal({
     <AdminModal open title={product.name} subtitle="Choose an available option" maxWidth="max-w-sm" onClose={onClose} returnFocusRef={returnFocusRef}>
       <div className="space-y-2">
           {product.variants.map((v) => (
-            <button
-              key={v.id}
-              onClick={() => onSelect(v)}
-              disabled={!v.in_stock}
-              className={`w-full flex items-center justify-between p-4 rounded-lg border-2 transition-colors ${
-                v.in_stock
-                  ? 'border-gray-200 hover:border-tsPrimary hover:bg-yellow-50'
-                  : 'border-gray-100 bg-gray-50 opacity-50 cursor-not-allowed'
-              }`}
-            >
-              <span className="font-medium">{v.name}</span>
-              <span className="font-semibold text-tsPrimary">{v.price_formatted}</span>
-            </button>
+            <div key={v.id} className="space-y-1 rounded-lg border p-3">
+              <p className="text-sm font-medium">{v.name}</p>
+              <Button variant="secondary" className="w-full" aria-label={`Choose ${v.name}`} onClick={() => onSelect(v)} disabled={!v.in_stock}>
+                Choose option · {v.price_formatted}
+              </Button>
+            </div>
           ))}
       </div>
     </AdminModal>
@@ -302,14 +277,13 @@ export default function AdminPOSPage() {
 function POSAccessGate() {
   const access = useStaffAccess();
   if (access.loading) return <div role="status" className="p-6">Checking POS access…</div>;
-  if (access.error) return <div role="alert" className="space-y-4 p-6"><p>POS access could not be checked.</p><button type="button" onClick={() => void access.reload()} className="btn-primary min-h-11">Retry access check</button></div>;
-  if (!access.user) return <div className="space-y-4 p-6"><p>Sign in to use POS.</p><SignInButton mode="modal"><button className="btn-primary min-h-11">Sign in</button></SignInButton></div>;
+  if (access.error) return <div role="alert" className="space-y-4 p-6"><p>POS access could not be checked.</p><Button onClick={() => void access.reload()}>Retry access check</Button></div>;
+  if (!access.user) return <div className="space-y-4 p-6"><p>Sign in to use POS.</p><SignInButton mode="modal"><Button>Sign in</Button></SignInButton></div>;
   return access.can('pos.sell') ? <AdminPOSWorkspace /> : <StaffAccessDenied />;
 }
 
 function AdminPOSWorkspace() {
   const access = useStaffAccess();
-  const navigate = useNavigate();
   const { getToken, userId } = useAuth();
 
   // Data
@@ -324,6 +298,8 @@ function AdminPOSWorkspace() {
   // Filters
   const [activeCategory, setActiveCategory] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [menuMode, setMenuMode] = useState<'sale' | 'availability'>('sale');
+  const [availabilityError, setAvailabilityError] = useState('');
   const [selectedLocation, setSelectedLocation] = useState<number | undefined>(() => {
     try {
       const id = JSON.parse(localStorage.getItem(POS_PENDING_TERMINAL_KEY) || 'null')?.order_data?.location_id;
@@ -348,10 +324,11 @@ function AdminPOSWorkspace() {
   const [variantPickerProduct, setVariantPickerProduct] = useState<POSProduct | null>(null);
   const [showCashModal, setShowCashModal] = useState(false);
   const cashButtonRef = useRef<HTMLButtonElement>(null);
+  const readerButtonRef = useRef<HTMLButtonElement>(null);
   const wasCashOpenRef = useRef(false);
   const variantOpenerRef = useRef<HTMLElement | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [lastOrder, setLastOrder] = useState<{ order_number: string; total_formatted: string; change_due_formatted?: string; payment_receipt?: PaymentReceiptFacts | null } | null>(null);
+  const [lastOrder, setLastOrder] = useState<CompletedSaleFacts | null>(null);
 
   // Terminal
   const [terminalLocationReady, setTerminalLocationReady] = useState(false);
@@ -453,8 +430,9 @@ function AdminPOSWorkspace() {
       items = items.filter((item) => item.name.toLowerCase().includes(q));
     }
 
-    return items;
-  }, [allItems, visibleCategories, activeCategory, searchQuery]);
+    // Temporary until P4 separates location membership from sold-out state.
+    return menuMode === 'sale' ? items.filter(item => item.location_available !== false) : items;
+  }, [allItems, visibleCategories, activeCategory, searchQuery, menuMode]);
 
   const categoryNames = useMemo(() => ['All', ...visibleCategories.map((c) => c.name)], [visibleCategories]);
   const selectedLocationName = useMemo(
@@ -471,6 +449,7 @@ function AdminPOSWorkspace() {
     if (!currentProduct || !currentVariant || remainingPOSCapacity(currentVariant, liveCart) < 1) return;
     product = currentProduct;
     variant = currentVariant;
+    setLastOrder(null);
     setCart((prev) => {
       if (remainingPOSCapacity(variant, reconcilePOSCart(prev, allItems).items) < 1) return prev;
       const existing = prev.find((c) => c.variant.id === variant.id);
@@ -545,7 +524,6 @@ function AdminPOSWorkspace() {
     () => cart.reduce((sum, c) => sum + c.quantity, 0),
     [cart]
   );
-  const terminalLabel = simulationActive ? 'Simulated reader' : selectedTerminal?.provider === 'worldpay' ? selectedTerminal.status.replaceAll('_', ' ') : terminalReader ? 'Connected' : 'Offline';
   const connectedReaderName = terminalReader
     ? (getReaderMeta(terminalReader).label || getReaderMeta(terminalReader).serial_number || 'Unknown Reader')
     : null;
@@ -562,10 +540,14 @@ function AdminPOSWorkspace() {
     const wasOpen = wasCashOpenRef.current;
     wasCashOpenRef.current = showCashModal;
     if (!wasOpen || showCashModal) return;
-    // Successful cash clears the cart, disabling its opener. Keep keyboard
-    // focus in the workspace after the dialog has released its scroll lock.
+    // Successful cash disables its opener. Return focus to the recorded
+    // completion so change remains visible on the stacked phone layout.
     const frame = requestAnimationFrame(() => {
-      if (cashButtonRef.current?.disabled) focusSearchField();
+      if (cashButtonRef.current?.disabled) {
+        const completed = cartRef.current?.querySelector<HTMLElement>('[aria-label="Completed sale"]');
+        if (completed) { completed.focus(); completed.scrollIntoView({ block: 'nearest' }); }
+        else focusSearchField();
+      }
     });
     return () => cancelAnimationFrame(frame);
   }, [showCashModal, focusSearchField]);
@@ -882,8 +864,6 @@ function AdminPOSWorkspace() {
         setShowCashModal(false);
         clearCart();
 
-        // Auto-dismiss success after 4s
-        setTimeout(() => setLastOrder(null), 4000);
       } catch (err: unknown) {
         const message = err instanceof Error ? err.message : 'Order failed';
         alert(message);
@@ -1019,576 +999,122 @@ function AdminPOSWorkspace() {
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-dvh pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 md:h-dvh flex flex-col md:flex-row bg-linear-to-br from-slate-100 via-white to-slate-100 md:overflow-hidden">
-      {/* ── Left Panel: Menu ────────────────────────────────────────────── */}
-      <div ref={menuRef} tabIndex={-1} aria-label="POS menu" className="flex h-[65dvh] shrink-0 flex-col min-h-0 min-w-0 md:h-auto md:flex-1">
-        {/* Header */}
-        <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <button
-              onClick={() => navigate('/admin')}
-              aria-label="Exit POS to staff workspace"
-              className="min-h-11 min-w-11 p-2 hover:bg-slate-100 rounded-lg transition-colors -ml-2 text-slate-600"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </button>
-            <div className="hidden sm:flex w-10 h-10 shrink-0 rounded-xl bg-tsNavy text-white flex items-center justify-center shadow-sm">
-              <ChefHat className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <h1 style={{ fontSize: '1.125rem', lineHeight: '1.5rem' }} className="font-semibold text-slate-900">POS</h1>
-              <p className="text-xs text-slate-500 truncate">{access.roleLabel} · {access.scopeLabel} · {selectedLocationName}</p>
-            </div>
+    <div className="min-h-dvh pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 md:h-dvh flex flex-col md:flex-row bg-slate-50 md:overflow-hidden">
+      <div ref={menuRef} tabIndex={-1} aria-label="POS menu" className="flex h-[75dvh] shrink-0 flex-col min-h-0 min-w-0 md:h-auto md:flex-1">
+        <header className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <IconButton to="/admin" aria-label="Exit POS to staff workspace"><ArrowLeft /></IconButton>
+            <ChefHat aria-hidden="true" className="hidden h-5 w-5 shrink-0 text-tsNavy sm:block" />
+            <div className="min-w-0"><h1 className="text-lg leading-6 font-semibold">POS</h1><p className="text-xs text-slate-600">{access.roleLabel} · {access.scopeLabel} · {selectedLocationName}</p></div>
           </div>
-
-          <div className="flex items-center gap-2 md:gap-3">
-            {/* Terminal status */}
-            {access.can('payments.terminals.discover') && selectedTerminal?.provider === 'stripe' && !simulationActive && <button
-              onClick={handleReaderButtonClick}
-              disabled={terminalStatus === 'connecting' || terminalStatus === 'discovering'}
-              className={`flex items-center justify-center gap-2 min-w-34 px-3 py-2 rounded-lg text-sm border transition-colors ${
-                terminalReader
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
-                  : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
-              }`}
-              title={terminalReader ? `Connected: ${getReaderMeta(terminalReader).label || getReaderMeta(terminalReader).serial_number}` : 'Click to connect reader'}
-            >
-              {terminalStatus === 'discovering' || terminalStatus === 'connecting' ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : terminalReader ? (
-                <Wifi className="w-4 h-4" />
-              ) : (
-                <WifiOff className="w-4 h-4" />
-              )}
-              <span className="hidden xl:inline">Reader {terminalLabel}</span>
-            </button>}
-          </div>
+          {access.can('payments.terminals.discover') && selectedTerminal?.provider === 'stripe' && !simulationActive &&
+            <IconButton ref={readerButtonRef} variant="secondary" aria-label={terminalReader ? 'Choose connected reader' : 'Connect reader'}
+              title={terminalReader ? `Connected: ${connectedReaderName}` : 'Click to connect reader'} onClick={handleReaderButtonClick}
+              loading={terminalStatus === 'connecting' || terminalStatus === 'discovering'}>{terminalReader ? <Wifi /> : <WifiOff />}</IconButton>}
         </header>
-
-        <div className="shrink-0 bg-white border-b border-slate-200 px-4 py-3 flex flex-wrap gap-2 items-center">
-          <div className="grid w-full gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-            <label className="block min-w-0 text-xs font-semibold text-slate-600">Sale location
-              <span className="mt-1 flex min-h-11 items-center gap-2 rounded-lg border border-slate-300 bg-white px-3">
-                <MapPin aria-hidden="true" className="h-4 w-4 shrink-0" />
-                <select aria-label="Sale location" title={locations.find(location => location.id === selectedLocation)?.name} disabled={access.user?.operational_scope === 'specific' || hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)} value={selectedLocation || ''} onChange={event => setSelectedLocation(Number(event.target.value))} className="min-h-11 min-w-0 w-full bg-transparent text-base text-slate-900">
+        <div className="shrink-0 space-y-2 border-b border-slate-200 bg-white p-3">
+          <div aria-label="Menu toolbar" className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px] items-end gap-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)_44px]">
+            <label className="block min-w-0 text-xs font-semibold text-slate-700">Sale location
+              <span className="relative mt-1 block h-11 min-w-0">
+                <MapPin aria-hidden="true" className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2" />
+                <select aria-label="Sale location" title={locations.find(location => location.id === selectedLocation)?.name}
+                  disabled={access.user?.operational_scope === 'specific' || hasPendingTerminalSession || submitting || terminalCollecting || resettingReader || ['connecting', 'discovering', 'initializing'].includes(terminalStatus)}
+                  value={selectedLocation || ''} onChange={event => setSelectedLocation(Number(event.target.value))} className="h-11 min-w-0 w-full rounded-lg border border-slate-300 bg-white pl-7 pr-2 text-base text-slate-900">
                   {locations.map(location => <option key={location.id} value={location.id}>{locationLabel(location.name)}</option>)}
                 </select>
               </span>
             </label>
-            <label className="block min-w-0 text-xs font-semibold text-slate-600">Find a menu item
-              <span className="relative mt-1 block">
-                <Search aria-hidden="true" className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-                <input ref={searchRef} type="search" placeholder="Search menu..." value={searchQuery} onChange={event => setSearchQuery(event.target.value)} className="min-h-11 w-full rounded-lg border border-slate-300 bg-white pl-9 pr-3 text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-tsPrimary" />
+            <label className="block min-w-0 text-xs font-semibold text-slate-700">Find a menu item
+              <span className="relative mt-1 block"><Search aria-hidden="true" className="absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+                <input ref={searchRef} type="search" placeholder="Search menu" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} className="h-11 w-full rounded-lg border border-slate-300 bg-white pl-8 pr-2 text-base focus:outline-none focus:ring-2 focus:ring-tsPrimary" />
               </span>
             </label>
+            <label className="col-span-2 row-start-2 block min-w-0 text-xs font-semibold text-slate-700 xl:col-auto xl:row-auto">Category
+              <select aria-label="Category" value={activeCategory} onChange={event => setActiveCategory(event.target.value)} className="mt-1 h-11 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-2 text-base">
+                {categoryNames.map(name => <option key={name} value={name}>{name}</option>)}
+              </select>
+            </label>
+            <IconButton variant="secondary" aria-label="Refresh menu" loading={loading} disabled={!hasMenu || submitting || terminalCollecting} onClick={() => void loadMenu()}><RefreshCw /></IconButton>
           </div>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
-            <ShoppingCart className="w-3.5 h-3.5" />
-            {cartCount} items
-          </span>
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-tsPrimary/10 text-tsNavy">
-            {orderType === 'dine_in' ? 'Dine in' : 'Pickup'}
-          </span>
-          {connectedReaderName && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 max-w-[16rem] truncate">
-              <Wifi className="w-3.5 h-3.5 shrink-0" />
-              {connectedReaderName}
-            </span>
-          )}
-          {terminalError && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-700">
-              <AlertCircle className="w-3.5 h-3.5" />
-              Reader issue
-            </span>
-          )}
-        </div>
-
-        <div className="shrink-0 px-4 pt-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <StatusBadge>{cartCount} items</StatusBadge><StatusBadge tone="info">{orderType === 'dine_in' ? 'Dine in' : 'Pickup'}</StatusBadge>
+            {canManageAvailability && <Button variant="ghost" aria-pressed={menuMode === 'availability'} onClick={() => {setMenuMode(mode => mode === 'sale' ? 'availability' : 'sale');setAvailabilityError('');}}>{menuMode === 'sale' ? 'Manage availability' : 'Back to sale'}</Button>}
+          </div>
           <AdminRequestState resource="POS menu and locations" loading={loading} error={loadError} hasData={hasMenu} onRetry={() => void loadMenu()} />
-          {!loading && !loadError && hasMenu && (
-            <button type="button" onClick={() => void loadMenu()} className="btn-secondary min-h-[44px]">Refresh menu</button>
-          )}
+          {availabilityError && <p role="alert" className="text-sm text-red-800">{availabilityError}</p>}
         </div>
-
-        {/* Category tabs */}
-        {hasMenu && !searchQuery && (
-          <div className="flex gap-2 px-4 py-3 bg-white border-b border-slate-200 overflow-x-auto shrink-0">
-            {categoryNames.map((name) => (
-              <button
-                key={name}
-                onClick={() => setActiveCategory(name)}
-                className={`min-h-11 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-colors shrink-0 ${
-                  activeCategory === name
-                    ? 'bg-tsNavy text-white shadow-sm'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                }`}
-              >
-                {name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Product grid */}
-        <div className="flex-1 overflow-auto p-4">
-          {!hasMenu || (filteredItems.length === 0 && (loading || loadError)) ? null : filteredItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-56 text-slate-400 border border-dashed border-slate-300 rounded-2xl bg-white">
-              <AlertCircle className="w-8 h-8 mb-2" />
-              <p>No items found</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
-              {filteredItems.map((item) => {
+        <div className="flex-1 min-h-0 overflow-auto p-3">
+          {menuMode === 'availability' && <p className="mb-3 text-sm text-slate-700">Manage local sold-out status. Until location offerings are separated, unavailable entries appear here so they can be restored.</p>}
+          {!hasMenu || (filteredItems.length === 0 && (loading || loadError)) ? null : filteredItems.length === 0 ?
+            <div className="flex h-44 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white"><AlertCircle className="mb-2 h-6 w-6" /><p>No items found</p></div> :
+            <div aria-label={menuMode === 'sale' ? 'Sale items' : 'Availability items'} className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,160px),1fr))] gap-3">
+              {filteredItems.map(item => {
                 const hasStock = item.variants.some(variant => variant.in_stock);
                 const canAdd = item.variants.some(variant => remainingPOSCapacity(variant, liveCart) > 0);
-                const price = item.variants[0]?.price_formatted || '';
-                const inCartQuantity = cart
-                  .filter((c) => c.product.id === item.id)
-                  .reduce((sum, c) => sum + c.quantity, 0);
-                const inCart = inCartQuantity > 0;
-
-                return (
-                  <article key={item.id} aria-label={item.name} className="min-w-0 space-y-2">
-                  <button
-                    type="button"
-                    onClick={(event) => handleProductClick(item, event.currentTarget)}
-                    disabled={!canAdd || !canSelectMenu}
-                    className={`w-full p-3.5 rounded-2xl text-left transition-all min-h-[112px] border ${
-                      inCart
-                        ? 'border-tsPrimary/40 bg-tsPrimary/5 shadow-sm'
-                        : hasStock
-                        ? 'border-slate-200 bg-white hover:shadow-md hover:border-tsPrimary/30'
-                        : 'border-slate-200 bg-slate-100 opacity-60 cursor-not-allowed'
-                    }`}
-                  >
-                    <div className="font-medium text-slate-900 line-clamp-2 mb-1 text-sm">
-                      {item.name}
-                    </div>
-                    <div className="text-tsNavy font-semibold text-sm">{price}</div>
-                    {!hasStock && (
-                      <span className="inline-flex mt-2 text-[11px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-600">Sold Out</span>
-                    )}
-                    {hasStock && !canAdd && <span className="mt-2 inline-flex text-xs font-semibold text-slate-700">Stock limit in cart</span>}
-                    {inCart && (
-                      <div className="mt-2 inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
-                        <Check className="w-3.5 h-3.5" />
-                        In cart ({inCartQuantity})
-                      </div>
-                    )}
-                  </button>
-                  {canManageAvailability && selectedLocation && <LocalAvailabilityToggle key={`${item.id}:${selectedLocation}`} productId={item.id} productName={item.name} locationId={selectedLocation} locationName={selectedLocationName} available={item.location_available !== false} disabled={!canSelectMenu || submitting || terminalCollecting || hasPendingTerminalSession} onSaved={(_productId, locationId) => { if (locationId === selectedLocationRef.current) void loadMenu(); }} />}
-                  </article>
-                );
+                const price = item.variants[0]?.price_formatted || 'Unavailable';
+                const inCartQuantity = cart.filter(line => line.product.id === item.id).reduce((sum,line) => sum+line.quantity,0);
+                return menuMode === 'sale' ? <POSProductTile key={item.id} name={item.name} price={price} inCartQuantity={inCartQuantity}
+                  soldOut={!hasStock} atCapacity={hasStock && !canAdd} disabled={!canSelectMenu} onClick={event => handleProductClick(item,event.currentTarget)} /> :
+                  <article key={item.id} aria-label={item.name} className="pos-availability-card">
+                    <h2 className="pos-product-tile__title text-sm leading-5">{item.name}</h2><p className="pos-product-tile__price text-sm leading-5">{price}</p>
+                    {selectedLocation && <LocalAvailabilityToggle compact key={`${item.id}:${selectedLocation}`} productId={item.id} productName={item.name}
+                      locationId={selectedLocation} locationName={selectedLocationName} available={item.location_available !== false}
+                      disabled={!canSelectMenu || submitting || terminalCollecting || hasPendingTerminalSession} onError={setAvailabilityError}
+                      onSaved={(_productId,locationId) => {setAvailabilityError('');if (locationId === selectedLocationRef.current) void loadMenu();}} />}
+                  </article>;
               })}
-            </div>
-          )}
+            </div>}
         </div>
       </div>
-
-      {/* ── Right Panel: Cart ───────────────────────────────────────────── */}
-      <div ref={cartRef} tabIndex={-1} aria-label="Current sale" className="min-h-0 w-full md:w-80 xl:w-104 md:overflow-y-auto bg-white/95 backdrop-blur border-l border-slate-200 flex flex-col shrink-0">
-        <div className="flex items-center justify-between gap-2 px-4 pt-3 md:hidden">
-          <h2 className="text-lg font-semibold">Current sale</h2>
-          <button type="button" onClick={() => { menuRef.current?.scrollIntoView(); searchRef.current?.focus({ preventScroll: true }); }} className="min-h-11 rounded-lg border border-slate-300 px-3 text-sm font-semibold">Back to menu</button>
+      <div ref={cartRef} tabIndex={-1} aria-label="Current sale" className="min-h-0 w-full md:w-80 xl:w-104 md:overflow-y-auto bg-white border-l border-slate-200 flex flex-col shrink-0">
+        <div className="flex items-center justify-between gap-2 px-4 pt-3 md:hidden"><h2 className="text-lg font-semibold">Current sale</h2><Button variant="secondary" onClick={() => {menuRef.current?.scrollIntoView();searchRef.current?.focus({preventScroll:true});}}>Back to menu</Button></div>
+        <div className="space-y-3 border-b border-slate-200 p-4">
+          <label className="block text-sm font-medium">Customer name<input type="text" value={customerName} onChange={event => setCustomerName(event.target.value)} className="mt-1 h-11 w-full min-w-0 rounded-lg border border-slate-300 px-3 text-base" /></label>
+          <div role="group" aria-label="Order type" className="grid grid-cols-2 gap-2">{(['pickup','dine_in'] as const).map(type => <Button key={type} variant="secondary" aria-pressed={orderType === type} icon={orderType === type ? <Check /> : undefined} className="w-full" onClick={() => setOrderType(type)}>{type === 'dine_in' ? 'Dine In' : 'Pickup'}</Button>)}</div>
         </div>
-        {/* Customer + order type */}
-        <div className="p-4 border-b border-slate-200 shrink-0">
-          <div className="flex items-center gap-2 mb-3">
-            <input
-              type="text"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              placeholder="Customer Name"
-              className="min-h-11 min-w-0 flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-base focus:outline-none focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary"
-            />
-          </div>
-          <div className="flex gap-2 p-1 rounded-xl bg-slate-100">
-            {(['pickup', 'dine_in'] as const).map((type) => (
-              <button
-                key={type}
-                onClick={() => setOrderType(type)}
-                className={`min-h-11 flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
-                  orderType === type
-                    ? 'bg-white text-slate-900 shadow-sm'
-                    : 'text-slate-600'
-                }`}
-              >
-                {type === 'dine_in' ? 'Dine In' : 'Pickup'}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Cart items */}
         <div className="shrink-0 flex-1 p-4">
-          {cart.length === 0 ? (
-            <div className="flex flex-col items-center justify-center min-h-44 p-6 text-slate-500 border border-dashed border-slate-300 rounded-2xl bg-slate-50">
-              <ShoppingCart className="w-12 h-12 mb-3 opacity-30" />
-              <p className="text-sm">Cart is empty</p>
-              <p className="text-xs mt-1">Tap items to add</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {liveCart.map((item) => (
-                <div
-                  key={item.variant.id}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setQuickAdjustVariantId(item.variant.id)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter' || event.key === ' ') {
-                      event.preventDefault();
-                      setQuickAdjustVariantId(item.variant.id);
-                    }
-                  }}
-                  className={`w-full text-left bg-slate-50 rounded-xl p-3 border transition-colors ${
-                    quickAdjustVariantId === item.variant.id
-                      ? 'border-tsPrimary/50 bg-tsPrimary/5'
-                      : 'border-slate-200 hover:border-slate-300'
-                  }`}
-                >
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium text-slate-900 text-sm truncate">
-                        {item.product.name}
-                      </div>
-                      {item.variant.name !== 'Default' && (
-                        <div className="text-xs text-slate-500">{item.variant.name}</div>
-                      )}
-                    </div>
-                    <div className="text-right ml-2">
-                      <div className="font-semibold text-tsNavy text-sm">
-                        ${((item.variant.price_cents * item.quantity) / 100).toFixed(2)}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1">
-                      <button
-                        aria-label={`Decrease quantity for ${item.product.name}`}
-                        onClick={() => updateQuantity(item.variant.id, -1)}
-                        className="min-w-11 min-h-11 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100"
-                      >
-                        <Minus className="w-3.5 h-3.5" />
-                      </button>
-                      <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
-                      <button
-                        disabled={!canSelectMenu || cartState.issues.some(issue => issue.variantId === item.variant.id) || remainingPOSCapacity(item.variant, liveCart) < 1}
-                        aria-label={`Increase quantity for ${item.product.name}`}
-                        onClick={() => updateQuantity(item.variant.id, 1)}
-                        className="min-w-11 min-h-11 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-100"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                    <button
-                      aria-label={`Remove ${item.product.name}`}
-                      onClick={() => removeFromCart(item.variant.id)}
-                      className="min-h-11 min-w-11 flex items-center justify-center p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {cart.length === 0 ? <div className="flex min-h-44 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-slate-50 p-6 text-slate-600"><ShoppingCart className="mb-3 h-10 w-10" /><p>Cart is empty</p><p className="text-xs">Tap items to add</p></div> :
+            <div className="space-y-3">{liveCart.map(item => <CartLine key={item.variant.id} item={item} selected={quickAdjustVariantId === item.variant.id}
+              increaseDisabled={!canSelectMenu || cartState.issues.some(issue => issue.variantId === item.variant.id)}
+              max={Number.isFinite(remainingPOSCapacity(item.variant,liveCart)) ? item.quantity+remainingPOSCapacity(item.variant,liveCart) : undefined}
+              onSelect={() => setQuickAdjustVariantId(item.variant.id)} onChange={next => updateQuantity(item.variant.id,next-item.quantity)} onRemove={() => removeFromCart(item.variant.id)} />)}</div>}
         </div>
-
-        {/* Cart footer */}
-        <div className="p-4 border-t border-slate-200 bg-white shrink-0">
-          {cart.length > 0 && (!canSelectMenu || cartState.issues.length > 0) && <div role="alert" className="mb-3 space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-            {!canSelectMenu ? <p>Load the current location menu before taking payment. Your cart is still here.</p> : cartState.issues.map(issue => <p key={issue.variantId}>{issue.message}</p>)}
+        <div className="space-y-3 border-t border-slate-200 bg-white p-4">
+          {cart.length > 0 && (!canSelectMenu || cartState.issues.length > 0) && <Notice tone="attention" role="alert">{!canSelectMenu ? <p>Load the current location menu before taking payment. Your cart is still here.</p> : cartState.issues.map(issue => <p key={issue.variantId}>{issue.message}</p>)}</Notice>}
+          <div className="flex items-center justify-between gap-2"><div><p className="text-sm">Total · {cartCount} items</p><p className="text-xs">Prices for {selectedLocationName}</p></div><span className="text-2xl font-semibold tabular-nums">${(cartTotal/100).toFixed(2)}</span></div>
+          {quickAdjustItem && <div className="space-y-2 rounded-lg border p-3"><p className="text-sm font-semibold">Quick quantity: {quickAdjustItem.product.name}</p>
+            <div className="grid grid-cols-3 gap-2">{[1,2,5].map(amount => <Button key={amount} variant="secondary" disabled={!canSelectMenu || cartState.issues.some(issue => issue.variantId === quickAdjustItem.variant.id) || remainingPOSCapacity(quickAdjustItem.variant,liveCart) < amount} onClick={() => adjustQuickItem(amount)}>+{amount}</Button>)}</div>
           </div>}
-          <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 mb-3">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-slate-500 text-sm">
-                Subtotal <span className="text-xs text-slate-400">({cartCount} items)</span>
-              </span>
-              <span className="text-lg font-semibold text-slate-900">
-                ${(cartTotal / 100).toFixed(2)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-slate-600">Prices for {selectedLocationName}</span>
-              <span className="text-2xl font-bold text-slate-900">
-                ${(cartTotal / 100).toFixed(2)}
-              </span>
-            </div>
-          </div>
-
-          {quickAdjustItem && (
-            <div className="mb-3 rounded-xl border border-slate-200 bg-white p-3">
-              <div className="mb-2">
-                <p className="text-[11px] uppercase tracking-wide text-slate-400">Quick Qty Mode</p>
-                <p className="text-sm font-medium text-slate-800 truncate">
-                  {quickAdjustItem.product.name}
-                  {quickAdjustItem.variant.name !== 'Default' ? ` — ${quickAdjustItem.variant.name}` : ''}
-                </p>
-              </div>
-              <div className="grid grid-cols-5 gap-1.5">
-                <button
-                  onClick={() => adjustQuickItem(-1)}
-                  className="min-h-11 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
-                >
-                  -1
-                </button>
-                <button
-                  disabled={!canSelectMenu || !allItems.some(product => product.variants.some(variant => variant.id === quickAdjustItem.variant.id && variant.in_stock))}
-                  onClick={() => adjustQuickItem(1)}
-                  className="min-h-11 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
-                >
-                  +1
-                </button>
-                <button
-                  disabled={!canSelectMenu || !allItems.some(product => product.variants.some(variant => variant.id === quickAdjustItem.variant.id && variant.in_stock))}
-                  onClick={() => adjustQuickItem(2)}
-                  className="min-h-11 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
-                >
-                  +2
-                </button>
-                <button
-                  disabled={!canSelectMenu || !allItems.some(product => product.variants.some(variant => variant.id === quickAdjustItem.variant.id && variant.in_stock))}
-                  onClick={() => adjustQuickItem(5)}
-                  className="min-h-11 py-2 rounded-lg bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors"
-                >
-                  +5
-                </button>
-                <button
-                  onClick={removeQuickItem}
-                  className="min-h-11 py-2 rounded-lg bg-rose-50 text-rose-700 text-sm font-medium hover:bg-rose-100 transition-colors"
-                >
-                  Del
-                </button>
-              </div>
-            </div>
-          )}
-
-          {hasPendingTerminalSession && !terminalCollecting && (
-            <div className="mb-3 rounded-xl border border-amber-200 bg-amber-50 p-3">
-              <p className="text-xs font-medium text-amber-800 mb-2">
-                A saved payment is unresolved. Check it before taking another payment. Reader reset does not clear the payment.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  onClick={() => void (selectedTerminal?.provider === 'stripe' && !simulationActive ? handleCancelActiveTerminalPrompt() : handleCancelSavedPayment())}
-                  className="min-h-11 px-3 py-1.5 text-xs font-medium rounded-lg bg-amber-600 text-white hover:bg-amber-700"
-                >
-                  Cancel Reader Prompt
-                </button>
-                <button
-                  onClick={handleCheckSavedPayment}
-                  className="min-h-11 px-3 py-1.5 text-xs font-medium rounded-lg border border-amber-300 text-amber-800 hover:bg-amber-100"
-                >
-                  Check saved payment
-                </button>
-                <button onClick={handleCancelSavedPayment} className="min-h-11 px-3 py-2 text-xs underline">Cancel saved payment</button>
-              </div>
-            </div>
-          )}
-
-          {lastOrder?.payment_receipt && <details className="rounded-lg border p-2"><summary className="min-h-11 cursor-pointer">Receipt for {lastOrder.order_number}</summary><div className="max-h-[35dvh] overflow-y-auto"><PaymentReceipt receipt={lastOrder.payment_receipt} orderReference={lastOrder.order_number} onPrint={() => window.print()} /></div></details>}
+          {hasPendingTerminalSession && !terminalCollecting && <Notice tone="attention"><p>A saved payment is unresolved. Check it before taking another payment. Reader reset does not clear the payment.</p>
+            <div className="mt-2 flex flex-col gap-2"><Button variant="secondary" onClick={() => void (selectedTerminal?.provider === 'stripe' && !simulationActive ? handleCancelActiveTerminalPrompt() : handleCancelSavedPayment())}>Cancel Reader Prompt</Button>
+              <Button variant="secondary" onClick={handleCheckSavedPayment}>Check saved payment</Button><Button variant="ghost" onClick={handleCancelSavedPayment}>Cancel saved payment</Button></div>
+          </Notice>}
           <TerminalControls compact {...paymentTerminal} busy={terminalCollecting} locked={submitting}
-            pending={hasPendingTerminalSession ? { orderNumber: savedPayment?.order_number, attemptId: savedPayment?.attempt_id, terminalId: savedPayment?.terminal_id, state: savedPayment?.payment_state } : null} />
-          {hasPendingTerminalSession && savedPayment?.collection_mode === 'terminal' && <button type="button" disabled={terminalCollecting} onClick={() => void handleResumeReaderPayment()} className="min-h-11 w-full rounded-lg border p-2 text-sm">Resume original reader payment</button>}
-          {selectedTerminal?.provider === 'stripe' && !simulationActive && (terminalReader || hasPendingTerminalSession || terminalCollecting || terminalError) && (
-            <button
-              onClick={handleResetReaderSession}
-              disabled={resettingReader || terminalCollecting}
-              className="min-h-11 w-full mb-2 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-700 text-sm font-medium hover:bg-slate-100 transition-colors"
-            >
-              Reset Reader Session
-            </button>
-          )}
-
-          {/* Keep the completed sale and change due beside the payment actions. */}
-          {lastOrder && (
-            <div role="status" aria-atomic="true" className="mb-3 rounded-xl bg-emerald-600 p-4 text-white flex items-center gap-3 [overflow-wrap:anywhere]">
-              <Check className="w-6 h-6 shrink-0" />
-              <div className="min-w-0">
-                <div className="font-semibold">Order {lastOrder.order_number} Created!</div>
-                <div className="text-sm opacity-90">
-                  {lastOrder.total_formatted}
-                  {lastOrder.change_due_formatted && ` — Change: ${lastOrder.change_due_formatted}`}
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-2 gap-2 mb-2">
-            <button
-              ref={cashButtonRef}
-              onClick={() => setShowCashModal(true)}
-              disabled={!canSubmitPayment}
-              className="min-h-14 flex items-center justify-center gap-2 px-3 py-3 bg-amber-500 text-white rounded-xl font-medium hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <Banknote className="w-5 h-5 shrink-0" />
-              Cash
-            </button>
-            <button
-              onClick={handleCardAction}
-              disabled={!canSubmitPayment || !selectedTerminal?.collectable || (!terminalReader && selectedTerminal.provider === 'stripe' && !simulationActive) || !terminalLocationReady}
-              className="min-h-14 flex items-center justify-center gap-2 px-3 py-3 text-sm text-white rounded-xl font-medium bg-tsNavy hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {terminalCollecting ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : terminalReader ? (
-                <Smartphone className="w-5 h-5 shrink-0" />
-              ) : (
-                <WifiOff className="w-5 h-5 shrink-0" />
-              )}
-              <span className="min-w-0">{terminalCollecting ? 'Tap Card...' : simulationActive ? 'Card (simulated)' : selectedTerminal?.provider === 'worldpay' ? 'Card on reader' : terminalReader ? 'Tap Card' : 'Connect Reader'}</span>
-            </button>
+            pending={hasPendingTerminalSession ? {orderNumber:savedPayment?.order_number,attemptId:savedPayment?.attempt_id,terminalId:savedPayment?.terminal_id,state:savedPayment?.payment_state} : null} />
+          {hasPendingTerminalSession && savedPayment?.collection_mode === 'terminal' && <Button variant="secondary" className="w-full" disabled={terminalCollecting} onClick={() => void handleResumeReaderPayment()}>Resume reader payment</Button>}
+          {selectedTerminal?.provider === 'stripe' && !simulationActive && (terminalReader || hasPendingTerminalSession || terminalCollecting || terminalError) && <Button variant="secondary" className="w-full" loading={resettingReader} disabled={terminalCollecting} onClick={handleResetReaderSession}>Reset Reader Session</Button>}
+          {lastOrder && <CompletedSale order={lastOrder} onDismiss={() => setLastOrder(null)} />}
+          {simulationActive && <StatusBadge tone="attention">Simulated card payment</StatusBadge>}
+          <div aria-label="Payment choices" className="grid grid-cols-2 gap-2">
+            <Button variant="secondary" size="lg" ref={cashButtonRef} icon={<Banknote />} onClick={() => setShowCashModal(true)} disabled={!canSubmitPayment}>Cash</Button>
+            <Button size="lg" icon={<Smartphone />} loading={terminalCollecting} onClick={handleCardAction} disabled={!canSubmitPayment || !selectedTerminal?.collectable || (!terminalReader && selectedTerminal.provider === 'stripe' && !simulationActive) || !terminalLocationReady}>Card</Button>
           </div>
-
-          <button type="button" onClick={() => void handleManualCardAction()} disabled={!canSubmitPayment} className="min-h-11 w-full rounded-lg border p-2 text-sm disabled:opacity-50">Use hosted card form</button>
-
-          {terminalCollecting && (
-            <button
-              onClick={() => void (selectedTerminal?.provider === 'stripe' && !simulationActive ? handleCancelActiveTerminalPrompt() : handleCancelSavedPayment())}
-              className="min-h-11 w-full mb-2 py-2.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-sm font-medium hover:bg-rose-100 transition-colors"
-            >
-              Cancel Tap/Insert
-            </button>
-          )}
-
-          {lastAddedItem && cart.length > 0 && (
-            <button
-              disabled={!canSelectMenu || !allItems.some(item => item.id === lastAddedItem.product.id && item.variants.some(variant => variant.id === lastAddedItem.variant.id && variant.in_stock))}
-              onClick={() => addToCart(lastAddedItem.product, lastAddedItem.variant)}
-              className="min-h-11 w-full mb-2 py-2.5 px-3 rounded-xl bg-slate-100 text-slate-700 text-sm font-medium hover:bg-slate-200 transition-colors text-left truncate"
-              title={`Add again: ${lastAddedItem.product.name}${lastAddedItem.variant.name !== 'Default' ? ` (${lastAddedItem.variant.name})` : ''}`}
-            >
-              + Add last item again: {lastAddedItem.product.name}
-            </button>
-          )}
-
-          <div className="mb-2 text-[11px] text-slate-400 flex flex-wrap gap-x-3 gap-y-1">
-            <span>Search `/`</span>
-            <span>Toggle type `F2`</span>
-            <span>Cash `F8`</span>
-            <span>Card `F9`</span>
-            <span>Qty `[` `]` `\`</span>
-            <span>Reader: tap status chip</span>
-          </div>
-
-          {terminalError && (
-            <div className="mb-2 p-2.5 bg-rose-50 text-rose-700 text-sm rounded-xl border border-rose-100 flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 shrink-0" />
-              {terminalError}
-            </div>
-          )}
-
-          {cart.length > 0 && (
-            <button
-              onClick={clearCart}
-              className="min-h-11 w-full py-2 text-slate-400 text-sm hover:text-rose-500 transition-colors"
-            >
-              Clear Cart
-            </button>
-          )}
-
-          {/* Practice reader stays in the sale column's scrollable layout. */}
+          <Button variant="secondary" className="w-full" onClick={() => void handleManualCardAction()} disabled={!canSubmitPayment}>Use hosted card form</Button>
+          {terminalCollecting && <Button variant="secondary" className="w-full" onClick={() => void (selectedTerminal?.provider === 'stripe' && !simulationActive ? handleCancelActiveTerminalPrompt() : handleCancelSavedPayment())}>Cancel Tap/Insert</Button>}
+          {lastAddedItem && cart.length > 0 && <div className="space-y-1"><p className="text-xs">Last item: {lastAddedItem.product.name}</p><Button variant="secondary" className="w-full" disabled={!canSelectMenu || !allItems.some(item => item.id === lastAddedItem.product.id && item.variants.some(variant => variant.id === lastAddedItem.variant.id && variant.in_stock))} onClick={() => addToCart(lastAddedItem.product,lastAddedItem.variant)}>Add last item again</Button></div>}
+          <p className="text-xs text-slate-600">Search `/` · Type F2 · Cash F8 · Card F9 · Qty [ ] \</p>
+          {terminalError && <Notice tone="danger" role="alert">{terminalError}</Notice>}
+          {cart.length > 0 && <Button variant="ghost" className="w-full" onClick={clearCart}>Clear Cart</Button>}
           {simulationActive && SimulatedTerminalPanel && <Suspense fallback={null}><SimulatedTerminalPanel locationId={selectedLocation ?? null} attemptId={simulatedAttempt} terminalId={selectedTerminalId} onSelect={selectTerminal} getToken={getToken} onChange={handleCheckSavedPayment} /></Suspense>}
         </div>
       </div>
-
       {manualSession && <ManualCardDialog sessionId={manualSession} getToken={getToken} onClose={() => setManualSession(null)} onCheck={handleCheckSavedPayment} />}
-
-      {/* ── Modals ──────────────────────────────────────────────────────── */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-300 bg-white px-4 pt-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] md:hidden">
-        <button type="button" onClick={() => { cartRef.current?.scrollIntoView(); cartRef.current?.focus({ preventScroll: true }); }} className="flex min-h-11 w-full items-center justify-between rounded-lg bg-tsNavy px-4 font-semibold text-white"><span>View cart · {cartCount} items</span><span>${(cartTotal / 100).toFixed(2)}</span></button>
-      </div>
-
-      {showCashModal && (
-        <CashModal
-          totalCents={cartTotal}
-          submitting={submitting}
-          returnFocusRef={cashButtonRef}
-          onComplete={(cashReceivedCents) => submitOrder('cash', cashReceivedCents)}
-          onClose={() => setShowCashModal(false)}
-        />
-      )}
-
-      {variantPickerProduct && canSelectMenu && (
-        <VariantPickerModal
-          returnFocusRef={variantOpenerRef}
-          product={allItems.find(item => item.id === variantPickerProduct.id) || variantPickerProduct}
-          onSelect={(variant) => {
-            addToCart(variantPickerProduct, variant);
-            setVariantPickerProduct(null);
-          }}
-          onClose={() => setVariantPickerProduct(null)}
-        />
-      )}
-
-      {/* ── Reader Picker Modal ─────────────────────────────────────────── */}
-      {showReaderPicker && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-md mx-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Select Card Reader</h3>
-              <button onClick={() => setShowReaderPicker(false)} className="p-1 hover:bg-gray-100 rounded-lg">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {terminalReader && (
-              <div className="mb-3 p-3 rounded-xl border border-emerald-200 bg-emerald-50 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-xs text-emerald-700 font-medium">Currently connected</p>
-                  <p className="text-sm text-emerald-900 truncate">
-                    {getReaderMeta(terminalReader).label || getReaderMeta(terminalReader).serial_number}
-                  </p>
-                </div>
-                <button
-                  onClick={handleDisconnectReader}
-                  className="min-h-11 px-3 py-1.5 text-xs font-medium rounded-lg border border-emerald-300 text-emerald-800 hover:bg-emerald-100"
-                >
-                  Disconnect
-                </button>
-              </div>
-            )}
-
-            {availableReaders.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <WifiOff className="w-10 h-10 mx-auto mb-3 text-gray-300" />
-                <p>No readers found</p>
-                <p className="text-sm mt-1">Make sure the S700 is powered on and connected to WiFi</p>
-                <button
-                  onClick={handleDiscoverReaders}
-                  className="mt-4 px-4 py-2 bg-tsPrimary text-white rounded-lg text-sm hover:opacity-90"
-                >
-                  Scan Again
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {availableReaders.map((reader, index) => (
-                  <button
-                    key={getReaderMeta(reader).id || getReaderMeta(reader).serial_number || `reader-${index}`}
-                    onClick={() => handleConnectReader(reader)}
-                    className="w-full flex items-center gap-3 p-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors"
-                  >
-                    <Smartphone className="w-5 h-5 text-tsPrimary" />
-                    <div className="text-left">
-                      <div className="font-medium">{getReaderMeta(reader).label || getReaderMeta(reader).serial_number}</div>
-                      <div className="text-xs text-gray-500">{getReaderMeta(reader).device_type}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {terminalError && (
-              <div className="mt-3 p-2 bg-red-50 text-red-600 text-sm rounded-lg flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 shrink-0" />
-                {terminalError}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-300 bg-white px-4 pt-3 pb-[calc(.75rem+env(safe-area-inset-bottom))] md:hidden"><Button className="w-full" onClick={() => {cartRef.current?.scrollIntoView();cartRef.current?.focus({preventScroll:true});}}>View cart · {cartCount} items · ${(cartTotal/100).toFixed(2)}</Button></div>
+      {showCashModal && <CashModal totalCents={cartTotal} submitting={submitting} returnFocusRef={cashButtonRef} onComplete={cashReceivedCents => submitOrder('cash',cashReceivedCents)} onClose={() => setShowCashModal(false)} />}
+      {variantPickerProduct && canSelectMenu && <VariantPickerModal returnFocusRef={variantOpenerRef} product={allItems.find(item => item.id === variantPickerProduct.id) || variantPickerProduct}
+        onSelect={variant => {addToCart(variantPickerProduct,variant);setVariantPickerProduct(null);}} onClose={() => setVariantPickerProduct(null)} />}
+      {showReaderPicker && <ReaderPickerDialog readers={availableReaders} connected={terminalReader} busy={terminalCollecting || terminalStatus === 'connecting' || terminalStatus === 'discovering'} error={terminalError} returnFocusRef={readerButtonRef}
+        onClose={() => setShowReaderPicker(false)} onConnect={reader => void handleConnectReader(reader)} onDisconnect={() => void handleDisconnectReader()} onDiscover={() => void handleDiscoverReaders()} />}
     </div>
   );
 }
