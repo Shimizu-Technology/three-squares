@@ -232,7 +232,7 @@ export default function AccountPage() {
                       <NavigationLink
                         key={order.id}
                         to={`/orders/${order.id}`}
-                        className="w-full justify-between gap-4"
+                        className="w-full gap-4"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
