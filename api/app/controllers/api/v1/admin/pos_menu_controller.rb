@@ -26,10 +26,12 @@ module Api
             params[:location_id].to_i
           end
 
-          if effective_location_id && !include_unavailable
-            products = products.where.not(id: ProductLocation.select(:product_id))
-              .or(products.where(id: ProductLocation.where(location_id: effective_location_id, available: true).select(:product_id)))
-              .distinct
+          if effective_location_id
+            products = products.offered_at(effective_location_id)
+            unless include_unavailable
+              products = products.where.not(id: ProductLocation.select(:product_id))
+                .or(products.where(id: ProductLocation.available.where(location_id: effective_location_id).select(:product_id)))
+            end
           end
 
           # Filter by product type if provided
@@ -59,22 +61,33 @@ module Api
           end
 
           # Also return locations for the location picker
-          locations = staff_access_policy.location_choices
+          active_ids = Location.active.ids
+          locations = staff_access_policy.location_choices.select { |location| active_ids.include?(location[:id]) }
 
           render json: {
             categories: categories.map { |name, items| { name: name, items: items } },
             locations: locations,
+            default_location_id: default_location_id(locations),
             total_products: categories.values.sum(&:size)
           }
         end
 
         private
 
+        def default_location_id(locations)
+          main = locations.find { |location| location[:slug] == "three-squares-main" }
+          return main[:id] if main
+          # A sparse kiosk menu must not win merely because its name sorts first.
+          locations.max_by do |location|
+            [Product.published.active.where(allow_pickup: true).offered_at(location[:id]).count, -location[:id]]
+          end&.fetch(:id)
+        end
+
         def pos_product_json(product, effective_location_id)
           primary_image = product.product_images.find(&:primary?) || product.product_images.first
           variants = product.product_variants.select(&:available?).sort_by { |variant| variant.variant_name.to_s }
           local_rows = product.product_locations.to_a
-          location_available = effective_location_id.nil? || local_rows.empty? || local_rows.any? { |row| row.location_id == effective_location_id && row.available? }
+          location_available = effective_location_id.nil? || local_rows.empty? || local_rows.any? { |row| row.location_id == effective_location_id && row.offered? && row.available? }
 
           {
             id: product.id,

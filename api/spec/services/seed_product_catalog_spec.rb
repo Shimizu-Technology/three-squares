@@ -28,3 +28,18 @@ RSpec.describe SeedProductCatalog do
     expect(product.product_variants.sole.reload.weight_oz).to eq(8)
   end
 end
+
+RSpec.describe "Seed menu membership" do
+  it "places only Donki collection items on Donki's menu with no fabricated sold-out flags" do
+    main = create(:location, slug: "three-squares-main")
+    donki = create(:location, slug: "three-squares-donki")
+    create(:collection, slug: "donki")
+    create(:collection, slug: "mains")
+    10.times { |index| SeedProductCatalog.create_product(name: "Kiosk item #{index}", slug: "kiosk-item-#{index}", price: 10, collection_slug: "donki") }
+    meal = SeedProductCatalog.create_product(name: "Main meal", slug: "main-meal", price: 12, collection_slug: "mains")
+    expect(ProductLocation.offered.where(location: donki).count).to eq(10)
+    expect(ProductLocation.where(location: donki, available: false)).to be_empty
+    expect(meal.product_locations.find_by!(location: donki).offered).to be(false)
+    expect(meal.product_locations.find_by!(location: main).offered).to be(true)
+  end
+end

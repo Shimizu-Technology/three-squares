@@ -1,3 +1,4 @@
+import { initialPOSLocation, posLocationPreferenceKey } from '../../components/pos/initialLocation';
 import { useState, useEffect, useMemo, useCallback, useRef, useId, lazy, Suspense, type RefObject } from 'react';
 import { Button } from '../../components/ui/Button';
 import { IconButton } from '../../components/ui/IconButton';
@@ -45,6 +46,7 @@ const SimulatedTerminalPanel = import.meta.env.DEV ? lazy(() => import('../../co
 
 interface POSLocation {
   id: number;
+  slug: string;
   name: string;
   address: string;
 }
@@ -81,7 +83,7 @@ function savedPOSPayment(): SavedPOSPayment | null {
 }
 
 
-async function fetchPOSMenu(token: string, locationId?: number, includeUnavailable = false): Promise<{ categories: POSCategory[]; locations: POSLocation[] }> {
+async function fetchPOSMenu(token: string, locationId?: number, includeUnavailable = false): Promise<{ categories: POSCategory[]; locations: POSLocation[]; default_location_id?: number }> {
   const params = new URLSearchParams();
   if (locationId) params.set('location_id', locationId.toString());
   if (includeUnavailable) params.set('include_unavailable', 'true');
@@ -378,10 +380,13 @@ function AdminPOSWorkspace() {
       if (selectedLocation === undefined) {
         if (!data.locations.length) throw new Error('No POS locations available');
         // The unscoped response only discovers locations. Never offer its menu.
-        setSelectedLocation(data.locations[0].id);
+        let saved: string | null = null;
+        try { saved = userId ? localStorage.getItem(posLocationPreferenceKey(userId)) : null; } catch { /* Storage may be unavailable. */ }
+        setSelectedLocation(initialPOSLocation(data.locations, saved, data.default_location_id));
         return;
       }
       if (!data.locations.some(location => location.id === selectedLocation)) throw new Error('Selected POS location unavailable');
+      try { if (userId) localStorage.setItem(posLocationPreferenceKey(userId), String(selectedLocation)); } catch { /* Storage may be unavailable. */ }
       setCategories(data.categories);
       setLoadedLocation(selectedLocation);
       setLoadError(false);
@@ -392,7 +397,7 @@ function AdminPOSWorkspace() {
     } finally {
       if (generation === menuRequest.current) setLoading(false);
     }
-  }, [getToken, selectedLocation, canManageAvailability]);
+  }, [getToken, selectedLocation, canManageAvailability, userId]);
 
   useEffect(() => {
     menuActive.current = true;
@@ -430,9 +435,8 @@ function AdminPOSWorkspace() {
       items = items.filter((item) => item.name.toLowerCase().includes(q));
     }
 
-    // Temporary until P4 separates location membership from sold-out state.
-    return menuMode === 'sale' ? items.filter(item => item.location_available !== false) : items;
-  }, [allItems, visibleCategories, activeCategory, searchQuery, menuMode]);
+    return items; // Offered sold-out items keep their place; the API excludes non-carried items.
+  }, [allItems, visibleCategories, activeCategory, searchQuery]);
 
   const categoryNames = useMemo(() => ['All', ...visibleCategories.map((c) => c.name)], [visibleCategories]);
   const selectedLocationName = useMemo(
@@ -1013,7 +1017,7 @@ function AdminPOSWorkspace() {
               loading={terminalStatus === 'connecting' || terminalStatus === 'discovering'}>{terminalReader ? <Wifi /> : <WifiOff />}</IconButton>}
         </header>
         <div className="shrink-0 space-y-2 border-b border-slate-200 bg-white p-3">
-          <div aria-label="Menu toolbar" className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px] items-end gap-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)_44px]">
+          <div aria-label="Menu toolbar" className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px] items-end gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)_44px]">
             <label className="block min-w-0 text-xs font-semibold text-slate-700">Sale location
               <span className="relative mt-1 block h-11 min-w-0">
                 <MapPin aria-hidden="true" className="pointer-events-none absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2" />
@@ -1029,7 +1033,7 @@ function AdminPOSWorkspace() {
                 <input ref={searchRef} type="search" placeholder="Search menu" value={searchQuery} onChange={event => setSearchQuery(event.target.value)} className="h-11 w-full rounded-lg border border-slate-300 bg-white pl-8 pr-2 text-base focus:outline-none focus:ring-2 focus:ring-tsPrimary" />
               </span>
             </label>
-            <label className="col-span-2 row-start-2 block min-w-0 text-xs font-semibold text-slate-700 xl:col-auto xl:row-auto">Category
+            <label className="col-span-2 row-start-2 block min-w-0 text-xs font-semibold text-slate-700 lg:col-auto lg:row-auto">Category
               <select aria-label="Category" value={activeCategory} onChange={event => setActiveCategory(event.target.value)} className="mt-1 h-11 w-full min-w-0 rounded-lg border border-slate-300 bg-white px-2 text-base">
                 {categoryNames.map(name => <option key={name} value={name}>{name}</option>)}
               </select>
