@@ -100,3 +100,13 @@ remain separate QA; these development fixtures do not provide authentication.
 Customer journey checks require `CUSTOMER_DEMO_DB=tsq_uniform_c_*demo` and `DEV_LIFECYCLE_SESSION`, and verify the live launcher ledger and API listener before creating simulated orders. Customer runners include WebKit at 375×812. Compact prices retain the fixed 24px row: long values use ellipsis within the card, keeping full server text accessible and on the detail page. A product quantity shortcut uses shared Field/Input for direct bulk entry without changing QuantityStepper.
 
 The isolated collection fixture checks the shared shell and 4:3 media only; it does not claim schedule, description, or action-row alignment coverage. Those rows remain the existing collection content.
+
+## Admin editor controls
+
+`ui-admin.html` uses the real Switch, CheckField, FileButton, Disclosure, ActionMenu and Pagination. With the isolated demo running, use:
+
+```sh
+node scripts/measure-ui-admin.mjs http://localhost:5173 /tmp/three-squares-ui-admin
+```
+
+The runner checks all four foundation viewports, fine/touch input and Chromium/WebKit. It verifies target dimensions, keyboard disclosure/command dismissal and focus return, native file selection, switch/checkbox state and pagination with 10,000 pages. WebKit uses Option-Tab for all-control keyboard navigation. Saved catalog, menu and settings journeys still require the isolated application and database.

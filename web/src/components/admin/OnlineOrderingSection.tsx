@@ -1,3 +1,5 @@
+import { Field } from '../ui/Field';
+import { Textarea } from '../ui/Textarea';
 import { Button } from '../ui/Button';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
@@ -74,10 +76,9 @@ function OwnerOrderingSection() {
     </div>
     <p role="status" className="font-medium text-gray-900">{busy ? 'Checking or saving ordering status…' : confirmed && saved ? `Saved status: ${saved.paused ? 'Paused' : 'Accepting online orders'}` : 'Saved status needs to be checked'}</p>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-    <label className="block text-sm font-medium text-gray-900">Customer message (optional)
-      <textarea maxLength={240} rows={3} value={message} onChange={event => setMessage(event.target.value)} disabled={busy || !confirmed} className="mt-2 block w-full rounded-lg border border-gray-300 p-3 text-base disabled:opacity-60" />
-    </label>
-    <p className="text-sm text-gray-700">Shown while paused. Leave blank to use the standard message. This does not change store hours or whether the API is connected.</p>
+    <Field label="Customer message (optional)" help="Shown while paused. Leave blank to use the standard message. This does not change store hours or whether the API is connected.">
+      <Textarea maxLength={240} rows={3} value={message} onChange={event => setMessage(event.target.value)} disabled={busy || !confirmed} />
+    </Field>
     <div className="flex flex-wrap gap-2">
       <Button type="button" variant="primary" disabled={busy || !confirmed || !saved} onClick={() => setPending(!saved?.paused)}>{saved?.paused ? 'Resume online ordering' : 'Pause online ordering'}</Button>
       <Button type="button" variant="secondary" disabled={busy || !confirmed || !saved || message === (saved.customer_message ?? '')} onClick={() => setPending(saved!.paused)}>Save customer message</Button>

@@ -1,6 +1,9 @@
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
+import { FileButton } from '../../components/ui/FileButton';
+import { Button } from '../../components/ui/Button';
 import { useEffect, useRef, useState, type FormEvent, type MouseEvent } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { useStaffAccess } from '../../components/admin/StaffAccess.tsx';
 import { readProductListReturn, safeProductReturnTo } from '../../components/admin/products/productQueryState';
 import {
@@ -11,7 +14,6 @@ import {
 import { authPost, type GetTokenFn } from '../../services/authApi';
 import AdminShopifyMigration from './AdminShopifyMigration';
 
-const linkStyle = 'inline-flex min-h-11 items-center rounded-lg px-3 py-2 font-medium text-tsPrimary underline underline-offset-2';
 const templateUrl = `data:text/csv;charset=utf-8,${encodeURIComponent(CSV_TEMPLATE)}`;
 
 export default function AdminImportPage() {
@@ -36,7 +38,7 @@ export default function AdminImportPage() {
     if (!canMigrate) return <section role="alert" className="mx-auto max-w-3xl space-y-4 p-4 sm:p-6">
       <h1 className="text-2xl font-bold text-gray-900">Shopify migration requires shared-stock permission</h1>
       <p className="text-gray-700">Shopify migration can change shared inventory. Ask an owner or a manager with shared-stock permission to run it.</p>
-      <Link to="/admin/import" className={linkStyle}>Go to Menu CSV</Link>
+      <Button to="/admin/import" variant="link">Go to Menu CSV</Button>
     </section>;
     return <AdminShopifyMigration key={userId} />;
   }
@@ -124,12 +126,9 @@ function MenuCsvImport({ userId, getToken, returnTo, onReturn, canMigrate }: {
     }
   }
 
-  return <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8 [overflow-wrap:anywhere]">
-    <header className="space-y-2">
-      <Link to={returnTo} onClick={onReturn} className={linkStyle}>Back to Products</Link>
-      <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">Import menu items</h1>
-      <p className="text-gray-700">Add menu items from a Menu CSV, then review the created items and finish any drafts.</p>
-    </header>
+  return <div className="space-y-6 [overflow-wrap:anywhere]">
+    <Button variant="ghost" to={returnTo} onClick={onReturn}>Back to Products</Button>
+    <AdminPageHeader title="Import menu items" subtitle="Add menu items from a Menu CSV, then review the created items and finish any drafts." />
 
     <section aria-labelledby="csv-format-heading" className="space-y-3 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
       <h2 id="csv-format-heading" className="text-xl font-semibold text-gray-900">Prepare your Menu CSV</h2>
@@ -140,25 +139,23 @@ function MenuCsvImport({ userId, getToken, returnTo, onReturn, canMigrate }: {
         <dt className="font-semibold text-gray-900">Pickup locations</dt><dd>Use existing location names or slugs. Separate multiple locations with <code>;</code> or <code>|</code>.</dd>
         <dt className="font-semibold text-gray-900">Availability</dt><dd>With pickup locations, <code>true</code> or blank <code>active</code> publishes the item; <code>false</code> keeps a draft. Items without pickup locations stay unpublished, including rows with <code>active=false</code>. Add locations in the editor before publishing.</dd>
       </dl>
-      <a href={templateUrl} download="products-import-template.csv" className={linkStyle}>Download Menu CSV template</a>
+      <Button href={templateUrl} download="products-import-template.csv" variant="link">Download Menu CSV template</Button>
       <p className="text-sm text-gray-700">The template leaves locations blank. Fill them in to make items available for pickup, or leave them blank to create drafts.</p>
     </section>
 
     <form onSubmit={importFile} aria-busy={uploading} className="space-y-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
       <div className="space-y-2">
-        <label htmlFor="menu-csv-file" className="block font-semibold text-gray-900">Menu CSV file</label>
-        <input ref={inputRef} id="menu-csv-file" name="file" type="file" accept=".csv,text/csv" disabled={uploading}
-          aria-describedby="menu-csv-help" className="block min-h-11 w-full min-w-0 rounded-lg border border-gray-300 p-2 text-base file:mr-3 file:min-h-11 file:rounded-lg file:border-0 file:px-3"
-          onChange={event => { setFile(event.target.files?.[0] ?? null); setError(null); }} />
+        <FileButton ref={inputRef} id="menu-csv-file" name="file" accept=".csv,text/csv" disabled={uploading}
+          aria-describedby="menu-csv-help" onChange={event => { setFile(event.target.files?.[0] ?? null); setError(null); }}>Choose Menu CSV file</FileButton>
         <p id="menu-csv-help" className="text-sm text-gray-700">Choose one CSV file, up to 2 MB. Correct and re-upload only skipped rows after a partial import.</p>
         {file && <p className="text-sm text-gray-700">Selected: {file.name}</p>}
       </div>
       {error && <div ref={errorRef} tabIndex={-1} role="alert" className="space-y-2 rounded-lg border border-red-300 bg-red-50 p-4 text-red-900">
-        <p>{error}</p><Link to="/admin/products" className={linkStyle}>Check Products</Link>
+        <p>{error}</p><Button to="/admin/products" variant="link">Check Products</Button>
       </div>}
-      <button type="submit" disabled={uploading || !file} className="btn-primary min-h-11 disabled:cursor-not-allowed disabled:opacity-60">
+      <Button variant="primary" type="submit" disabled={uploading || !file}>
         {uploading ? 'Importing menu items…' : 'Import Menu CSV'}
-      </button>
+      </Button>
       {uploading && <p role="status" className="text-sm text-gray-700">Waiting for the import result. Keep this page open until it is confirmed.</p>}
     </form>
 
@@ -166,7 +163,7 @@ function MenuCsvImport({ userId, getToken, returnTo, onReturn, canMigrate }: {
 
     <aside className="space-y-2 border-t border-gray-200 pt-4 text-sm text-gray-700">
       <p>Completed results: This tab only, for your account. The five most recent imports are kept when tab storage is available. Closing this tab or switching devices does not preserve them. An interrupted upload cannot be recovered from a receipt unless its result was confirmed.</p>
-      {canMigrate && <Link to="/admin/import?format=shopify" className={linkStyle}>Shopify migration</Link>}
+      {canMigrate && <Button to="/admin/import?format=shopify" variant="link">Shopify migration</Button>}
     </aside>
   </div>;
 }
@@ -183,8 +180,8 @@ function MenuImportResults({ receipt, persisted, headingRef, previous }: {
     {!persisted && <p role="status" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-amber-950">Tab storage is unavailable for this receipt. Results are kept only while this app remains open; a reload may lose them. Review the created items now.</p>}
     <p className="font-medium text-gray-900">{result.imported} created · {result.skipped} skipped · {result.total} total rows</p>
     {result.imported > 0 && <div className="flex flex-wrap gap-2">
-      <Link to={batchPath} className={linkStyle}>Review this batch ({result.imported})</Link>
-      {needsLocations > 0 && <Link to={`${batchPath}&published=pickup_locations`} className={linkStyle}>Needs pickup locations ({needsLocations})</Link>}
+      <Button to={batchPath} variant="link">Review this batch ({result.imported})</Button>
+      {needsLocations > 0 && <Button to={`${batchPath}&published=pickup_locations`} variant="link">Needs pickup locations ({needsLocations})</Button>}
     </div>}
     {result.created.length > 0 && <div className="space-y-2">
       <h3 className="font-semibold text-gray-900">Created items</h3>
@@ -194,7 +191,7 @@ function MenuImportResults({ receipt, persisted, headingRef, previous }: {
             <p className="font-medium text-gray-900">Row {item.row}: {item.name}</p>
             <p className="text-sm text-gray-700">{item.needs_pickup_locations ? 'Unpublished draft — add pickup locations before publishing.' : item.published ? 'Published' : 'Unpublished draft'}</p>
           </div>
-          <Link to={`/admin/products/${item.product_id}/edit?returnTo=${encodeURIComponent(batchPath)}`} className={`${linkStyle} shrink-0 self-start`} aria-label={`Edit ${item.name}, row ${item.row}`}>Edit item</Link>
+          <Button to={`/admin/products/${item.product_id}/edit?returnTo=${encodeURIComponent(batchPath)}`} variant="link" aria-label={`Edit ${item.name}, row ${item.row}`}>Edit item</Button>
         </li>)}
       </ul>
     </div>}

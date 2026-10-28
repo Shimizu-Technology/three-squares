@@ -1,3 +1,4 @@
+import { uiModules, requireUi } from './helpers/uiModules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -24,13 +25,14 @@ const mockRequire = name => {
     useSearchParams: () => [new URLSearchParams(fixture.search)],
     useLocation: () => ({ state: fixture.state }),
     useNavigate: () => (...args) => (fixture.navigations ||= []).push(args),
-    Link: ({ to, children, ...props }) => { if (children === 'Back to Products') fixture.backClick = props.onClick; return React.createElement('a', { href: to, ...props }, children); },
+    Link: ({ to, children, ...props }) => { if (props.onClick) fixture.backClick = props.onClick; return React.createElement('a', { href: to, ...props }, children); },
   };
   if (name.includes('/StaffAccess')) return { useStaffAccess: () => ({ loading: fixture.loading, can: capability => fixture.caps.includes(capability) }) };
   if (name.includes('/productQueryState')) return { readProductListReturn, safeProductReturnTo };
   if (name.includes('/menuImportReceipt')) return receipts;
   if (name.includes('/authApi')) return { authPost: () => { throw Error('Unexpected request in render'); } };
   if (name === './AdminShopifyMigration') return { default: () => { legacyMounts++; return React.createElement('h1', null, 'Legacy migration fixture'); } };
+  if (uiModules[name]) return requireUi(name, mockRequire);
   return require(name);
 };
 new Function('require', 'module', 'exports', compiled)(mockRequire, module, module.exports);
