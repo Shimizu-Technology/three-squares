@@ -43,6 +43,7 @@ async function load(relative, extra = '', simulated = false) {
     mocks[name] = dataModule(`${clause?.name ? 'export default function FixtureComponent() { return null; }' : ''}\n${named}`);
   }
   const compiled = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
+    .replace(/import ['"][^'"]+\.css['"];?/g, '')
     .replaceAll('import.meta.env.DEV', String(simulated))
     .replace(/import\.meta\.env\.[A-Z_]+/g, 'undefined')
     .replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(mocks[name] || import.meta.resolve(name))}`);
@@ -65,12 +66,12 @@ for (const [role, names] of Object.entries(roles)) test(`${role} sees only permi
     loading: false, error: false, roleLabel: role, scopeLabel: 'Fixture scope', can: name => names.includes(name),
   };
   const panel = Panel({ locationId: 1, attemptId: 'attempt-fixture', terminalId: 1, onSelect() {}, getToken: async () => null, onChange: async () => {} });
-  const buttons = elements(panel).filter(node => node.type === 'button').map(text);
-  assert.equal(buttons.includes('Take card payment'), names.includes('payments.collect'));
-  for (const command of ['Tap card', 'Approve', 'Decline', 'Enter wrong PIN', 'Disconnect', 'Reconnect', 'Lose response']) {
+  const buttons = elements(panel).filter(node => (node.type === 'button' || ['Button','IconButton'].includes(node.type?.name))).map(text);
+  assert.equal(buttons.includes('Take payment'), names.includes('payments.collect'));
+  for (const command of ['Tap card', 'Approve', 'Decline', 'Wrong PIN', 'Disconnect', 'Reconnect', 'Lose response']) {
     assert.equal(buttons.includes(command), role === 'owner', command);
   }
-  const discovery = elements(AdminPOSWorkspace()).filter(node => node.type === 'button').some(node => String(node.props.title || '').includes('connect reader'));
+  const discovery = elements(AdminPOSWorkspace()).filter(node => (node.type === 'button' || ['Button','IconButton'].includes(node.type?.name))).some(node => String(node.props.title || '').includes('connect reader'));
   assert.equal(discovery, role === 'owner');
   assert.equal(POSAccessGate().type.name === 'AdminPOSWorkspace', names.includes('pos.sell'));
 });
