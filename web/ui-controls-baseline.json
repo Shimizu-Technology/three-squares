@@ -642,26 +642,6 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/components/payment/PaymentStatusPanel.tsx|PaymentStatusPanel|raw-button|ffbe30695aa69beb9ac9|1",
-      "file": "src/components/payment/PaymentStatusPanel.tsx",
-      "component": "PaymentStatusPanel",
-      "line": 34,
-      "column": 378,
-      "hash": "ffbe30695aa69beb9ac9",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/payment/PaymentStatusPanel.tsx|PaymentStatusPanel|raw-button|f11f60d0c1b856228a23|1",
-      "file": "src/components/payment/PaymentStatusPanel.tsx",
-      "component": "PaymentStatusPanel",
-      "line": 36,
-      "column": 215,
-      "hash": "f11f60d0c1b856228a23",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/components/payment/simulation/SimulatedReconciliationPanel.tsx|SimulatedReconciliationPanel|raw-button|00bafe574ebccea3be6e|1",
       "file": "src/components/payment/simulation/SimulatedReconciliationPanel.tsx",
       "component": "SimulatedReconciliationPanel",
