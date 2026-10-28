@@ -23,7 +23,7 @@ async function checkDialog(page){
   await opener.click();await page.getByRole('dialog').getByRole('button',{name:'Connect reader Fixture reader',exact:true}).click();
   await dialog.waitFor({state:'hidden'});await expect(opener).toBeFocused();
   await opener.click();await page.getByRole('button',{name:'Close Select Card Reader'}).click();await dialog.waitFor({state:'hidden'});
-  await opener.click();await page.mouse.click(2,2);await dialog.waitFor({state:'hidden'});
+  await opener.click();await expect(dialog).toBeVisible();await page.mouse.click(2,2);await dialog.waitFor({state:'hidden'});
   await expect(opener).toBeFocused();
   await opener.click();const box=await dialog.boundingBox();await page.mouse.move(box.x+20,box.y+20);await page.mouse.down();await page.mouse.move(2,2);await page.mouse.up();await expect(dialog).toBeVisible();await page.keyboard.press('Escape');await dialog.waitFor({state:'hidden'});
   await page.getByRole('button',{name:'Choose busy fixture reader',exact:true}).click();await dialog.waitFor();await expect(page.getByRole('button',{name:'Close Select Card Reader'})).toBeDisabled();await page.keyboard.press('Escape');await expect(dialog).toBeVisible();await page.evaluate(()=>window.dispatchEvent(new Event('fixture-reader-finished')));await page.getByRole('button',{name:'Close Select Card Reader'}).click();await dialog.waitFor({state:'hidden'});
