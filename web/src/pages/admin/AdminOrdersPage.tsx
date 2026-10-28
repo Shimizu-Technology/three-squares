@@ -1,3 +1,5 @@
+import { ChoiceGroup } from '../../components/ui/ChoiceGroup';
+import { Button } from '../../components/ui/Button';
 import axios from 'axios';
 import { savedRefundRequest, prepareRefundRequest, clearRefundRequest, rememberRefundOperation, type SavedRefundRequest } from '../../lib/refundRequest';
 import { useState, useEffect, useLayoutEffect, useMemo, useCallback, useRef } from 'react';
@@ -519,52 +521,40 @@ export function AdminOrdersPageContent({ mode }: AdminOrdersPageContentProps) {
             )}
           </p>
         </div>
-        {access.can('orders.export') && <button
+        {access.can('orders.export') && <Button
           type="button"
           onClick={exportOrdersCsv}
-          disabled={exporting}
-          className="px-4 py-2.5 text-sm font-semibold border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50"
+          loading={exporting}
+          variant="secondary"
         >
-          {exporting ? 'Exporting...' : 'Export CSV'}
-        </button>}
+          Export CSV
+        </Button>}
       </div>
 
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        <button type="button" onClick={reconcileOrders} disabled={refreshing} className="min-h-11 px-4 border border-gray-300 rounded-lg bg-white disabled:opacity-50">{refreshing ? 'Refreshing…' : 'Refresh orders'}</button>
+        <Button type="button" onClick={reconcileOrders} loading={refreshing} variant="secondary">Refresh orders</Button>
         <span role="status">{lastUpdated ? `Last updated ${new Date(lastUpdated).toLocaleTimeString()}` : 'No successful update yet'}{loadError ? ' · Updates unavailable' : stale ? ' · Updates delayed — this snapshot may be stale' : ''}</span>
       </div>
       {loadError && <div role="alert" className="border border-amber-300 bg-amber-50 text-amber-950 p-4 rounded-lg">
         <p>{loadError}</p><p>{hasCurrentData ? 'Showing the last saved snapshot for these filters. It may be out of date.' : 'Orders for these filters have not loaded.'}</p>
-        <button type="button" onClick={reconcileOrders} disabled={refreshing} className="min-h-11 underline font-semibold">Try again</button>
+        <Button type="button" onClick={reconcileOrders} disabled={refreshing} variant="ghost">Try again</Button>
       </div>}
       {selectedOrderId !== null && !selectedOrder && <div role={currentDetailError ? 'alert' : 'status'} className="border border-gray-300 bg-white p-4 rounded-lg">
         {currentDetailError ? <>
           <p>Could not load order #{selectedOrderId}. {currentDetailError}</p>
-          <button type="button" onClick={() => setDetailAttempt((attempt) => attempt + 1)} className="min-h-11 underline font-semibold mr-4">Retry order details</button>
+          <Button type="button" onClick={() => setDetailAttempt((attempt) => attempt + 1)} variant="ghost" className="mr-4">Retry order details</Button>
         </> : <p>Loading order #{selectedOrderId}…</p>}
-        <button type="button" onClick={closeOrderDetails} className="min-h-11 underline font-semibold">Close order details</button>
+        <Button type="button" onClick={closeOrderDetails} variant="ghost">Close order details</Button>
       </div>}
       {mode === 'pickup_queue' && hasCurrentData && (summary?.queue_stage_counts?.new_paid || 0) > 0 && <p role="status" className="border-l-4 border-amber-500 bg-amber-50 p-3 text-amber-950 font-semibold">{summary?.queue_stage_counts.new_paid} paid orders need acknowledgment</p>}
       {queueStatusOptions.length > 0 && (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex flex-wrap gap-3">
-          {queueStatusOptions.map((status) => {
-            const counts = mode === 'pickup_queue' ? summary?.queue_stage_counts : summary?.status_counts;
-            const count = hasCurrentData ? counts?.[status] ?? '—' : '—';
-            return (
-              <button
-                key={status}
-                type="button"
-                onClick={() => changeQuery({ status, page: 1 })}
-                className={`px-3 py-2 rounded-lg text-sm border transition ${
-                  statusFilter === status
-                    ? 'bg-tsPrimary text-white border-tsPrimary'
-                    : 'bg-white text-gray-700 border-gray-300 hover:border-gray-400'
-                }`}
-              >
-                {stageLabel(status)} ({count})
-              </button>
-            );
-          })}
+          <ChoiceGroup label="Order stages" value={statusFilter} onChange={status => changeQuery({ status, page: 1 })}
+            choices={queueStatusOptions.map(status => {
+              const counts = mode === 'pickup_queue' ? summary?.queue_stage_counts : summary?.status_counts;
+              const count = hasCurrentData ? counts?.[status] ?? '—' : '—';
+              return { value: status, label: `${stageLabel(status)} (${count})` };
+            })} />
           <div className="ml-auto text-sm text-gray-600 flex items-center gap-4">
             <span>All stages: <span className="font-semibold text-gray-900">{hasCurrentData ? summary?.total_orders ?? '—' : '—'}</span></span>
             <span>Paid, all stages: <span className="font-semibold text-gray-900">{hasCurrentData ? summary?.paid_orders ?? '—' : '—'}</span></span>

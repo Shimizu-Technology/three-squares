@@ -1,3 +1,4 @@
+import { uiModules, expandUi } from './helpers/uiModules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -20,7 +21,7 @@ async function load(path, mocks) {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8');
   const compiled = ts.transpileModule(source, {
     compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
-  }).outputText.replace(/^(import .+? from )["']([^"']+)["']/gm, (_, prefix, name) => `${prefix}${JSON.stringify(mocks[name] || baseModules[name] || import.meta.resolve(name))}`);
+  }).outputText.replace(/^(import .+? from )["']([^"']+)["']/gm, (_, prefix, name) => `${prefix}${JSON.stringify(mocks[name] || baseModules[name] || uiModules[name] || import.meta.resolve(name))}`);
   return (await import(dataModule(compiled))).default;
 }
 const Manager = await load('../src/components/VariantManager.tsx', {
@@ -62,8 +63,8 @@ const ProductForm = await load('../src/pages/admin/ProductFormPage.tsx', {
   '../../components/admin/products/productDraft': new URL('../src/components/admin/products/productDraft.ts', import.meta.url).href,
   '../../components/admin/products/productQueryState': new URL('../src/components/admin/products/productQueryState.ts', import.meta.url).href,
 });
-const nodes = node => !node || typeof node !== 'object' ? [] : [node,
-  ...[node.props?.children, node.props?.footer].flat(Infinity).flatMap(nodes)];
+const nodes = value => { const node = expandUi(value); return !node || typeof node !== 'object' ? [] : [node,
+  ...[node.props?.children, node.props?.footer, node.props?.actions].flat(Infinity).flatMap(nodes)]; }
 const text = node => typeof node === 'string' ? node : node && typeof node === 'object' ? [node.props?.children].flat(Infinity).map(text).join('') : '';
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 const variant = {

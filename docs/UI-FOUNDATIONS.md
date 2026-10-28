@@ -10,7 +10,7 @@ The cart header uses an explicit `bg-tsPrimary`/white pair (12.41:1). Its close 
 
 ## Migration status
 
-This is the contract for new work. Button, IconButton, QuantityStepper, StatusBadge and Notice are implemented in `web/src/components/ui`; the two recovery controls use Button. POS tiles/cart/toolbar and reader controls use the shared recipes; see [POS uniformity](POS-UNIFORMITY.md). Other admin and customer controls, headers/toolbars, form rows and workflow label mappings are **not yet migrated**. Location offering semantics are implemented in P4; see [Location offerings](LOCATION-OFFERINGS.md). Visible admin groups follow in P3, remaining admin/labels in P5 and customer surfaces in P6. Device acceptance closes in P7. A documented recipe below is not a claim that its consumers already conform.
+This is the contract for new work. Button, IconButton, QuantityStepper, StatusBadge and Notice are implemented in `web/src/components/ui`; the two recovery controls use Button. POS tiles/cart/toolbar and reader controls use the shared recipes; see [POS uniformity](POS-UNIFORMITY.md). Other admin and customer controls, headers/toolbars, form rows and workflow label mappings are **not yet migrated**. Location offering semantics are implemented in P4; see [Location offerings](LOCATION-OFFERINGS.md). Visible admin groups are adopted in P3, remaining admin/labels in P5 and customer surfaces in P6. Device acceptance closes in P7. A documented recipe below is not a claim that its consumers already conform.
 
 ## Button and IconButton
 
@@ -99,6 +99,14 @@ Use StatusBadge `tone="attention|info|success|neutral|danger|inactive"`; it carr
 Run `npm run ui:check` after changes and `npm run ui:ratchet` to remove retired entries and refresh locations. Ratcheting **refuses added debt**; there is no update command that blesses new sites. The initial baseline cannot be reinitialized over an existing file. Review any manual baseline change as an exception. Approved specialized implementations are exact file/component pairs in `specializedControls` in the checker: POSProductTile. QuantityStepper lives in `components/ui` and needs no specialized exemption. Add Tabs, Disclosure, navigation and other specialized primitives only with semantics, geometry tests and a specific reason; a whole page is never exempt.
 
 Run `npm run test:ci-tools` for enforcement tests and `npm run test:unit` for component props/recipe tests. The standalone `fixtures/ui-controls.html` development page uses the actual primitives, recovery components and retained legacy specimens; it is not a production app route. With the isolated demo running, execute the geometry fixture as documented in `web/fixtures/README.md`. Extend it in every migration slice; screenshots do not replace assertions or saved journey checks.
+
+## Admin adoption (P3)
+
+Menus, Products headers, order commands and obvious Settings action groups now use md controls. Menu cards reserve a two-line description and pin Manage, Schedule, named Preview and Delete controls to the bottom. Preview and Delete use compact IconButtons with item-specific accessible names; deletion still requires confirmation. Counts live with menu metadata. Settings switches and remaining fields migrate in P5.
+
+`ChoiceGroup` is a wrapping single-choice filter/section primitive. It uses native type=button controls, `aria-pressed` selection and a named group. Each choice remains in normal keyboard order; it does not claim ARIA tab semantics or require arrow-key navigation. Its 44px targets and selected navy state are stable on fine and coarse pointers. Use it for queue stages and editor/settings sections, while ordinary actions remain Button.
+
+`ActionTile` is a router navigation link for dashboard shortcuts, with a shared 112px minimum height, 40px icon slot, 20px icon and 14/20 label. The four dashboard shortcuts use two columns on narrow layouts and four where room permits. Settings remains in workspace navigation. Geometry and interaction checks extend the development fixture; real admin saved journeys require separate isolated-demo QA.
 
 ## Shared form fields (P5a)
 

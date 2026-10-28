@@ -9,7 +9,7 @@ export interface BreadcrumbItem {
 
 interface AdminPageHeaderProps {
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   breadcrumbs?: BreadcrumbItem[];
   /** Right-aligned action area (buttons, etc.) */
   actions?: ReactNode;
@@ -22,7 +22,7 @@ export default function AdminPageHeader({
   actions,
 }: AdminPageHeaderProps) {
   return (
-    <div className="mb-6">
+    <div className="mb-4">
       {/* Breadcrumbs */}
       {breadcrumbs && breadcrumbs.length > 0 && (
         <nav className="flex items-center gap-1.5 text-sm mb-3">
@@ -54,12 +54,12 @@ export default function AdminPageHeader({
       {/* Title + Actions */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+          <h1 className="text-xl leading-7 sm:text-2xl sm:leading-8 font-bold text-gray-900">{title}</h1>
           {subtitle && (
-            <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
+            <p className="text-sm text-gray-600 leading-5 mt-1">{subtitle}</p>
           )}
         </div>
-        {actions && <div className="flex items-center gap-3">{actions}</div>}
+        {actions && <div className="flex flex-wrap items-center gap-x-2 gap-y-3">{actions}</div>}
       </div>
     </div>
   );
