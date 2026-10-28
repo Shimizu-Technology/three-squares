@@ -144,8 +144,6 @@ export default function LocationPicker() {
     void handleLocationSelect(requestedLocation);
   }, [requestedLocation, requestLocation, handleLocationSelect]);
 
-  if (locations.length <= 1) return null;
-
   const today = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'Pacific/Guam' }).format(new Date());
 
   const confirmSwitch = async () => {

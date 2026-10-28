@@ -57,8 +57,23 @@ try {
         [390, 844],
         ...(engine === "webkit" ? [[375, 812]] : []),
       ]) {
-        const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, deviceScaleFactor: 1 });
+        if (process.env.CUSTOMER_QA_WIDTH && width !== Number(process.env.CUSTOMER_QA_WIDTH)) continue;
+        const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, deviceScaleFactor: 1, serviceWorkers: "block" });
         const page = await context.newPage();
+        const allowedOrigins = new Set([new URL(base).origin, new URL(api).origin]);
+        const blockedRequests = [];
+        // Protect API traffic from the initial navigation, while dev Clerk bootstraps.
+        await context.route(url => url.pathname.startsWith('/api/') && !allowedOrigins.has(url.origin), route => {
+          blockedRequests.push(route.request().url());
+          return route.abort();
+        });
+        const enforceLocalOrigins = route => {
+          if (!allowedOrigins.has(new URL(route.request().url()).origin)) {
+            blockedRequests.push(route.request().url());
+            return route.abort();
+          }
+          return route.continue();
+        };
         const label = `${engine}-${width}`;
         try {
           await page.goto(`${base}/products`);
@@ -124,7 +139,7 @@ try {
           const quantityBefore = await rect(cartQuantity);
           await page.route("**/api/v1/cart/items/*", async route => {
             if (["PATCH", "PUT"].includes(route.request().method())) await new Promise(resolve => setTimeout(resolve, 500));
-            await route.continue();
+            await route.fallback();
           });
           await increase.tap();
           await expect(cartQuantity).toHaveAttribute("aria-busy", "true");
@@ -169,6 +184,10 @@ try {
           });
           await expect(drawer).toHaveCSS("opacity", "1");
           await page.screenshot({ path: path.join(output, `cart-${label}.png`) });
+          // The receipt waits for dev Clerk. Finish its read-only bootstrap first,
+          // then constrain every browser request before checkout can write an order.
+          await page.waitForFunction(() => window.Clerk?.loaded === true);
+          await page.route('**/*', enforceLocalOrigins);
           await drawer.getByRole("button", { name: "Secure Checkout", exact: true }).tap();
           await page.locator("#name").fill("Fictional Customer");
           await page.locator("#email").fill(`fixture-${label}@example.test`);
@@ -177,6 +196,7 @@ try {
           await page.getByRole("checkbox", { name: /I have reviewed my items/ }).check();
           const pay = page.getByRole("button", { name: "Pay $12.95", exact: true });
           await expect(pay).toBeEnabled();
+          assert.deepEqual(blockedRequests.filter(url => new URL(url).pathname.startsWith('/api/')), [], 'Browser attempted an unverified API origin');
           await pay.tap();
           await page.waitForURL(/\/orders\/\d+/, { timeout: 30000 });
           await expect(page.getByRole("heading", { name: "Order Confirmed!", exact: true })).toBeVisible({
@@ -197,6 +217,8 @@ try {
           assert.equal(order.order_items[0].quantity, 1);
           assert.equal(order.order_items[0].total_price_cents, 1295);
           assert.equal(order.customer_name, "Fictional Customer");
+          // Reload needs a fresh dev-auth bootstrap; the permanent API guard stays.
+          await page.unroute('**/*', enforceLocalOrigins);
           await page.reload();
           await expect(page.getByRole("heading", { name: "Order Confirmed!", exact: true })).toBeVisible();
           await page.screenshot({ path: path.join(output, `receipt-${label}.png`) });

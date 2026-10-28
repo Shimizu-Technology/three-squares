@@ -2,7 +2,10 @@ import {chromium,webkit,expect} from '@playwright/test';import assert from 'node
 const db=process.env.CUSTOMER_DEMO_DB,base=process.env.CUSTOMER_BASE_URL??'http://localhost:5691',api=process.env.CUSTOMER_API_URL??'http://localhost:3601',session=process.env.DEV_LIFECYCLE_SESSION;
 if(!db||!/^tsq_uniform_c_.*demo$/.test(db))throw Error('Owned demo DB required');for(const url of[base,api])if(!['localhost','127.0.0.1'].includes(new URL(url).hostname))throw Error('Local demo only');
 const output=path.resolve(process.env.UI_EVIDENCE_DIR??'../tmp/offerings');mkdirSync(output,{recursive:true});const results=[];
-const sql=q=>execFileSync('psql',['-X','-A','-t','-d',db,'-c',q],{encoding:'utf8'}).trim();const original=JSON.parse(sql("SELECT json_agg(row_to_json(s)) FROM (SELECT pl.id,pl.offered,pl.available FROM product_locations pl JOIN products p ON p.id=pl.product_id WHERE p.slug='loco-moco') s"));
+const pgPort=process.env.DEMO_PG_PORT??'5432';
+if(!/^\d+$/.test(pgPort)||Number(pgPort)<1||Number(pgPort)>65535)throw Error('Valid local demo PostgreSQL port required');
+const psqlEnv={...process.env};for(const key of ['PGHOST','PGHOSTADDR','PGPORT','PGSERVICE','PGSERVICEFILE'])delete psqlEnv[key];
+const sql=q=>execFileSync('psql',['-X','-h','127.0.0.1','-p',pgPort,'-A','-t','-d',db,'-c',q],{encoding:'utf8',env:psqlEnv}).trim();const original=JSON.parse(sql("SELECT json_agg(row_to_json(s)) FROM (SELECT pl.id,pl.offered,pl.available FROM product_locations pl JOIN products p ON p.id=pl.product_id WHERE p.slug='loco-moco') s"));
 const restore=()=>{for(const row of original)sql(`UPDATE product_locations SET offered=${row.offered},available=${row.available} WHERE id=${row.id}`);};
 const selected=p=>p.evaluate(()=>JSON.parse(localStorage.getItem('tsq-location')).state.selectedLocation);
 const details=p=>p.getByRole('heading',{name:'Loco Moco',exact:true}).locator('..');
