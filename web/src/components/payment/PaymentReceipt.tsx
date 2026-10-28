@@ -1,3 +1,4 @@
+import { Button } from '../ui/Button';
 import { useId } from 'react';
 import type { PaymentReceiptFacts } from '../../types/paymentReceipt';
 import PaymentEnvironmentBadge from './PaymentEnvironmentBadge';
@@ -38,7 +39,7 @@ export default function PaymentReceipt({ receipt, onPrint, orderReference }: Pay
   return <section aria-labelledby={heading} className="min-w-0 space-y-3 rounded-lg border border-gray-200 bg-white p-4 text-sm [overflow-wrap:anywhere]">
     <div className="flex flex-wrap items-center justify-between gap-2">
       <h2 id={heading} className="text-base font-semibold">Payment receipt</h2>
-      {onPrint && <button type="button" onClick={onPrint} className="min-h-11 touch-manipulation rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium transition-none! active:transform-none! active:bg-gray-100 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-gray-50 print:hidden">Reprint receipt</button>}
+      {onPrint && <span className="print:hidden"><Button variant="secondary" onClick={onPrint}>Reprint receipt</Button></span>}
     </div>
     <PaymentEnvironmentBadge environment={receipt.environment} inline />
     <dl className="grid min-w-0 grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-x-3 gap-y-2 [&>dd]:min-w-0 [&>dd]:text-right">
