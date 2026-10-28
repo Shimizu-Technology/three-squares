@@ -36,6 +36,7 @@ class StaffRouteCapabilities
       .merge("adjust_stock" => "stock.manage"),
     "product_images" => %w[index show create update destroy set_primary reorder].index_with { "catalog.manage" },
     "inventory_audits" => %w[index show summary for_product for_variant for_order].index_with { "stock.read" },
+    "product_offerings" => { "show" => "catalog.manage", "update" => "catalog.offerings.manage" },
     "pos_menu" => { "show" => "pos.sell" },
     "pos_orders" => { "create" => "pos.sell", "confirm_terminal_payment" => "payments.collect", "start_payment" => "payments.collect" },
     "payment_terminals" => {

@@ -31,6 +31,11 @@ module Payments
         if variant && variant.product_id != product.id
           raise Unavailable, 'Variant/product mismatch'
         end
+        # Membership writes use the same product lock. Recheck here even for
+        # untracked stock so reservation and final commit cannot sell a removed item.
+        if order.fulfillment_type == 'pickup' && !product.offered_for_location?(order.location_id)
+          raise Unavailable, 'Product is not offered at this location'
+        end
         pool = case product.inventory_level
         when 'none' then next
         when 'product' then product

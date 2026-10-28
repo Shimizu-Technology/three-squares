@@ -31,10 +31,7 @@ module Api
 
         if params[:location_id].present?
           location_id = params[:location_id].to_i
-          @products = @products
-            .joins(:product_locations)
-            .where(product_locations: { location_id: location_id, available: true })
-            .distinct
+          @products = @products.offered_at(location_id)
         end
 
         # Search
@@ -143,7 +140,7 @@ module Api
           allow_shipping: product.allow_shipping,
           available_location_ids: product.product_locations.available.pluck(:location_id),
           in_stock: product.in_stock?,
-          actually_available: product.actually_available?,
+          actually_available: product.actually_available? && (params[:location_id].blank? || !product.allow_pickup? || product.available_for_location?(params[:location_id])),
           primary_image_url: product.primary_image&.signed_url,
           collections: visible_collections(product).map { |c| { id: c.id, name: c.name, slug: c.slug } },
           variant_count: product.product_variants.available.count,
@@ -153,6 +150,7 @@ module Api
       end
 
       def serialize_product_full(product)
+        locations = offered_locations(product)
         {
           id: product.id,
           name: product.name,
@@ -171,10 +169,12 @@ module Api
           allow_pickup: product.allow_pickup,
           allow_shipping: product.allow_shipping,
           available_location_ids: product.product_locations.available.pluck(:location_id),
+          offered_location_ids: locations.map { |location| location[:id] },
+          offered_locations: locations,
           product_stock_quantity: product.product_stock_quantity,
           product_low_stock_threshold: product.product_low_stock_threshold,
           in_stock: product.in_stock?,
-          actually_available: product.actually_available?,
+          actually_available: product.actually_available? && (params[:location_id].blank? || !product.allow_pickup? || product.available_for_location?(params[:location_id])),
           collections: visible_collections(product).map { |c|
             {
               id: c.id,
@@ -192,6 +192,17 @@ module Api
         }
       end
 
+      # Direct links remain useful at a different counter. Disclose active menu
+      # locations independently of daily sold-out flags so the customer can switch.
+      def offered_locations(product)
+        return [] unless product.allow_pickup?
+
+        rows = product.product_locations.to_a
+        locations = Location.active.by_name
+        locations = locations.where(id: rows.select(&:offered?).map(&:location_id)) if rows.any?
+        locations.map { |location| { id: location.id, name: location.name, slug: location.slug } }
+      end
+
       def serialize_variant(variant)
         {
           id: variant.id,
@@ -204,7 +215,7 @@ module Api
           price_cents: variant.price_cents,
           pricing: CatalogPrice.resolve(product: variant.product, variant: variant, location_id: params[:location_id], online: true, settings: @storefront_settings).as_json,
           available: variant.available,
-          actually_available: variant.actually_available?,
+          actually_available: variant.actually_available? && (params[:location_id].blank? || !variant.product.allow_pickup? || variant.product.available_for_location?(params[:location_id])),
           in_stock: variant.in_stock?,
           stock_quantity: variant.stock_quantity,
           weight_oz: variant.weight_oz

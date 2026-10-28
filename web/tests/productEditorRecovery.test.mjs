@@ -15,6 +15,7 @@ const imports = {
   '@clerk/clerk-react': mockModule(`export const useAuth = () => ({ userId: ${context}.userId, getToken: async () => 'synthetic' });`),
   'react-hot-toast': mockModule('export default { success() {}, error() {} };'),
   '../../components/admin/StaffAccess.tsx': mockModule("export const useStaffAccess = () => ({ can: () => true, user: { operational_scope: 'all', authorized_locations: [{id:1},{id:2}] } });"),
+  '../../components/admin/LocationOfferingEditor': mockModule('export default function LocationOfferingEditor() { return null; }'),
   '../../components/ImageUpload': mockModule('export default function ImageUpload() { return null; }'),
   '../../components/VariantManager': mockModule('export default function VariantManager() { return null; }'),
   '../../components/admin/AdminModal': mockModule('export default function AdminModal() {}'),
@@ -135,11 +136,10 @@ test('text/selection edits persist immediately; validation and API failure retai
   await h.change('featured', true, 'checkbox');
   assert.equal(readProductDraft(h.userId, '42').data.name, 'Unfinished lunch');
   assert.equal(readProductDraft(h.userId, '42').data.featured, true);
-  h.find(node => node.props?.id === 'location_2').props.onChange();
-  await h.flush();
+  assert.equal(h.find(node => node.type.name === 'LocationOfferingEditor').props.productId, '42');
   h.find(node => node.props?.id === 'collection_5').props.onChange();
   await h.flush();
-  assert.deepEqual(readProductDraft(h.userId, '42').data.location_ids, [1, 2]);
+  assert.deepEqual(readProductDraft(h.userId, '42').data.location_ids, [1], 'saved menus are edited outside the recoverable catalog draft');
   assert.deepEqual(readProductDraft(h.userId, '42').data.collection_ids, [5]);
   await h.change('name', '');
   await h.submit();

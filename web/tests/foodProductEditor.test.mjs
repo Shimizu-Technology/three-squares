@@ -15,6 +15,7 @@ const imports = {
   '@clerk/clerk-react': mockModule(`export const useAuth = () => ({ userId: ${context}.userId, getToken: async () => 'synthetic' });`),
   'react-hot-toast': mockModule('export default { success() {}, error() {} };'),
   '../../components/admin/StaffAccess.tsx': mockModule("export const useStaffAccess = () => ({ can: () => globalThis.__foodProductEditor.canManageStock, user: { operational_scope: 'all', authorized_locations: [{id:1},{id:2}] } });"),
+  '../../components/admin/LocationOfferingEditor': mockModule('export default function LocationOfferingEditor() { return null; }'),
   '../../components/ImageUpload': mockModule('export default function ImageUpload() { return null; }'),
   '../../components/VariantManager': mockModule('export default function VariantManager() { return null; }'),
   '../../components/admin/AdminModal': mockModule('export default function AdminModal() {}'),
@@ -125,7 +126,7 @@ test('seed, legacy and custom saved types have truthful options and survive an u
     assert.equal(h.field('product_low_stock_threshold').props.value, 0);
     await h.change('description', 'Lunch details updated');
     await h.submit();
-    const { id: _id, images: _images, ...expected } = product;
+    const { id: _id, images: _images, location_ids: _separatelySavedLocations, ...expected } = product;
     assert.deepEqual(h.requests[0].product, { ...expected, description: 'Lunch details updated' });
     assert.equal(h.field('product_type').props.value, type);
     h.unmount();
