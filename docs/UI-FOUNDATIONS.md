@@ -107,3 +107,19 @@ Menus, Products headers, order commands and obvious Settings action groups now u
 `ChoiceGroup` is a wrapping single-choice filter/section primitive. It uses native type=button controls, `aria-pressed` selection and a named group. Each choice remains in normal keyboard order; it does not claim ARIA tab semantics or require arrow-key navigation. Its 44px targets and selected navy state are stable on fine and coarse pointers. Use it for queue stages and editor/settings sections, while ordinary actions remain Button.
 
 `ActionTile` is a router navigation link for dashboard shortcuts, with a shared 112px minimum height, 40px icon slot, 20px icon and 14/20 label. The four dashboard shortcuts use two columns on narrow layouts and four where room permits. Settings remains in workspace navigation. Geometry and interaction checks extend the development fixture; real admin saved journeys require separate isolated-demo QA.
+
+## Shared form fields (P5a)
+
+Use named `Field`, `Input`, `Select` and `Textarea` exports from their respective files in `components/ui`. Field wraps exactly one control and associates a visible label with its existing ID or a generated unique ID. Help and error slots add their IDs to existing `aria-describedby` references; errors set `aria-invalid`. The caller retains values, handlers, refs, validation and request state. Static errors are not automatically live regions. Native required semantics remain on the control, with a visible required marker in the label.
+
+```tsx
+<Field label="Device name" help="Use a name staff recognize." error={nameError}>
+  <Input value={name} onChange={event => setName(event.target.value)} required />
+</Field>
+<Field label="Location"><Select value={location} onChange={changeLocation}>{options}</Select></Field>
+<Field label="Notes"><Textarea value={notes} onChange={changeNotes} /></Field>
+```
+
+Input and single-choice Select are exactly44px border-box high,1px neutral border,8px radius,12px horizontal padding and14/20 type; coarse pointers use16/24 type. Field labels sit above controls with4px gaps. Textarea is multiline: default3 rows, minimum96px,12px padding and native vertical resize. It does not force multiline content into a44px box. Help/error type is14/20. Controls have the shared2px focus outline/2px offset and one disabled opacity rule. Keep field `className` layout-only; the existing AST gate rejects geometry/color overrides, inline styles and spread props at adoption sites. Checkboxes, switches, file pickers and multi-select lists keep separate semantic recipes.
+
+Current Device name/location plus Refresh/Save adopt these recipes first. Other forms migrate in the remaining admin/customer slices. The dev-only `fixtures/ui-fields.html` provides label/help/error, native submission, disabled and geometry acceptance; it is excluded from the normal production entry.

@@ -71,3 +71,14 @@ test('JSX-valued local variables belong to the enclosing approved component', ()
   const functions = scan('const Arrow = () => <button/>; const Expression = function(){return <button/>};');
   assert.deepEqual(functions.map(e=>e.component),['Arrow','Expression']);
 });
+
+test('shared fields reject new geometry/color overrides and preserve static layout props', () => {
+  for (const name of ['Field','Input','Select','Textarea']) {
+    const prefix = `import {${name} as Control} from '../components/ui/${name}';`;
+    assert.equal(scan(`${prefix}const Page=()=> <Control className="w-full sm:max-w-lg"/>;`).length,0);
+    for (const attributes of ['className="h-8 text-xs"','className={recipe}','style={{height:32}}','{...props}']) {
+      const rows=scan(`${prefix}const Page=()=> <Control ${attributes}/>;`);
+      assert.equal(rows.length,1);assert.equal(rows[0].kind,'shared-override');
+    }
+  }
+});

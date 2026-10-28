@@ -33,7 +33,7 @@ export function inspectSource(file, text, allowlist = specializedControls) {
     const specifier = statement.moduleSpecifier.text;
     for (const entry of statement.importClause?.namedBindings?.elements ?? []) {
       const original = entry.propertyName?.text ?? entry.name.text;
-      if (['Button', 'IconButton'].includes(original) && /(?:^|\/)ui\/(?:Button|IconButton)(?:\.tsx)?$/.test(specifier)) sharedNames.add(entry.name.text);
+      if (['Button', 'IconButton', 'Field', 'Input', 'Select', 'Textarea'].includes(original) && /(?:^|\/)ui\/(?:Button|IconButton|Field|Input|Select|Textarea)(?:\.tsx)?$/.test(specifier)) sharedNames.add(entry.name.text);
       if (['Link', 'NavLink'].includes(original) && specifier === 'react-router-dom') linkNames.add(entry.name.text);
     }
   }
