@@ -20,6 +20,7 @@ try{
    for(const[width,height]of[[768,1024],[1024,768],[1440,900],[390,844]])for(const touch of[false,true]){
     if(process.env.CUSTOMER_QA_ENGINE&&engine!==process.env.CUSTOMER_QA_ENGINE)continue;
     if(process.env.CUSTOMER_QA_WIDTH&&width!==Number(process.env.CUSTOMER_QA_WIDTH))continue;
+    if(process.env.CUSTOMER_QA_TOUCH==='1'&&!touch)continue;
     const context=await browser.newContext({viewport:{width,height},hasTouch:touch}),page=await context.newPage(),label=`${engine}-${width}-${touch?'touch':'fine'}`,email=`forms-${run}-${label}@example.test`;
     const item={engine,width,height,touch,email,status:'passed'};
     try{
@@ -28,10 +29,10 @@ try{
      if(touch){
       let posts=0;await page.route('**/api/v1/catering',async route=>{posts++;await route.fulfill({status:422,json:{errors:['Fictional inquiry service failure']}});});
       await submit.click();assert.equal(posts,0);await expect(dialog.locator('#catering-contact-name')).toBeFocused();
-      await dialog.getByLabel('Name',{exact:true}).fill('Fictional Inquiry');await dialog.getByLabel('Email',{exact:true}).fill(email);await dialog.getByLabel('Event Type',{exact:true}).selectOption('corporate');await dialog.getByLabel('Number of Guests',{exact:true}).fill('15');
-      const date=dialog.getByLabel('Event Date',{exact:true}),min=await date.getAttribute('min'),future=new Date(`${min}T00:00:00Z`);future.setUTCDate(future.getUTCDate()+7);await date.fill(future.toISOString().slice(0,10));
+      await dialog.getByLabel(/^Name(?: \*)?$/).fill('Fictional Inquiry');await dialog.getByLabel(/^Email(?: \*)?$/).fill(email);await dialog.getByLabel(/^Event Type(?: \*)?$/).selectOption('corporate');await dialog.getByLabel(/^Number of Guests(?: \*)?$/).fill('15');
+      const date=dialog.getByLabel(/^Event Date(?: \*)?$/),min=await date.getAttribute('min'),future=new Date(`${min}T00:00:00Z`);future.setUTCDate(future.getUTCDate()+7);await date.fill(future.toISOString().slice(0,10));
       assert.equal(await date.getAttribute('aria-describedby'),'catering-event-date-help');
-      await submit.click();const error=dialog.getByRole('alert');await expect(error).toHaveText('Fictional inquiry service failure');await expect(error).toBeFocused();await expect(dialog.getByLabel('Name',{exact:true})).toHaveValue('Fictional Inquiry');assert.equal(posts,1);await page.unroute('**/api/v1/catering');
+      await submit.click();const error=dialog.getByRole('alert');await expect(error).toHaveText('Fictional inquiry service failure');await expect(error).toBeFocused();await expect(dialog.getByLabel(/^Name(?: \*)?$/)).toHaveValue('Fictional Inquiry');assert.equal(posts,1);await page.unroute('**/api/v1/catering');
       await page.route('**/api/v1/catering',async route=>{const response=await route.fetch();await new Promise(resolve=>setTimeout(resolve,800));await route.fulfill({response});});
       const before=await rect(submit),saved=page.waitForResponse(r=>r.url()===`${api}/api/v1/catering`&&r.status()===201);await submit.click();await expect(submit).toBeDisabled();assert.deepEqual(await rect(submit),before);
       await page.keyboard.press('Escape');await expect(dialog).not.toBeVisible();item.inquiry=(await(await saved).json()).inquiry;
@@ -41,22 +42,22 @@ try{
      await page.goto(`${base}/contact`);await page.locator('#message').waitFor();item.contact=await measure(page,touch);await page.locator('#message').scrollIntoViewIfNeeded();
      if(touch){
       const send=page.getByRole('button',{name:'Send Message',exact:true});let posts=0;await page.route('**/api/v1/contact',async route=>{posts++;await route.fulfill({status:500,json:{errors:['Fictional contact service failure']}});});
-      await send.click();assert.equal(posts,0);await page.getByLabel('Your Name',{exact:true}).fill('Fictional Contact');await page.getByLabel('Email Address',{exact:true}).fill(email);await page.getByLabel('Subject',{exact:true}).selectOption('general');await page.getByLabel('Message',{exact:true}).fill('Fictional fixture message for UI acceptance.');await send.click();
-      const error=page.getByRole('alert');await expect(error).toHaveText('Fictional contact service failure');await expect(error).toBeFocused();await expect(page.getByLabel('Message',{exact:true})).toHaveValue('Fictional fixture message for UI acceptance.');assert.equal(posts,1);await page.unroute('**/api/v1/contact');
+      await send.click();assert.equal(posts,0);await page.getByLabel(/^Your Name(?: \*)?$/).fill('Fictional Contact');await page.getByLabel(/^Email Address(?: \*)?$/).fill(email);await page.getByLabel(/^Subject(?: \*)?$/).selectOption('general');await page.getByLabel(/^Message(?: \*)?$/).fill('Fictional fixture message for UI acceptance.');await send.click();
+      const error=page.getByRole('alert');await expect(error).toHaveText('Fictional contact service failure');await expect(error).toBeFocused();await expect(page.getByLabel(/^Message(?: \*)?$/)).toHaveValue('Fictional fixture message for UI acceptance.');assert.equal(posts,1);await page.unroute('**/api/v1/contact');
       await page.route('**/api/v1/contact',async route=>{const response=await route.fetch();await new Promise(resolve=>setTimeout(resolve,800));await route.fulfill({response});});
       const before=await rect(send);await send.click();await expect(send).toBeDisabled();assert.deepEqual(await rect(send),before);await expect(page.getByRole('heading',{name:'Mahalo for reaching out!',exact:true})).toBeVisible();await expect(page.getByRole('status').filter({hasText:'Mahalo for reaching out!'})).toBeFocused();
-      await page.getByRole('button',{name:'Send another message',exact:true}).click();await expect(page.getByLabel('Your Name',{exact:true})).toHaveValue('');await page.unroute('**/api/v1/contact');item.contactSaved=true;
+      await page.getByRole('button',{name:'Send another message',exact:true}).click();await expect(page.getByLabel(/^Your Name(?: \*)?$/)).toHaveValue('');await page.unroute('**/api/v1/contact');item.contactSaved=true;
      }
      await page.screenshot({path:path.join(output,`contact-${label}.png`)});
      await checkout(page);item.checkout=await measure(page,touch);
      if(touch){
-      const pay=page.getByRole('button',{name:'Pay $12.95',exact:true});await expect(pay).toBeDisabled();await page.getByLabel('Full Name',{exact:true}).fill('Fictional Customer');await page.getByLabel('Email',{exact:true}).fill(email);await page.getByLabel('Phone',{exact:true}).fill('6715550100');await page.getByLabel('Additional notes',{exact:true}).fill('Fictional pickup note.');
-      await page.getByRole('button',{name:'+ Special instructions',exact:true}).click();await page.getByLabel('Instructions for Cheeseburger',{exact:true}).fill('Fictional sauce on side');assert.equal((await rect(page.getByRole('button',{name:'Remove special instructions',exact:true}))).height,44);
-      const recovery=width===390||width===1440;await page.getByLabel('Card outcome',{exact:true}).selectOption(recovery?'timeout_before_dispatch':'approve');const review=page.getByRole('checkbox',{name:/I have reviewed my items/});await review.check();assert.ok(await review.evaluate(el=>el.closest('label').getBoundingClientRect().height>=44));await expect(pay).toBeEnabled();assert.equal((await rect(pay)).height,52);
+      const pay=page.getByRole('button',{name:'Pay $12.95',exact:true});await expect(pay).toBeDisabled();await page.getByLabel(/^Full Name(?: \*)?$/).fill('Fictional Customer');await page.getByLabel(/^Email(?: \*)?$/).fill(email);await page.getByLabel(/^Phone(?: \*)?$/).fill('6715550100');await page.getByLabel(/^Additional notes(?: \*)?$/).fill('Fictional pickup note.');
+      await page.getByRole('button',{name:'+ Special instructions',exact:true}).click();await page.getByLabel(/^Instructions for Cheeseburger(?: \*)?$/).fill('Fictional sauce on side');assert.equal((await rect(page.getByRole('button',{name:'Remove special instructions',exact:true}))).height,44);
+      const recovery=width===390||width===1440;await page.getByLabel(/Card outcome/).selectOption(recovery?'timeout_before_dispatch':'approve');const review=page.getByRole('checkbox',{name:/I have reviewed my items/});await review.check();assert.ok(await review.evaluate(el=>el.closest('label').getBoundingClientRect().height>=44));await expect(pay).toBeEnabled();assert.equal((await rect(pay)).height,52);
       await page.screenshot({path:path.join(output,`checkout-${label}.png`),fullPage:true});await pay.click();
       if(recovery){
        const pending=page.locator('[role="status"]').filter({hasText:/Your order .* is saved/});await expect(pending).toBeVisible({timeout:30000});await page.reload();const check=page.getByRole('button',{name:'Check payment status',exact:true});await expect(check).toBeVisible();assert.equal((await rect(check)).height,44);await check.click();
-       await page.getByLabel('Card outcome',{exact:true}).selectOption('approve');await page.getByRole('checkbox',{name:/I have reviewed the saved order total/}).check();const retry=page.getByRole('button',{name:'Retry card payment for this saved order',exact:true});await expect(retry).toBeEnabled();assert.equal((await rect(retry)).height,44);await retry.click();item.recovered=true;
+       await page.getByLabel(/Card outcome/).selectOption('approve');await page.getByRole('checkbox',{name:/I have reviewed the saved order total/}).check();const retry=page.getByRole('button',{name:'Retry card payment for this saved order',exact:true});await expect(retry).toBeEnabled();assert.equal((await rect(retry)).height,44);await retry.click();item.recovered=true;
       }
       await page.waitForURL(/\/orders\/\d+/,{timeout:30000});await expect(page.getByRole('heading',{name:'Order Confirmed!',exact:true})).toBeVisible();const id=Number(new URL(page.url()).pathname.split('/').at(-1)),capability=await page.evaluate(id=>localStorage.getItem(`tsq-order-capability:${id}`),id);
       const response=await context.request.get(`${api}/api/v1/orders/${id}`,{headers:{'X-Order-Capability':capability}});assert.equal(response.status(),200);const{order}=await response.json();assert.equal(order.payment_status,'paid');assert.equal(order.total_cents,1295);assert.equal(order.notes,'Fictional pickup note.');item.orderId=id;item.totalCents=order.total_cents;
