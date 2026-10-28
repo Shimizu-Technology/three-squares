@@ -12,9 +12,10 @@ const EMPTY_CART_ITEMS: Array<{ product: { allow_pickup?: boolean; allow_shippin
 interface ProductCardProps {
   product: Product;
   locationNameById?: Record<number, string>;
+  showPickupLocation?: boolean;
 }
 
-export default function ProductCard({ product, locationNameById = {} }: ProductCardProps) {
+export default function ProductCard({ product, locationNameById = {}, showPickupLocation = false }: ProductCardProps) {
   const isOnSale = product.pricing?.compare_at_price_cents != null;
   const cartItems = useCartStore((state) => state.cart?.items) ?? EMPTY_CART_ITEMS;
   const cartCompatibility = evaluateCartCompatibility(cartItems, product);
@@ -24,6 +25,8 @@ export default function ProductCard({ product, locationNameById = {} }: ProductC
   const conflictText = relevantLocationNames.length > 0
     ? `Only pickup at ${relevantLocationNames.join(', ')}`
     : 'Pickup location conflicts with current cart';
+
+  const pickupLocations = product.available_location_ids?.map(id => locationNameById[id]).filter(Boolean).join(' · ') || 'Choose a location';
 
   return (
     <CustomerCard to={`/products/${product.slug}`}>
@@ -54,6 +57,10 @@ export default function ProductCard({ product, locationNameById = {} }: ProductC
         <h3 className="customer-card__title">
           {product.name}
         </h3>
+
+        {showPickupLocation && <p className="h-10 shrink-0 line-clamp-2 text-xs leading-5 text-warm-600" title={`Pickup: ${pickupLocations}`}>
+          Pickup: {pickupLocations}
+        </p>}
 
         <div className="customer-card__price">
           <CatalogPrice pricing={product.pricing} productType={product.product_type} compact />

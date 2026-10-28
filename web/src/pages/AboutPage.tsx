@@ -1,5 +1,5 @@
 import { Button } from '../components/ui/Button';
-import { Link } from 'react-router-dom';
+import { CustomerCard } from '../components/ui/CustomerCard';
 import Breadcrumbs from '../components/Breadcrumbs';
 
 export default function AboutPage() {
@@ -50,16 +50,16 @@ export default function AboutPage() {
         <h2 className="text-3xl sm:text-4xl font-bold text-warm-900 tracking-tight">Two places in Tamuning</h2>
         <p className="mt-3 text-warm-700 max-w-2xl">Visit the Main restaurant on Chalan San Antonio or Three Squares inside Don Quijote. See each location's hours and menu before heading over.</p>
         <div className="grid sm:grid-cols-2 gap-4 mt-8">
-          <Link to="/menu/three-squares-main" className="block rounded-xl border border-warm-200 bg-white p-6 hover:border-tsPrimary focus-visible:outline-2 focus-visible:outline-tsPrimary">
+          <CustomerCard kind="collection" to="/menu/three-squares-main"><div className="p-4">
             <h3 className="text-xl font-bold text-warm-900">Three Squares Main</h3>
             <p className="mt-2 text-warm-700">416 Chalan San Antonio, Tamuning</p>
             <span className="inline-block mt-5 font-semibold text-tsPrimary">View Main menu →</span>
-          </Link>
-          <Link to="/menu/three-squares-donki" className="block rounded-xl border border-warm-200 bg-white p-6 hover:border-tsPrimary focus-visible:outline-2 focus-visible:outline-tsPrimary">
+          </div></CustomerCard>
+          <CustomerCard kind="collection" to="/menu/three-squares-donki"><div className="p-4">
             <h3 className="text-xl font-bold text-warm-900">Three Squares @ Donki</h3>
             <p className="mt-2 text-warm-700">Inside Don Quijote, Tamuning</p>
             <span className="inline-block mt-5 font-semibold text-tsPrimary">View Donki menu →</span>
-          </Link>
+          </div></CustomerCard>
         </div>
       </section>
     </div>

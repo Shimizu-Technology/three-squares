@@ -1,3 +1,4 @@
+import { Button } from '../components/ui/Button';
 import { useEffect, useState } from 'react';
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
@@ -235,33 +236,33 @@ export default function ReturnsPage() {
               Call or message us for help with missing items, incorrect items, food quality, or refund questions.
             </p>
             <div className="flex flex-col sm:flex-row sm:flex-wrap gap-4 justify-center">
-              <a
+              <Button
                 href={getStorePhoneTel(storePhone)}
-                className="inline-flex items-center justify-center border border-warm-300 text-warm-700 px-6 py-3 rounded-lg font-medium hover:bg-warm-50 transition"
+                variant="secondary"
               >
                 Call {storePhone}
-              </a>
-              <a
+              </Button>
+              <Button
                 href={STORE_WHATSAPP_URL}
-                className="inline-flex items-center justify-center border border-warm-300 text-warm-700 px-6 py-3 rounded-lg font-medium hover:bg-warm-50 transition"
+                variant="secondary"
               >
                 WhatsApp
-              </a>
-              <a
+              </Button>
+              <Button
                 href="/contact"
-                className="group inline-flex items-center justify-center gap-2 bg-warm-900 text-white px-6 py-3 rounded-lg font-medium hover:bg-warm-800 transition"
+                variant="primary"
               >
                 Contact Us
                 <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
                 </svg>
-              </a>
-              <a
+              </Button>
+              <Button
                 href={`mailto:${storeEmail}`}
-                className="inline-flex items-center justify-center gap-2 border border-warm-300 text-warm-700 px-6 py-3 rounded-lg font-medium hover:bg-warm-50 transition"
+                variant="secondary"
               >
                 Email {storeEmail}
-              </a>
+              </Button>
             </div>
           </div>
         </FadeIn>

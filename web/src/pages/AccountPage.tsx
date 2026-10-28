@@ -1,7 +1,7 @@
+import { NavigationLink } from '../components/ui/NavigationLink';
 import { IconButton } from '../components/ui/IconButton';
 import { Button } from '../components/ui/Button';
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useUser, useAuth, SignInButton, UserProfile } from '@clerk/clerk-react';
 import axios from 'axios';
 import { User, Package, Settings, ChevronRight, ShoppingBag, LogIn, X } from 'lucide-react';
@@ -229,14 +229,14 @@ export default function AccountPage() {
                 {!ordersLoading && !ordersError && recentOrders.length > 0 && (
                   <div className="divide-y divide-warm-100">
                     {recentOrders.map((order) => (
-                      <Link
+                      <NavigationLink
                         key={order.id}
                         to={`/orders/${order.id}`}
-                        className="flex items-center justify-between py-4 first:pt-0 last:pb-0 group hover:bg-warm-50 -mx-2 px-2 rounded-lg transition"
+                        className="w-full gap-4"
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-warm-900 group-hover:text-tsPrimary transition">
+                            <span className="font-medium text-warm-900 transition">
                               {order.order_number}
                             </span>
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
@@ -251,9 +251,9 @@ export default function AccountPage() {
                         </div>
                         <div className="flex items-center gap-2 ml-4">
                           <span className="font-semibold text-warm-900">{order.total_formatted}</span>
-                          <ChevronRight className="w-4 h-4 text-warm-400 group-hover:text-tsPrimary transition" />
+                          <ChevronRight className="w-4 h-4 text-warm-400 transition" />
                         </div>
-                      </Link>
+                      </NavigationLink>
                     ))}
                   </div>
                 )}

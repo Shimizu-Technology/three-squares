@@ -2,9 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import ts from 'typescript';
+import { uiModules, expandUi } from './helpers/uiModules.mjs';
 const url = code => `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`;
 const ctx = 'globalThis.__customerLocationPicker';
 const mocks = {
+  ...uiModules,
   react: url(['useState','useRef','useEffect','useCallback'].map(name => `export const ${name}=(...args)=>${ctx}.${name}(...args);`).join('\n')),
   '../store/locationStore': url(`export const useLocationStore=Object.assign(()=>${ctx}.location,{getState:()=>${ctx}.location});`),
   '../store/cartStore': url(`export const useCartStore=Object.assign(()=>${ctx}.cartState,{getState:()=>${ctx}.cartState});`),
@@ -14,7 +16,7 @@ const mocks = {
 };
 const source = ts.transpileModule(readFileSync(new URL('../src/components/LocationPicker.tsx',import.meta.url),'utf8'),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace(/from ['"]([^'"]+)['"]/g,(_,name)=>`from ${JSON.stringify(mocks[name]||import.meta.resolve(name))}`);
 const Picker = (await import(url(source))).default;
-const nodes = node => !node || typeof node !== 'object' ? [] : [node,...[node.props?.children].flat(Infinity).flatMap(nodes)];
+const nodes = node => {node=expandUi(node);return !node || typeof node !== 'object' ? [] : [node,...[node.props?.children].flat(Infinity).flatMap(nodes)];};
 const text = node => typeof node === 'string' ? node : node && typeof node !== 'boolean' ? [node.props?.children].flat(Infinity).map(text).join('') : '';
 function harness(t,count) {
   const selected={id:2,name:'Fictional current location',slug:'current'},target={id:1,name:'Fictional carrying location',slug:'carrying'};

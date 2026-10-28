@@ -1,3 +1,7 @@
+import { IconButton } from '../components/ui/IconButton';
+import { Select } from '../components/ui/Select';
+import { Input } from '../components/ui/Input';
+import { Button } from '../components/ui/Button';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import type { Collection, Product, Location } from '../services/api';
@@ -248,12 +252,12 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
             <p className="text-warm-600 mb-8">
               We could not load the menu. Please try again.
             </p>
-            <button
+            <Button
               onClick={fetchProducts}
-              className="bg-tsPrimary text-white px-6 py-3 rounded-lg hover:bg-primary-dark transition"
+              variant="primary"
             >
               Refresh
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -276,27 +280,14 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
             <div>
               <label htmlFor="menu-search" className="sr-only">Search menu</label>
               <div className="relative">
-                <input
+                <Input
                   type="text"
                   id="menu-search"
                   placeholder="Search menu..."
                   value={search}
                   onChange={(e) => handleSearch(e.target.value)}
-                  className="w-full px-4 py-3 pl-11 text-sm sm:text-base bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent focus:bg-white transition"
+                  className="w-full"
                 />
-                <svg
-                  className="absolute left-4 top-3.5 h-5 w-5 text-warm-400"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
               </div>
             </div>
 
@@ -304,11 +295,11 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
             {visibleCollections.length > 0 && (
               <div>
                 <label htmlFor="menu-filter-collection" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Category</label>
-                <select
+                <Select
                   id="menu-filter-collection"
                   value={collection}
                   onChange={(e) => handleFilterChange('collection', e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
+                  className="w-full"
                 >
                   <option value="">All categories</option>
                   {visibleCollections.map((c) => (
@@ -316,7 +307,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                       {c.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
             )}
 
@@ -331,11 +322,11 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
               {/* Business Line Filter */}
               <div>
                 <label htmlFor="menu-filter-business" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Menu</label>
-                <select
+                <Select
                   id="menu-filter-business"
                   value={activeBusinessLine}
                   onChange={(e) => handleFilterChange('business_line', e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
+                  className="w-full"
                 >
                   <option value="">All menus</option>
                   {enabledStorefronts.map((storefront) => (
@@ -343,18 +334,18 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                       {storefront.label}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>
 
               {/* Product Type Filter */}
               {availableProductTypes.length > 0 && (
                 <div>
                   <label htmlFor="menu-filter-type" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Item type</label>
-                  <select
+                  <Select
                     id="menu-filter-type"
                     value={productType}
                     onChange={(e) => handleFilterChange('type', e.target.value)}
-                    className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
+                    className="w-full"
                   >
                     <option value="">All Types</option>
                     {availableProductTypes.map((type) => (
@@ -362,18 +353,18 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                         {productTypeLabel(type)}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                 </div>
               )}
 
               {/* Sort Options */}
               <div>
                 <label htmlFor="menu-filter-sort" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Sort By</label>
-                <select
+                <Select
                   id="menu-filter-sort"
                   value={sort}
                   onChange={(e) => handleFilterChange('sort', e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
+                  className="w-full"
                 >
                   <option value="">Featured</option>
                   <option value="price_asc">Price: Low to High</option>
@@ -381,17 +372,17 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                   <option value="newest">Newest First</option>
                   <option value="name_asc">Name: A-Z</option>
                   <option value="name_desc">Name: Z-A</option>
-                </select>
+                </Select>
               </div>
 
               {/* Pickup Location Filter */}
               {!pickupLocation && <div>
                 <label htmlFor="menu-filter-pickup" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Pickup Location</label>
-                <select
+                <Select
                   id="menu-filter-pickup"
                   value={locationId}
                   onChange={(e) => handleFilterChange('location_id', e.target.value)}
-                  className="w-full px-3 py-2.5 text-sm bg-warm-50 border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent hover:border-warm-300 transition"
+                  className="w-full"
                 >
                   <option value="" disabled>Choose pickup location</option>
                   {locations.map((location) => (
@@ -399,21 +390,21 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                       {location.name}
                     </option>
                   ))}
-                </select>
+                </Select>
               </div>}
 
               {/* Clear Filters Button */}
               <div className="flex items-end">
-                <button
+                <Button
                   onClick={clearFilters}
                   disabled={activeFilterCount === 0}
-                  className="w-full px-4 py-2.5 text-sm font-semibold text-warm-600 bg-warm-100 border border-warm-200 rounded-lg hover:bg-warm-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  className="w-full" variant="secondary"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                   Reset filters
-                </button>
+                </Button>
               </div>
             </div>
 
@@ -426,29 +417,29 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
               {search && (
                 <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
                   <span className="truncate max-w-[220px] sm:max-w-[280px]">Search: "{search}"</span>
-                  <button
+                  <IconButton
                     onClick={() => handleSearch('')}
                     aria-label="Remove search filter"
-                    className="hover:bg-warm-700 rounded-full p-0.5"
+                    variant="ghost" surface="dark"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </button>
+                  </IconButton>
                 </span>
               )}
               {collection && (
                 <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
                   <span className="truncate max-w-[220px] sm:max-w-[280px]">{visibleCollections.find(c => c.slug === collection)?.name || collections.find(c => c.slug === collection)?.name}</span>
-                  <button
+                  <IconButton
                     onClick={() => handleFilterChange('collection', '')}
                     aria-label="Remove collection filter"
-                    className="hover:bg-warm-700 rounded-full p-0.5"
+                    variant="ghost" surface="dark"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </button>
+                  </IconButton>
                 </span>
               )}
               {businessLine && (
@@ -456,43 +447,43 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                   <span className="truncate max-w-[220px] sm:max-w-[280px]">
                     Menu: {activeBusinessLine === 'three_squares' ? 'Three Squares' : activeBusinessLine === 'latte_stone' ? 'Latte Stone Cookies' : 'Catering'}
                   </span>
-                  <button
+                  <IconButton
                     onClick={() => handleFilterChange('business_line', '')}
                     aria-label="Remove menu filter"
-                    className="hover:bg-warm-700 rounded-full p-0.5"
+                    variant="ghost" surface="dark"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </button>
+                  </IconButton>
                 </span>
               )}
               {productType && (
                 <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
                   <span className="truncate max-w-[220px] sm:max-w-[280px]">{productTypeLabel(productType)}</span>
-                  <button
+                  <IconButton
                     onClick={() => handleFilterChange('type', '')}
                     aria-label="Remove product type filter"
-                    className="hover:bg-warm-700 rounded-full p-0.5"
+                    variant="ghost" surface="dark"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </button>
+                  </IconButton>
                 </span>
               )}
               {sort && (
                 <span className="inline-flex max-w-full items-center gap-1.5 px-3 py-1 bg-warm-900 text-white text-sm rounded-full">
                   <span className="truncate max-w-[220px] sm:max-w-[280px]">Sort: {sort === 'price_asc' ? 'Price ↑' : sort === 'price_desc' ? 'Price ↓' : sort === 'newest' ? 'Newest' : sort === 'name_asc' ? 'A-Z' : 'Z-A'}</span>
-                  <button
+                  <IconButton
                     onClick={() => handleFilterChange('sort', '')}
                     aria-label="Remove sort filter"
-                    className="hover:bg-warm-700 rounded-full p-0.5"
+                    variant="ghost" surface="dark"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
-                  </button>
+                  </IconButton>
                 </span>
               )}
 
@@ -524,12 +515,12 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
             <p className="text-warm-700 text-lg font-medium mb-2">No products found</p>
             <p className="text-warm-500 mb-6">Try adjusting your search or filters</p>
             {search && (
-              <button
+              <Button
                 onClick={() => handleSearch('')}
-                className="btn-primary"
+                variant="primary"
               >
                 Clear search
-              </button>
+              </Button>
             )}
           </div>
         ) : (
@@ -543,17 +534,17 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex flex-wrap justify-center items-center gap-2 sm:gap-3">
-                <button
+                <Button
                   aria-label="Previous page"
                   onClick={() => handlePageChange(page - 1)}
                   disabled={page === 1}
-                  className="flex items-center gap-1 px-4 py-2.5 text-sm font-medium bg-white border border-warm-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-warm-50 hover:border-warm-300 transition"
+                  variant="secondary"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                   </svg>
                   <span className="hidden sm:inline">Previous</span>
-                </button>
+                </Button>
                 
                 <div className="contents">
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
@@ -569,34 +560,30 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                     }
                     
                     return (
-                      <button
+                      <IconButton
                         key={pageNum}
                         aria-label={`Page ${pageNum}`}
                         aria-current={page === pageNum ? 'page' : undefined}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`min-w-[44px] min-h-[44px] px-3 py-2 text-sm font-medium rounded-lg transition ${
-                          page === pageNum
-                            ? 'bg-tsPrimary text-white shadow-md'
-                            : 'bg-white border border-warm-200 hover:bg-warm-50 hover:border-warm-300'
-                        }`}
+                        variant={page === pageNum ? 'primary' : 'secondary'}
                       >
                         {pageNum}
-                      </button>
+                      </IconButton>
                     );
                   })}
                 </div>
 
-                <button
+                <Button
                   aria-label="Next page"
                   onClick={() => handlePageChange(page + 1)}
                   disabled={page === totalPages}
-                  className="flex items-center gap-1 px-4 py-2.5 text-sm font-medium bg-white border border-warm-200 rounded-lg disabled:opacity-40 disabled:cursor-not-allowed hover:bg-warm-50 hover:border-warm-300 transition"
+                  variant="secondary"
                 >
                   <span className="hidden sm:inline">Next</span>
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                   </svg>
-                </button>
+                </Button>
               </div>
             )}
           </>
