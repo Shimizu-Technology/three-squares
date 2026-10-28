@@ -75,7 +75,8 @@ module SeedProductCatalog
       selected_location_ids = Location.where(slug: location_slugs).pluck(:id)
       all_locations.each do |location|
         record = ProductLocation.find_or_initialize_by(product_id: product.id, location_id: location.id)
-        record.available = selected_location_ids.include?(location.id)
+        record.offered = selected_location_ids.include?(location.id)
+        record.available = true # Not carried is membership, never a daily sold-out flag.
         record.save!
       end
     end

@@ -31,10 +31,7 @@ module Api
 
         if params[:location_id].present?
           location_id = params[:location_id].to_i
-          @products = @products
-            .joins(:product_locations)
-            .where(product_locations: { location_id: location_id, available: true })
-            .distinct
+          @products = @products.offered_at(location_id)
         end
 
         # Search
@@ -100,6 +97,9 @@ module Api
 
       # GET /api/v1/products/:id
       def show
+        if params[:location_id].present? && @product.allow_pickup? && !@product.offered_for_location?(params[:location_id])
+          return render json: { error: "Product not found" }, status: :not_found
+        end
         render json: serialize_product_full(@product)
       end
 
@@ -143,7 +143,7 @@ module Api
           allow_shipping: product.allow_shipping,
           available_location_ids: product.product_locations.available.pluck(:location_id),
           in_stock: product.in_stock?,
-          actually_available: product.actually_available?,
+          actually_available: product.actually_available? && (params[:location_id].blank? || !product.allow_pickup? || product.available_for_location?(params[:location_id])),
           primary_image_url: product.primary_image&.signed_url,
           collections: visible_collections(product).map { |c| { id: c.id, name: c.name, slug: c.slug } },
           variant_count: product.product_variants.available.count,
@@ -174,7 +174,7 @@ module Api
           product_stock_quantity: product.product_stock_quantity,
           product_low_stock_threshold: product.product_low_stock_threshold,
           in_stock: product.in_stock?,
-          actually_available: product.actually_available?,
+          actually_available: product.actually_available? && (params[:location_id].blank? || !product.allow_pickup? || product.available_for_location?(params[:location_id])),
           collections: visible_collections(product).map { |c|
             {
               id: c.id,
@@ -204,7 +204,7 @@ module Api
           price_cents: variant.price_cents,
           pricing: CatalogPrice.resolve(product: variant.product, variant: variant, location_id: params[:location_id], online: true, settings: @storefront_settings).as_json,
           available: variant.available,
-          actually_available: variant.actually_available?,
+          actually_available: variant.actually_available? && (params[:location_id].blank? || !variant.product.allow_pickup? || variant.product.available_for_location?(params[:location_id])),
           in_stock: variant.in_stock?,
           stock_quantity: variant.stock_quantity,
           weight_oz: variant.weight_oz

@@ -30,8 +30,8 @@ class FulfillmentValidator
       return [] if normalized.empty?
 
       constrained_location_sets = normalized
+        .reject { |product| product.product_locations.empty? }
         .map { |product| product.product_locations.available.pluck(:location_id).uniq }
-        .reject(&:empty?)
 
       return [] if constrained_location_sets.empty?
 
@@ -47,8 +47,8 @@ class FulfillmentValidator
 
       constrained_location_sets = normalized
         .select(&:allow_pickup?)
+        .reject { |product| product.product_locations.empty? }
         .map { |product| product.product_locations.available.pluck(:location_id).uniq }
-        .reject(&:empty?)
 
       return false if constrained_location_sets.empty?
 

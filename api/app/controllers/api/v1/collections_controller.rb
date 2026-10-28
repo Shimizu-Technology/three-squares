@@ -52,9 +52,7 @@ module Api
 
         # Filter by location if provided
         if params[:location_id].present?
-          products = products.joins(:product_locations)
-            .where(product_locations: { location_id: params[:location_id].to_i, available: true })
-            .distinct
+          products = products.offered_at(params[:location_id].to_i)
         end
 
         product_types = products.except(:includes, :order).distinct.pluck(:product_type)
@@ -155,7 +153,7 @@ module Api
           new_product: product.new_product,
           featured: product.featured,
           product_type: product.product_type,
-          actually_available: product.actually_available?,
+          actually_available: product.actually_available? && (params[:location_id].blank? || !product.allow_pickup? || product.available_for_location?(params[:location_id])),
           primary_image_url: product.primary_image&.signed_url,
           variant_count: product.product_variants.count
         }
