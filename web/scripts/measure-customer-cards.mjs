@@ -57,6 +57,7 @@ try {
                   title = card.querySelector(".customer-card__title"),
                   style = getComputedStyle(title);
                 return {
+                  currentPrice: card.querySelector('.customer-price__current') ? {width: card.querySelector('.customer-price__current').clientWidth, content: card.querySelector('.customer-price__current').scrollWidth} : null,
                   name: title.textContent,
                   textBox,
                   card: card.getBoundingClientRect().toJSON(),
@@ -91,6 +92,7 @@ try {
             for (const price of await page.locator('.customer-card__price').all()) {
               assert.ok(await price.evaluate(el => [...el.querySelectorAll('span:not(.sr-only)')].every(child => child.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1)), 'prices stay within the card');
             }
+            assert.ok(geometry[6].currentPrice.content <= geometry[6].currentPrice.width + 1, 'current large sale price fits without secondary comparison crowding');
             assert.equal(geometry[2].text, "Catering inquiry");
             assert.ok(!geometry[2].text.includes("$0"));
             assert.equal(geometry[3].photo, "unavailable");
