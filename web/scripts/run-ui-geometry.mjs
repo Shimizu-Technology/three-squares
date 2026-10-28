@@ -45,10 +45,20 @@ function cleanBrowsers(signal) {
     try { process.kill(-identity.group, signal); } catch (error) { if (error.code !== 'ESRCH') throw error; }
   }
 }
+function recordCleanupError(phase, error) {
+  summary.status = 'failed'; process.exitCode = 1;
+  (summary.cleanupErrors ??= []).push({ phase, error: error.stack ?? String(error) });
+  console.error(`Cleanup failed (${phase}):`, error);
+}
 const cancel = signal => {
-  cancellation = signal; cleanBrowsers('SIGTERM'); stopChild('SIGTERM');
+  cancellation = signal;
+  try { cleanBrowsers('SIGTERM'); } catch (error) { recordCleanupError('cancel browsers', error); }
+  try { stopChild('SIGTERM'); } catch (error) { recordCleanupError('cancel suite', error); }
   clearTimeout(escalation);
-  escalation = setTimeout(() => { cleanBrowsers('SIGKILL'); stopChild('SIGKILL'); }, 2000);
+  escalation = setTimeout(() => {
+    try { cleanBrowsers('SIGKILL'); } catch (error) { recordCleanupError('escalate browsers', error); }
+    try { stopChild('SIGKILL'); } catch (error) { recordCleanupError('escalate suite', error); }
+  }, 2000);
 };
 const handlers = new Map(['SIGINT', 'SIGTERM'].map(signal => [signal, () => cancel(signal)]));
 for (const [signal, handler] of handlers) process.on(signal, handler);
@@ -110,19 +120,27 @@ try {
   summary.status = 'failed'; summary.error = error.stack; process.exitCode = 1;
   console.error(error);
 } finally {
-  const killed = Promise.allSettled(browserServers.map(browser => browser.kill()));
   let killTimer;
-  await Promise.race([killed, new Promise(resolve => { killTimer = setTimeout(resolve, 2000); })]);
-  clearTimeout(killTimer);
-  try { cleanBrowsers('SIGKILL'); stopChild('SIGKILL'); }
-  catch (error) { summary.status = 'failed'; summary.cleanupError = error.stack; process.exitCode = 1; }
+  try {
+    const killed = Promise.allSettled(browserServers.map(browser => browser.kill()));
+    const results = await Promise.race([killed, new Promise(resolve => { killTimer = setTimeout(resolve, 2000); })]);
+    for (const result of results ?? []) if (result.status === 'rejected') recordCleanupError('browser server', result.reason);
+  } catch (error) { recordCleanupError('browser servers', error); }
+  finally { clearTimeout(killTimer); }
+  try { cleanBrowsers('SIGKILL'); } catch (error) { recordCleanupError('final browsers', error); }
+  try { stopChild('SIGKILL'); } catch (error) { recordCleanupError('final suite', error); }
   clearTimeout(escalation);
-  httpServer?.closeAllConnections();
-  if (httpServer) await new Promise((resolve, reject) => httpServer.close(error => error ? reject(error) : resolve()));
-  await server?.close();
-  summary.seconds = (performance.now() - started) / 1000; save();
+  try { httpServer?.closeAllConnections(); } catch (error) { recordCleanupError('HTTP connections', error); }
+  try {
+    if (httpServer) await new Promise((resolve, reject) => httpServer.close(error => error ? reject(error) : resolve()));
+  } catch (error) { recordCleanupError('HTTP server', error); }
+  try { await server?.close(); } catch (error) { recordCleanupError('Vite server', error); }
+  summary.seconds = (performance.now() - started) / 1000;
   clearTimeout(deadline);
   for (const [signal, handler] of handlers) process.off(signal, handler);
-  if (session) execFileSync('dev-lifecycle', ['release', '--session', session, 'process', String(process.pid)]);
+  try {
+    if (session) execFileSync('dev-lifecycle', ['release', '--session', session, 'process', String(process.pid)]);
+  } catch (error) { recordCleanupError('lifecycle release', error); }
+  try { save(); } catch (error) { recordCleanupError('summary', error); }
   console.log(`UI geometry ${summary.status} in ${summary.seconds.toFixed(1)}s; ${output}`);
 }

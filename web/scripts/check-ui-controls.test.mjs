@@ -5,7 +5,7 @@ import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { checkControls, inspectSource } from './check-ui-controls.mjs';
+import { checkControls, collectControls, inspectSource } from './check-ui-controls.mjs';
 const scan = text => inspectSource('src/Example.tsx', text);
 
 test('detects raw buttons (including dynamic classes, no classes and spread props)', () => {
@@ -83,4 +83,27 @@ test('barrel aliases, namespaces, duplicate props and JSX files cannot bypass sh
 test('unknown custom anchor recipes require review while prose/tel/mail styling remains native', () => {
   assert.equal(scan('const Page=()=> <a href="/next" className="custom-action">Next</a>').length,1);
   assert.equal(scan('const Page=()=> <a href="tel:5550100" className="hover:underline text-tsPrimary transition-colors">Call</a>').length,0);
+});
+
+test('local aliases and chains retain shared layout guards and native tag enforcement', () => {
+  const rows = scan(`import { Button as Shared } from './components/ui/Button';
+    const B = Shared; const C = (B); const Raw = 'button' as const; const RawAgain = Raw;
+    const NativeSelect = 'select'; const Anchor = 'a';
+    const Page = () => <><C className="w-full"/><C className="p-1"/><RawAgain/><NativeSelect/>
+      <Anchor href="/help">Help</Anchor><Anchor href="/next" className="rounded">Next</Anchor></>;`);
+  assert.deepEqual(rows.map(row => row.kind), ['shared-override', 'raw-button', 'raw-select', 'button-like-link']);
+  assert.equal(scan(`import {Button} from './components/ui/Button'; function Page(){const B=Button;return <B style={{height:12}}/>}`).length,1);
+  // Binding follows lexical scope rather than pooling alias names across functions.
+  assert.equal(scan(`function Other(){const B='button';return null;}function Page(){const B=()=>null;return <B/>}`).length,0);
+  assert.equal(scan('const A=B;const B=A;const Page=()=> <A/>').length,0);
+});
+test('local barrels and renamed/default re-exports cannot hide controls or raw tag aliases', () => {
+  const root = mkdtempSync(path.join(os.tmpdir(), 'tsq-ui-alias-'));
+  try {
+    mkdirSync(path.join(root,'src/components/ui'),{recursive:true});
+    writeFileSync(path.join(root,'src/components/ui/Button.tsx'), 'export const Button=()=> <button/>;');
+    writeFileSync(path.join(root,'src/barrel.ts'), `export {Button as Action, Button as default} from './components/ui/Button'; export const Native='input';`);
+    writeFileSync(path.join(root,'src/Example.tsx'), `import DefaultAction,{Action as Imported,Native} from './barrel'; const B=Imported;const Raw=Native;const Page=()=> <><B className="p-1"/><DefaultAction style={{height:12}}/><Raw/></>;`);
+    assert.deepEqual(collectControls(root).map(row=>row.kind),['shared-override','shared-override','raw-input']);
+  } finally { rmSync(root,{recursive:true,force:true}); }
 });
