@@ -27,6 +27,7 @@ export function Fixture() {
     <Disclosure title="Advanced shipping"><p>Shipping details remain inside the native disclosure.</p></Disclosure>
     <Pagination page={page} totalPages={10000} totalCount={250000} onPageChange={setPage} />
     <Button variant="secondary">Outside target</Button>
+    <div className="fixed bottom-4 right-4"><ActionMenu label="More actions near screen edge"><Button variant="ghost" onClick={() => setCommand('Bottom command')}>Bottom command</Button></ActionMenu></div>
   </main>;
 }
 createRoot(document.getElementById('root')!).render(<Fixture />);

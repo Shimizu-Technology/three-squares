@@ -25,6 +25,8 @@ for(const [engine, factory] of Object.entries({chromium,webkit})) {
         await menu.focus();await page.keyboard.press('Enter');
         await page.getByRole('button',{name:'Duplicate',exact:true}).waitFor({state:'visible'});
         await page.keyboard.press(engine === 'webkit' ? 'Alt+Tab' : 'Tab');assert.equal(await page.getByRole('button',{name:'Duplicate',exact:true}).evaluate(el=>document.activeElement===el),true);
+        await page.keyboard.press(engine === 'webkit' ? 'Alt+Tab' : 'Tab');assert.equal(await page.getByRole('button',{name:'Archive',exact:true}).evaluate(el=>document.activeElement===el),true);
+        await page.keyboard.press(engine === 'webkit' ? 'Alt+Shift+Tab' : 'Shift+Tab');assert.equal(await page.getByRole('button',{name:'Duplicate',exact:true}).evaluate(el=>document.activeElement===el),true);
         await page.keyboard.press('Escape');assert.equal(await menu.evaluate(el=>document.activeElement===el && !el.parentElement.open),true);
         await activate(menu);await activate(page.getByRole('button',{name:'Archive',exact:true}));
         await page.getByText('Command: Archive',{exact:true}).waitFor();assert.equal(await menu.evaluate(el=>document.activeElement===el && !el.parentElement.open),true);
@@ -34,6 +36,11 @@ for(const [engine, factory] of Object.entries({chromium,webkit})) {
         await page.getByLabel('Choose Menu CSV',{exact:true}).setInputFiles({name:'fictional-menu.csv',mimeType:'text/csv',buffer:Buffer.from('name,price\nLunch,12.00')});await page.getByText('Command: fictional-menu.csv',{exact:true}).waitFor();
         await activate(page.getByRole('button',{name:'Page 51',exact:true}));assert.equal(await page.getByRole('button',{name:'Page 51',exact:true}).getAttribute('aria-current'),'page');
         await activate(page.locator('summary[data-ui-control="disclosure"]'));await page.getByText('Shipping details remain inside the native disclosure.').waitFor({state:'visible'});
+        const edge=page.locator('summary[aria-label="More actions near screen edge"]');await activate(edge);
+        await page.getByRole('button',{name:'Bottom command',exact:true}).waitFor();
+        const bounds=await edge.locator('..').locator('.ui-action-menu__commands').boundingBox();
+        assert.ok(bounds.x>=0 && bounds.y>=0 && bounds.x+bounds.width<=width && bounds.y+bounds.height<=height,JSON.stringify(bounds));
+        await page.keyboard.press('Escape');
         await page.screenshot({path:`${output}/${engine}-${width}-${touch?'touch':'fine'}.png`});
         records.push({engine,width,height,touch,targets,status:'passed'});writeFileSync(output+'/measurements.json',JSON.stringify(records,null,2));
         console.log(engine,width,touch?'touch':'fine','passed');

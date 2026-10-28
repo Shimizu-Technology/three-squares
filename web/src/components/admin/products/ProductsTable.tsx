@@ -90,7 +90,7 @@ export default function ProductsTable({
   return (
     <>
       {/* Desktop Table */}
-      <div className="hidden xl:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="hidden xl:block bg-white rounded-xl shadow-sm border border-gray-100">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50/80">
             <tr>
