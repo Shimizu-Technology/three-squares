@@ -1,3 +1,6 @@
+import { Button } from './components/ui/Button';
+import { IconButton } from './components/ui/IconButton';
+import { NavigationLink } from './components/ui/NavigationLink';
 import { Suspense, lazy, useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
 import { SignedIn, SignedOut, SignInButton, UserButton, useUser, useAuth } from '@clerk/clerk-react';
@@ -256,7 +259,7 @@ function AppContent() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex flex-wrap justify-between items-center gap-2 min-h-18 py-3.5">
               {/* Logo */}
-              <Link to="/" className="flex min-w-0 items-center gap-3 group" onClick={handleNavClick}>
+              <NavigationLink to="/" className="gap-3" onClick={handleNavClick}>
                 <img 
                   src="/images/three-squares-logo.svg" 
                   alt="Three Squares" 
@@ -265,7 +268,7 @@ function AppContent() {
                 <span className="hidden xl:block text-[11px] tracking-wide uppercase text-warm-500">
                   by B&amp;G Pacific
                 </span>
-              </Link>
+              </NavigationLink>
 
               {/* Location Pill - visible on ordering pages */}
 
@@ -274,27 +277,27 @@ function AppContent() {
               <div className="hidden lg:flex flex-wrap max-w-full items-center gap-4 xl:gap-8">
                 {/* Shop Dropdown */}
                 <NavDropdown onItemClick={handleNavClick} darkMode={false} />
-                <Link
+                <NavigationLink
                   to="/catering"
-                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2 whitespace-nowrap"
+
                   onClick={handleNavClick}
                 >
                   Catering
-                </Link>
-                <Link
+                </NavigationLink>
+                <NavigationLink
                   to="/locations"
-                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2 whitespace-nowrap"
+
                   onClick={handleNavClick}
                 >
                   Locations
-                </Link>
-                <Link
+                </NavigationLink>
+                <NavigationLink
                   to="/about"
-                  className="text-warm-700 hover:text-tsPrimary text-[15px] font-medium transition py-2 whitespace-nowrap"
+
                   onClick={handleNavClick}
                 >
                   About Us
-                </Link>
+                </NavigationLink>
               </div>
 
               {/* Right Side: Search, Cart, Auth, Mobile Menu */}
@@ -327,9 +330,9 @@ function AppContent() {
                 </form>
 
                 {/* Search Icon - Desktop (lg to xl) */}
-                <button
+                <div className="hidden lg:block xl:hidden">
+                <IconButton
                   type="button"
-                  className="hidden lg:flex xl:hidden p-2.5 min-w-[44px] min-h-[44px] items-center justify-center text-warm-600 hover:text-tsPrimary transition rounded-lg"
                   onClick={() => setDesktopSearchOpen((open) => !open)}
                   aria-expanded={desktopSearchOpen}
                   aria-label="Search"
@@ -337,7 +340,8 @@ function AppContent() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                   </svg>
-                </button>
+                </IconButton>
+                </div>
 
                 {/* Cart Icon */}
                 <CartIcon darkMode={false} />
@@ -346,9 +350,7 @@ function AppContent() {
                 <div className="hidden sm:flex items-center">
                   <SignedOut>
                     <SignInButton mode="modal">
-                      <button className="text-sm px-5 py-2.5 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition font-medium">
-                        Log In
-                      </button>
+                      <Button>Log In</Button>
                     </SignInButton>
                   </SignedOut>
 
@@ -358,9 +360,9 @@ function AppContent() {
                 </div>
 
                 {/* Mobile/Tablet Menu Button (< lg) */}
-                <button
+                <div className="lg:hidden">
+                <IconButton
                   onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                  className="lg:hidden p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center text-warm-600 hover:text-tsPrimary transition rounded-lg"
                   aria-label="Toggle menu"
                   aria-expanded={mobileMenuOpen}
                   aria-controls="mobile-navigation"
@@ -374,7 +376,8 @@ function AppContent() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                   )}
-                </button>
+                </IconButton>
+                </div>
               </div>
             </div>
           </div>
@@ -427,19 +430,19 @@ function AppContent() {
                 <MobileNavDropdown onItemClick={handleNavClick} darkMode={false} />
                 
                 {/* Other Nav Links */}
-                <Link
+                <NavigationLink
                   to="/catering"
-                  className="flex items-center gap-3 text-warm-700 hover:text-tsPrimary font-medium py-2"
+
                   onClick={handleNavClick}
                 >
                   <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.87c1.355 0 2.697.055 4.024.165C17.155 8.51 18 9.473 18 10.608v2.513m-3-4.87v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0L3 16.5m15-3.38a48.474 48.474 0 00-6-.37c-2.032 0-4.034.126-6 .37m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.17c0 .62-.504 1.124-1.125 1.124H4.125A1.125 1.125 0 013 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 016 13.12M12.265 3.11a.375.375 0 11-.53 0L12 2.845l.265.265z" />
                   </svg>
                   Catering
-                </Link>
-                <Link
+                </NavigationLink>
+                <NavigationLink
                   to="/locations"
-                  className="flex items-center gap-3 text-warm-700 hover:text-tsPrimary font-medium py-2"
+
                   onClick={handleNavClick}
                 >
                   <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -447,25 +450,23 @@ function AppContent() {
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
                   </svg>
                   Locations
-                </Link>
-                <Link
+                </NavigationLink>
+                <NavigationLink
                   to="/about"
-                  className="flex items-center gap-3 text-warm-700 hover:text-tsPrimary font-medium py-2"
+
                   onClick={handleNavClick}
                 >
                   <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
                   </svg>
                   About Us
-                </Link>
+                </NavigationLink>
                 
                 {/* Auth Section */}
                 <div className="pt-4 border-t border-warm-100">
                   <SignedOut>
                     <SignInButton mode="modal">
-                      <button className="w-full py-3 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition font-medium">
-                        Log In
-                      </button>
+                      <Button className="w-full">Log In</Button>
                     </SignInButton>
                   </SignedOut>
                   <SignedIn>
@@ -570,28 +571,26 @@ function AppContent() {
                   Guam-style comfort food & catering
                 </p>
                 <div className="flex space-x-4 mt-4">
-                  <a 
+                  <IconButton
                     href="https://www.facebook.com/threesquaresguam" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-warm-400 hover:text-warm-600 transition p-1.5 -m-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
                     aria-label="Facebook"
                   >
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M9 8h-3v4h3v12h5v-12h3.642l.358-4h-4v-1.667c0-.955.192-1.333 1.115-1.333h2.885v-5h-3.808c-3.596 0-5.192 1.583-5.192 4.615v3.385z"/>
                     </svg>
-                  </a>
-                  <a 
+                  </IconButton>
+                  <IconButton
                     href="https://www.instagram.com/threesquaresguam" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="text-warm-400 hover:text-warm-600 transition p-1.5 -m-1.5 min-w-[44px] min-h-[44px] flex items-center justify-center"
                     aria-label="Instagram"
                   >
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
                     </svg>
-                  </a>
+                  </IconButton>
                 </div>
               </div>
 
@@ -600,24 +599,24 @@ function AppContent() {
                 <h4 className="font-medium text-warm-900 mb-4">Menu</h4>
                 <ul className="space-y-2">
                   <li>
-                    <Link to="/products" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                    <NavigationLink to="/products" >
                       Full Menu
-                    </Link>
+                    </NavigationLink>
                   </li>
                   <li>
-                    <Link to="/products?category=breakfast" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                    <NavigationLink to="/products?category=breakfast" >
                       Breakfast
-                    </Link>
+                    </NavigationLink>
                   </li>
                   <li>
-                    <Link to="/products?category=mains" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                    <NavigationLink to="/products?category=mains" >
                       Main Dishes
-                    </Link>
+                    </NavigationLink>
                   </li>
                   <li>
-                    <Link to="/catering" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                    <NavigationLink to="/catering" >
                       Catering
-                    </Link>
+                    </NavigationLink>
                   </li>
                 </ul>
               </div>
@@ -626,24 +625,24 @@ function AppContent() {
                 <h4 className="font-medium text-warm-900 mb-4">Info</h4>
                 <ul className="space-y-2">
                   <li>
-                    <Link to="/about" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                    <NavigationLink to="/about" >
                       About Us
-                    </Link>
+                    </NavigationLink>
                   </li>
                   <li>
-                    <Link to="/contact" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                    <NavigationLink to="/contact" >
                       Contact
-                    </Link>
+                    </NavigationLink>
                   </li>
                   <li>
-                    <Link to="/locations" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                    <NavigationLink to="/locations" >
                       Locations
-                    </Link>
+                    </NavigationLink>
                   </li>
                   <li>
-                    <a href="https://wa.me/16718646656" className="text-warm-500 hover:text-warm-900 transition text-sm">
+                    <NavigationLink href="https://wa.me/16718646656" >
                       WhatsApp Orders
-                    </a>
+                    </NavigationLink>
                   </li>
                 </ul>
               </div>
@@ -654,15 +653,15 @@ function AppContent() {
                   416 Chalan San Antonio<br />
                   Tamuning, GU 96913<br />
                   <br />
-                  <a href="tel:+16716462652" className="hover:text-warm-900 transition">
+                  <NavigationLink href="tel:+16716462652" >
                     (671) 646-2652
-                  </a><br />
-                  <a href="https://wa.me/16718646656" className="hover:text-warm-900 transition">
+                  </NavigationLink><br />
+                  <NavigationLink href="https://wa.me/16718646656" >
                     WhatsApp: (671) 864-6656
-                  </a><br />
-                  <a href="mailto:sales@bgpacific.com" className="hover:text-warm-900 transition">
+                  </NavigationLink><br />
+                  <NavigationLink href="mailto:sales@bgpacific.com" >
                     sales@bgpacific.com
-                  </a>
+                  </NavigationLink>
                 </address>
               </div>
             </div>
@@ -673,26 +672,26 @@ function AppContent() {
                   &copy; 2026 Three Squares / B&G Pacific LLC. All rights reserved.
                 </p>
                 <div className="flex gap-6 text-sm">
-                  <Link to="/privacy" className="text-warm-400 hover:text-warm-600 transition">
+                  <NavigationLink to="/privacy" >
                     Privacy Policy
-                  </Link>
-                  <Link to="/terms" className="text-warm-400 hover:text-warm-600 transition">
+                  </NavigationLink>
+                  <NavigationLink to="/terms" >
                     Terms of Service
-                  </Link>
+                  </NavigationLink>
                 </div>
               </div>
             </div>
             {/* Shimizu Technology attribution */}
             <div className="mt-10 pt-6 border-t border-warm-200 flex justify-center">
-              <a
+              <NavigationLink
                 href="https://shimizu-technology.com"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-warm-400 hover:text-warm-600 transition"
+
               >
                 Built by{" "}
                 <span className="font-medium">Shimizu Technology</span>
-              </a>
+              </NavigationLink>
             </div>
           </div>
         </footer>

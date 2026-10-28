@@ -39,6 +39,7 @@ try {
     ["chromium", chromium],
     ["webkit", webkit],
   ]) {
+    if (process.env.CUSTOMER_QA_ENGINE && process.env.CUSTOMER_QA_ENGINE !== engine) continue;
     const browser = await type.launch();
     try {
       for (const [width, height] of [
@@ -46,6 +47,7 @@ try {
         ...(engine === "webkit" ? [[375, 812]] : []),
         [1440, 900],
       ]) {
+        if (process.env.CUSTOMER_QA_WIDTH && Number(process.env.CUSTOMER_QA_WIDTH) !== width) continue;
         const context = await browser.newContext({ viewport: { width, height }, hasTouch: true });
         const page = await context.newPage();
         const label = `${engine}-${width}`;

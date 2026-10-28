@@ -6,6 +6,7 @@ import ts from 'typescript';
 const moduleUrl = code => `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`;
 const context = 'globalThis.__receiptLoading';
 const mocks = {
+  '../components/ui/Button': moduleUrl('export function Button() {}'),
   react: moduleUrl(`export const useState = initial => ${context}.state(initial); export const useEffect = fn => ${context}.effects.push(fn);`),
   'react-router-dom': moduleUrl(`export const useParams = () => ({id:'1'}); export const useLocation = () => ({search:''}); export const useNavigate = () => () => {};`),
   '@clerk/clerk-react': moduleUrl(`export const useAuth = () => ${context}.auth;`),

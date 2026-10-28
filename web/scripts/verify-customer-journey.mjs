@@ -57,7 +57,8 @@ try {
         [390, 844],
         ...(engine === "webkit" ? [[375, 812]] : []),
       ]) {
-        if (process.env.CUSTOMER_QA_WIDTH && width !== Number(process.env.CUSTOMER_QA_WIDTH)) continue;
+        if (process.env.CUSTOMER_QA_ENGINE && process.env.CUSTOMER_QA_ENGINE !== engine) continue;
+        if (process.env.CUSTOMER_QA_WIDTH && Number(process.env.CUSTOMER_QA_WIDTH) !== width) continue;
         const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, deviceScaleFactor: 1, serviceWorkers: "block" });
         const page = await context.newPage();
         const allowedOrigins = new Set([new URL(base).origin, new URL(api).origin]);
@@ -222,7 +223,20 @@ try {
           await page.reload();
           await expect(page.getByRole("heading", { name: "Order Confirmed!", exact: true })).toBeVisible();
           await page.screenshot({ path: path.join(output, `receipt-${label}.png`) });
-          await page.goto(`${base}/products`);
+          const continueShopping = page.getByRole("link", { name: "Continue shopping", exact: true });
+          const printOrder = page.getByRole("button", { name: "Print Order", exact: true });
+          assert.equal((await rect(continueShopping)).height, 52);
+          assert.equal((await rect(printOrder)).height, 52);
+          await page.evaluate(() => { window.__printed = 0; window.print = () => { window.__printed++; }; });
+          await printOrder.tap();
+          assert.equal(await page.evaluate(() => window.__printed), 1);
+          await page.goto(`${base}/orders`);
+          const saved = page.getByRole("link", { name: `View saved order #${orderId}`, exact: true });
+          await expect(saved).toBeVisible();
+          assert.equal((await rect(saved)).height, 44);
+          await saved.tap();
+          await expect(page.getByRole("heading", { name: "Order Confirmed!", exact: true })).toBeVisible();
+          await page.getByRole("link", { name: "Continue shopping", exact: true }).tap();
           await page.locator('[data-customer-card="product"]').first().waitFor();
           const inquiry = page
             .locator('[data-customer-card="product"]')

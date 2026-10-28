@@ -131,6 +131,12 @@ Current Device name/location plus Refresh/Save adopt these recipes first. Other 
 
 A product not offered at the selected location is distinct from an offered item sold out today. The detail page uses the server's `Not offered at this location` reason to show “Not available at {location}”, without a payable price, inquiry wording, quantity or Add to cart. Active carrying locations appear under “On the menu at”; membership does not promise today's stock. Each switch preserves the product URL and uses the existing location picker's cart check, confirmation and clear-failure handling. An offered sold-out item retains stock wording, and a genuine inquiry-only item retains its full pricing reason and inquiry destination.
 
+### Customer navigation and location cards
+
+`NavigationLink` renders a router or native anchor for public header/footer/menu destinations. It has a real 44px minimum target, native link semantics, visible keyboard focus and capability-gated hover. `NavigationDisclosure` uses a native non-submit button with an accessible name, expanded state and a stable controlled panel ID; it only changes visibility. Keep field/command buttons on Button/IconButton, and prose links inline.
+
+`CustomerCardFrame` shares the 12px/8px-inset shell for location details, with 4:3 stable media and a bottom action region. It renders an article so separate menu/directions/contact actions remain valid links. It has no whole-card hover/press cue. Product/collection whole-card navigation still uses CustomerCard without nested controls.
+
 ## Admin editors (P5b)
 
 Catalog and menu editors, product list actions/filters/pagination, CSV entry points and Settings/Homepage fields use the shared controls. Existing main-form drafts, independent variant/image/offering saves and immediate-save versus explicit-save settings behavior remain with their callers.
