@@ -1,3 +1,4 @@
+import { acquireShippingFixtureLock } from './customer-qa-safety.mjs';
 import {chromium,webkit,expect} from '@playwright/test';
 import assert from 'node:assert/strict';
 import{mkdirSync,writeFileSync}from'node:fs';import{execFileSync}from'node:child_process';import path from'node:path';
@@ -10,6 +11,8 @@ const pgPort=process.env.DEMO_PG_PORT??'5432';
 if(!/^\d+$/.test(pgPort)||Number(pgPort)<1||Number(pgPort)>65535)throw Error('Valid local demo PostgreSQL port required');
 const psqlEnv={...process.env};for(const key of ['PGHOST','PGHOSTADDR','PGPORT','PGSERVICE','PGSERVICEFILE'])delete psqlEnv[key];
 const sql=q=>execFileSync('psql',['-X','-h','127.0.0.1','-p',pgPort,'-A','-t','-d',db,'-c',q],{encoding:'utf8',env:psqlEnv}).trim();
+const releaseLock=acquireShippingFixtureLock(pgPort,db);
+try{
 const original=sql("SELECT allow_shipping FROM products WHERE slug='french-toast-only'");assert.ok(['t','f'].includes(original));
 if(session)execFileSync('dev-lifecycle',['claim','--session',session,'process',String(process.pid),'--reason','Shipping fields browser descendants']);
 try{
@@ -29,4 +32,5 @@ try{
    await scope.scrollIntoViewIfNeeded();assert.ok(await p.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));await p.screenshot({path:path.join(output,`shipping-${label}.png`)});results.push({engine,width,height,touch,geometry,status:'passed',rates:touch?'Local response fixture: failure, pending retry, selection; no provider request':'not_run'});writeFileSync(path.join(output,'shipping-fields.json'),JSON.stringify(results,null,2)+'\n');console.log(`${label}: shipping geometry${touch?', retained address and local rate retry/selection':''} passed`);
   }catch(error){await p.screenshot({path:path.join(output,`shipping-failure-${label}.png`)});throw error;}finally{await c.close();}}
  }finally{await browser.close();}}
-}finally{sql(`UPDATE products SET allow_shipping=${original==='t'} WHERE slug='french-toast-only'`);if(session)execFileSync('dev-lifecycle',['release','--session',session,'process',String(process.pid)]);}
+}finally{try{sql(`UPDATE products SET allow_shipping=${original==='t'} WHERE slug='french-toast-only'`);}finally{if(session)execFileSync('dev-lifecycle',['release','--session',session,'process',String(process.pid)]);}}
+}finally{releaseLock();}

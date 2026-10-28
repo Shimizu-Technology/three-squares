@@ -1,3 +1,4 @@
+import { catalogReadAllowed } from './customer-qa-safety.mjs';
 import { chromium, webkit, expect } from '@playwright/test';
 import assert from 'node:assert/strict';
 import { mkdirSync, writeFileSync } from 'node:fs';
@@ -9,6 +10,7 @@ for (const url of [base, api]) if (!['localhost', '127.0.0.1'].includes(new URL(
 const output = path.resolve(process.env.UI_EVIDENCE_DIR ?? '../tmp/catalog-controls');
 mkdirSync(output, { recursive: true });
 const session = process.env.DEV_LIFECYCLE_SESSION, results = [];
+const allowedOrigins = new Set([new URL(base).origin, new URL(api).origin]);
 if (session) execFileSync('dev-lifecycle', ['claim', '--session', session, 'process', String(process.pid), '--reason', 'Customer catalog read-only browser descendants']);
 async function geometry(page) {
   // Vite injects the app stylesheet after DOM readiness on a cold navigation.
@@ -35,8 +37,8 @@ try {
         try {
           // This runner never writes: only local catalog reads are allowed.
           await context.route('**/*', route => {
-            const request = route.request(), url = new URL(request.url());
-            return url.pathname.startsWith('/api/') && (url.origin !== new URL(api).origin || request.method() !== 'GET') ? route.abort() : route.continue();
+            const request = route.request();
+            return catalogReadAllowed(request.url(), request.method(), allowedOrigins) ? route.continue() : route.abort();
           });
           await navigate(`${base}/products`);
           await page.getByRole('button', { name: 'Three Squares Main', exact: true }).click();

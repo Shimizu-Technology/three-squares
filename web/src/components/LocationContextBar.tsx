@@ -23,7 +23,7 @@ export default function LocationContextBar() {
             <p className="text-xs text-warm-500">Pickup location</p>
             <p className="text-sm font-semibold text-warm-900">{location.name}</p>
             {location.accepting_orders_now === false && <p className="text-sm text-amber-800">Closed for pickup orders</p>}
-            {location.address && <p className="hidden sm:block text-sm text-warm-500">{location.address}</p>}
+            {location.address && <p className="hidden sm:block min-w-0 truncate text-sm text-warm-500">{location.address}</p>}
           </div>
           <Button variant="ghost" onClick={() => setShowPicker(true)} aria-label={`Pickup location is ${location.name}. Click to change.`}>
             <MapPin aria-hidden="true" className="w-4 h-4" /> Change <ChevronDown aria-hidden="true" className="w-4 h-4" />

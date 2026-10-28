@@ -236,7 +236,7 @@ export default function AccountPage() {
                       >
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-warm-900 group-hover:text-tsPrimary transition">
+                            <span className="font-medium text-warm-900 transition">
                               {order.order_number}
                             </span>
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
@@ -251,7 +251,7 @@ export default function AccountPage() {
                         </div>
                         <div className="flex items-center gap-2 ml-4">
                           <span className="font-semibold text-warm-900">{order.total_formatted}</span>
-                          <ChevronRight className="w-4 h-4 text-warm-400 group-hover:text-tsPrimary transition" />
+                          <ChevronRight className="w-4 h-4 text-warm-400 transition" />
                         </div>
                       </NavigationLink>
                     ))}

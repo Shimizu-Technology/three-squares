@@ -109,7 +109,7 @@ export default function FeaturedProducts() {
         staggerDelay={0.06}
       >
         {products.map(product => <StaggerItem key={product.id}>
-          <ProductCard product={product} locationNameById={locationNameById} />
+          <ProductCard product={product} locationNameById={locationNameById} showPickupLocation={!locationId} />
         </StaggerItem>)}
       </StaggerContainer>
 
