@@ -10,6 +10,8 @@ for(const [engine,factory] of Object.entries({chromium,webkit})){
  try{await page.goto(origin+'/fixtures/ui-operations.html');await page.getByRole('heading',{name:'Operational acceptance'}).waitFor();
  const header=await page.locator('[data-admin-page-header]').boundingBox();assert.equal(header.x,width<640?16:24);
  const brand=page.getByRole('link',{name:'Fictional admin brand',exact:true});const before=await brand.evaluate(e=>({background:getComputedStyle(e).backgroundColor,color:getComputedStyle(e).color}));await brand.hover();assert.deepEqual(await brand.evaluate(e=>({background:getComputedStyle(e).backgroundColor,color:getComputedStyle(e).color})),before);
+ const publicLink=page.getByRole('link',{name:'Public destination',exact:true});assert.equal(await publicLink.evaluate(e=>getComputedStyle(e).paddingLeft),'0px');
+ const dark=page.getByRole('link',{name:'Public dark destination',exact:true});await dark.hover();assert.equal(await dark.evaluate(e=>getComputedStyle(e).color),'rgb(255, 255, 255)');
  const field=page.getByRole('searchbox',{name:'Order search'});assert.equal((await field.boundingBox()).height,44);
  if(touch)assert.equal(await field.evaluate(e=>getComputedStyle(e).fontSize),'16px');
  assert.equal((await page.getByText('Acknowledged',{exact:true}).boundingBox()).height,24);

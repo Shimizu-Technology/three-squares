@@ -21,6 +21,8 @@ export function Fixture() {
     <AdminFilterBar><Field label="Order search"><Input type="search" /></Field></AdminFilterBar>
     <NavigationLink context="admin" brand to="/fixtures/ui-operations.html">Fictional admin brand</NavigationLink>
     <NavigationLink context="admin" to="/fixtures/ui-operations.html" aria-current="page">A long fictional operational navigation destination that wraps on narrow screens</NavigationLink>
+    <NavigationLink href="#public-target">Public destination</NavigationLink>
+    <div className="bg-tsNavy p-4"><NavigationLink surface="dark" href="#public-target">Public dark destination</NavigationLink></div>
     <StatusBadge tone={state.tone}>{state.label}</StatusBadge>
     <AdminModal open={outer} onClose={() => setOuter(false)} title="Fictional order" returnFocusRef={opener} footer={<Button variant="secondary" onClick={() => setOuter(false)}>Close order</Button>}>
       <Button ref={nested} onClick={() => setInner(true)}>Open shipment</Button>
