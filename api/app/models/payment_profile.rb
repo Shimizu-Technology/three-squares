@@ -8,6 +8,9 @@ class PaymentProfile < ApplicationRecord
   validates :channel, inclusion: { in: %w[online pos] }
   validates :presentation, inclusion: { in: %w[stripe_embedded stripe_terminal worldpay_hosted_fields worldpay_hosted_page worldpay_terminal] }
   validate do
+    if enabled? && Rails.env.staging? && payment_identity && payment_identity.environment != "sandbox"
+      raise Payments::Configuration::UnsafeConfiguration, "Staging requires sandbox enabled payment profiles"
+    end
     Payments::Configuration.validate_identity!(payment_identity) if enabled? && payment_identity
   rescue Payments::Configuration::UnsafeConfiguration => e
     errors.add(:payment_identity, e.message)
