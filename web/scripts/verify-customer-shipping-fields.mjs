@@ -1,6 +1,8 @@
 import {chromium,webkit,expect} from '@playwright/test';
 import assert from 'node:assert/strict';
 import{mkdirSync,writeFileSync}from'node:fs';import{execFileSync}from'node:child_process';import path from'node:path';
+const api=process.env.CUSTOMER_API_URL??'http://localhost:3601';
+if(!['localhost','127.0.0.1'].includes(new URL(api).hostname))throw Error('Local API required');
 const db=process.env.CUSTOMER_DEMO_DB,base=process.env.CUSTOMER_BASE_URL??'http://localhost:5691',session=process.env.DEV_LIFECYCLE_SESSION;
 if(!db||!/^tsq_uniform_c_.*demo$/.test(db)||!['localhost','127.0.0.1'].includes(new URL(base).hostname))throw Error('Owned local demo required');
 const output=path.resolve(process.env.UI_EVIDENCE_DIR??'../tmp/shipping-fields');mkdirSync(output,{recursive:true});const results=[];
@@ -13,7 +15,8 @@ if(session)execFileSync('dev-lifecycle',['claim','--session',session,'process',S
 try{
  sql("UPDATE products SET allow_shipping=true WHERE slug='french-toast-only'");
  for(const[engine,type]of[['chromium',chromium],['webkit',webkit]]){const browser=await type.launch();try{
-  for(const[width,height]of[[768,1024],[1024,768],[1440,900],[390,844],...(engine==='webkit'?[[375,812]]:[])])for(const touch of[false,true]){const c=await browser.newContext({viewport:{width,height},hasTouch:touch}),p=await c.newPage(),label=`${engine}-${width}-${touch?'touch':'fine'}`;try{
+  for(const[width,height]of[[768,1024],[1024,768],[1440,900],[390,844],...(engine==='webkit'?[[375,812]]:[])])for(const touch of[false,true]){const c=await browser.newContext({viewport:{width,height},hasTouch:touch,serviceWorkers:'block'}),p=await c.newPage(),label=`${engine}-${width}-${touch?'touch':'fine'}`;try{
+   await c.route('**/*',route=>{const url=new URL(route.request().url());return url.pathname.startsWith('/api/')&&url.origin!==new URL(api).origin?route.abort():route.continue();});
    await p.goto(`${base}/products/french-toast-only`);await p.getByRole('button',{name:/Three Squares Main/}).click();await p.getByRole('button',{name:'Add to Cart',exact:true}).click();await p.getByRole('button',{name:'Secure Checkout',exact:true}).click();const ship=p.getByRole('button',{name:'Ship to Address',exact:true});await ship.click();await expect(ship).toHaveAttribute('aria-pressed','true');
    const scope=p.getByRole('region',{name:'Shipping details'});await scope.locator('#street1').waitFor();const geometry=await scope.locator('.ui-input,.ui-select').evaluateAll(els=>els.map(el=>({id:el.id,label:el.labels?.[0]?.textContent,height:el.getBoundingClientRect().height,font:getComputedStyle(el).fontSize,tag:el.tagName})));
    assert.equal(geometry.length,6);for(const field of geometry){assert.ok(field.id&&field.label);assert.equal(field.height,44);assert.equal(field.font,touch?'16px':'14px');}assert.equal(geometry.find(x=>x.id==='country').tag,'SELECT');
