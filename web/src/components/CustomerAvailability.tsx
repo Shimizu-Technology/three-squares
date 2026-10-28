@@ -1,3 +1,4 @@
+import { Button } from './ui/Button';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
@@ -10,13 +11,13 @@ export function CustomerConnection({ children }: { children: ReactNode }) {
     <div role="status">
       <h1 className="text-2xl font-bold text-warm-900">{status === 'checking' ? 'Connecting to ordering…' : "We can’t reach ordering right now."}</h1>
       <p className="mt-3 text-warm-600">{status === 'checking' ? 'Please wait while we check the current menu and ordering status.' : `We’re retrying. ${hasCartItems ? 'Your cart is still here. Please check the connection and try again.' : 'Please try again in a moment.'}`}</p>
-      <button type="button" onClick={retry} className="btn-secondary mt-5 min-h-11">Retry connection</button>
+      <Button onClick={retry} variant="secondary" className="mt-6">Retry connection</Button>
     </div>
   </main>;
   return <>
     {status === 'unavailable' && <aside role="status" className="border-b border-warm-200 bg-warm-50 px-4 py-3 text-sm text-warm-900">
       Having trouble connecting — retrying. Your loaded menu and cart are still here.
-      <button type="button" onClick={retry} className="ml-3 min-h-11 underline">Retry connection</button>
+      <Button onClick={retry} variant="link" className="ml-3">Retry connection</Button>
     </aside>}
     {config.online_ordering_paused && <aside role="status" className="border-b border-warm-200 bg-warm-50 px-4 py-3 text-sm text-warm-900">
       <strong>Online ordering is paused.</strong> {config.online_ordering_pause_message}

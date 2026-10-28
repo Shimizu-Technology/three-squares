@@ -59,6 +59,7 @@ export default function Dialog({
     if (!open || !dialog) return;
     const previousFocus = returnFocusRef?.current || pointerOpener.current ||
       (document.activeElement === document.body ? lastFocus.current : document.activeElement);
+    delete dialog.dataset.keyboardNavigation;
     dialog.showModal();
     initialFocusRef?.current?.focus({ preventScroll: true });
     return () => {
@@ -87,6 +88,9 @@ export default function Dialog({
         if (event.key !== 'Tab') return;
         event.stopPropagation();
         const panel = event.currentTarget;
+        // WebKit can keep pointer modality after touch + a programmatic Tab trap.
+        // The explicit keyboard marker preserves a visible focus indicator.
+        panel.dataset.keyboardNavigation = 'true';
         const controls = Array.from(panel.querySelectorAll<HTMLElement>(
           'button, a[href], input, select, textarea, summary, [tabindex], [contenteditable="true"]',
         )).filter((element) => element.tabIndex >= 0 && !element.matches(':disabled') &&
@@ -114,7 +118,10 @@ export default function Dialog({
         // Ignore a queued close event if React has already reopened the panel.
         if (open && !event.currentTarget.open) onOpenChange(false);
       }}
-      onPointerDown={(event) => { backdropPointerDown.current = outsidePanel(event); }}
+      onPointerDown={(event) => {
+        delete event.currentTarget.dataset.keyboardNavigation;
+        backdropPointerDown.current = outsidePanel(event);
+      }}
       onClick={(event) => {
         if (dismissible && backdropPointerDown.current && outsidePanel(event)) onOpenChange(false);
         backdropPointerDown.current = false;

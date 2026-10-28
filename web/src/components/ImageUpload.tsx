@@ -1,3 +1,6 @@
+import { FileButton } from './ui/FileButton';
+import { StatusBadge } from './ui/StatusBadge';
+import { Button } from './ui/Button';
 import { useState, useCallback } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import axios from 'axios';
@@ -30,11 +33,11 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
     try {
       setUploading(true);
       const token = await getToken();
-      
+
       // Step 1: Upload file to S3
       const formData = new FormData();
       formData.append('file', file);
-      
+
       const uploadResponse = await axios.post(
         `${API_BASE_URL}/api/v1/admin/uploads`,
         formData,
@@ -45,9 +48,9 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
           },
         }
       );
-      
+
       const s3Key = uploadResponse.data.data.s3_key;
-      
+
       // Step 2: Get current images count from backend (to avoid race conditions)
       const currentImagesResponse = await axios.get(
         `${API_BASE_URL}/api/v1/admin/products/${productId}/images`,
@@ -56,7 +59,7 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
       const currentImages = currentImagesResponse.data.data || currentImagesResponse.data;
       const nextPosition = currentImages.length;
       const shouldBePrimary = currentImages.length === 0;
-      
+
       // Step 3: Create product image record with S3 key
       await axios.post(
         `${API_BASE_URL}/api/v1/admin/products/${productId}/images`,
@@ -70,7 +73,7 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       // Step 4: Fetch fresh images from backend to ensure we have the latest state
       const response = await axios.get(
         `${API_BASE_URL}/api/v1/admin/products/${productId}/images`,
@@ -98,7 +101,7 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    
+
     const files = Array.from(e.dataTransfer.files);
     for (const file of files) {
       if (file.type.startsWith('image/')) {
@@ -118,14 +121,14 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
 
   const deleteImage = async (imageId: number) => {
     if (!confirm('Are you sure you want to delete this image?')) return;
-    
+
     try {
       const token = await getToken();
       await axios.delete(
         `${API_BASE_URL}/api/v1/admin/products/${productId}/images/${imageId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       // Fetch fresh images from backend to ensure we have the latest state
       const response = await axios.get(
         `${API_BASE_URL}/api/v1/admin/products/${productId}/images`,
@@ -148,7 +151,7 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      
+
       // Fetch fresh images from backend to ensure we have the latest state
       const response = await axios.get(
         `${API_BASE_URL}/api/v1/admin/products/${productId}/images`,
@@ -156,7 +159,7 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
       );
       const freshImages = response.data.data || response.data;
       onImagesChange(freshImages);
-      
+
       toast.success('Primary image updated!');
     } catch (err) {
       console.error('Failed to set primary image:', err);
@@ -167,7 +170,7 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
   return (
     <div className="bg-white rounded-lg shadow p-6">
       <h2 className="text-xl font-semibold text-gray-900 mb-4">Product Images</h2>
-      
+
       {/* Upload Area */}
       <div
         onDrop={handleDrop}
@@ -193,18 +196,7 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
             <p className="text-sm text-gray-500 mb-4">
               PNG, JPG, GIF, WEBP up to 10MB
             </p>
-            <label className="inline-flex items-center px-4 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark cursor-pointer transition">
-              <Upload className="w-5 h-5 mr-2" />
-              Select Images
-              <input
-                type="file"
-                multiple
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-                disabled={uploading}
-              />
-            </label>
+            <FileButton multiple accept="image/*" onChange={handleFileSelect} disabled={uploading}>Select images</FileButton>
           </>
         )}
       </div>
@@ -220,7 +212,7 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
               </span>
             )}
           </p>
-          
+
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
             {images.map((image) => (
               <div
@@ -233,7 +225,7 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
                     src={image.url}
                     alt={image.alt_text || 'Product image'}
                     className="w-full h-full"
-                    style={{ 
+                    style={{
                       objectFit: 'contain',
                       backgroundColor: 'white'
                     }}
@@ -247,44 +239,35 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
                   />
                   {/* Primary Badge - Overlay on image */}
                   {image.primary && (
-                    <div className="absolute top-2 left-2 inline-flex items-center bg-yellow-500 text-white text-xs font-semibold px-2 py-1 rounded shadow-md">
-                      <Star className="w-3 h-3 mr-1" fill="currentColor" />
-                      Primary
-                    </div>
+                    <span className="absolute top-2 left-2"><StatusBadge tone="info" icon={<Star fill="currentColor" />}>Primary</StatusBadge></span>
                   )}
                 </div>
-                
+
                 {/* Action Buttons - Same for all images */}
                 <div className="flex flex-col gap-2">
-                  <button
+                  <Button icon={<Star fill={image.primary ? 'currentColor' : 'none'} />} variant="secondary"
                     onClick={() => setPrimaryImage(image.id)}
                     disabled={image.primary}
-                    className={`w-full text-xs py-2 px-2 rounded transition flex items-center justify-center gap-1 ${
-                      image.primary
-                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                        : 'bg-gray-100 text-gray-700 hover:bg-yellow-500 hover:text-white'
-                    }`}
                     title={image.primary ? 'Already primary' : 'Set as primary'}
                   >
-                    <Star className="w-3 h-3" fill={image.primary ? 'currentColor' : 'none'} />
+
                     {image.primary ? 'Primary' : 'Set Primary'}
-                  </button>
-                  
-                  <button
+                  </Button>
+
+                  <Button icon={<X />} variant="destructive" className="w-full"
                     onClick={() => deleteImage(image.id)}
-                    className="w-full text-xs py-2 px-2 rounded bg-red-50 text-red-600 hover:bg-red-600 hover:text-white transition flex items-center justify-center gap-1"
                     title="Delete image"
                   >
-                    <X className="w-3 h-3" />
+
                     Delete
-                  </button>
+                  </Button>
                 </div>
               </div>
             ))}
           </div>
         </div>
       )}
-      
+
       {images.length === 0 && !uploading && (
         <div className="mt-6 border border-gray-200 rounded-lg p-4 bg-gray-50">
           <div className="h-44 rounded-lg overflow-hidden border border-gray-200 bg-white">

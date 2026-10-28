@@ -2,10 +2,14 @@ import { useLocationStore } from '../store/locationStore';
 import { useOrderingAvailability } from '../hooks/useOrderingAvailability';
 import useAppConfig from '../hooks/useAppConfig';
 import { useEffect, useId } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useCartStore } from '../store/cartStore';
 import type { CartItem } from '../types/cart';
 import Dialog from './ui/Dialog';
+import { Button } from './ui/Button';
+import { IconButton } from './ui/IconButton';
+import { QuantityStepper } from './ui/QuantityStepper';
+import { ArrowLeft, LockKeyhole, Trash2, X } from 'lucide-react';
 import PlaceholderImage from './ui/PlaceholderImage';
 import OptimizedImage from './ui/OptimizedImage';
 
@@ -82,15 +86,7 @@ export default function CartDrawer() {
                 <p className="text-white/80 text-sm" aria-live="polite">{cart?.item_count || 0} {(cart?.item_count || 0) === 1 ? 'item' : 'items'}</p>
               </div>
             </div>
-            <button
-              onClick={closeCart}
-              className="w-11 h-11 flex items-center justify-center text-white hover:bg-white/10 rounded-lg transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-              aria-label="Close cart"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <IconButton onClick={closeCart} surface="dark" aria-label="Close cart"><X /></IconButton>
           </div>
         </div>
 
@@ -124,12 +120,7 @@ export default function CartDrawer() {
               <p className="mt-2 text-warm-500 max-w-xs mx-auto">
                 Browse the menu and choose a meal for pickup.
               </p>
-              <button
-                onClick={() => { closeCart(); navigate('/products'); }}
-                className="mt-6 btn-primary"
-              >
-                Browse Menu
-              </button>
+              <Button onClick={() => { closeCart(); navigate('/products'); }} className="mt-6">Browse Menu</Button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -140,7 +131,7 @@ export default function CartDrawer() {
                 >
                   <div className="flex gap-4">
                     {/* Product Image */}
-                    <div className="relative">
+                    <div className="relative shrink-0">
                       <div className="w-20 h-20 rounded-lg overflow-hidden">
                         {item.product.primary_image_url ? (
                           <OptimizedImage
@@ -163,8 +154,10 @@ export default function CartDrawer() {
 
                     {/* Product Info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-semibold text-warm-900 line-clamp-2">
-                        {item.product.name}
+                      <h3 className="text-sm font-semibold text-warm-900 line-clamp-2 break-words">
+                        <Link to={`/products/${item.product.slug}`} onClick={(event) => {
+                          if (!event.defaultPrevented && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) closeCart();
+                        }} className="underline-offset-2 hover:underline">{item.product.name}</Link>
                       </h3>
                       <p className="text-xs text-warm-500 mt-0.5">
                         {item.product_variant.display_name}
@@ -182,7 +175,7 @@ export default function CartDrawer() {
                     </div>
 
                     {/* Price */}
-                    {item.pricing?.purchasable !== false && <div className="text-right">
+                    {item.pricing?.purchasable !== false && <div className="shrink-0 text-right">
                       <p className="text-base font-bold text-warm-900">
                         {`$${(item.subtotal_cents / 100).toFixed(2)}`}
                       </p>
@@ -198,64 +191,25 @@ export default function CartDrawer() {
                   {/* Bottom Row: Quantity Controls + Remove */}
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-warm-100">
                     {/* Quantity Controls */}
-                    <div className="flex items-center bg-warm-100 rounded-full">
-                      <button
-                        aria-label={`Decrease quantity of ${item.product.name}`}
-                        onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                        className="w-11 h-11 flex items-center justify-center text-warm-600 hover:text-tsPrimary hover:bg-warm-200 rounded-full transition aria-disabled:opacity-50"
-                        aria-disabled={item.quantity <= 1 || isLoading}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 12H4" />
-                        </svg>
-                      </button>
-                      <output aria-label={`Quantity of ${item.product.name}`} className="w-10 text-center text-sm font-semibold text-warm-900">
-                        {item.quantity}
-                      </output>
-                      <button
-                        aria-label={`Increase quantity of ${item.product.name}`}
-                        onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                        className="w-11 h-11 flex items-center justify-center text-warm-600 hover:text-tsPrimary hover:bg-warm-200 rounded-full transition aria-disabled:opacity-50"
-                        aria-disabled={
-                          isLoading ||
-                          (item.product.inventory_level !== 'none' && 
-                           item.quantity >= item.availability.available_quantity)
-                        }
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    {/* Remove Button */}
-                    <button
+                    <QuantityStepper
+                      value={item.quantity}
+                      onChange={(next) => { void handleQuantityChange(item.id, next); }}
+                      max={item.product.inventory_level === 'none' ? undefined : item.availability.available_quantity}
+                      pending={isLoading}
+                      itemLabel={item.product.name}
+                    />
+                    <Button
                       aria-label={`Remove ${item.product.name} from cart`}
                       onClick={() => handleRemoveItem(item.id)}
-                      className="min-h-11 px-2 text-sm font-medium text-warm-500 hover:text-red-600 transition flex items-center gap-1"
-                      aria-disabled={isLoading}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                      Remove
-                    </button>
+                      disabled={isLoading} variant="ghost" icon={<Trash2 />}
+                    >Remove</Button>
                   </div>
                 </div>
               ))}
 
               {/* Clear Cart Button */}
               {cart.items.length > 1 && (
-                <button
-                  onClick={handleClearCart}
-                  className="w-full text-sm text-warm-500 hover:text-red-600 transition py-3 flex items-center justify-center gap-2"
-                  disabled={isLoading}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  Clear All Items
-                </button>
+                <Button onClick={handleClearCart} className="w-full" disabled={isLoading} variant="ghost" icon={<Trash2 />}>Clear all items</Button>
               )}
             </div>
           )}
@@ -280,29 +234,19 @@ export default function CartDrawer() {
             {cart.items.some((item) => item.pricing?.purchasable === false) && <p role="alert" className="text-sm text-warm-700">Remove inquiry-only items before checking out. <a href="/catering" className="underline">Start a catering inquiry</a>.</p>}
             {orderingBlocked && <p id="cart-ordering-status" role="status" className="mb-3 text-sm text-warm-700">{orderingMessage}</p>}
             {/* Checkout Button */}
-            <button
+            <Button
               onClick={() => {
                 if (orderingBlocked) return;
                 closeCart();
                 navigate('/checkout');
               }}
-              className="w-full bg-tsPrimary text-white py-4 rounded-xl font-bold text-lg enabled:hover:bg-primary-dark transition shadow-lg shadow-tsPrimary/25 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none"
+              size="lg" className="w-full" icon={<LockKeyhole />}
               aria-describedby={orderingBlocked ? "cart-ordering-status" : undefined}
               disabled={orderingBlocked || isLoading || cart.items.some((item) => item.pricing?.purchasable === false)}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-              </svg>
-              Secure Checkout
-            </button>
+            >Secure Checkout</Button>
 
             {/* Continue Shopping */}
-            <button
-              onClick={closeCart}
-              className="w-full text-sm font-medium text-warm-500 hover:text-tsPrimary transition py-2"
-            >
-              ← Continue Shopping
-            </button>
+            <Button onClick={closeCart} className="w-full" variant="ghost" icon={<ArrowLeft />}>Continue shopping</Button>
 
             {/* Trust badges */}
             <div className="flex items-center justify-center gap-4 pt-2 border-t border-warm-100">

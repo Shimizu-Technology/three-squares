@@ -1,3 +1,6 @@
+import { Field } from '../ui/Field';
+import { Textarea } from '../ui/Textarea';
+import { Button } from '../ui/Button';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { authGet, authPut } from '../../services/authApi';
@@ -66,21 +69,20 @@ function OwnerOrderingSection() {
     }
   };
 
-  return <section aria-labelledby="online-ordering-title" className="rounded-xl border border-gray-200 bg-white p-5 sm:p-6 space-y-4">
+  return <section aria-labelledby="online-ordering-title" className="rounded-xl border border-gray-200 bg-white p-4 sm:p-6 space-y-4">
     <div>
       <h2 id="online-ordering-title" className="text-lg font-bold text-gray-900">Online ordering</h2>
       <p className="mt-1 text-sm text-gray-700">Pause new customer orders while keeping menu browsing, staff sales, pickup queues, and saved payment recovery available.</p>
     </div>
     <p role="status" className="font-medium text-gray-900">{busy ? 'Checking or saving ordering status…' : confirmed && saved ? `Saved status: ${saved.paused ? 'Paused' : 'Accepting online orders'}` : 'Saved status needs to be checked'}</p>
     {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
-    <label className="block text-sm font-medium text-gray-900">Customer message (optional)
-      <textarea maxLength={240} rows={3} value={message} onChange={event => setMessage(event.target.value)} disabled={busy || !confirmed} className="mt-2 block w-full rounded-lg border border-gray-300 p-3 text-base disabled:opacity-60" />
-    </label>
-    <p className="text-sm text-gray-700">Shown while paused. Leave blank to use the standard message. This does not change store hours or whether the API is connected.</p>
-    <div className="flex flex-wrap gap-3">
-      <button type="button" className="btn-primary min-h-11 disabled:opacity-50" disabled={busy || !confirmed || !saved} onClick={() => setPending(!saved?.paused)}>{saved?.paused ? 'Resume online ordering' : 'Pause online ordering'}</button>
-      <button type="button" className="btn-secondary min-h-11 disabled:opacity-50" disabled={busy || !confirmed || !saved || message === (saved.customer_message ?? '')} onClick={() => setPending(saved!.paused)}>Save customer message</button>
-      <button type="button" className="min-h-11 px-2 underline disabled:opacity-50" disabled={busy} onClick={() => void load()}>Check saved status</button>
+    <Field label="Customer message (optional)" help="Shown while paused. Leave blank to use the standard message. This does not change store hours or whether the API is connected.">
+      <Textarea maxLength={240} rows={3} value={message} onChange={event => setMessage(event.target.value)} disabled={busy || !confirmed} />
+    </Field>
+    <div className="flex flex-wrap gap-2">
+      <Button type="button" variant="primary" disabled={busy || !confirmed || !saved} onClick={() => setPending(!saved?.paused)}>{saved?.paused ? 'Resume online ordering' : 'Pause online ordering'}</Button>
+      <Button type="button" variant="secondary" disabled={busy || !confirmed || !saved || message === (saved.customer_message ?? '')} onClick={() => setPending(saved!.paused)}>Save customer message</Button>
+      <Button type="button" variant="ghost" disabled={busy} onClick={() => void load()}>Check saved status</Button>
     </div>
     {saved && saved.history.length > 0 && <div className="border-t border-gray-200 pt-4">
       <h3 className="text-sm font-semibold text-gray-900">Recent changes</h3>
@@ -94,8 +96,8 @@ function OwnerOrderingSection() {
       <p className="mt-3 text-gray-700">{pending ? 'New customer cart additions and payments will be refused. Customers can browse the menu. Staff can keep using POS and pickup queues. Payments already sent for processing will still be checked and completed.' : 'New customer orders can start again, subject to menu availability, store hours, and payment readiness.'}</p>
       {pending && <p className="mt-3 break-words text-sm text-gray-700">Customer message: {message.trim() || 'Online ordering is temporarily paused. You can still browse the menu. Please check back soon.'}</p>}
       <div className="mt-6 flex flex-wrap justify-end gap-3">
-        <button type="button" onClick={() => setPending(null)} disabled={busy} className="btn-secondary min-h-11">Cancel</button>
-        <button type="button" onClick={() => void save()} disabled={busy} className="btn-primary min-h-11">{busy ? 'Saving…' : 'Confirm change'}</button>
+        <Button type="button" onClick={() => setPending(null)} disabled={busy} variant="secondary">Cancel</Button>
+        <Button type="button" onClick={() => void save()} loading={busy} variant="primary">Confirm change</Button>
       </div>
     </Dialog>
   </section>;

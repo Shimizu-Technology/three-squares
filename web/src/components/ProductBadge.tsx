@@ -1,3 +1,5 @@
+import { StatusBadge } from './ui/StatusBadge';
+
 interface ProductBadgeProps {
   type: 'sold-out' | 'sale' | 'new';
   saveAmount?: number; // For sale badge - how much you save in dollars
@@ -7,25 +9,25 @@ interface ProductBadgeProps {
 export default function ProductBadge({ type, saveAmount, className = '' }: ProductBadgeProps) {
   if (type === 'sold-out') {
     return (
-      <span className={`inline-block px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wide bg-red-600 text-white ${className}`}>
+      <StatusBadge tone="attention" className={className}>
         Sold Out
-      </span>
+      </StatusBadge>
     );
   }
 
-  if (type === 'sale' && saveAmount) {
+  if (type === 'sale') {
     return (
-      <span className={`inline-block px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wide bg-green-600 text-white ${className}`}>
-        Save ${saveAmount}
-      </span>
+      <StatusBadge tone="success" className={className}>
+        {saveAmount ? `Save $${saveAmount}` : 'Sale'}
+      </StatusBadge>
     );
   }
 
   if (type === 'new') {
     return (
-      <span className={`inline-block px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wide bg-tsGold text-warm-900 ${className}`}>
+      <StatusBadge tone="info" className={className}>
         New
-      </span>
+      </StatusBadge>
     );
   }
 

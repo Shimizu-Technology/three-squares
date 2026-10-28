@@ -61,6 +61,8 @@ export interface Product {
   allow_pickup?: boolean;
   allow_shipping?: boolean;
   available_location_ids?: number[];
+  offered_location_ids?: number[];
+  offered_locations?: Array<{ id: number; name: string; slug: string }>;
   track_inventory?: boolean;
   inventory_level?: 'none' | 'product' | 'variant';
   product_stock_quantity?: number;

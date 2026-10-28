@@ -1,3 +1,4 @@
+import { uiModules, expandUi } from './helpers/uiModules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -25,9 +26,10 @@ const imports = {
 const source = readFileSync(new URL('../src/pages/admin/ProductFormPage.tsx', import.meta.url), 'utf8');
 const compiled = ts.transpileModule(source, {
   compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
-}).outputText.replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(imports[name] || import.meta.resolve(name))}`);
+}).outputText.replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(imports[name] || uiModules[name] || import.meta.resolve(name))}`);
 const { default: Page } = await import(mockModule(compiled));
-const nodes = node => {
+const nodes = raw => {
+  const node = expandUi(raw);
   if (!node || typeof node !== 'object') return [];
   return [node, ...[node.props?.children].flat(Infinity).flatMap(nodes)];
 };

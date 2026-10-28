@@ -1,3 +1,4 @@
+import { uiModules, expandUi, uiText } from './helpers/uiModules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -11,7 +12,8 @@ const compiled = ts.transpileModule(readFileSync(source, 'utf8'), {
   compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
 }).outputText.replace(/from ["']react\/jsx-runtime["']/g, `from ${JSON.stringify(import.meta.resolve('react/jsx-runtime'))}`)
   .replace(/from ["']\.\/orderUtils["']/g, `from ${JSON.stringify(new URL('../src/components/admin/orders/orderUtils.ts', import.meta.url).href)}`);
-const { default: PackingList } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
+const resolved = compiled.replace(/from ["']\.\.\/\.\.\/ui\/Button["']/g, `from ${JSON.stringify(uiModules['../../ui/Button'])}`);
+const { default: PackingList } = await import(`data:text/javascript;base64,${Buffer.from(resolved).toString('base64')}`);
 
 const itemNote = 'Pack each box separately. Keep fragile cookies on top.\n'.repeat(25);
 const customerNote = 'Label for the family celebration.\n'.repeat(40);
@@ -31,14 +33,15 @@ const order = {
 const props = { orders: [order], saving: false, page: 1, totalPages: 3, onPageChange() {}, onQuickUpdateStatus() {}, onViewDetails() {} };
 const render = (overrides = {}) => renderToStaticMarkup(createElement(PackingList, { ...props, ...overrides }));
 
-function elements(node) {
+function elements(value) {
+  const node = expandUi(value);
   if (!node || typeof node !== 'object') return [];
   const children = Array.isArray(node.props?.children) ? node.props.children.flat(Infinity) : [node.props?.children];
   return [node, ...children.flatMap(elements)];
 }
 const buttons = (overrides = {}) => elements(PackingList({ ...props, ...overrides })).filter(el => el.type === 'button');
 const byName = (nodes, name) => {
-  const button = nodes.find(node => node.props.children === name);
+  const button = nodes.find(node => uiText(node) === name);
   assert.ok(button, `Expected ${name} button`);
   return button;
 };
@@ -86,7 +89,7 @@ test('unpaid, failed, refunded and terminal orders retain Details without an una
   }
   for (const status of ['delivered', 'cancelled']) {
     const nodes = buttons({ orders: [{ ...order, status, next_status_options: [] }], totalPages: 1 });
-    assert.deepEqual(nodes.map(button => button.props.children), ['Details']);
+    assert.deepEqual(nodes.map(uiText), ['Details']);
   }
 });
 
@@ -127,7 +130,7 @@ test('saving disables every action and pagination control; all controls have 44p
   const busy = buttons({ saving: true, page: 2 });
   assert.equal(busy.length, 4);
   assert.ok(busy.every(button => button.props.disabled));
-  assert.ok(busy.every(button => button.props.className.includes('min-h-11')));
+  assert.ok(busy.every(button => button.props.className.includes('ui-button--md')));
 });
 
 test('missing optional content is honest, while shipped tracking and long unbroken content remain available', () => {

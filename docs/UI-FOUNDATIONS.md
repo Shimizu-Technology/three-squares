@@ -10,7 +10,7 @@ The cart header uses an explicit `bg-tsPrimary`/white pair (12.41:1). Its close 
 
 ## Migration status
 
-This is the contract for new work. Button, IconButton, QuantityStepper, StatusBadge and Notice are implemented in `web/src/components/ui`; the two recovery controls use Button. POS tiles/cart/toolbar and reader controls use the shared recipes; see [POS uniformity](POS-UNIFORMITY.md). Other admin and customer controls, headers/toolbars, form rows and workflow label mappings are **not yet migrated**. Location offering semantics are implemented in P4; see [Location offerings](LOCATION-OFFERINGS.md). Visible admin groups follow in P3, remaining admin/labels in P5 and customer surfaces in P6. Device acceptance closes in P7. A documented recipe below is not a claim that its consumers already conform.
+This is the contract for new work. Button, IconButton, QuantityStepper, StatusBadge and Notice are implemented in `web/src/components/ui`; the two recovery controls use Button. POS tiles/cart/toolbar and reader controls use the shared recipes; see [POS uniformity](POS-UNIFORMITY.md). Other admin and customer controls, headers/toolbars, form rows and workflow label mappings are **not yet migrated**. Location offering semantics are implemented in P4; see [Location offerings](LOCATION-OFFERINGS.md). Visible admin groups are adopted in P3, remaining admin/labels in P5 and customer surfaces in P6. Device acceptance closes in P7. A documented recipe below is not a claim that its consumers already conform.
 
 ## Button and IconButton
 
@@ -88,6 +88,8 @@ import { IconButton } from '../components/ui/IconButton';
 <IconButton aria-label="Refresh menu" onClick={refresh}><RefreshCw /></IconButton>
 ```
 
+Use `surface="dark"` on a dark brand surface: secondary stays transparent with a white outline/text, ghost/link use white text, and keyboard focus uses white. Size, padding, primary fill, disabled/loading behavior and semantics are unchanged. This is a shared recipe; do not add local inverse color classes.
+
 Button defaults to a native `type="button"`. Supply `type="submit"` for form submission; use `href` for an anchor or `to` for a router Link. Icons use the `icon` prop. IconButton requires `aria-label`, defaults to ghost, and accepts the same variants/sizes/link props. Loading overlays its spinner in a reserved overlay slot while retaining the original label/icon in layout and the accessible name; dimensions never change. Disabled/loading native buttons cannot activate. Disabled/loading links have no href, remain named links, and leave the tab order. The label must stay unchanged while loading; put detailed progress beside the control.
 
 `className` is for static layout utilities only (width, margins, alignment, layout gaps). Do not override color, padding, radius, font, height, border, movement or opacity, including via inline styles. Extend a shared recipe with tests when a new requirement is needed. New recipes live in the components layer; legacy unlayered `.btn-*` and broad admin/public focus/active styles exclude `data-ui-control`. This preserves unmigrated behavior without overriding shared recipes. Never combine legacy classes with shared controls.
@@ -99,6 +101,14 @@ Use StatusBadge `tone="attention|info|success|neutral|danger|inactive"`; it carr
 Run `npm run ui:check` after changes and `npm run ui:ratchet` to remove retired entries and refresh locations. Ratcheting **refuses added debt**; there is no update command that blesses new sites. The initial baseline cannot be reinitialized over an existing file. Review any manual baseline change as an exception. Approved specialized implementations are exact file/component pairs in `specializedControls` in the checker: POSProductTile. QuantityStepper lives in `components/ui` and needs no specialized exemption. Add Tabs, Disclosure, navigation and other specialized primitives only with semantics, geometry tests and a specific reason; a whole page is never exempt.
 
 Run `npm run test:ci-tools` for enforcement tests and `npm run test:unit` for component props/recipe tests. The standalone `fixtures/ui-controls.html` development page uses the actual primitives, recovery components and retained legacy specimens; it is not a production app route. With the isolated demo running, execute the geometry fixture as documented in `web/fixtures/README.md`. Extend it in every migration slice; screenshots do not replace assertions or saved journey checks.
+
+## Admin adoption (P3)
+
+Menus, Products headers, order commands and obvious Settings action groups now use md controls. Menu cards reserve a two-line description and pin Manage, Schedule, named Preview and Delete controls to the bottom. Preview and Delete use compact IconButtons with item-specific accessible names; deletion still requires confirmation. Counts live with menu metadata. Settings switches and remaining fields migrate in P5.
+
+`ChoiceGroup` is a wrapping single-choice filter/section primitive. It uses native type=button controls, `aria-pressed` selection and a named group. Each choice remains in normal keyboard order; it does not claim ARIA tab semantics or require arrow-key navigation. Its 44px targets and selected navy state are stable on fine and coarse pointers. Use it for queue stages and editor/settings sections, while ordinary actions remain Button.
+
+`ActionTile` is a router navigation link for dashboard shortcuts, with a shared 112px minimum height, 40px icon slot, 20px icon and 14/20 label. The four dashboard shortcuts use two columns on narrow layouts and four where room permits. Settings remains in workspace navigation. Geometry and interaction checks extend the development fixture; real admin saved journeys require separate isolated-demo QA.
 
 ## Shared form fields (P5a)
 
@@ -115,3 +125,26 @@ Use named `Field`, `Input`, `Select` and `Textarea` exports from their respectiv
 Input and single-choice Select are exactly44px border-box high,1px neutral border,8px radius,12px horizontal padding and14/20 type; coarse pointers use16/24 type. Field labels sit above controls with4px gaps. Textarea is multiline: default3 rows, minimum96px,12px padding and native vertical resize. It does not force multiline content into a44px box. Help/error type is14/20. Controls have the shared2px focus outline/2px offset and one disabled opacity rule. Keep field `className` layout-only; the existing AST gate rejects geometry/color overrides, inline styles and spread props at adoption sites. Checkboxes, switches, file pickers and multi-select lists keep separate semantic recipes.
 
 Current Device name/location plus Refresh/Save adopt these recipes first. Other forms migrate in the remaining admin/customer slices. The dev-only `fixtures/ui-fields.html` provides label/help/error, native submission, disabled and geometry acceptance; it is excluded from the normal production entry.
+
+
+### Customer location membership
+
+A product not offered at the selected location is distinct from an offered item sold out today. The detail page uses the server's `Not offered at this location` reason to show “Not available at {location}”, without a payable price, inquiry wording, quantity or Add to cart. Active carrying locations appear under “On the menu at”; membership does not promise today's stock. Each switch preserves the product URL and uses the existing location picker's cart check, confirmation and clear-failure handling. An offered sold-out item retains stock wording, and a genuine inquiry-only item retains its full pricing reason and inquiry destination.
+
+### Customer navigation and location cards
+
+`NavigationLink` renders a router or native anchor for public header/footer/menu destinations. It has a real 44px minimum target, native link semantics, visible keyboard focus and capability-gated hover. `NavigationDisclosure` uses a native non-submit button with an accessible name, expanded state and a stable controlled panel ID; it only changes visibility. Keep field/command buttons on Button/IconButton, and prose links inline.
+
+`CustomerCardFrame` shares the 12px/8px-inset shell for location details, with 4:3 stable media and a bottom action region. It renders an article so separate menu/directions/contact actions remain valid links. It has no whole-card hover/press cue. Product/collection whole-card navigation still uses CustomerCard without nested controls.
+
+## Admin editors (P5b)
+
+Catalog and menu editors, product list actions/filters/pagination, CSV entry points and Settings/Homepage fields use the shared controls. Existing main-form drafts, independent variant/image/offering saves and immediate-save versus explicit-save settings behavior remain with their callers.
+
+- `CheckField` keeps a native checkbox/radio inside a visible label with a 44px minimum hit region and a 20px indicator. `Switch` is a named native button with switch semantics, a 72×44px target and a navy checked state. It does not own saving.
+- `FileButton` keeps the native keyboard-focusable file input and picker in a 44px label action. Callers own selection, upload, required status and recovery; visible selected-file feedback belongs alongside the action.
+- `Disclosure` retains native details/summary behavior with a 44px minimum summary target. Controlled open state, DOM refs and validation recovery remain available.
+- `ActionMenu` is a native disclosure of ordinary command buttons. It closes on a command, Escape or an outside pointer action; commands return focus to the summary before opening a subsequent dialog. It opens upward when the commands would extend below the viewport, and uses normal tab order rather than claiming ARIA menu semantics. Desktop Safari may require Option-Tab for all-control navigation.
+- `Pagination` and the existing `AdminPagination` export share md targets, current-page semantics and a bounded set of numbered actions, even for large page counts. The controls wrap on narrow screens.
+
+The existing AdminPageHeader and AdminFilterBar are adopted for these routes; the remaining operational routes and shell gutter contract migrate in P5c. The dev-only `fixtures/ui-admin.html` extends geometry and native interaction acceptance.

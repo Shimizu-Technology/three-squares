@@ -1,3 +1,4 @@
+import { uiModules, expandUi } from './helpers/uiModules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -10,15 +11,16 @@ const mocks={react:url(['useState','useEffect','useCallback','useRef','useId'].m
   '../../hooks/useAppConfig':url(`export const invalidateAppConfig=()=>${ctx}.invalidations++;`),
   './StaffAccess.tsx':url(`export const useStaffAccess=()=>({can:()=>${ctx}.owner});`),
   '../ui/Dialog':url('export default function Dialog() {}'),
+  './ui/Button':url('export function Button() {}'),
   '../store/cartStore':url(`export const useCartStore=selector=>selector({cart:${ctx}.cart});`),
   'react-router-dom':url(`export const useLocation=()=>({pathname:${ctx}.pathname});`),
   './useBackendAvailability':url(`export const useBackendAvailability=()=>${ctx}.availability;`),
   '../hooks/useBackendAvailability':url(`export const useBackendAvailability=()=>{${ctx}.probes++;return ${ctx}.availability;};`)};
-async function load(path){return import(url(ts.transpileModule(readFileSync(new URL(path,import.meta.url),'utf8'),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace(/from ["']([^"']+)["']/g,(_,n)=>`from ${JSON.stringify(mocks[n]||import.meta.resolve(n))}`)));}
+async function load(path){return import(url(ts.transpileModule(readFileSync(new URL(path,import.meta.url),'utf8'),{compilerOptions:{jsx:ts.JsxEmit.ReactJSX,module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText.replace(/from ["']([^"']+)["']/g,(_,n)=>`from ${JSON.stringify(mocks[n]||uiModules[n]||import.meta.resolve(n))}`)));}
 const {useOrderingAvailability}=await load('../src/hooks/useOrderingAvailability.ts');
 const Owner=(await load('../src/components/admin/OnlineOrderingSection.tsx')).default;
 const {default:Boundary,CustomerConnection}=await load('../src/components/CustomerAvailability.tsx');
-const nodes=n=>!n||typeof n!=='object'?[]:[n,...[n.props?.children].flat(Infinity).flatMap(nodes)];
+const nodes=value=>{const n=expandUi(value);return !n||typeof n!=='object'?[]:[n,...[n.props?.children].flat(Infinity).flatMap(nodes)];};
 const text=n=>typeof n==='string'||typeof n==='number'?String(n):n&&typeof n!=='boolean'?[n.props?.children].flat(Infinity).map(text).join(''):'';
 function harness(t){const hooks=[],effects=[];let i=0,tree;const initial={paused:false,customer_message:null,effective_message:'Standard',history:[]};
 const h={cart:null,owner:true,probes:0,invalidations:0,pathname:'/',getToken:async()=> 'fixture',get:async()=>({data:initial}),put:async()=>({data:initial}),availability:{status:'available',config:{online_ordering_paused:false},retry:()=>{}},

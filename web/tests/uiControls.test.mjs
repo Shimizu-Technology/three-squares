@@ -86,3 +86,56 @@ test('retry recovery retains its label and delegates pending state to Button', a
     assert.equal(html.includes('disabled=""'),loading);
   }
 });
+
+
+test('dark-surface controls preserve roles and geometry without leaking recipe props to the DOM', () => {
+  for (const variant of ['primary', 'secondary', 'ghost', 'link']) {
+    const html = render(Button, { surface: 'dark', size: 'lg', variant, children: 'Hero action' });
+    assert.match(html, /ui-button--on-dark/);
+    assert.match(html, /ui-button--lg/);
+    assert.doesNotMatch(html, /surface=/);
+    assert.match(html, /Hero action/);
+  }
+  for (const destination of [{href:'/menu'}, {to:'/menu'}]) {
+    const html = render(Button, {...destination, surface:'dark', children:'Browse menu'});
+    assert.match(html, /ui-button--on-dark/); assert.match(html, /href="\/menu"/); assert.doesNotMatch(html, /surface=/);
+  }
+  assert.match(css, /\.ui-button--on-dark\.ui-button--secondary \{ background: transparent; border-color: rgb\(255 255 255 \/ 50%\); color: white/);
+  assert.match(css, /\.ui-button--on-dark:focus-visible \{ outline-color: white/);
+});
+
+
+const { module: { NavigationLink, NavigationDisclosure } } = await compile('../src/components/ui/NavigationLink.tsx');
+test('navigation stays native anchors while disclosures stay named non-submit buttons', () => {
+  for (const props of [{to:'/menu'},{href:'/menu'}]) {
+    const html = render(NavigationLink, {...props, children:'Browse menu'});
+    assert.match(html, /<a[^>]+href="\/menu"/);
+    assert.match(html, /data-ui-navigation/);
+    assert.doesNotMatch(html, /role="button"/);
+  }
+  for (const expanded of [false, true]) {
+    const html = render(NavigationDisclosure, {expanded, onToggle:()=>{}, controlsId:'shop-destinations', children:'Shop'});
+    assert.match(html, /<button[^>]+type="button"/);
+    assert.match(html, new RegExp(`aria-expanded="${expanded}"`));
+    assert.match(html, /aria-controls="shop-destinations"/);
+    assert.match(html, /Shop/);
+    assert.match(html, /aria-hidden="true"/);
+  }
+});
+
+const { module: {ChoiceGroup} } = await compile('../src/components/ui/ChoiceGroup.tsx');
+const { module: {ActionTile} } = await compile('../src/components/ui/ActionTile.tsx');
+test('single-choice sections expose selection and invoke only their own value', () => {
+  const calls=[];
+  const tree=ChoiceGroup({label:'Order stages',value:'new',choices:[{value:'new',label:'New paid'},{value:'ready',label:'Ready'}],onChange:value=>calls.push(value)});
+  assert.equal(tree.props.role,'group');assert.equal(tree.props['aria-label'],'Order stages');
+  const [first,second]=tree.props.children;
+  assert.equal(first.props.type,'button');assert.equal(first.props['aria-pressed'],true);assert.equal(second.props['aria-pressed'],false);
+  second.props.onClick();assert.deepEqual(calls,['ready']);
+  const disabled=ChoiceGroup({label:'Editor sections',value:'new',choices:[{value:'new',label:'Menu'}],onChange(){},disabled:true});
+  assert.equal(disabled.props.children[0].props.disabled,true);
+});
+test('dashboard shortcuts retain real navigation and named content', () => {
+  const html=render(ActionTile,{to:'/admin/orders',icon:createElement('svg'),children:'View Orders'});
+  assert.match(html,/href="\/admin\/orders"/);assert.match(html,/View Orders/);assert.match(html,/aria-hidden="true"/);
+});
