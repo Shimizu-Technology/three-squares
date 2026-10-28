@@ -1,3 +1,4 @@
+import { Button } from '../ui/Button';
 import { useId } from 'react';
 import type { PaymentTerminalHookState } from '../../hooks/usePaymentTerminal';
 import PaymentEnvironmentBadge from './PaymentEnvironmentBadge';
@@ -16,7 +17,6 @@ export interface TerminalControlsProps extends PaymentTerminalHookState {
   onCheck?: () => void;
   onCancel?: () => void;
 }
-const button = 'min-h-11 touch-manipulation rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-800 transition-none! active:transform-none! disabled:cursor-not-allowed disabled:opacity-50 active:bg-gray-100 [@media(hover:hover)_and_(pointer:fine)]:hover:bg-gray-50';
 const statuses = {
   ready: 'Reader ready', waiting_for_card: 'Waiting for card', card_inserted: 'Card inserted',
   processing: 'Reader processing', offline: 'Reader offline', retired: 'Reader retired',
@@ -42,7 +42,7 @@ export default function TerminalControls({ terminals, selected, selectedId, sele
           </option>)}
         </select>
       </label>
-      <button type="button" className={button} disabled={loading || busy} onClick={() => void reload()}>Refresh readers</button>
+      <Button variant="secondary" loading={loading} disabled={busy} onClick={() => void reload()}>Refresh readers</Button>
     </div>
     <div role="status" aria-live="polite" className="space-y-1">
       {loading && <p>Loading readers…</p>}
@@ -61,8 +61,8 @@ export default function TerminalControls({ terminals, selected, selectedId, sele
     </div>
     {error && <p role="alert" className="text-red-800">{error}</p>}
     {(onCheck || onCancel) && <div className="flex flex-wrap gap-2">
-      {onCheck && <button type="button" className={button} disabled={busy} onClick={onCheck}>Check saved payment</button>}
-      {onCancel && <button type="button" className={button} disabled={busy} onClick={onCancel}>Request cancellation</button>}
+      {onCheck && <Button variant="secondary" disabled={busy} onClick={onCheck}>Check saved payment</Button>}
+      {onCancel && <Button variant="secondary" disabled={busy} onClick={onCancel}>Request cancellation</Button>}
     </div>}
     {onCancel && <p className="text-xs text-gray-600">A cancellation request does not confirm that a charge was stopped or reversed.</p>}
   </>;
