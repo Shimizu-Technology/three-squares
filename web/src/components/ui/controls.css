@@ -109,3 +109,37 @@
     .ui-input, .ui-select, .ui-textarea { font-size: 16px; line-height: 24px; }
   }
 }
+
+@layer components {
+  .ui-switch { box-sizing: border-box; display: inline-flex; align-items: center; width: 72px; height: 44px; flex-shrink: 0; padding: 6px; border: 1px solid #D1D5DB; border-radius: 999px; background: #E5E7EB; cursor: pointer; touch-action: manipulation; }
+  .ui-switch[aria-checked="true"] { background: var(--color-tsPrimary); border-color: var(--color-tsPrimary); }
+  .ui-switch > span { width: 30px; height: 30px; border-radius: 999px; background: white; }
+  .ui-switch[aria-checked="true"] > span { margin-left: auto; }
+  .ui-switch:focus-visible, .ui-file-button:focus-within, .ui-disclosure > summary:focus-visible { outline: 2px solid var(--color-tsPrimary); outline-offset: 2px; }
+  .ui-switch:disabled, .ui-file-button:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+  .ui-file-button { position: relative; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; min-width: 44px; height: 44px; padding: 0 16px; border: 1px solid #D1D5DB; border-radius: 8px; background: white; color: #1F2937; font: 600 14px/20px var(--font-sans); cursor: pointer; }
+  .ui-file-button__input { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+  .ui-disclosure { min-width: 0; }
+  .ui-disclosure > summary { box-sizing: border-box; min-height: 44px; padding: 12px 0; color: #374151; font: 600 14px/20px var(--font-sans); cursor: pointer; border-radius: 8px; overflow-wrap: anywhere; }
+}
+
+@layer components {
+  .ui-action-menu { position: relative; flex-shrink: 0; }
+  .ui-action-menu > summary { box-sizing: border-box; display: flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 1px solid transparent; border-radius: 8px; color: #374151; background: transparent; cursor: pointer; list-style: none; }
+  .ui-action-menu > summary::-webkit-details-marker { display: none; }
+  .ui-action-menu > summary > svg { width: 20px; height: 20px; }
+  .ui-action-menu > summary:focus-visible { outline: 2px solid var(--color-tsPrimary); outline-offset: 2px; }
+  .ui-action-menu__commands { position: absolute; right: 0; top: 100%; z-index: 20; display: flex; flex-direction: column; gap: 4px; width: 208px; padding: 8px; border: 1px solid #D1D5DB; border-radius: 12px; background: white; box-shadow: 0 8px 24px #0002; }
+  @media (hover: hover) and (pointer: fine) { .ui-action-menu > summary:hover { background: #F3F4F6; } }
+}
+
+@layer components {
+  .ui-check-field { display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 4px 0; color: #374151; font: 400 14px/20px var(--font-sans); cursor: pointer; }
+  .ui-check-field > input { width: 20px; height: 20px; flex-shrink: 0; accent-color: var(--color-tsPrimary); }
+  .ui-check-field > input:focus-visible { outline: 2px solid var(--color-tsPrimary); outline-offset: 2px; }
+  .ui-check-field:has(input:disabled) { opacity: .5; cursor: not-allowed; }
+}
+
+@layer components {
+  .ui-action-menu[data-side="top"] > .ui-action-menu__commands { top: auto; bottom: 100%; }
+}

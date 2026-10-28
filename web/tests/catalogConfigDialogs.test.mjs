@@ -21,7 +21,7 @@ async function load(path, mocks) {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8');
   const compiled = ts.transpileModule(source, {
     compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
-  }).outputText.replace(/^(import .+? from )["']([^"']+)["']/gm, (_, prefix, name) => `${prefix}${JSON.stringify(mocks[name] || baseModules[name] || uiModules[name] || import.meta.resolve(name))}`);
+  }).outputText.replace(/^(import .+? from )["']([^"']+)["']/gm, (_, prefix, name) => `${prefix}${JSON.stringify(mocks[name] || uiModules[name] || baseModules[name] || import.meta.resolve(name))}`);
   return (await import(dataModule(compiled))).default;
 }
 const Manager = await load('../src/components/VariantManager.tsx', {
@@ -63,8 +63,8 @@ const ProductForm = await load('../src/pages/admin/ProductFormPage.tsx', {
   '../../components/admin/products/productDraft': new URL('../src/components/admin/products/productDraft.ts', import.meta.url).href,
   '../../components/admin/products/productQueryState': new URL('../src/components/admin/products/productQueryState.ts', import.meta.url).href,
 });
-const nodes = value => { const node = expandUi(value); return !node || typeof node !== 'object' ? [] : [node,
-  ...[node.props?.children, node.props?.footer, node.props?.actions].flat(Infinity).flatMap(nodes)]; }
+const nodes = raw => { const node = expandUi(raw); return !node || typeof node !== 'object' ? [] : [node,
+  ...[node.props?.children, node.props?.footer, node.props?.actions].flat(Infinity).flatMap(nodes)]; };
 const text = node => typeof node === 'string' ? node : node && typeof node === 'object' ? [node.props?.children].flat(Infinity).map(text).join('') : '';
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 const variant = {
@@ -87,7 +87,7 @@ function harness(Component, props = {}) {
     useEffect(effect, deps) { const key = cursor++; if (!state[key] || deps.some((value, index) => !Object.is(value, state[key].deps[index]))) { effects.push(() => { state[key]?.cleanup?.(); state[key] = { deps, cleanup: effect() }; }); } },
     async flush() { for (let i = 0; i < 8; i++) { globalThis.__catalogDialogs = h; cursor = 0; tree = Component(props); effects.splice(0).forEach(effect => effect()); await Promise.resolve(); } },
     find(predicate) { const node = nodes(tree).find(predicate); assert.ok(node, 'Expected control'); return node; },
-    button(label) { return h.find(node => node.type === 'button' && text(node).trim() === label).props; },
+    button(label) { return h.find(node => node.type === 'button' && (text(node).trim() === label || node.props['aria-label'] === label)).props; },
     field(id) { return h.find(node => node.type === 'input' && node.props.id === id).props; },
     modal() { return h.find(node => node.type?.name === 'AdminModal').props; },
     unmount() { state.forEach(value => value?.cleanup?.()); },
@@ -121,7 +121,7 @@ test('variant pending state rejects duplicate saves and every dismissal, then pr
     const h = manager(canManageStock), pending = deferred(), opener = {};
     h.patch = async (...args) => { h.calls.push(args); return pending.promise; };
     await h.flush();
-    h.button('Edit').onClick({ currentTarget: opener });
+    h.button('Edit Test portion').onClick({ currentTarget: opener });
     await h.flush();
     h.field('variant-edit-price').onChange({ target: { value: '15.00' } });
     await h.flush();
@@ -154,7 +154,7 @@ test('variant deadline releases the save guard and prevents a late token from se
   t.mock.timers.enable({ apis: ['setTimeout'] });
   const h = manager(true), token = deferred();
   await h.flush();
-  h.button('Edit').onClick({ currentTarget: {} });
+  h.button('Edit Test portion').onClick({ currentTarget: {} });
   await h.flush();
   h.getToken = () => token.promise;
   const saving = h.button('Save Changes').onClick();
@@ -176,7 +176,7 @@ test('variant timeout aborts an in-flight request and ignores its late success',
   const h = manager(true), response = deferred();
   h.patch = async (...args) => { h.calls.push(args); return response.promise; };
   await h.flush();
-  h.button('Edit').onClick({ currentTarget: {} });
+  h.button('Edit Test portion').onClick({ currentTarget: {} });
   await h.flush();
   const saving = h.button('Save Changes').onClick();
   await h.flush();

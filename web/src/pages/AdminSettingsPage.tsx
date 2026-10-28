@@ -1,3 +1,11 @@
+import AdminPageHeader from '../components/admin/AdminPageHeader';
+import { CheckField } from '../components/ui/CheckField';
+import { Textarea } from '../components/ui/Textarea';
+import { FileButton } from '../components/ui/FileButton';
+import { Select } from '../components/ui/Select';
+import { Input } from '../components/ui/Input';
+import { Field } from '../components/ui/Field';
+import { Switch } from '../components/ui/Switch';
 import { ChoiceGroup } from '../components/ui/ChoiceGroup';
 import { Button } from '../components/ui/Button';
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -525,23 +533,10 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
 
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-6">
-          <Button
-            to="/admin"
-            icon={<svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>}
-            variant="ghost" className="mb-4"
-          >
-
-            Back to Admin Dashboard
-          </Button>
-          <h1 className="text-3xl font-bold text-gray-900">{homepageOnly ? 'Homepage' : 'Store Settings'}</h1>
-          <p className="text-gray-600 mt-2">{homepageOnly ? 'Manage homepage banners and featured content' : 'Manage global settings for your Three Squares store'}</p>
-        </div>
+    <div>
+      <div className="space-y-6">
+        <AdminPageHeader title={homepageOnly ? 'Homepage' : 'Store Settings'}
+          subtitle={homepageOnly ? 'Manage homepage banners and featured content' : 'Manage global settings for your Three Squares store'} />
 
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-6">
@@ -672,56 +667,40 @@ function GeneralSettingsTab({
                 Show the announcement banner to all visitors
               </p>
             </div>
-            <button
+            <Switch
               type="button"
-              role="switch"
-              aria-label="Enable Banner"
+                            aria-label="Enable Banner"
               aria-checked={settings.announcement_enabled}
               onClick={() => onUpdateSettings({ announcement_enabled: !settings.announcement_enabled })}
-              className={`relative inline-flex min-h-[44px] w-[72px] items-center shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ml-4 ${
-                settings.announcement_enabled ? 'bg-tsPrimary' : 'bg-gray-200'
-              }`}
-            >
-              <span
-                className={`inline-block h-7 w-7 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                  settings.announcement_enabled ? 'translate-x-9' : 'translate-x-0'
-                }`}
-              />
-            </button>
+            ></Switch>
           </div>
 
           {/* Banner Text */}
           <div>
-            <label htmlFor="announcement_text" className="block text-sm font-medium text-gray-700 mb-2">
-              Banner Message
-            </label>
-            <input
+            <Field label="Banner Message">
+            <Input
               type="text"
               id="announcement_text"
               value={settings.announcement_text || ''}
               onChange={(e) => onUpdateSettings({ announcement_text: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               placeholder="Enter your announcement message..."
-            />
+            /></Field>
           </div>
 
           {/* Style Selector */}
           <div>
-            <label htmlFor="announcement_style" className="block text-sm font-medium text-gray-700 mb-2">
-              Banner Style
-            </label>
-            <select
+            <Field label="Banner Style">
+            <Select
               id="announcement_style"
               value={settings.announcement_style || 'gold'}
               onChange={(e) => onUpdateSettings({ announcement_style: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
             >
               <option value="gold">Gold (Default)</option>
               <option value="info">Info (Blue)</option>
               <option value="success">Success (Green)</option>
               <option value="warning">Warning (Amber)</option>
               <option value="danger">Urgent (Red)</option>
-            </select>
+            </Select></Field>
           </div>
 
           {/* Preview */}
@@ -766,23 +745,13 @@ function GeneralSettingsTab({
               <p className="text-sm text-gray-500">Online store purchases</p>
               {saveFeedback('send_retail_emails', 'Retail order emails')}
             </div>
-            <button
+            <Switch
               type="button"
-              role="switch"
-              aria-label="Retail order emails"
+                            aria-label="Retail order emails"
               aria-checked={settings.send_retail_emails}
               onClick={() => onToggleEmailSetting('send_retail_emails')}
               disabled={saving || fieldUnavailable('send_retail_emails')}
-              className={`relative inline-flex min-h-[44px] w-16 items-center shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ${
-                settings.send_retail_emails ? 'bg-green-500' : 'bg-gray-200'
-              } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <span
-                className={`inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                  settings.send_retail_emails ? 'translate-x-8' : 'translate-x-0'
-                }`}
-              />
-            </button>
+            ></Switch>
           </div>
 
           {/* Wholesale Orders Toggle */}
@@ -792,23 +761,13 @@ function GeneralSettingsTab({
               <p className="text-sm text-gray-500">Wholesale orders</p>
               {saveFeedback('send_wholesale_emails', 'Wholesale order emails')}
             </div>
-            <button
+            <Switch
               type="button"
-              role="switch"
-              aria-label="Wholesale order emails"
+                            aria-label="Wholesale order emails"
               aria-checked={settings.send_wholesale_emails}
               onClick={() => onToggleEmailSetting('send_wholesale_emails')}
               disabled={saving || fieldUnavailable('send_wholesale_emails')}
-              className={`relative inline-flex min-h-[44px] w-16 items-center shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ${
-                settings.send_wholesale_emails ? 'bg-green-500' : 'bg-gray-200'
-              } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
-            >
-              <span
-                className={`inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                  settings.send_wholesale_emails ? 'translate-x-8' : 'translate-x-0'
-                }`}
-              />
-            </button>
+            ></Switch>
           </div>
 
           {/* Summary */}
@@ -846,23 +805,13 @@ function GeneralSettingsTab({
                 <p className="text-sm text-gray-500">{desc}</p>
                 {saveFeedback(field, `${label} storefront`)}
               </div>
-              <button
+              <Switch
                 type="button"
                 aria-label={`Enable ${label} storefront`}
-                role="switch"
-                aria-checked={settings[field]}
+                                aria-checked={settings[field]}
                 onClick={() => onToggleStorefront(field)}
                 disabled={saving || fieldUnavailable(field)}
-                className={`relative inline-flex min-h-[44px] w-16 items-center shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-tsPrimary focus:ring-offset-2 ${
-                  settings[field] ? 'bg-green-500' : 'bg-gray-200'
-                } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
-              >
-                <span
-                  className={`inline-block h-6 w-6 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                    settings[field] ? 'translate-x-8' : 'translate-x-0'
-                  }`}
-                />
-              </button>
+              ></Switch>
             </div>
           ))}
         </div>
@@ -871,10 +820,10 @@ function GeneralSettingsTab({
       <section aria-labelledby="catering-ordering-title" className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
         <h2 id="catering-ordering-title" className="text-lg font-semibold text-gray-900">Catering online ordering</h2>
         <p className="mt-2 text-sm text-gray-700">Off by default. Customers can browse catering items and submit an inquiry. Enable only when the menu is ready for direct online orders. This does not add minimum quantities, lead times or capacity rules.</p>
-        <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 text-gray-900">
-          <input type="checkbox" role="switch" checked={settings.enable_catering_online_ordering === true} disabled={saving || fieldUnavailable('enable_catering_online_ordering')} onChange={() => onToggleStorefront('enable_catering_online_ordering')} className="h-6 w-6" />
+        <CheckField type="checkbox" role="switch" checked={settings.enable_catering_online_ordering === true} disabled={saving || fieldUnavailable('enable_catering_online_ordering')} onChange={() => onToggleStorefront('enable_catering_online_ordering')}>
+          
           <span>Allow catering online orders</span>
-        </label>
+        </CheckField>
         <p role="status" className="mt-2 text-sm text-gray-700">{fieldSaveStates.enable_catering_online_ordering === 'checking' || fieldSaveStates.enable_catering_online_ordering === 'uncertain' ? 'Saved ordering status is unconfirmed.' : settings.enable_catering_online_ordering ? 'Online orders enabled. Saves immediately.' : 'Inquiry only. Saves immediately.'}</p>
         {saveFeedback('enable_catering_online_ordering', 'Catering online ordering')}
       </section>
@@ -889,32 +838,26 @@ function GeneralSettingsTab({
         <div className="p-6 space-y-6">
           {/* Store Name */}
           <div>
-            <label htmlFor="store_name" className="block text-sm font-medium text-gray-700 mb-2">
-              Store Name
-            </label>
-            <input
+            <Field label="Store Name">
+            <Input
               type="text"
               id="store_name"
               value={settings.store_name}
               onChange={(e) => onUpdateSettings({ store_name: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               required
-            />
+            /></Field>
           </div>
 
           {/* Store Email */}
           <div>
-            <label htmlFor="store_email" className="block text-sm font-medium text-gray-700 mb-2">
-              Store Email
-            </label>
-            <input
+            <Field label="Store Email">
+            <Input
               type="email"
               id="store_email"
               value={settings.store_email}
               onChange={(e) => onUpdateSettings({ store_email: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               required
-            />
+            /></Field>
             <p className="mt-1 text-sm text-gray-500">
               Used for order notifications and customer communications
             </p>
@@ -922,24 +865,21 @@ function GeneralSettingsTab({
 
           {/* Store Phone */}
           <div>
-            <label htmlFor="store_phone" className="block text-sm font-medium text-gray-700 mb-2">
-              Store Phone
-            </label>
-            <input
+            <Field label="Store Phone">
+            <Input
               type="tel"
               id="store_phone"
               value={settings.store_phone}
               onChange={(e) => onUpdateSettings({ store_phone: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               required
-            />
+            /></Field>
           </div>
 
           {/* Placeholder Image */}
           <div>
-            <label htmlFor="placeholder_image_url" className="block text-sm font-medium text-gray-700 mb-2">
+            <p className="text-sm font-semibold text-gray-700">
               Product Placeholder Image
-            </label>
+            </p>
             <p className="mt-1 text-sm text-gray-500">
               Used wherever a product image is missing. Default is the Three Squares logo.
             </p>
@@ -952,24 +892,9 @@ function GeneralSettingsTab({
                 />
               </div>
               <div className="flex flex-col gap-2">
-                <label className="inline-flex items-center">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={onPlaceholderFileChange}
-                    className="hidden"
-                    disabled={saving || placeholderUploading}
-                  />
-                  <span
-                    className={`px-4 py-2 rounded-lg text-sm font-medium border ${
-                      saving || placeholderUploading
-                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-tsPrimary hover:text-tsPrimary cursor-pointer'
-                    }`}
-                  >
+                <FileButton accept="image/*" onChange={onPlaceholderFileChange} disabled={saving || placeholderUploading}>
                     {placeholderUploading ? 'Uploading...' : 'Upload Custom Placeholder'}
-                  </span>
-                </label>
+                  </FileButton>
                 {!isDefaultPlaceholder && (
                   <Button
                     type="button"
@@ -991,14 +916,13 @@ function GeneralSettingsTab({
             </div>
             {showPlaceholderUrlInput && (
               <div className="mt-3">
-                <input
+                <Field label="Custom placeholder image URL"><Input
                   type="text"
                   id="placeholder_image_url"
                   value={isDefaultPlaceholder ? '' : settings.placeholder_image_url || ''}
                   onChange={(e) => onUpdateSettings({ placeholder_image_url: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="https://... or /images/..."
-                />
+                /></Field>
                 <p className="mt-1 text-xs text-gray-500">
                   Paste a public image URL. Save changes when finished.
                 </p>
@@ -1022,118 +946,94 @@ function GeneralSettingsTab({
 
             <div className="space-y-4">
               <div>
-                <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
-                  Company Name
-                </label>
-                <input
+                <Field label="Company Name">
+                <Input
                   type="text"
                   id="company"
                   value={settings.shipping_origin_address.company}
                   onChange={(e) => onUpdateShippingAddress({ company: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   required
-                />
+                /></Field>
               </div>
 
               <div>
-                <label htmlFor="street1" className="block text-sm font-medium text-gray-700 mb-2">
-                  Street Address
-                </label>
-                <input
+                <Field label="Street Address">
+                <Input
                   type="text"
                   id="street1"
                   value={settings.shipping_origin_address.street1}
                   onChange={(e) => onUpdateShippingAddress({ street1: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   required
-                />
+                /></Field>
               </div>
 
               <div>
-                <label htmlFor="street2" className="block text-sm font-medium text-gray-700 mb-2">
-                  Street Address Line 2 (Optional)
-                </label>
-                <input
+                <Field label="Street Address Line 2 (Optional)">
+                <Input
                   type="text"
                   id="street2"
                   value={settings.shipping_origin_address.street2 || ''}
                   onChange={(e) => onUpdateShippingAddress({ street2: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
-                />
+                /></Field>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="city" className="block text-sm font-medium text-gray-700 mb-2">
-                    City
-                  </label>
-                  <input
+                  <Field label="City">
+                  <Input
                     type="text"
                     id="city"
                     value={settings.shipping_origin_address.city}
                     onChange={(e) => onUpdateShippingAddress({ city: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     required
-                  />
+                  /></Field>
                 </div>
 
                 <div>
-                  <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-2">
-                    State
-                  </label>
-                  <input
+                  <Field label="State">
+                  <Input
                     type="text"
                     id="state"
                     value={settings.shipping_origin_address.state}
                     onChange={(e) => onUpdateShippingAddress({ state: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     required
-                  />
+                  /></Field>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label htmlFor="zip" className="block text-sm font-medium text-gray-700 mb-2">
-                    ZIP Code
-                  </label>
-                  <input
+                  <Field label="ZIP Code">
+                  <Input
                     type="text"
                     id="zip"
                     value={settings.shipping_origin_address.zip}
                     onChange={(e) => onUpdateShippingAddress({ zip: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     required
-                  />
+                  /></Field>
                 </div>
 
                 <div>
-                  <label htmlFor="country" className="block text-sm font-medium text-gray-700 mb-2">
-                    Country
-                  </label>
-                  <input
+                  <Field label="Country">
+                  <Input
                     type="text"
                     id="country"
                     value={settings.shipping_origin_address.country}
                     onChange={(e) => onUpdateShippingAddress({ country: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                     required
-                  />
+                  /></Field>
                 </div>
               </div>
 
               <div>
-                <label htmlFor="address_phone" className="block text-sm font-medium text-gray-700 mb-2">
-                  Shipping Phone
-                </label>
-                <input
+                <Field label="Shipping Phone">
+                <Input
                   type="tel"
                   id="address_phone"
                   value={settings.shipping_origin_address.phone}
                   onChange={(e) => onUpdateShippingAddress({ phone: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   required
-                />
+                /></Field>
               </div>
             </div>
           </div>
@@ -1524,38 +1424,32 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
 
         {/* Title */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Title
-          </label>
-          <input
+          <Field label="Title">
+          <Input
             type="text"
             value={formData.title || ''}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
             placeholder="Enter section title"
-          />
+          /></Field>
         </div>
 
         {/* Subtitle */}
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Subtitle
-          </label>
-          <textarea
+          <Field label="Subtitle">
+          <Textarea
             value={formData.subtitle || ''}
             onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
             rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
             placeholder="Enter subtitle or description"
-          />
+          /></Field>
         </div>
 
         {/* Hero-only settings */}
         {formData.section_type === 'hero' && (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Badge Text</label>
-              <input
+              <Field label="Badge Text">
+              <Input
                 type="text"
                 value={
                   typeof formData.settings?.badge_text === 'string'
@@ -1571,13 +1465,12 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                     },
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 placeholder={DEFAULT_HERO_BADGE_TEXT}
-              />
+              /></Field>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Button Text</label>
-              <input
+              <Field label="Secondary Button Text">
+              <Input
                 type="text"
                 value={
                   typeof formData.settings?.secondary_button_text === 'string'
@@ -1593,13 +1486,12 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                     },
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 placeholder={DEFAULT_HERO_SECONDARY_TEXT}
-              />
+              /></Field>
             </div>
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Secondary Button Link</label>
-              <input
+              <Field label="Secondary Button Link">
+              <Input
                 type="text"
                 value={
                   typeof formData.settings?.secondary_button_link === 'string'
@@ -1615,9 +1507,8 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                     },
                   }))
                 }
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                 placeholder={DEFAULT_HERO_SECONDARY_LINK}
-              />
+              /></Field>
               <p className="mt-1 text-xs text-gray-500">Example: /collections</p>
             </div>
           </div>
@@ -1627,9 +1518,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
         {formData.section_type === 'hero' ? (
           // Hero sections use background_image_url
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Background Image
-            </label>
+            <p className="text-sm font-semibold text-gray-700">Background Image</p>
             <p className="text-xs text-gray-500 mb-3">
               Shown behind the hero text. Default image is already set.
             </p>
@@ -1642,24 +1531,9 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                <label className="inline-flex items-center">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileChange(e, 'background_image_url')}
-                    className="hidden"
-                    disabled={saving || imageUploading}
-                  />
-                  <span
-                    className={`px-4 py-2 rounded-lg text-sm font-medium border ${
-                      saving || imageUploading
-                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-tsPrimary hover:text-tsPrimary cursor-pointer'
-                    }`}
-                  >
+                <FileButton accept="image/*" onChange={(e) => handleFileChange(e, 'background_image_url')} disabled={saving || imageUploading}>
                     {imageUploading ? 'Uploading...' : 'Upload New Image'}
-                  </span>
-                </label>
+                  </FileButton>
                 {!isDefaultBackground && defaultBackgroundUrl && (
                   <Button
                     type="button"
@@ -1680,13 +1554,12 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
             </div>
             {showBackgroundUrlInput && (
               <div className="mt-3">
-                <input
+                <Field label="Custom background image URL"><Input
                   type="text"
                   value={formData.background_image_url || ''}
                   onChange={(e) => setFormData({ ...formData, background_image_url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="https://... or /images/..."
-                />
+                /></Field>
                 <p className="mt-1 text-xs text-gray-500">Paste a public image URL.</p>
               </div>
             )}
@@ -1694,9 +1567,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
         ) : (
           // Category cards and other sections use image_url
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Card Image
-            </label>
+            <p className="text-sm font-semibold text-gray-700">Card Image</p>
             <p className="text-xs text-gray-500 mb-3">
               Shown on the card. Default image is already set.
             </p>
@@ -1709,24 +1580,9 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                <label className="inline-flex items-center">
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleFileChange(e, 'image_url')}
-                    className="hidden"
-                    disabled={saving || imageUploading}
-                  />
-                  <span
-                    className={`px-4 py-2 rounded-lg text-sm font-medium border ${
-                      saving || imageUploading
-                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                        : 'bg-white text-gray-700 border-gray-300 hover:border-tsPrimary hover:text-tsPrimary cursor-pointer'
-                    }`}
-                  >
+                <FileButton accept="image/*" onChange={(e) => handleFileChange(e, 'image_url')} disabled={saving || imageUploading}>
                     {imageUploading ? 'Uploading...' : 'Upload New Image'}
-                  </span>
-                </label>
+                  </FileButton>
                 {!isDefaultImage && defaultImageUrl && (
                   <Button
                     type="button"
@@ -1747,13 +1603,12 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
             </div>
             {showImageUrlInput && (
               <div className="mt-3">
-                <input
+                <Field label="Custom card image URL"><Input
                   type="text"
                   value={formData.image_url || ''}
                   onChange={(e) => setFormData({ ...formData, image_url: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   placeholder="https://... or /images/..."
-                />
+                /></Field>
                 <p className="mt-1 text-xs text-gray-500">Paste a public image URL.</p>
               </div>
             )}
@@ -1763,30 +1618,24 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
         {/* Button */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Button Text
-            </label>
-            <input
+            <Field label="Button Text">
+            <Input
               type="text"
               value={formData.button_text || ''}
               onChange={(e) => setFormData({ ...formData, button_text: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               placeholder="Shop Now"
-            />
+            /></Field>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Link Type
-            </label>
-            <select
+            <Field label="Link Type">
+            <Select
               value={linkType}
               onChange={(e) => setLinkType(e.target.value as 'collection' | 'page' | 'custom')}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent bg-white"
             >
               <option value="page">Page</option>
               <option value="collection">Collection</option>
               <option value="custom">Custom URL</option>
-            </select>
+            </Select></Field>
             {!isDefaultLink && defaultButtonLink && (
               <Button
                 type="button"
@@ -1813,13 +1662,10 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
 
         {linkType === 'collection' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Collection
-            </label>
-            <select
+            <Field label="Collection">
+            <Select
               value={selectedCollection}
               onChange={(e) => setSelectedCollection(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent bg-white"
             >
               <option value="">Select a collection</option>
               {collections.map((collection) => (
@@ -1827,7 +1673,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                   {collection.name}
                 </option>
               ))}
-            </select>
+            </Select></Field>
             {!selectedCollectionExists && (
               <p className="mt-1 text-xs text-amber-600">
                 This collection no longer exists. Choose a new one or reset to default.
@@ -1838,13 +1684,10 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
 
         {linkType === 'page' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Page
-            </label>
-            <select
+            <Field label="Page">
+            <Select
               value={selectedPage}
               onChange={(e) => setSelectedPage(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent bg-white"
             >
               <option value="/products">Shop</option>
               <option value="/collections">Collections</option>
@@ -1852,22 +1695,19 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
               <option value="/contact">Contact</option>
               <option value="/shipping-info">Shipping Info</option>
               <option value="/returns">Returns</option>
-            </select>
+            </Select></Field>
           </div>
         )}
 
         {linkType === 'custom' && (
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Button Link
-            </label>
-            <input
+            <Field label="Button Link">
+            <Input
               type="text"
               value={formData.button_link || ''}
               onChange={(e) => setFormData({ ...formData, button_link: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
               placeholder="https://... or /products"
-            />
+            /></Field>
             <p className="mt-1 text-xs text-gray-500">Use a full URL or a site path.</p>
           </div>
         )}
@@ -1875,18 +1715,9 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
         {/* Phase 2: Position field will be re-added when Add Section is implemented */}
 
         {/* Active Toggle */}
-        <div className="flex items-center gap-2">
-          <input
-            type="checkbox"
-            id="active"
-            checked={formData.active}
-            onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
-            className="w-4 h-4 text-tsPrimary focus:ring-tsPrimary border-gray-300 rounded"
-          />
-          <label htmlFor="active" className="text-sm text-gray-700">
+        <CheckField type="checkbox" id="active" checked={formData.active} onChange={(e) => setFormData({ ...formData, active: e.target.checked })}>
             Active (visible on homepage)
-          </label>
-        </div>
+          </CheckField>
 
         {/* Actions */}
         <div className="flex gap-3 pt-4 border-t border-gray-200">

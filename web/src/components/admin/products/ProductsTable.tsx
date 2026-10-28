@@ -1,5 +1,10 @@
-import { useState, type ReactNode } from 'react';
-import { Eye, Edit, MoreVertical, Archive, ArchiveRestore, Copy, Globe, GlobeLock, ArrowUpDown, AlertTriangle } from 'lucide-react';
+import { Button } from '../../ui/Button';
+import { IconButton } from '../../ui/IconButton';
+import { ActionMenu } from '../../ui/ActionMenu';
+import { Pagination } from '../../ui/Pagination';
+import { StatusBadge } from '../../ui/StatusBadge';
+import { type ReactNode } from 'react';
+import { Eye, Edit, Archive, ArchiveRestore, Copy, Globe, GlobeLock, ArrowUpDown, AlertTriangle } from 'lucide-react';
 import type { Product } from './productUtils';
 import { formatCurrency, getStockDisplay } from './productUtils';
 import PlaceholderImage from '../../ui/PlaceholderImage';
@@ -30,7 +35,7 @@ export default function ProductsTable({
   totalFiltered,
   itemsPerPage,
   sortBy,
-  sortDir: _sortDir,
+  sortDir,
   onSort,
   onPageChange,
   onView,
@@ -41,64 +46,19 @@ export default function ProductsTable({
   onDuplicate,
   renderAvailability,
 }: ProductsTableProps) {
-  const [actionMenuOpen, setActionMenuOpen] = useState<number | null>(null);
+  const rowActions = (product: Product) => <ActionMenu label={`More actions for ${product.name}`}>
+    <Button variant="ghost" icon={product.published ? <GlobeLock /> : <Globe />} onClick={() => onTogglePublished(product)}>{product.published ? 'Unpublish' : 'Publish'}</Button>
+    <Button variant="ghost" icon={<Copy />} onClick={() => onDuplicate(product)}>Duplicate</Button>
+    {product.archived
+      ? <Button variant="ghost" icon={<ArchiveRestore />} onClick={() => onUnarchive(product)}>Restore</Button>
+      : <Button variant="ghost" icon={<Archive />} onClick={() => onArchive(product)}>Archive</Button>}
+  </ActionMenu>;
 
-  const ActionMenu = ({ product }: { product: Product }) => (
-    <div className="relative">
-      <button
-        type="button"
-        aria-label={`More actions for ${product.name}`}
-        aria-expanded={actionMenuOpen === product.id}
-        onClick={() => setActionMenuOpen(actionMenuOpen === product.id ? null : product.id)}
-        className="min-w-[44px] min-h-[44px] p-2.5 text-gray-400 hover:text-gray-600 rounded btn-icon focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
-      >
-        <MoreVertical className="w-4 h-4" />
-      </button>
-      {actionMenuOpen === product.id && (
-        <>
-          <div className="fixed inset-0 z-10" onClick={() => setActionMenuOpen(null)} />
-          <div className="absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border z-20">
-            <button
-              onClick={() => { onTogglePublished(product); setActionMenuOpen(null); }}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
-            >
-              {product.published ? <><GlobeLock className="w-4 h-4" /> Unpublish</> : <><Globe className="w-4 h-4" /> Publish</>}
-            </button>
-            <button
-              onClick={() => { onDuplicate(product); setActionMenuOpen(null); }}
-              className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
-            >
-              <Copy className="w-4 h-4" /> Duplicate
-            </button>
-            {product.archived ? (
-              <button
-                onClick={() => { onUnarchive(product); setActionMenuOpen(null); }}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-green-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
-              >
-                <ArchiveRestore className="w-4 h-4" /> Restore
-              </button>
-            ) : (
-              <button
-                onClick={() => { onArchive(product); setActionMenuOpen(null); }}
-                className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-orange-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
-              >
-                <Archive className="w-4 h-4" /> Archive
-              </button>
-            )}
-          </div>
-        </>
-      )}
-    </div>
-  );
-
-  const StatusBadge = ({ product }: { product: Product }) => (
+  const ProductStatus = ({ product }: { product: Product }) => (
     <div className="flex shrink-0 flex-col items-start gap-1">
-    <span className={`self-start shrink-0 px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-      product.archived ? 'bg-orange-100 text-orange-800' :
-      product.published ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-    }`}>
+    <StatusBadge tone={product.archived ? 'inactive' : product.published ? 'success' : 'neutral'}>
       {product.archived ? 'Archived' : product.published ? 'Published' : 'Draft'}
-    </span>
+    </StatusBadge>
     {product.needs_pickup_locations && <span className="max-w-36 text-sm font-semibold text-amber-900">Needs pickup locations</span>}
     </div>
   );
@@ -121,7 +81,7 @@ export default function ProductsTable({
           {stockDisplay.value}
         </span>
         {stockDisplay.outOfStock && (
-          <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">Out</span>
+          <StatusBadge tone="danger">Out</StatusBadge>
         )}
       </div>
     );
@@ -130,19 +90,19 @@ export default function ProductsTable({
   return (
     <>
       {/* Desktop Table */}
-      <div className="hidden xl:block bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="hidden xl:block bg-white rounded-xl shadow-sm border border-gray-100">
         <table className="min-w-full divide-y divide-gray-100">
           <thead className="bg-gray-50/80">
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => onSort('name')}>
-                <div className="flex items-center gap-1">Product {sortBy === 'name' && <ArrowUpDown className="w-3 h-3" />}</div>
+              <th className="px-6 py-2 text-left" aria-sort={sortBy === 'name' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                <Button variant="ghost" aria-label="Sort by name" icon={<ArrowUpDown />} onClick={() => onSort('name')}>Product</Button>
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => onSort('price')}>
-                <div className="flex items-center gap-1">Price {sortBy === 'price' && <ArrowUpDown className="w-3 h-3" />}</div>
+              <th className="px-6 py-2 text-left" aria-sort={sortBy === 'price' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                <Button variant="ghost" aria-label="Sort by price" icon={<ArrowUpDown />} onClick={() => onSort('price')}>Price</Button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Variants</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100" onClick={() => onSort('stock')}>
-                <div className="flex items-center gap-1">Stock {sortBy === 'stock' && <ArrowUpDown className="w-3 h-3" />}</div>
+              <th className="px-6 py-2 text-left" aria-sort={sortBy === 'stock' ? (sortDir === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                <Button variant="ghost" aria-label="Sort by stock" icon={<ArrowUpDown />} onClick={() => onSort('stock')}>Stock</Button>
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -166,7 +126,7 @@ export default function ProductsTable({
                       </div>
                       {renderAvailability && <div className="mt-3">{renderAvailability(product)}</div>}
                       {product.featured && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Featured</span>
+                        <StatusBadge tone="info">Featured</StatusBadge>
                       )}
                     </div>
                   </div>
@@ -174,16 +134,12 @@ export default function ProductsTable({
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{formatCurrency(product.base_price_cents)}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{product.variant_count}</td>
                 <td className="px-6 py-4 whitespace-nowrap"><StockCell product={product} /></td>
-                <td className="px-6 py-4 whitespace-nowrap"><StatusBadge product={product} /></td>
+                <td className="px-6 py-4 whitespace-nowrap"><ProductStatus product={product} /></td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <div className="flex items-center gap-2">
-                    <button onClick={() => onView(product)} className="text-tsPrimary hover:text-red-700 font-medium inline-flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 rounded">
-                      <Eye className="w-4 h-4 mr-1" /> View
-                    </button>
-                    <button onClick={() => onEdit(product)} className="text-blue-600 hover:text-blue-900 font-medium inline-flex items-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 rounded">
-                      <Edit className="w-4 h-4 mr-1" /> Edit
-                    </button>
-                    <ActionMenu product={product} />
+                    <IconButton variant="secondary" aria-label={`View ${product.name}`} onClick={() => onView(product)}><Eye /></IconButton>
+                    <IconButton variant="secondary" aria-label={`Edit ${product.name}`} onClick={() => onEdit(product)}><Edit /></IconButton>
+                    {rowActions(product)}
                   </div>
                 </td>
               </tr>
@@ -210,7 +166,7 @@ export default function ProductsTable({
                 </div>
                 <p className="text-sm text-gray-600">{formatCurrency(product.base_price_cents)}</p>
               </div>
-              <StatusBadge product={product} />
+              <ProductStatus product={product} />
             </div>
             <div className="grid grid-cols-2 gap-2 text-sm mb-3">
               <div>
@@ -223,66 +179,16 @@ export default function ProductsTable({
               </div>
             </div>
             {renderAvailability && <div className="mb-3">{renderAvailability(product)}</div>}
-            <div className="flex gap-2">
-              <button onClick={() => onView(product)} className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition text-center inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
-                <Eye className="w-4 h-4 mr-1" /> View
-              </button>
-              <button onClick={() => onEdit(product)} className="flex-1 px-4 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition inline-flex items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2">
-                <Edit className="w-4 h-4 mr-1" /> Edit
-              </button>
-              <ActionMenu product={product} />
+            <div className="flex justify-end gap-2">
+              <IconButton variant="secondary" aria-label={`View ${product.name}`} onClick={() => onView(product)}><Eye /></IconButton>
+              <IconButton variant="secondary" aria-label={`Edit ${product.name}`} onClick={() => onEdit(product)}><Edit /></IconButton>
+              {rowActions(product)}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Pagination */}
-      {totalPages > 1 && (
-        <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 bg-white px-6 py-4 rounded-lg shadow">
-          <p className="text-sm text-gray-700">
-            Showing <span className="font-medium">{(currentPage - 1) * itemsPerPage + 1}</span> to{' '}
-            <span className="font-medium">{Math.min(currentPage * itemsPerPage, totalFiltered)}</span>{' '}
-            of <span className="font-medium">{totalFiltered}</span> results
-          </p>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-              disabled={currentPage === 1}
-              className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
-            >
-              Previous
-            </button>
-            <div className="flex gap-1">
-              {[...Array(totalPages)].map((_, i) => {
-                const page = i + 1;
-                if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
-                  return (
-                    <button
-                      key={page}
-                      onClick={() => onPageChange(page)}
-                      className={`px-3 py-2 rounded-lg transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
-                        currentPage === page ? 'bg-tsPrimary text-white' : 'border border-gray-300 hover:bg-gray-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  );
-                } else if (page === currentPage - 2 || page === currentPage + 2) {
-                  return <span key={page} className="px-2 py-2">...</span>;
-                }
-                return null;
-              })}
-            </div>
-            <button
-              onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-              disabled={currentPage === totalPages}
-              className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
-            >
-              Next
-            </button>
-          </div>
-        </div>
-      )}
+      <Pagination page={currentPage} totalPages={totalPages} totalCount={totalFiltered} perPage={itemsPerPage} onPageChange={onPageChange} />
     </>
   );
 }

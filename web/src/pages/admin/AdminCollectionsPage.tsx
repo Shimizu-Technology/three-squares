@@ -1,3 +1,10 @@
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
+import { Field } from '../../components/ui/Field';
+import { Disclosure } from '../../components/ui/Disclosure';
+import { CheckField } from '../../components/ui/CheckField';
+import { Select } from '../../components/ui/Select';
+import { Textarea } from '../../components/ui/Textarea';
+import { Input } from '../../components/ui/Input';
 import { Eye, Trash2 } from 'lucide-react';
 import { IconButton } from '../../components/ui/IconButton';
 import { ChoiceGroup } from '../../components/ui/ChoiceGroup';
@@ -116,11 +123,10 @@ export default function AdminCollectionsPage() {
   const byId = new Map(products.map(product => [product.id, product]));
 
   return <div className="space-y-6">
-    <header className="flex flex-wrap items-start justify-between gap-4">
-      <div><h1 className="text-2xl font-bold text-gray-900">Menus &amp; specials</h1><p className="mt-1 text-gray-700">Manage menu items and their Guam schedules together.</p></div>
-      <div className="flex flex-wrap gap-2"><Button type="button" onClick={() => void fetchCollections()} disabled={loading || busy} variant="secondary">Refresh menus</Button>
-        <Button type="button" disabled={busy} onClick={event => void openEditor(null, 'schedule', event.currentTarget)} variant="primary">Add menu</Button></div>
-    </header>
+    <AdminPageHeader title="Menus & specials" subtitle="Manage menu items and their Guam schedules together." actions={<>
+      <Button type="button" onClick={() => void fetchCollections()} disabled={loading || busy} variant="secondary">Refresh menus</Button>
+      <Button type="button" disabled={busy} onClick={event => void openEditor(null, 'schedule', event.currentTarget)} variant="primary">Add menu</Button>
+    </>} />
     <AdminRequestState resource="Menus" loading={loading} error={loadError} hasData={hasLoaded} onRetry={fetchCollections} />
     {opening && <p role="status" className="text-gray-700">Loading saved menu and item choices…</p>}
     {openError && <div role="alert" className="space-y-2 rounded-lg border border-red-300 bg-red-50 p-4 text-red-900"><p>{openError.message}</p><Button type="button" onClick={() => void openEditor(openError.collection, openError.section)} variant="secondary">Retry opening menu</Button></div>}
@@ -148,17 +154,17 @@ export default function AdminCollectionsPage() {
           {formError && <p ref={errorRef} tabIndex={-1} role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-red-900">{formError}</p>}
           <fieldset disabled={saving} className="min-w-0 space-y-4">
             <div hidden={section !== 'schedule'} className="space-y-4">
-              <label className="block space-y-1"><span className="font-medium text-gray-800">Menu name</span><input ref={nameRef} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
-              <label className="block space-y-1"><span className="font-medium text-gray-800">Description</span><textarea rows={2} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
-              <label className="block space-y-1"><span className="font-medium text-gray-800">Menu type</span><select aria-label="Menu type" value={form.collection_type} onChange={event => setForm({ ...form, collection_type: event.target.value as CollectionType })} className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base"><option value="standard">Standard</option><option value="seasonal">Seasonal</option><option value="event">Special occasion</option><option value="limited_time">Limited time</option></select></label>
+              <Field label="Menu name"><Input ref={nameRef} value={form.name} onChange={event => setForm({ ...form, name: event.target.value })} /></Field>
+              <Field label="Description"><Textarea rows={2} value={form.description} onChange={event => setForm({ ...form, description: event.target.value })} /></Field>
+              <Field label="Menu type"><Select aria-label="Menu type" value={form.collection_type} onChange={event => setForm({ ...form, collection_type: event.target.value as CollectionType })}><option value="standard">Standard</option><option value="seasonal">Seasonal</option><option value="event">Special occasion</option><option value="limited_time">Limited time</option></Select></Field>
               <p className="text-sm text-gray-700">All dates use Guam time (UTC+10). Leave a date blank for no limit. Unchanged saved timestamps retain their precision.</p>
-              <div className="grid gap-4 sm:grid-cols-2"><label className="block min-w-0 space-y-1"><span className="font-medium text-gray-800">Starts at (Guam)</span><input type="datetime-local" value={form.starts_at} onChange={event => setForm({ ...form, starts_at: event.target.value })} className="min-h-11 w-full min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
-                <label className="block min-w-0 space-y-1"><span className="font-medium text-gray-800">Ends at (Guam)</span><input type="datetime-local" value={form.ends_at} onChange={event => setForm({ ...form, ends_at: event.target.value })} className="min-h-11 w-full min-w-0 rounded-lg border border-gray-300 px-3 py-2 text-base" /></label></div>
-              <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={form.published} onChange={event => setForm({ ...form, published: event.target.checked })} className="h-5 w-5" />Published during its schedule</label>
-              <label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={form.auto_hide} onChange={event => setForm({ ...form, auto_hide: event.target.checked })} className="h-5 w-5" />Hide menu after it ends</label>
+              <div className="grid gap-4 sm:grid-cols-2"><Field label="Starts at (Guam)"><Input type="datetime-local" value={form.starts_at} onChange={event => setForm({ ...form, starts_at: event.target.value })} /></Field>
+                <Field label="Ends at (Guam)"><Input type="datetime-local" value={form.ends_at} onChange={event => setForm({ ...form, ends_at: event.target.value })} /></Field></div>
+              <CheckField type="checkbox" checked={form.published} onChange={event => setForm({ ...form, published: event.target.checked })}>Published during its schedule</CheckField>
+              <CheckField type="checkbox" checked={form.auto_hide} onChange={event => setForm({ ...form, auto_hide: event.target.checked })}>Hide menu after it ends</CheckField>
               <p className="text-sm text-gray-700">Upcoming menus stay hidden. Turning off auto-hide keeps an ended page visible; ordering still closes. Items shared with another available menu can remain orderable.</p>
-              <label className="block space-y-1"><span className="font-medium text-gray-800">Customer notice (optional)</span><textarea rows={2} maxLength={200} value={form.banner_text} onChange={event => setForm({ ...form, banner_text: event.target.value })} className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label>
-              <details className="rounded-lg border border-gray-200 p-3"><summary className="min-h-11 cursor-pointer font-medium text-gray-800">Menu placement</summary><label className="block space-y-1"><span>Sort order — lower appears first</span><input type="number" value={form.sort_order} onChange={event => setForm({ ...form, sort_order: Number(event.target.value) || 0 })} className="min-h-11 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" /></label><label className="flex min-h-11 items-center gap-3"><input type="checkbox" checked={form.featured} onChange={event => setForm({ ...form, featured: event.target.checked })} className="h-5 w-5" />Featured menu</label></details>
+              <Field label="Customer notice (optional)"><Textarea rows={2} maxLength={200} value={form.banner_text} onChange={event => setForm({ ...form, banner_text: event.target.value })} /></Field>
+              <Disclosure title={<>Menu placement</>}><Field label="Sort order — lower appears first"><Input type="number" value={form.sort_order} onChange={event => setForm({ ...form, sort_order: Number(event.target.value) || 0 })} /></Field><CheckField type="checkbox" checked={form.featured} onChange={event => setForm({ ...form, featured: event.target.checked })}>Featured menu</CheckField></Disclosure>
             </div>
             <div hidden={section !== 'items'}><MenuItemsEditor products={products} selectedIds={ids} onChange={setIds} disabled={saving} /></div>
             <section hidden={section !== 'preview'} aria-labelledby="menu-preview-title" className="space-y-4">
