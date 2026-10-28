@@ -155,7 +155,9 @@ export default function CartDrawer() {
                     {/* Product Info */}
                     <div className="flex-1 min-w-0">
                       <h3 className="text-sm font-semibold text-warm-900 line-clamp-2 break-words">
-                        <Link to={`/products/${item.product.slug}`} onClick={closeCart} className="underline-offset-2 hover:underline">{item.product.name}</Link>
+                        <Link to={`/products/${item.product.slug}`} onClick={(event) => {
+                          if (!event.defaultPrevented && event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) closeCart();
+                        }} className="underline-offset-2 hover:underline">{item.product.name}</Link>
                       </h3>
                       <p className="text-xs text-warm-500 mt-0.5">
                         {item.product_variant.display_name}

@@ -15,7 +15,7 @@ try {
   if(process.env.CUSTOMER_QA_ENGINE && process.env.CUSTOMER_QA_ENGINE!==engine)continue;
   const browser=await type.launch();
   try {
-   for(const [width,height] of [[768,1024],[1024,768],[1440,900],[390,844]])for(const touch of [false,true]){
+   for(const [width,height] of [[768,1024],[1024,768],[1440,900],[390,844],...(engine==='webkit'?[[375,812]]:[])])for(const touch of [false,true]){
     const context=await browser.newContext({viewport:{width,height},hasTouch:touch,reducedMotion:'reduce'});
     const page=await context.newPage(), label=`${engine}-${width}-${touch?'touch':'fine'}`;
     try{

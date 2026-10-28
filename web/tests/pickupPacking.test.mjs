@@ -1,3 +1,4 @@
+import { uiModules, expandUi, uiText } from './helpers/uiModules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -17,7 +18,8 @@ const compiled = ts.transpileModule(readFileSync(source, 'utf8'), {
 }).outputText.replace(/from ["']react\/jsx-runtime["']/g, `from ${JSON.stringify(import.meta.resolve('react/jsx-runtime'))}`)
   .replace(/from ["']\.\/orderUtils["']/g, `from ${JSON.stringify(new URL('../src/components/admin/orders/orderUtils.ts', import.meta.url).href)}`)
   .replace(/from ["']\.\.\/\.\.\/payment\/PaymentEnvironmentBadge["']/g, `from ${JSON.stringify(badgeModule)}`);
-const { default: PackingList } = await import(`data:text/javascript;base64,${Buffer.from(compiled).toString('base64')}`);
+const resolved = compiled.replace(/from ["']\.\.\/\.\.\/ui\/Button["']/g, `from ${JSON.stringify(uiModules['../../ui/Button'])}`);
+const { default: PackingList } = await import(`data:text/javascript;base64,${Buffer.from(resolved).toString('base64')}`);
 const note = 'Severe peanut allergy. Sauce separately. '.repeat(30);
 const order = {
   id: 7, order_number: 'TSQ-TEST-7', customer_name: 'Alexandria'.repeat(30),
@@ -31,7 +33,8 @@ const order = {
 };
 const props = { orders: [order], saving: false, page: 1, totalPages: 3, onPageChange() {}, onQuickUpdateStatus() {}, onViewDetails() {} };
 const render = (overrides = {}) => renderToStaticMarkup(createElement(PackingList, { ...props, ...overrides }));
-function elements(node) {
+function elements(value) {
+  const node = expandUi(value);
   if (!node || typeof node !== 'object') return [];
   const children = Array.isArray(node.props?.children) ? node.props.children.flat(Infinity) : [node.props?.children];
   return [node, ...children.flatMap(elements)];
@@ -64,7 +67,7 @@ test('unpaid and terminal pickups have no fulfillment action; authorized next st
 test('pagination respects boundaries and forwards actions and the actual Details trigger', () => {
   const calls = [];
   const buttons = elements(PackingList({ ...props, onPageChange: page => calls.push(page), onViewDetails: (...args) => calls.push(args), onQuickUpdateStatus: (...args) => calls.push(args) })).filter(el => el.type === 'button');
-  const byName = name => buttons.find(button => button.props.children === name);
+  const byName = name => buttons.find(button => uiText(button) === name);
   assert.equal(byName('Previous').props.disabled, true);
   assert.equal(byName('Next').props.disabled, false);
   byName('Next').props.onClick();
@@ -72,7 +75,7 @@ test('pagination respects boundaries and forwards actions and the actual Details
   byName('Details').props.onClick({ currentTarget: trigger });
   byName('Acknowledge').props.onClick();
   assert.deepEqual(calls, [2, [7, trigger], [7, 'confirmed']]);
-  const last = elements(PackingList({ ...props, page: 3 })).find(el => el.type === 'button' && el.props.children === 'Next');
+  const last = elements(PackingList({ ...props, page: 3 })).find(el => el.type === 'button' && uiText(el) === 'Next');
   assert.equal(last.props.disabled, true);
   const busy = elements(PackingList({ ...props, saving: true })).filter(el => el.type === 'button');
   assert.ok(busy.every(button => button.props.disabled));

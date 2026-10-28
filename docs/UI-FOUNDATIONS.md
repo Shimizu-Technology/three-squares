@@ -10,7 +10,7 @@ The cart header uses an explicit `bg-tsPrimary`/white pair (12.41:1). Its close 
 
 ## Migration status
 
-This is the contract for new work. Button, IconButton, QuantityStepper, StatusBadge and Notice are implemented in `web/src/components/ui`; the two recovery controls use Button. POS tiles/cart/toolbar and reader controls use the shared recipes; see [POS uniformity](POS-UNIFORMITY.md). Other admin and customer controls, headers/toolbars, form rows and workflow label mappings are **not yet migrated**. Location offering semantics are implemented in P4; see [Location offerings](LOCATION-OFFERINGS.md). Visible admin groups follow in P3, remaining admin/labels in P5 and customer surfaces in P6. Device acceptance closes in P7. A documented recipe below is not a claim that its consumers already conform.
+This is the contract for new work. Button, IconButton, QuantityStepper, StatusBadge and Notice are implemented in `web/src/components/ui`; the two recovery controls use Button. POS tiles/cart/toolbar and reader controls use the shared recipes; see [POS uniformity](POS-UNIFORMITY.md). Other admin and customer controls, headers/toolbars, form rows and workflow label mappings are **not yet migrated**. Location offering semantics are implemented in P4; see [Location offerings](LOCATION-OFFERINGS.md). Visible admin groups are adopted in P3, remaining admin/labels in P5 and customer surfaces in P6. Device acceptance closes in P7. A documented recipe below is not a claim that its consumers already conform.
 
 ## Button and IconButton
 
@@ -102,6 +102,14 @@ Run `npm run ui:check` after changes and `npm run ui:ratchet` to remove retired 
 
 Run `npm run test:ci-tools` for enforcement tests and `npm run test:unit` for component props/recipe tests. The standalone `fixtures/ui-controls.html` development page uses the actual primitives, recovery components and retained legacy specimens; it is not a production app route. With the isolated demo running, execute the geometry fixture as documented in `web/fixtures/README.md`. Extend it in every migration slice; screenshots do not replace assertions or saved journey checks.
 
+## Admin adoption (P3)
+
+Menus, Products headers, order commands and obvious Settings action groups now use md controls. Menu cards reserve a two-line description and pin Manage, Schedule, named Preview and Delete controls to the bottom. Preview and Delete use compact IconButtons with item-specific accessible names; deletion still requires confirmation. Counts live with menu metadata. Settings switches and remaining fields migrate in P5.
+
+`ChoiceGroup` is a wrapping single-choice filter/section primitive. It uses native type=button controls, `aria-pressed` selection and a named group. Each choice remains in normal keyboard order; it does not claim ARIA tab semantics or require arrow-key navigation. Its 44px targets and selected navy state are stable on fine and coarse pointers. Use it for queue stages and editor/settings sections, while ordinary actions remain Button.
+
+`ActionTile` is a router navigation link for dashboard shortcuts, with a shared 112px minimum height, 40px icon slot, 20px icon and 14/20 label. The four dashboard shortcuts use two columns on narrow layouts and four where room permits. Settings remains in workspace navigation. Geometry and interaction checks extend the development fixture; real admin saved journeys require separate isolated-demo QA.
+
 ## Shared form fields (P5a)
 
 Use named `Field`, `Input`, `Select` and `Textarea` exports from their respective files in `components/ui`. Field wraps exactly one control and associates a visible label with its existing ID or a generated unique ID. Help and error slots add their IDs to existing `aria-describedby` references; errors set `aria-invalid`. The caller retains values, handlers, refs, validation and request state. Static errors are not automatically live regions. Native required semantics remain on the control, with a visible required marker in the label.
@@ -128,3 +136,15 @@ A product not offered at the selected location is distinct from an offered item 
 `NavigationLink` renders a router or native anchor for public header/footer/menu destinations. It has a real 44px minimum target, native link semantics, visible keyboard focus and capability-gated hover. `NavigationDisclosure` uses a native non-submit button with an accessible name, expanded state and a stable controlled panel ID; it only changes visibility. Keep field/command buttons on Button/IconButton, and prose links inline.
 
 `CustomerCardFrame` shares the 12px/8px-inset shell for location details, with 4:3 stable media and a bottom action region. It renders an article so separate menu/directions/contact actions remain valid links. It has no whole-card hover/press cue. Product/collection whole-card navigation still uses CustomerCard without nested controls.
+
+## Admin editors (P5b)
+
+Catalog and menu editors, product list actions/filters/pagination, CSV entry points and Settings/Homepage fields use the shared controls. Existing main-form drafts, independent variant/image/offering saves and immediate-save versus explicit-save settings behavior remain with their callers.
+
+- `CheckField` keeps a native checkbox/radio inside a visible label with a 44px minimum hit region and a 20px indicator. `Switch` is a named native button with switch semantics, a 72×44px target and a navy checked state. It does not own saving.
+- `FileButton` keeps the native keyboard-focusable file input and picker in a 44px label action. Callers own selection, upload, required status and recovery; visible selected-file feedback belongs alongside the action.
+- `Disclosure` retains native details/summary behavior with a 44px minimum summary target. Controlled open state, DOM refs and validation recovery remain available.
+- `ActionMenu` is a native disclosure of ordinary command buttons. It closes on a command, Escape or an outside pointer action; commands return focus to the summary before opening a subsequent dialog. It opens upward when the commands would extend below the viewport, and uses normal tab order rather than claiming ARIA menu semantics. Desktop Safari may require Option-Tab for all-control navigation.
+- `Pagination` and the existing `AdminPagination` export share md targets, current-page semantics and a bounded set of numbered actions, even for large page counts. The controls wrap on narrow screens.
+
+The existing AdminPageHeader and AdminFilterBar are adopted for these routes; the remaining operational routes and shell gutter contract migrate in P5c. The dev-only `fixtures/ui-admin.html` extends geometry and native interaction acceptance.

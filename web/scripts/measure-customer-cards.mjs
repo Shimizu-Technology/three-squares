@@ -31,6 +31,7 @@ try {
         [1024, 768],
         [1440, 900],
         [390, 844],
+        ...(engine === "webkit" ? [[375, 812]] : []),
       ])
         for (const touch of [false, true]) {
           const context = await browser.newContext({
@@ -56,6 +57,7 @@ try {
                   title = card.querySelector(".customer-card__title"),
                   style = getComputedStyle(title);
                 return {
+                  currentPrice: card.querySelector('.customer-price__current') ? {width: card.querySelector('.customer-price__current').clientWidth, content: card.querySelector('.customer-price__current').scrollWidth} : null,
                   name: title.textContent,
                   textBox,
                   card: card.getBoundingClientRect().toJSON(),
@@ -87,6 +89,10 @@ try {
               );
               assert.ok(Math.abs(card.title.y - neighbor.title.y) <= 1);
             }
+            for (const price of await page.locator('.customer-card__price').all()) {
+              assert.ok(await price.evaluate(el => [...el.querySelectorAll('span:not(.sr-only)')].every(child => child.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1)), 'prices stay within the card');
+            }
+            assert.ok(geometry[6].currentPrice.content <= geometry[6].currentPrice.width + 1, 'current large sale price fits without secondary comparison crowding');
             assert.equal(geometry[2].text, "Catering inquiry");
             assert.ok(!geometry[2].text.includes("$0"));
             assert.equal(geometry[3].photo, "unavailable");
@@ -105,6 +111,7 @@ try {
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
             await page.screenshot({
               path: path.join(output, `cards-${engine}-${width}-${touch ? "touch" : "fine"}.png`),
+              fullPage: true,
             });
             results.push({ engine, width, height, touch, geometry, collections, status: "passed" });
             writeFileSync(path.join(output, "card-geometry.json"), JSON.stringify(results, null, 2) + "\n");

@@ -16,12 +16,12 @@ const sql = (query) => execFileSync("psql", ["-X", "-A", "-t", "-d", db, "-c", q
 const quote = (value) => (value == null ? "NULL" : `'${String(value).replaceAll("'", "''")}'`);
 const original = JSON.parse(
   sql(
-    "SELECT row_to_json(s) FROM (SELECT online_ordering_paused,online_ordering_pause_message FROM site_settings LIMIT 1) s"
+    "SELECT row_to_json(s) FROM (SELECT id,online_ordering_paused,online_ordering_pause_message FROM site_settings ORDER BY id LIMIT 1) s"
   )
 );
 const restore = () =>
   sql(
-    `UPDATE site_settings SET online_ordering_paused=${original.online_ordering_paused},online_ordering_pause_message=${quote(original.online_ordering_pause_message)}`
+    `UPDATE site_settings SET online_ordering_paused=${original.online_ordering_paused},online_ordering_pause_message=${quote(original.online_ordering_pause_message)} WHERE id=${original.id}`
   );
 if (session)
   execFileSync("dev-lifecycle", [
@@ -43,13 +43,14 @@ try {
     try {
       for (const [width, height] of [
         [390, 844],
+        ...(engine === "webkit" ? [[375, 812]] : []),
         [1440, 900],
       ]) {
         const context = await browser.newContext({ viewport: { width, height }, hasTouch: true });
         const page = await context.newPage();
         const label = `${engine}-${width}`;
         try {
-          sql("UPDATE site_settings SET online_ordering_paused=false");
+          sql(`UPDATE site_settings SET online_ordering_paused=false WHERE id=${original.id}`);
           await page.goto(`${base}/products`);
           await page.getByRole("button", { name: /Three Squares Main/ }).tap();
           await page.locator("#menu-search").fill("Cheeseburger");
@@ -59,7 +60,7 @@ try {
           await expect(drawer).toBeVisible();
           await drawer.getByRole("button", { name: "Continue shopping", exact: true }).tap();
           sql(
-            "UPDATE site_settings SET online_ordering_paused=true,online_ordering_pause_message='Fixture kitchen pause'"
+            `UPDATE site_settings SET online_ordering_paused=true,online_ordering_pause_message='Fixture kitchen pause' WHERE id=${original.id}`
           );
           await page.reload();
           await expect(page.getByText("Online ordering is paused.", { exact: true })).toBeVisible();
@@ -71,7 +72,7 @@ try {
           await page.getByRole("button", { name: "Add to Cart", exact: true }).tap();
           await expect(page.getByRole("button", { name: "Shopping cart with 1 item", exact: true })).toBeVisible();
           await expect(drawer).not.toBeVisible();
-          sql("UPDATE site_settings SET online_ordering_paused=false");
+          sql(`UPDATE site_settings SET online_ordering_paused=false WHERE id=${original.id}`);
           await page.reload();
           await expect(page.getByText("Online ordering is paused.", { exact: true })).not.toBeVisible();
           await expect(page.getByRole("button", { name: "Shopping cart with 1 item", exact: true })).toBeVisible();

@@ -1,3 +1,6 @@
+import { createElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { uiModules, expandUi } from './helpers/uiModules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -32,7 +35,7 @@ const mocks = {
 async function load(path) {
   const source = readFileSync(new URL(path, import.meta.url), 'utf8');
   const code = ts.transpileModule(source, { compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 } }).outputText
-    .replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(mocks[name] || import.meta.resolve(name))}`);
+    .replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(mocks[name] || uiModules[name] || import.meta.resolve(name))}`);
   return (await import(url(code))).default;
 }
 const Analytics = await load('../src/pages/admin/AdminAnalyticsPage.tsx');
@@ -40,7 +43,7 @@ const Dashboard = await load('../src/pages/admin/AdminDashboardPage.tsx');
 const Settings = await load('../src/pages/AdminSettingsPage.tsx');
 const PaymentsPanel = await load('../src/components/payment/PaymentStatusPanel.tsx');
 const Products = await load('../src/components/admin/products/ProductsTable.tsx');
-const nodes = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(nodes)];
+const nodes = raw => { const node = expandUi(raw); return !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children, node.props?.actions].flat(Infinity).flatMap(nodes)]; };
 const text = node => typeof node === 'string' || typeof node === 'number' ? String(node) : node && typeof node !== 'boolean' ? [node.props?.children].flat(Infinity).map(text).join('') : '';
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 const initialSettings = {
@@ -156,7 +159,7 @@ test('dashboard describes scoped all-time production orders and global published
 
 test('banner is a named draft switch and only Save changes persists it', async t => {
   const h = harness(t, Settings); h.put = async (...args) => { h.calls.push(args); return { data: { ...initialSettings, ...args[1].site_setting } }; }; await h.flush();
-  const banner = h.button('Enable Banner', h.general()); assert.equal(banner.props.role, 'switch'); assert.equal(banner.props['aria-checked'], false); assert.match(banner.props.className, /min-h-\[44px\]/);
+  const banner = h.button('Enable Banner', h.general()); assert.equal(banner.props.role, 'switch'); assert.equal(banner.props['aria-checked'], false); assert.equal(banner.props['data-ui-control'], 'switch');
   h.click('Enable Banner', h.general()); await h.flush(); assert.equal(h.calls.length, 0); assert.equal(h.button('Enable Banner', h.general()).props['aria-checked'], true);
   assert.match(text(h.general()), /Banner changes apply when you select Save changes/);
   await h.click('Save changes', h.general()); await h.flush(); assert.equal(h.calls[0][1].site_setting.announcement_enabled, true); assert.equal(h.generalProps().isSiteSettingsDirty, false);
@@ -207,11 +210,13 @@ test('a manual save retains a newer draft typed while its response was pending',
   h.click('Discard', h.general()); await h.flush(); assert.equal(h.generalProps().settings.announcement_text, 'Submitted draft');
 });
 
-test('product More actions identifies the product and retains its 44px target', async t => {
+test('product More actions uses a named native disclosure with ordinary command buttons', async t => {
   const h = harness(t, Products, { products: [{ id: 1, name: 'Synthetic product', base_price_cents: 100 }], totalPages: 1 }); await h.flush();
-  const action = h.find(node => node.type?.name === 'ActionMenu'); const rendered = action.type(action.props);
-  const button = h.button('More actions for Synthetic product', rendered); assert.match(button.props.className, /min-h-\[44px\]/); assert.equal(button.props['aria-expanded'], false);
-  button.props.onClick(); await h.flush(); const next = h.find(node => node.type?.name === 'ActionMenu'); assert.equal(h.button('More actions for Synthetic product', next.type(next.props)).props['aria-expanded'], true);
+  const action = h.find(node => node.type?.name === 'ActionMenu');
+  const html = renderToStaticMarkup(createElement(action.type, action.props));
+  assert.match(html, /<details/);
+  assert.match(html, /<summary aria-label="More actions for Synthetic product" data-ui-control="action-menu"/);
+  assert.match(html, /Publish/); assert.match(html, /Duplicate/); assert.match(html, /Archive/);
 });
 
 for (const button of ['Retail order emails', 'Enable Catering storefront']) test(`${button} ignores completion after unmount`, async t => {

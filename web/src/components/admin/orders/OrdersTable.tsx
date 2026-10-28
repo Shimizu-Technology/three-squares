@@ -1,3 +1,4 @@
+import { Button } from '../../ui/Button';
 import type { Order } from './orderUtils';
 import PaymentEnvironmentBadge from '../../payment/PaymentEnvironmentBadge';
 import { formatCurrency, formatDate, getStatusBadge, formatStatus, getNextStatusAction } from './orderUtils';
@@ -82,24 +83,24 @@ export default function OrdersTable({
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-3">
                       {nextAction && (
-                        <button
+                        <Button
                           disabled={saving}
                           onClick={(e) => {
                             e.stopPropagation();
                             onQuickUpdateStatus(order.id, nextAction.status);
                           }}
-                          className={`inline-flex items-center px-3.5 py-2.5 text-white text-sm font-semibold rounded-md shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${nextAction.color}`}
+                          variant="primary"
                         >
                           {nextAction.label}
-                        </button>
+                        </Button>
                       )}
-                      <button
+                      <Button
                         disabled={saving}
                         onClick={(event) => onViewDetails(order.id, event.currentTarget)}
-                        className="inline-flex items-center px-3.5 py-2.5 text-gray-700 text-sm font-semibold bg-gray-100 hover:bg-gray-200 rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
+                        variant="secondary"
                       >
                         Details
-                      </button>
+                      </Button>
                     </div>
                   </td>
                 </tr>
@@ -150,25 +151,21 @@ export default function OrdersTable({
 
               <div className="mt-4 flex gap-3">
                 {nextAction && (
-                  <button
+                  <Button
                     disabled={saving}
                     onClick={() => onQuickUpdateStatus(order.id, nextAction.status)}
-                    className={`flex-1 px-4 py-2.5 text-white text-sm font-semibold rounded-lg shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${nextAction.color}`}
+                    variant="primary" className="flex-1"
                   >
                     {nextAction.label}
-                  </button>
+                  </Button>
                 )}
-                <button
+                <Button
                   disabled={saving}
                   onClick={(event) => onViewDetails(order.id, event.currentTarget)}
-                  className={`${nextAction ? 'flex-1' : 'w-full'} px-4 py-2.5 text-sm font-semibold rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 ${
-                    nextAction
-                      ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                      : 'bg-tsPrimary text-white hover:bg-primary-dark'
-                  }`}
+                  variant="secondary" className="flex-1"
                 >
                   {nextAction ? 'Details' : 'View Details'}
-                </button>
+                </Button>
               </div>
             </div>
           );
@@ -178,23 +175,23 @@ export default function OrdersTable({
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="mt-6 flex justify-center gap-2">
-          <button
+          <Button
             onClick={() => onPageChange(Math.max(1, page - 1))}
             disabled={page === 1}
-            className="min-w-[44px] min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
+            variant="secondary"
           >
             Previous
-          </button>
+          </Button>
           <span className="px-4 py-2 text-gray-700">
             Page {page} of {totalPages}
           </span>
-          <button
+          <Button
             onClick={() => onPageChange(Math.min(totalPages, page + 1))}
             disabled={page === totalPages}
-            className="min-w-[44px] min-h-[44px] px-4 py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
+            variant="secondary"
           >
             Next
-          </button>
+          </Button>
         </div>
       )}
     </>

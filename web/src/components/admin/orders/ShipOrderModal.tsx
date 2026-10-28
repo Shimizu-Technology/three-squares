@@ -1,3 +1,4 @@
+import { Button } from '../../ui/Button';
 import { useId, useRef } from 'react';
 import AdminModal from '../AdminModal';
 
@@ -31,22 +32,22 @@ export default function ShipOrderModal({
       maxWidth="max-w-md" onClose={onClose} dismissible={!saving} initialFocusRef={carrierRef}
       footer={(
         <div className="flex gap-3">
-          <button
+          <Button
             type="button"
             onClick={onShip}
-            disabled={saving}
-            className="flex-1 min-h-11 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            loading={saving}
+            variant="primary" className="flex-1"
           >
-            {saving ? 'Shipping...' : 'Mark as Shipped'}
-          </button>
-          <button
+            Mark as Shipped
+          </Button>
+          <Button
             type="button"
             onClick={onClose}
             disabled={saving}
-            className="min-h-11 px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition font-medium disabled:opacity-50"
+            variant="secondary"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       )}
     >

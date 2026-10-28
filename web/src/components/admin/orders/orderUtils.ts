@@ -112,17 +112,16 @@ export const formatStatus = (status: string) =>
 export interface NextStatusAction {
   label: string;
   status: string;
-  color: string;
 }
 
 export const getNextStatusAction = (order: Order): NextStatusAction | null => {
   const actions: Record<string, NextStatusAction> = {
-    confirmed: { label: 'Acknowledge', status: 'confirmed', color: 'bg-indigo-600 hover:bg-indigo-700' },
-    processing: { label: 'Process', status: 'processing', color: 'bg-blue-600 hover:bg-blue-700' },
-    ready: { label: 'Ready', status: 'ready', color: 'bg-emerald-600 hover:bg-emerald-700' },
-    picked_up: { label: 'Picked up', status: 'picked_up', color: 'bg-green-600 hover:bg-green-700' },
-    shipped: { label: 'Ship', status: 'shipped', color: 'bg-purple-600 hover:bg-purple-700' },
-    delivered: { label: 'Delivered', status: 'delivered', color: 'bg-green-600 hover:bg-green-700' },
+    confirmed: { label: 'Acknowledge', status: 'confirmed' },
+    processing: { label: 'Process', status: 'processing' },
+    ready: { label: 'Ready', status: 'ready' },
+    picked_up: { label: 'Picked up', status: 'picked_up' },
+    shipped: { label: 'Ship', status: 'shipped' },
+    delivered: { label: 'Delivered', status: 'delivered' },
   };
   const status = order.next_status_options?.find((option) => option !== 'cancelled');
   return status ? actions[status] ?? null : null;
