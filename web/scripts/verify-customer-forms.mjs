@@ -25,7 +25,7 @@ async function measure(scope,touch){
  const data=await scope.locator('.ui-field .ui-input,.ui-field .ui-select,.ui-field .ui-textarea').evaluateAll(els=>els.map(el=>{const r=el.getBoundingClientRect(),s=getComputedStyle(el);return {id:el.id,tag:el.tagName,type:el.type,width:r.width,height:r.height,font:s.fontSize,line:s.lineHeight,resize:s.resize,label:el.labels?.[0]?.textContent,required:el.required,described:el.getAttribute('aria-describedby'),validDescriptions:(el.getAttribute('aria-describedby')??'').split(/\s+/).filter(Boolean).every(id=>!!document.getElementById(id))};}));
  assert.ok(data.length>0);for(const item of data){assert.ok(item.id&&item.label,JSON.stringify(item));assert.ok(item.width>0);assert.equal(item.font,touch?'16px':'14px');assert.equal(item.line,touch?'24px':'20px');assert.ok(item.validDescriptions);if(item.tag==='TEXTAREA'){assert.ok(item.height>=96);assert.equal(item.resize,'vertical');}else assert.equal(item.height,44,JSON.stringify(item));}return data;
 }
-const rect=l=>l.evaluate(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height}));
+const rect=async l=>{await l.evaluate(()=>document.fonts.ready.then(()=>undefined));return l.evaluate(el=>({width:el.getBoundingClientRect().width,height:el.getBoundingClientRect().height}));};
 const allowedOrigins = new Set([new URL(base).origin,new URL(api).origin]);
 const localOnly = route => allowedOrigins.has(new URL(route.request().url()).origin) ? route.continue() : route.abort();
 async function protectWrites(page){await page.waitForFunction(()=>!window.Clerk || window.Clerk.loaded);await page.route('**/*',localOnly);}
@@ -39,7 +39,7 @@ try{
     if(process.env.CUSTOMER_QA_TOUCH==='1'&&!touch)continue;
     const context=await browser.newContext({viewport:{width,height},hasTouch:touch,serviceWorkers:'block'}),page=await context.newPage(),label=`${engine}-${width}-${touch?'touch':'fine'}`,email=`forms-${run}-${label}@example.test`;
     const item={engine,width,height,touch,email,status:'passed'};
-    await context.route('**/*',route=>{const u=new URL(route.request().url());return u.pathname.startsWith('/api/')&&u.origin!==new URL(api).origin?route.abort():route.continue();});
+    await context.route(url=>url.pathname.startsWith('/api/')&&url.origin!==new URL(api).origin,route=>route.abort());
     try{
      await page.goto(`${base}/catering?inquiry=true`);const dialog=page.getByRole('dialog',{name:'Request a Catering Quote'});await expect(dialog).toBeVisible();item.catering=await measure(dialog,touch);await page.screenshot({path:path.join(output,`catering-${label}.png`)});
      const submit=dialog.getByRole('button',{name:'Submit Inquiry',exact:true});assert.equal((await rect(submit)).height,52);
@@ -76,9 +76,10 @@ try{
        const pending=page.locator('[role="status"]').filter({hasText:/Your order .* is saved/});await expect(pending).toBeVisible({timeout:30000});await page.unroute('**/*',localOnly);await page.reload();const check=page.getByRole('button',{name:'Check payment status',exact:true});await expect(check).toBeVisible();assert.equal((await rect(check)).height,44);await check.click();
        await page.getByLabel(/Card outcome/).selectOption('approve');await page.getByRole('checkbox',{name:/I have reviewed the saved order total/}).check();const retry=page.getByRole('button',{name:'Retry card payment for this saved order',exact:true});await expect(retry).toBeEnabled();assert.equal((await rect(retry)).height,44);await protectWrites(page);await retry.click();item.recovered=true;
       }
-      await page.waitForURL(/\/orders\/\d+/,{timeout:30000});await expect(page.getByRole('heading',{name:'Order Confirmed!',exact:true})).toBeVisible();const id=Number(new URL(page.url()).pathname.split('/').at(-1)),capability=await page.evaluate(id=>localStorage.getItem(`tsq-order-capability:${id}`),id);
+      await page.waitForURL(/\/orders\/\d+/,{timeout:30000});const id=Number(new URL(page.url()).pathname.split('/').at(-1)),capability=await page.evaluate(id=>localStorage.getItem(`tsq-order-capability:${id}`),id);
       const response=await context.request.get(`${api}/api/v1/orders/${id}`,{headers:{'X-Order-Capability':capability}});assert.equal(response.status(),200);const{order}=await response.json();assert.equal(order.payment_status,'paid');assert.equal(order.total_cents,1295);assert.equal(order.notes,'Fictional pickup note.');item.orderId=id;item.totalCents=order.total_cents;
-      await page.unroute('**/*',localOnly);await page.reload();await expect(page.getByRole('heading',{name:'Order Confirmed!',exact:true})).toBeVisible();
+      // Payment is verified paid on the checked local API before allowing the receipt's dev-auth bootstrap.
+      await page.unroute('**/*',localOnly);await expect(page.getByRole('heading',{name:'Order Confirmed!',exact:true})).toBeVisible({timeout:30000});await page.reload();await expect(page.getByRole('heading',{name:'Order Confirmed!',exact:true})).toBeVisible({timeout:30000});
      }else await page.screenshot({path:path.join(output,`checkout-${label}.png`),fullPage:true});
      assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));results.push(item);writeFileSync(path.join(output,'forms.json'),JSON.stringify(results,null,2)+'\n');console.log(`${label}: shared geometry${touch?', native validation, retained drafts, saved inquiry/contact, simulated checkout and receipt':''} passed`);
     }catch(error){await page.screenshot({path:path.join(output,`failure-${label}.png`)});writeFileSync(path.join(output,`failure-${label}.txt`),await page.locator('body').innerText());throw error;}finally{await context.close();}
