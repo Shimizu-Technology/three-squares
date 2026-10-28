@@ -88,6 +88,9 @@ try {
               );
               assert.ok(Math.abs(card.title.y - neighbor.title.y) <= 1);
             }
+            for (const price of await page.locator('.customer-card__price').all()) {
+              assert.ok(await price.evaluate(el => [...el.querySelectorAll('span:not(.sr-only)')].every(child => child.getBoundingClientRect().right <= el.getBoundingClientRect().right + 1)), 'prices stay within the card');
+            }
             assert.equal(geometry[2].text, "Catering inquiry");
             assert.ok(!geometry[2].text.includes("$0"));
             assert.equal(geometry[3].photo, "unavailable");

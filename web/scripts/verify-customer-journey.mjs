@@ -1,12 +1,25 @@
 import { chromium, webkit, expect } from "@playwright/test";
 import assert from "node:assert/strict";
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import path from "node:path";
 const base = process.env.CUSTOMER_BASE_URL ?? "http://localhost:5691",
   api = process.env.CUSTOMER_API_URL ?? "http://localhost:3601";
 for (const url of [base, api])
   if (!["localhost", "127.0.0.1"].includes(new URL(url).hostname)) throw new Error("Local demo only");
+// Match the task-owned launcher ledger before creating any retained orders.
+const db = process.env.CUSTOMER_DEMO_DB;
+if (!db || !/^tsq_uniform_c_.*demo$/.test(db)) throw new Error("Explicit owned tsq_uniform_c_*demo DB required");
+const ledger = JSON.parse(readFileSync(new URL('../../tmp/demo/pids.json', import.meta.url), 'utf8'));
+assert.equal(ledger.database, db, "Demo launcher must use the explicitly owned DB");
+assert.ok(process.env.DEV_LIFECYCLE_SESSION, "Lifecycle session required");
+process.kill(ledger.supervisor.pid, 0);
+const apiProcess = ledger.children.find(child => child.label === 'api');
+assert.ok(apiProcess, "Owned API process required");
+const apiCommand = execFileSync('ps', ['-p', String(apiProcess.pid), '-o', 'command='], {encoding:'utf8'});
+assert.ok(apiCommand.includes(new URL(api).port), "API URL must match the task's launcher");
+const listener = execFileSync('lsof', ['-a', '-p', String(apiProcess.pid), '-iTCP:' + new URL(api).port, '-sTCP:LISTEN', '-t'], {encoding:'utf8'}).trim();
+assert.equal(listener, String(apiProcess.pid), "Task API must own the requested port");
 const output = path.resolve(process.env.UI_EVIDENCE_DIR ?? "../tmp/customer-journeys");
 mkdirSync(output, { recursive: true });
 const session = process.env.DEV_LIFECYCLE_SESSION;
@@ -80,9 +93,24 @@ try {
           await expect(productQuantity.getByLabel("Current quantity of Cheeseburger", { exact: true })).toHaveText("2");
           await productQuantity.getByRole("button", { name: "Decrease quantity of Cheeseburger", exact: true }).tap();
           await expect(productQuantity.getByLabel("Current quantity of Cheeseburger", { exact: true })).toHaveText("1");
+          await page.getByRole('button', {name:'Enter quantity',exact:true}).click();
+          const quantityInput = page.getByRole('spinbutton', {name:'Enter quantity',exact:true});
+          await quantityInput.fill('100');
+          await expect(quantityInput).toHaveValue('100');
+          await quantityInput.fill('1000');
+          await expect(quantityInput).toHaveValue('999');
+          await quantityInput.fill('0');
+          await expect(quantityInput).toHaveValue('1');
+          await page.getByRole('button', {name:'Done',exact:true}).click();
           await add.tap();
           const drawer = page.getByRole("dialog", { name: "Shopping Cart" });
           await expect(drawer).toBeVisible();
+          // A modified click opens a new product context without closing this cart.
+          const itemLink = drawer.getByRole('link', {name:'Cheeseburger',exact:true});
+          for (const modifier of ['ctrlKey','metaKey','shiftKey','altKey']) {
+            await itemLink.evaluate((el, modifier) => el.dispatchEvent(new MouseEvent('click', {bubbles:true,cancelable:true,button:0,[modifier]:true})), modifier);
+            await expect(drawer).toBeVisible();
+          }
           const increase = drawer.getByRole("button", { name: "Increase quantity of Cheeseburger", exact: true }),
             decrease = drawer.getByRole("button", { name: "Decrease quantity of Cheeseburger", exact: true }),
             close = drawer.getByRole("button", { name: "Close cart", exact: true });

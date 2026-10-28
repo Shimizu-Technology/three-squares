@@ -49,6 +49,10 @@ const cases: Array<Partial<Product>> = [
   },
   { name: "Fictional side", product_type: "complimentary_with_meal", pricing: { ...pricing, unit_price_cents: 0 } },
 ];
+cases.push(
+  {name: 'Fictional large sale', pricing: {...pricing, unit_price_cents: 123456, compare_at_price_cents: 199999, price_varies: true}},
+  {name: 'Fictional very large price', pricing: {...pricing, unit_price_cents: 123456789012, compare_at_price_cents: null}},
+);
 export function Fixture() {
   return (
     <main className="public-site p-4 space-y-6 max-w-7xl mx-auto">

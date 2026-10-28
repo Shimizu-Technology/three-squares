@@ -95,3 +95,5 @@ has a 96px minimum and native vertical resize. Select uses a shared chevron and
 CSS appearance while retaining its native picker and keyboard behavior. Screenshot
 capture is followed by pointer/height checks. Real saved admin/customer journeys
 remain separate QA; these development fixtures do not provide authentication.
+
+Customer journey checks require `CUSTOMER_DEMO_DB=tsq_uniform_c_*demo` and `DEV_LIFECYCLE_SESSION`, and verify the live launcher ledger and API listener before creating simulated orders. Customer runners include WebKit at 375×812. Compact prices retain the fixed 24px row: long values use ellipsis within the card, keeping full server text accessible and on the detail page. A product quantity shortcut uses shared Field/Input for direct bulk entry without changing QuantityStepper.

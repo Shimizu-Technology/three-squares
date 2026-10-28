@@ -60,6 +60,9 @@
     line-height: 24px;
     white-space: nowrap;
   }
+  .customer-price { display: inline-flex; align-items: baseline; gap: 4px; min-width: 0; max-width: 100%; }
+  .customer-price__current { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .customer-price__previous { flex-shrink: 100; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
   .customer-card--collection .customer-card__body {
     padding: 16px 8px 8px;
   }

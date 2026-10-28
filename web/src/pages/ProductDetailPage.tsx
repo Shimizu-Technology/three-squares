@@ -1,5 +1,7 @@
 import { Button } from '../components/ui/Button';
 import { Notice } from '../components/ui/Notice';
+import { Field } from '../components/ui/Field';
+import { Input } from '../components/ui/Input';
 import { QuantityStepper } from '../components/ui/QuantityStepper';
 import { ShoppingCart } from 'lucide-react';
 import CatalogPrice from '../components/CatalogPrice';
@@ -56,6 +58,8 @@ export default function ProductDetailPage() {
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [isEnteringQuantity, setIsEnteringQuantity] = useState(false);
+  const quantityEntryTriggerRef = useRef<HTMLButtonElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -697,9 +701,16 @@ export default function ProductDetailPage() {
               {!isNotOffered && isVariantAvailable && selectedVariant && (
                 <div className="mb-6">
                   <p className="text-sm font-semibold text-warm-900 mb-3">Quantity:</p>
-                  <div className="flex items-center gap-4">
-                    <QuantityStepper value={quantity} onChange={setQuantity} max={maxQuantity}
-                      pending={isAdding} itemLabel={product.name} />
+                  <div className="flex flex-wrap items-center gap-4">
+                    {isEnteringQuantity ? (
+                      <div className="w-40"><Field label="Enter quantity">
+                        <Input type="number" autoFocus min={1} max={maxQuantity} step={1} value={quantity}
+                          disabled={isAdding} onChange={event => setQuantity(Math.min(Math.max(1, parseInt(event.target.value, 10) || 1), maxQuantity))}
+                          onKeyDown={event => { if (event.key === 'Enter' || event.key === 'Escape') { setIsEnteringQuantity(false); quantityEntryTriggerRef.current?.focus(); } }} />
+                      </Field></div>
+                    ) : <QuantityStepper value={quantity} onChange={setQuantity} max={maxQuantity}
+                      pending={isAdding} itemLabel={product.name} />}
+                    <Button ref={quantityEntryTriggerRef} variant="link" disabled={isAdding} onClick={() => setIsEnteringQuantity(value => !value)}>{isEnteringQuantity ? 'Done' : 'Enter quantity'}</Button>
                     {product.inventory_level !== 'none' && maxQuantity > 0 && (
                       <span className="text-sm text-warm-600">
                         {maxQuantity} available
