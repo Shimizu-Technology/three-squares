@@ -1,7 +1,10 @@
+import { StatusBadge } from '../../ui/StatusBadge';
+import { paymentStatus } from '../../ui/workflowStatus';
+import { OrderStatusBadge } from './OrderStatusBadge';
 import { Button } from '../../ui/Button';
 import type { Order } from './orderUtils';
 import PaymentEnvironmentBadge from '../../payment/PaymentEnvironmentBadge';
-import { formatCurrency, formatDate, formatStatus, getNextStatusAction, getStatusBadge, pickupOrderAge } from './orderUtils';
+import { formatCurrency, formatDate, getNextStatusAction, pickupOrderAge } from './orderUtils';
 
 interface Props {
   orders: Order[];
@@ -17,7 +20,6 @@ export default function PickupPackingList({ orders, saving, page, totalPages, on
   return <div className="space-y-3">
     {orders.map((order) => {
       const action = getNextStatusAction(order);
-      const stage = order.status === 'pending' && order.payment_status === 'paid' ? 'New paid' : order.status === 'confirmed' || order.status === 'processing' ? 'Acknowledged' : formatStatus(order.status);
       return <article key={order.id} aria-label={`Order ${order.order_number}`} className="min-w-0 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1">
@@ -32,8 +34,8 @@ export default function PickupPackingList({ orders, saving, page, totalPages, on
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
-          <span className={`rounded-md px-2 py-1 font-semibold ${getStatusBadge(order.status)}`}>{stage}</span>
-          <span className={`rounded-md px-2 py-1 font-semibold ${order.payment_status === 'paid' ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-900'}`}>{order.payment_status === 'paid' ? 'Paid' : order.payment_status === 'pending' ? 'Waiting for payment' : `Payment ${order.payment_status}`}</span>
+          <OrderStatusBadge order={order} />
+          <StatusBadge tone={paymentStatus(order.payment_status).tone}>{paymentStatus(order.payment_status).label}</StatusBadge>
           <span className="font-semibold text-gray-800 tabular-nums">{order.item_count} to pack · {order.line_count} {order.line_count === 1 ? 'line' : 'lines'}</span>
           <span className="text-gray-600 tabular-nums">{formatCurrency(order.total_cents)}</span>
         </div>

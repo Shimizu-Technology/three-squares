@@ -17,6 +17,7 @@ import {
 import AdminRequestState from '../../components/admin/AdminRequestState';
 import { useStaffAccess } from '../../components/admin/StaffAccess.tsx';
 import LocalAvailabilityToggle from '../../components/admin/LocalAvailabilityToggle';
+import { StatusBadge } from '../../components/ui/StatusBadge';
 import { readMenuImportReceipt } from '../../components/admin/import/menuImportReceipt';
 import { SkeletonListPage } from '../../components/admin';
 
@@ -355,7 +356,7 @@ export default function AdminProductsPage() {
           onArchive={handleArchive}
           onUnarchive={handleUnarchive}
           onDuplicate={handleDuplicate}
-          renderAvailability={availabilityLocation && access.can('availability.manage') ? product => product.needs_pickup_locations ? <p className="text-sm text-amber-900">Edit this draft to assign pickup locations before publishing.</p> : product.allow_pickup ? <LocalAvailabilityToggle key={`${product.id}:${availabilityLocation.id}`} productId={product.id} productName={product.name} locationId={availabilityLocation.id} locationName={availabilityLocation.name} available={(product.location_ids || []).includes(availabilityLocation.id)} disabled={loading || loadError} onSaved={saveLocalAvailability} /> : <p className="text-sm text-gray-600">Pickup not offered</p> : undefined}
+          renderAvailability={availabilityLocation && access.can('availability.manage') ? product => product.needs_pickup_locations ? <p className="text-sm text-amber-900">Edit this draft to assign pickup locations before publishing.</p> : product.allow_pickup ? (product.offered_location_ids || []).includes(availabilityLocation.id) ? <LocalAvailabilityToggle key={`${product.id}:${availabilityLocation.id}`} productId={product.id} productName={product.name} locationId={availabilityLocation.id} locationName={availabilityLocation.name} available={(product.location_ids || []).includes(availabilityLocation.id)} disabled={loading || loadError} onSaved={saveLocalAvailability} /> : <StatusBadge tone="inactive">Not offered here</StatusBadge> : <p className="text-sm text-gray-600">Pickup not offered</p> : undefined}
         />
       )}
 

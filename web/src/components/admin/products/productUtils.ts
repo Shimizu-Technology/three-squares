@@ -12,6 +12,7 @@ export interface Product {
   allow_pickup?: boolean;
   allow_shipping?: boolean;
   location_ids?: number[];
+  offered_location_ids?: number[];
   primary_image_url: string | null;
   variant_count: number;
   total_stock: number;
@@ -103,7 +104,7 @@ export const getVariantStatus = (
     if (variant.stock_quantity > 0) {
       return { label: 'Available', tone: 'success', className: 'bg-green-100 text-green-800' };
     }
-    return { label: 'Out of Stock', tone: 'danger', className: 'bg-red-100 text-red-800' };
+    return { label: 'Out of Stock', tone: 'attention', className: 'bg-red-100 text-red-800' };
   }
 
   // For non-variant inventory levels, use the available flags

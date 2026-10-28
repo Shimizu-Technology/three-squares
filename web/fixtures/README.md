@@ -110,3 +110,13 @@ node scripts/measure-ui-admin.mjs http://localhost:5173 /tmp/three-squares-ui-ad
 ```
 
 The runner checks all four foundation viewports, fine/touch input and Chromium/WebKit. It verifies target dimensions, keyboard disclosure/command dismissal and focus return, native file selection, switch/checkbox state and pagination with 10,000 pages. WebKit uses Option-Tab for all-control keyboard navigation. Saved catalog, menu and settings journeys still require the isolated application and database.
+
+## Operational headers and dialogs
+
+`ui-operations.html` exercises the real admin header/filter bar, navigation link, fields, status map and shared modal slots. Run against the isolated demo:
+
+```sh
+node scripts/measure-ui-operations.mjs http://localhost:5173 /tmp/three-squares-ui-operations
+```
+
+Claim the runner process and its browser descendants in the current lifecycle session. The runner closes every context and browser in `finally`. It checks all four foundation sizes with fine/touch Chromium and WebKit: header gutters, 44px fields, touch type, 24px badges, non-collapsed scrollable dialog content, reachable actions, nested dismissal/focus, pending guards and scroll-lock recovery. Saved payment, refund, shipping, catering and administrative journeys require separate isolated-database acceptance.

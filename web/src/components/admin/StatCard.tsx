@@ -1,5 +1,5 @@
+import { NavigationLink } from '../ui/NavigationLink';
 import type { LucideIcon } from 'lucide-react';
-import { Link } from 'react-router-dom';
 
 interface StatCardProps {
   label: string;
@@ -35,12 +35,11 @@ export default function StatCard({
             {value}
           </p>
           {link && (
-            <Link
-              to={link.to}
-              className="inline-block mt-3 text-xs font-medium text-tsPrimary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2 rounded"
+            <NavigationLink context="admin"
+              to={link.to} className="mt-3"
             >
               {link.text} &rarr;
-            </Link>
+            </NavigationLink>
           )}
         </div>
         <div

@@ -1,7 +1,15 @@
+import AdminFilterBar from '../../components/admin/AdminFilterBar';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
+import { Pagination } from '../../components/ui/Pagination';
+import { Button } from '../../components/ui/Button';
+import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
+import { Field } from '../../components/ui/Field';
 import axios from 'axios';
 import { useState, useEffect } from 'react';
 import { useAuth } from '@clerk/clerk-react';
-import { Package, Filter, ChevronLeft, ChevronRight, ArrowUp, ArrowDown, Minus } from 'lucide-react';
+import { Package, Filter, ArrowUp, ArrowDown, Minus } from 'lucide-react';
 import { authGet } from '../../services/authApi';
 import { format } from 'date-fns';
 
@@ -67,17 +75,6 @@ const AUDIT_TYPE_LABELS: Record<string, string> = {
   inventory_sync: 'Inventory Sync'
 };
 
-const AUDIT_TYPE_COLORS: Record<string, string> = {
-  order_placed: 'bg-blue-100 text-blue-800',
-  order_cancelled: 'bg-yellow-100 text-yellow-800',
-  order_refunded: 'bg-orange-100 text-orange-800',
-  restock: 'bg-green-100 text-green-800',
-  manual_adjustment: 'bg-purple-100 text-purple-800',
-  damaged: 'bg-red-100 text-red-800',
-  import: 'bg-indigo-100 text-indigo-800',
-  variant_created: 'bg-teal-100 text-teal-800',
-  inventory_sync: 'bg-gray-100 text-gray-800'
-};
 
 export default function AdminInventoryPage() {
   const { getToken } = useAuth();
@@ -106,13 +103,13 @@ export default function AdminInventoryPage() {
       const params = new URLSearchParams();
       params.append('page', page.toString());
       params.append('per_page', '25');
-      
+
       if (auditType) params.append('audit_type', auditType);
       if (dateRange.start) params.append('start_date', dateRange.start);
       if (dateRange.end) params.append('end_date', dateRange.end);
 
       const response = await authGet<InventoryAuditsResponse>(`/admin/inventory_audits?${params.toString()}`, getToken);
-      
+
       setAudits(response.data.audits);
       setPagination(response.data.pagination);
     } catch (err) {
@@ -129,7 +126,7 @@ export default function AdminInventoryPage() {
       if (dateRange.end) params.append('end_date', dateRange.end);
 
       const response = await authGet<InventorySummaryResponse>(`/admin/inventory_audits/summary?${params.toString()}`, getToken);
-      
+
       setSummary(response.data.summary);
     } catch (err) {
       console.error('Failed to load summary:', err);
@@ -165,17 +162,11 @@ export default function AdminInventoryPage() {
   };
 
   return (
-    <div className="p-6">
+    <div className="space-y-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-          <Package className="w-7 h-7 mr-3 text-tsPrimary" />
-          Inventory History
-        </h1>
-        <p className="text-gray-600 mt-1">
+      <AdminPageHeader title="Inventory History" subtitle={<>
           Track all inventory changes across products and orders
-        </p>
-      </div>
+        </>} />
 
       {/* Summary Cards */}
       {summary && (
@@ -200,59 +191,49 @@ export default function AdminInventoryPage() {
       )}
 
       {/* Filters */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-6">
+      <AdminFilterBar layout="custom">
         <div className="flex items-center gap-2 mb-4">
           <Filter className="w-5 h-5 text-gray-400" />
           <span className="font-medium text-gray-700">Filters</span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Change Type
-            </label>
-            <select
+            <Field label="Change Type">
+            <Select
               value={auditType}
               onChange={(e) => { setAuditType(e.target.value); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary"
             >
               <option value="">All Types</option>
               {Object.entries(AUDIT_TYPE_LABELS).map(([value, label]) => (
                 <option key={value} value={value}>{label}</option>
               ))}
-            </select>
+            </Select></Field>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Start Date
-            </label>
-            <input
+            <Field label="Start Date">
+            <Input
               type="date"
               value={dateRange.start}
               onChange={(e) => { setDateRange(prev => ({ ...prev, start: e.target.value })); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary"
-            />
+            /></Field>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              End Date
-            </label>
-            <input
+            <Field label="End Date">
+            <Input
               type="date"
               value={dateRange.end}
               onChange={(e) => { setDateRange(prev => ({ ...prev, end: e.target.value })); setPage(1); }}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-tsPrimary/20 focus:border-tsPrimary"
-            />
+            /></Field>
           </div>
           <div className="flex items-end">
-            <button
+            <Button variant="secondary" className="w-full"
               onClick={() => { setAuditType(''); setDateRange({ start: '', end: '' }); setPage(1); }}
-              className="w-full px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
             >
               Clear Filters
-            </button>
+            </Button>
           </div>
         </div>
-      </div>
+      </AdminFilterBar>
 
       {/* Error State */}
       {error && (
@@ -306,9 +287,9 @@ export default function AdminInventoryPage() {
                       {formatDate(audit.created_at)}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full ${AUDIT_TYPE_COLORS[audit.audit_type] || 'bg-gray-100 text-gray-800'}`}>
+                      <StatusBadge tone="neutral">
                         {AUDIT_TYPE_LABELS[audit.audit_type] || audit.audit_type}
-                      </span>
+                      </StatusBadge>
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm font-medium text-gray-900">
@@ -344,34 +325,7 @@ export default function AdminInventoryPage() {
           </div>
 
           {/* Pagination */}
-          {pagination && pagination.total_pages > 1 && (
-            <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
-              <div className="text-sm text-gray-500">
-                Showing {((pagination.current_page - 1) * pagination.per_page) + 1} to{' '}
-                {Math.min(pagination.current_page * pagination.per_page, pagination.total_count)} of{' '}
-                {pagination.total_count} entries
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPage(page - 1)}
-                  disabled={page === 1}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <span className="text-sm text-gray-600">
-                  Page {pagination.current_page} of {pagination.total_pages}
-                </span>
-                <button
-                  onClick={() => setPage(page + 1)}
-                  disabled={page >= pagination.total_pages}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tsPrimary focus-visible:ring-offset-2"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-          )}
+          {pagination && <Pagination page={pagination.current_page} totalPages={pagination.total_pages} totalCount={pagination.total_count} perPage={pagination.per_page} onPageChange={setPage} />}
         </div>
       )}
 

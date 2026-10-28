@@ -1,7 +1,9 @@
+import { StatusBadge } from '../../ui/StatusBadge';
+import { OrderStatusBadge } from './OrderStatusBadge';
 import { Button } from '../../ui/Button';
 import type { Order } from './orderUtils';
 import PaymentEnvironmentBadge from '../../payment/PaymentEnvironmentBadge';
-import { formatCurrency, formatDate, getStatusBadge, formatStatus, getNextStatusAction } from './orderUtils';
+import { formatCurrency, formatDate, getNextStatusAction } from './orderUtils';
 
 interface OrdersTableProps {
   orders: Order[];
@@ -15,7 +17,7 @@ interface OrdersTableProps {
 
 function OrderTypeBadge({ type }: { type: string }) {
   if (type === 'wholesale') {
-    return <span className="px-2 py-0.5 text-xs font-medium bg-orange-100 text-orange-800 rounded">Wholesale</span>;
+    return <StatusBadge tone="neutral">Wholesale</StatusBadge>;
   }
   return <span className="px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-600 rounded">Retail</span>;
 }
@@ -73,9 +75,7 @@ export default function OrdersTable({
                     {formatCurrency(order.total_cents)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadge(order.status)}`}>
-                      {formatStatus(order.status)}
-                    </span>
+                    <OrderStatusBadge order={order} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDate(order.created_at)}
@@ -123,9 +123,7 @@ export default function OrdersTable({
                   <p className="text-sm text-gray-600">{order.customer_name}</p>
                   <div className="mt-1"><OrderTypeBadge type={order.order_type} /></div>
                 </div>
-                <span className={`px-2 py-1 text-xs font-semibold rounded-full ${getStatusBadge(order.status)}`}>
-                  {formatStatus(order.status)}
-                </span>
+                <OrderStatusBadge order={order} />
               </div>
 
               <div className="space-y-2 text-sm">

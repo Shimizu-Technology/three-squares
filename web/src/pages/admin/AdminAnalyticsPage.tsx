@@ -1,3 +1,7 @@
+import { RefreshCw } from 'lucide-react';
+import { IconButton } from '../../components/ui/IconButton';
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
+import { Button } from '../../components/ui/Button';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import {
@@ -109,15 +113,7 @@ export default function AdminAnalyticsPage() {
   return (
     <div className="space-y-8">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-sm text-gray-500 mt-1">{scopeLabel} · All business lines · Production, non-simulated orders</p>
-        </div>
-        <div className="flex flex-wrap gap-2 items-center">
-          <button type="button" onClick={refreshChartData} disabled={loading} className="btn-secondary min-h-[44px] disabled:opacity-60">Refresh analytics</button>
-        </div>
-      </div>
+      <AdminPageHeader title="Analytics" subtitle={<>{scopeLabel} · All business lines · Production, non-simulated orders</>} actions={<><IconButton aria-label="Refresh analytics" type="button" onClick={refreshChartData} disabled={loading}><RefreshCw /></IconButton></>} />
 
       <AdminRequestState resource={`Analytics for the last ${days} days`} loading={loading} error={loadError} hasData={chartData !== null} onRetry={refreshChartData} />
       {(chartData?.excluded_simulated_order_count ?? 0) > 0 && <aside role="note" className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-950">
@@ -168,20 +164,15 @@ export default function AdminAnalyticsPage() {
           <div><h2 id="daily-chart-title" className="text-lg font-bold text-gray-900">Daily chart · Last {days} days</h2><p className="text-sm text-gray-700">Guam dates · Includes today so far</p></div>
           <div role="group" aria-label="Daily chart range" className="flex bg-gray-100 rounded-lg p-1">
             {[7, 14, 30].map((d) => (
-              <button
+              <Button variant={days === d ? "primary" : "secondary"}
                 type="button"
                 key={d}
                 onClick={() => selectDays(d)}
                 aria-pressed={days === d}
                 aria-label={`Last ${d} days`}
-                className={`min-h-[44px] min-w-[44px] px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                  days === d
-                    ? 'bg-white shadow-sm text-gray-900'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
               >
                 {d}d
-              </button>
+              </Button>
             ))}
           </div>
         </div>
@@ -191,30 +182,20 @@ export default function AdminAnalyticsPage() {
             <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
               <h3 className="text-lg font-bold text-gray-900">{chartMode === 'revenue' ? 'Net revenue per day' : 'Orders per day'}</h3>
               <div role="group" aria-label="Daily chart measure" className="flex bg-gray-100 rounded-lg p-1">
-                <button
+                <Button variant={chartMode === 'revenue' ? 'primary' : 'secondary'}
                   type="button"
                   aria-pressed={chartMode === 'revenue'}
                   onClick={() => setChartMode('revenue')}
-                  className={`min-h-[44px] min-w-[44px] px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                    chartMode === 'revenue'
-                      ? 'bg-white shadow-sm text-gray-900'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
                 >
                   Revenue
-                </button>
-                <button
+                </Button>
+                <Button variant={chartMode === 'orders' ? 'primary' : 'secondary'}
                   type="button"
                   aria-pressed={chartMode === 'orders'}
                   onClick={() => setChartMode('orders')}
-                  className={`min-h-[44px] min-w-[44px] px-3 py-1.5 rounded-md text-xs font-medium transition ${
-                    chartMode === 'orders'
-                      ? 'bg-white shadow-sm text-gray-900'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
                 >
                   Orders
-                </button>
+                </Button>
               </div>
             </div>
             {emptyChart ? (

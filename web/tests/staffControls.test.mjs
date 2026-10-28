@@ -53,8 +53,8 @@ globalThis.localStorage = { getItem: () => null };
 globalThis.window = { matchMedia: () => ({ matches: true }) };
 const { default: Panel } = await load('../src/components/payment/simulation/SimulatedTerminalPanel.tsx');
 const { AdminPOSWorkspace, POSAccessGate } = await load('../src/pages/admin/AdminPOSPage.tsx', '\nexport { AdminPOSWorkspace, POSAccessGate };');
-const elements = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(elements)];
-const text = node => typeof node === 'string' ? node : node && typeof node === 'object' ? [node.props?.children].flat(Infinity).map(text).join('') : '';
+const elements = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children, node.props?.actions].flat(Infinity).flatMap(elements)];
+const text = node => typeof node === 'string' ? node : node && typeof node === 'object' ? [node.props?.children, node.props?.actions].flat(Infinity).map(text).join('') : '';
 const roles = {
   owner: ['pos.sell', 'payments.collect', 'payments.simulate', 'payments.terminals.manage', 'payments.terminals.discover'],
   global_manager: ['pos.sell', 'payments.collect', 'payments.terminals.manage'],

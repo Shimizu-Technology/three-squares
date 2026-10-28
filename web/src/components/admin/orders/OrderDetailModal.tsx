@@ -1,12 +1,20 @@
-import { IconButton } from '../../ui/IconButton';
-import { X, Mail } from 'lucide-react';
+import { statusTone } from '../../ui/workflowStatus';
+import { StatusBadge } from '../../ui/StatusBadge';
+import { OrderStatusBadge } from './OrderStatusBadge';
+import { DialogHeader } from '../../ui/DialogHeader';
+import { DialogActions } from '../../ui/DialogActions';
+import { Textarea } from '../../ui/Textarea';
+import { Input } from '../../ui/Input';
+import { Select } from '../../ui/Select';
+import { Field } from '../../ui/Field';
+import { Mail } from 'lucide-react';
 import { Button } from '../../ui/Button';
 import { useId, useRef, useState, type RefObject } from 'react';
 import Dialog from '../../ui/Dialog';
 import type { Order } from './orderUtils';
 import PaymentReceipt from '../../payment/PaymentReceipt';
 import PaymentEnvironmentBadge from '../../payment/PaymentEnvironmentBadge';
-import { formatCurrency, formatDate, getStatusBadge, formatStatus, getNextStatusAction } from './orderUtils';
+import { formatCurrency, formatDate, formatStatus, getNextStatusAction } from './orderUtils';
 
 interface OrderDetailModalProps {
   order: Order;
@@ -106,26 +114,18 @@ export default function OrderDetailModal({
       `}</style>
 
 
-        {/* Header */}
-        <div className="p-6 border-b border-gray-200 flex justify-between items-center bg-white z-10 print:static print:border-b-2 print:border-gray-400 shrink-0">
-          <div>
-            <h2 id={headingId} ref={headingRef} tabIndex={-1} className="text-2xl font-bold text-gray-900">
-              <span className="print:hidden">Order #</span>
-              <span className="hidden print:inline text-3xl">THREE SQUARES - PACKING SLIP<br /></span>
-              {order.order_number}
-            </h2>
-            <p className="text-sm text-gray-500 mt-1">{formatDate(order.created_at)}</p>
+        <DialogHeader titleId={headingId} headingRef={headingRef} headingTabIndex={-1}
+          title={<><span className="print:hidden">Order #</span><span className="hidden print:inline text-3xl">THREE SQUARES - PACKING SLIP<br /></span>{order.order_number}</>}
+          subtitle={formatDate(order.created_at)} onClose={onClose} closeLabel="Close order details" disabled={saving}>
             <PaymentEnvironmentBadge environment={order.payment_environment} inline />
             {order.system_cancellation?.actor === 'system' && order.system_cancellation.reason === 'catering_inquiry_required' && (
               <p role="status" className="mt-3 text-sm text-gray-700 print-hide">Closed by system: catering items now require an inquiry. No payment was started. No cancellation email or SMS was sent.</p>
             )}
             {order.inventory_restoration_status === 'manual_review_required' && <p role="status" className="mt-3 text-sm text-amber-800">Inventory restoration requires manual review. No stock was restored automatically.</p>}
-          </div>
-          <span className="print-hide"><IconButton onClick={() => { if (!saving) onClose(); }} disabled={saving} aria-label="Close order details"><X /></IconButton></span>
-        </div>
+        </DialogHeader>
 
         <div
-          className="flex-1 min-h-0 overflow-y-auto p-6 space-y-6 overscroll-contain print:overflow-visible"
+          className="flex-auto min-h-0 overflow-y-auto p-4 sm:p-6 space-y-6 overscroll-contain print:overflow-visible"
         >
           {/* Order Management */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 print-hide">
@@ -158,40 +158,37 @@ export default function OrderDetailModal({
             {isEditing ? (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Order Status *</label>
-                  <select
+                  <Field label="Order Status *">
+                  <Select
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
                   >
                     {[order.status, ...order.next_status_options].map((status) => (
-                      <option key={status} value={status}>{status === 'confirmed' && order.fulfillment_type === 'pickup' ? 'Acknowledged' : formatStatus(status)}</option>
+                      <option key={status} value={status}>{formatStatus(status)}</option>
                     ))}
-                  </select>
+                  </Select></Field>
                 </div>
 
                 {canManageOrder && order.fulfillment_type === 'shipping' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Tracking Number</label>
-                  <input
+                  <Field label="Tracking Number">
+                  <Input
                     type="text"
                     value={editTracking}
                     onChange={(e) => setEditTracking(e.target.value)}
                     placeholder="Enter tracking number..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent"
-                  />
+                  /></Field>
                 </div>
                 )}
 
                 {canManageOrder && <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Admin Notes (Internal)</label>
-                  <textarea
+                  <Field label="Admin Notes (Internal)">
+                  <Textarea
                     value={editAdminNotes}
                     onChange={(e) => setEditAdminNotes(e.target.value)}
                     placeholder="Add internal notes about this order..."
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent resize-none"
-                  />
+                  /></Field>
                 </div>}
 
                 <div className="flex gap-3 pt-2">
@@ -217,9 +214,7 @@ export default function OrderDetailModal({
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div>
                   <p className="text-gray-600 mb-1">Status</p>
-                  <span className={`inline-block px-3 py-1 text-sm font-semibold rounded-full ${getStatusBadge(order.status)}`}>
-                    {formatStatus(order.status)}
-                  </span>
+                  <OrderStatusBadge order={order} />
                 </div>
                 {canManageOrder && order.fulfillment_type === 'shipping' && (
                   <div>
@@ -353,13 +348,9 @@ export default function OrderDetailModal({
                   <div key={refund.id} className="flex justify-between items-start p-4 bg-red-50 border border-red-200 rounded-lg">
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className={`inline-block px-2 py-0.5 text-xs font-semibold rounded-full ${
-                          refund.status === 'succeeded' ? 'bg-green-100 text-green-700' :
-                          ['pending', 'unknown'].includes(refund.status) ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-red-100 text-red-700'
-                        }`}>
+                        <StatusBadge tone={statusTone(refund.operation_status || refund.status)}>
                           {refund.operation_status || refund.status}
-                        </span>
+                        </StatusBadge>
                         <span className="text-sm text-gray-500">
                           {new Date(refund.created_at).toLocaleDateString('en-US', {
                             month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit',
@@ -386,7 +377,9 @@ export default function OrderDetailModal({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex flex-wrap gap-3 pt-4 border-t print-hide">
+
+        </div>
+      <DialogActions>
             {canNotify && (order.status === 'ready' || order.status === 'shipped') && (
               <Button
                 type="button"
@@ -420,8 +413,7 @@ export default function OrderDetailModal({
                 {hasSavedRefund ? 'Check saved refund' : 'Refund Order'}
               </Button>
             )}
-          </div>
-        </div>
+          </DialogActions>
     </Dialog>
   );
 }

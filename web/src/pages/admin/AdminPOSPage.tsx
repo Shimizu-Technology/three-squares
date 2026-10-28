@@ -1,3 +1,4 @@
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import { initialPOSLocation, posLocationPreferenceKey } from '../../components/pos/initialLocation';
 import { useState, useEffect, useMemo, useCallback, useRef, useId, lazy, Suspense, type RefObject } from 'react';
 import { Button } from '../../components/ui/Button';
@@ -13,7 +14,7 @@ import AdminModal from '../../components/admin/AdminModal';
 import { useAuth, SignInButton } from '@clerk/clerk-react';
 import { StaffAccessProvider, StaffAccessDenied, useStaffAccess } from '../../components/admin/StaffAccess.tsx';
 import {
-  ArrowLeft, Search, ShoppingCart, Banknote, MapPin, Check, ChefHat, AlertCircle,
+  ArrowLeft, Search, ShoppingCart, Banknote, MapPin, Check, AlertCircle,
   Wifi, WifiOff, Smartphone, RefreshCw
 } from 'lucide-react';
 import {
@@ -1005,16 +1006,13 @@ function AdminPOSWorkspace() {
   return (
     <div className="min-h-dvh pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0 md:h-dvh flex flex-col md:flex-row bg-slate-50 md:overflow-hidden">
       <div ref={menuRef} tabIndex={-1} aria-label="POS menu" className="flex h-[75dvh] shrink-0 flex-col min-h-0 min-w-0 md:h-auto md:flex-1">
-        <header className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-200 bg-white px-4 py-2">
-          <div className="flex min-w-0 items-center gap-2">
-            <IconButton to="/admin" aria-label="Exit POS to staff workspace"><ArrowLeft /></IconButton>
-            <ChefHat aria-hidden="true" className="hidden h-5 w-5 shrink-0 text-tsNavy sm:block" />
-            <div className="min-w-0"><h1 className="text-lg leading-6 font-semibold">POS</h1><p className="text-xs text-slate-600">{access.roleLabel} · {access.scopeLabel} · {selectedLocationName}</p></div>
-          </div>
-          {access.can('payments.terminals.discover') && selectedTerminal?.provider === 'stripe' && !simulationActive &&
+        <header className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-4 py-2 sm:px-6">
+          <IconButton to="/admin" aria-label="Exit POS to staff workspace"><ArrowLeft /></IconButton>
+          <AdminPageHeader title="POS" subtitle={<>{access.roleLabel} · {access.scopeLabel} · {selectedLocationName}</>}
+            actions={<>{access.can('payments.terminals.discover') && selectedTerminal?.provider === 'stripe' && !simulationActive &&
             <IconButton ref={readerButtonRef} variant="secondary" aria-label={terminalReader ? 'Choose connected reader' : 'Connect reader'}
               title={terminalReader ? `Connected: ${connectedReaderName}` : 'Click to connect reader'} onClick={handleReaderButtonClick}
-              loading={terminalStatus === 'connecting' || terminalStatus === 'discovering'}>{terminalReader ? <Wifi /> : <WifiOff />}</IconButton>}
+              loading={terminalStatus === 'connecting' || terminalStatus === 'discovering'}>{terminalReader ? <Wifi /> : <WifiOff />}</IconButton>}</>} />
         </header>
         <div className="shrink-0 space-y-2 border-b border-slate-200 bg-white p-3">
           <div aria-label="Menu toolbar" className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_44px] items-end gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1fr)_44px]">
