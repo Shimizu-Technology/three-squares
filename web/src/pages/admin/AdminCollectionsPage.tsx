@@ -1,3 +1,8 @@
+import { Eye, Trash2 } from 'lucide-react';
+import { IconButton } from '../../components/ui/IconButton';
+import { ChoiceGroup } from '../../components/ui/ChoiceGroup';
+import { StatusBadge } from '../../components/ui/StatusBadge';
+import { Button } from '../../components/ui/Button';
 import axios from 'axios';
 import { useRef, useState, useEffect, useCallback, type FormEvent } from 'react';
 import { useAuth } from '@clerk/clerk-react';
@@ -113,30 +118,31 @@ export default function AdminCollectionsPage() {
   return <div className="space-y-6">
     <header className="flex flex-wrap items-start justify-between gap-4">
       <div><h1 className="text-2xl font-bold text-gray-900">Menus &amp; specials</h1><p className="mt-1 text-gray-700">Manage menu items and their Guam schedules together.</p></div>
-      <div className="flex flex-wrap gap-2"><button type="button" onClick={() => void fetchCollections()} disabled={loading || busy} className="btn-secondary min-h-11 disabled:opacity-50">Refresh menus</button>
-        <button type="button" disabled={busy} onClick={event => void openEditor(null, 'schedule', event.currentTarget)} className="btn-primary min-h-11 disabled:opacity-50">Add menu</button></div>
+      <div className="flex flex-wrap gap-2"><Button type="button" onClick={() => void fetchCollections()} disabled={loading || busy} variant="secondary">Refresh menus</Button>
+        <Button type="button" disabled={busy} onClick={event => void openEditor(null, 'schedule', event.currentTarget)} variant="primary">Add menu</Button></div>
     </header>
     <AdminRequestState resource="Menus" loading={loading} error={loadError} hasData={hasLoaded} onRetry={fetchCollections} />
     {opening && <p role="status" className="text-gray-700">Loading saved menu and item choices…</p>}
-    {openError && <div role="alert" className="space-y-2 rounded-lg border border-red-300 bg-red-50 p-4 text-red-900"><p>{openError.message}</p><button type="button" onClick={() => void openEditor(openError.collection, openError.section)} className="btn-secondary min-h-11">Retry opening menu</button></div>}
+    {openError && <div role="alert" className="space-y-2 rounded-lg border border-red-300 bg-red-50 p-4 text-red-900"><p>{openError.message}</p><Button type="button" onClick={() => void openEditor(openError.collection, openError.section)} variant="secondary">Retry opening menu</Button></div>}
     {hasLoaded && collections.length === 0 && !loading && !loadError && <p className="rounded-xl border border-gray-200 bg-white p-6 text-gray-700">No menus yet. Add a menu, choose its items and set a schedule.</p>}
-    <div className="grid gap-4 xl:grid-cols-2">{collections.map(menu => <article key={menu.id} aria-label={menu.name} className="min-w-0 space-y-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
+    <div className="grid gap-4 xl:grid-cols-2">{collections.map(menu => <article key={menu.id} aria-label={menu.name} className="flex min-w-0 flex-col gap-4 rounded-xl border border-gray-200 bg-white p-4 sm:p-6">
       <div className="flex flex-wrap items-start justify-between gap-2"><h2 className="min-w-0 break-words text-xl font-semibold text-gray-900">{menu.name}</h2>
-        <span className="rounded-md bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800">{!menu.published ? 'Draft' : menu.availability_status === 'upcoming' ? 'Scheduled' : menu.availability_status === 'ended' ? 'Ended' : 'Published'}{menu.featured && ' · Featured'}</span></div>
-      {menu.description && <p className="break-words text-gray-700">{menu.description}</p>}
-      <p className="text-sm text-gray-700">{menu.starts_at ? `Starts ${formatGuamDate(menu.starts_at)}` : 'No start limit'}<br />{menu.ends_at ? `Ends ${formatGuamDate(menu.ends_at)}` : 'No end limit'}</p>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" disabled={busy} onClick={event => void openEditor(menu, 'items', event.currentTarget)} className="btn-primary min-h-11 disabled:opacity-50">Manage items ({menu.product_count})</button>
-        <button type="button" disabled={busy} onClick={event => void openEditor(menu, 'schedule', event.currentTarget)} className="btn-secondary min-h-11 disabled:opacity-50">Edit schedule</button>
-        <button type="button" disabled={busy} onClick={event => void openEditor(menu, 'preview', event.currentTarget)} className="btn-secondary min-h-11 disabled:opacity-50">Staff preview</button>
-        <button type="button" disabled={busy} onClick={() => setDeleteTarget(menu)} aria-label={`Delete ${menu.name}`} className="min-h-11 rounded-lg px-3 text-red-800 underline disabled:opacity-50">Delete</button>
+        <StatusBadge tone={menu.published ? 'neutral' : 'inactive'}>{!menu.published ? 'Draft' : menu.availability_status === 'upcoming' ? 'Scheduled' : menu.availability_status === 'ended' ? 'Ended' : 'Published'}{menu.featured && ' · Featured'}</StatusBadge></div>
+      <p className="line-clamp-2 h-10 break-words text-sm leading-5 text-gray-700">{menu.description}</p>
+      <p className="text-sm text-gray-700">{menu.product_count} items<br />{menu.starts_at ? `Starts ${formatGuamDate(menu.starts_at)}` : 'No start limit'}<br />{menu.ends_at ? `Ends ${formatGuamDate(menu.ends_at)}` : 'No end limit'}</p>
+      <div className="mt-auto flex items-center gap-2" data-menu-actions>
+        <Button type="button" disabled={busy} onClick={event => void openEditor(menu, 'items', event.currentTarget)} variant="primary" aria-label={`Manage items for ${menu.name}`}>Manage</Button>
+        <Button type="button" disabled={busy} onClick={event => void openEditor(menu, 'schedule', event.currentTarget)} variant="secondary" aria-label={`Edit schedule for ${menu.name}`}>Schedule</Button>
+        <IconButton disabled={busy} onClick={event => void openEditor(menu, 'preview', event.currentTarget)} aria-label={`Staff preview for ${menu.name}`} title="Staff preview"><Eye /></IconButton>
+        <IconButton disabled={busy} onClick={() => setDeleteTarget(menu)} aria-label={`Delete ${menu.name}`} title="Delete menu"><Trash2 /></IconButton>
       </div>
     </article>)}</div>
 
     <Dialog open={editorOpen} onOpenChange={setEditorOpen} dismissible={!saving} labelledBy="menu-editor-title" returnFocusRef={editorOpener} initialFocusRef={nameRef} className="w-full rounded-xl sm:w-3xl">
       <form onSubmit={save} className="flex max-h-[calc(100dvh-2rem)] flex-col">
         <header className="shrink-0 space-y-3 border-b border-gray-200 p-4 sm:p-6"><h2 id="menu-editor-title" className="break-words text-2xl font-bold text-gray-900">{selected ? `Edit ${selected.name}` : 'Create menu'}</h2>
-          <nav aria-label="Menu editor sections" className="flex flex-wrap gap-2">{([['schedule', 'Menu & schedule'], ['items', 'Menu items'], ['preview', 'Staff preview']] as const).map(([key, label]) => <button key={key} type="button" aria-pressed={section === key} disabled={saving} onClick={() => setSection(key)} className={`min-h-11 rounded-lg px-3 py-2 font-medium ${section === key ? 'bg-tsPrimary text-white' : 'border border-gray-300 text-gray-800'}`}>{label}</button>)}</nav>
+          <ChoiceGroup label="Menu editor sections" value={section} disabled={saving} onChange={setSection}
+            choices={[{value:'schedule',label:'Menu & schedule'},{value:'items',label:'Menu items'},{value:'preview',label:'Staff preview'}]} />
         </header>
         <div ref={editorBodyRef} className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain p-4 sm:p-6">
           {formError && <p ref={errorRef} tabIndex={-1} role="alert" className="rounded-lg border border-red-300 bg-red-50 p-3 text-red-900">{formError}</p>}
@@ -166,11 +172,11 @@ export default function AdminCollectionsPage() {
             </section>
           </fieldset>
         </div>
-        <footer className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-gray-200 p-4 sm:p-6"><button type="button" disabled={saving} onClick={() => setEditorOpen(false)} className="btn-secondary min-h-11">Cancel</button><button type="submit" disabled={saving} className="btn-primary min-h-11 disabled:opacity-50">{saving ? 'Saving…' : 'Save menu & items'}</button></footer>
+        <footer className="flex shrink-0 flex-wrap justify-end gap-3 border-t border-gray-200 p-4 sm:p-6"><Button type="button" disabled={saving} onClick={() => setEditorOpen(false)} variant="secondary">Cancel</Button><Button type="submit" loading={saving} variant="primary">Save menu & items</Button></footer>
       </form>
     </Dialog>
     <Dialog open={!!deleteTarget} onOpenChange={open => { if (!open) setDeleteTarget(null); }} dismissible={!deleting} labelledBy="delete-menu-title" className="w-full rounded-xl p-6 sm:w-lg">
-      <h2 id="delete-menu-title" className="text-xl font-semibold text-gray-900">Delete {deleteTarget?.name}?</h2><p className="my-4 text-gray-700">Items stay in Products and other menus. This menu and its schedule will be removed.</p><div className="flex flex-wrap justify-end gap-3"><button type="button" disabled={deleting} onClick={() => setDeleteTarget(null)} className="btn-secondary min-h-11">Cancel</button><button type="button" disabled={deleting} onClick={() => void deleteMenu()} className="min-h-11 rounded-lg bg-red-700 px-4 py-2 text-white">{deleting ? 'Deleting…' : 'Delete menu'}</button></div>
+      <h2 id="delete-menu-title" className="text-xl font-semibold text-gray-900">Delete {deleteTarget?.name}?</h2><p className="my-4 text-gray-700">Items stay in Products and other menus. This menu and its schedule will be removed.</p><div className="flex flex-wrap justify-end gap-3"><Button type="button" disabled={deleting} onClick={() => setDeleteTarget(null)} variant="secondary">Cancel</Button><Button type="button" loading={deleting} onClick={() => void deleteMenu()} variant="destructive">Delete menu</Button></div>
     </Dialog>
   </div>;
 }

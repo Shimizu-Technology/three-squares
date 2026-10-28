@@ -86,6 +86,15 @@ try {
         await activate(page.getByRole('region',{name:'Adopted recovery controls'}).getByRole('button',{name:'Reload page',exact:true}));
         await page.getByText('Recovery fixture loaded',{exact:true}).waitFor();
         assert.equal(await page.getByRole('heading',{name:'This page could not be loaded',exact:true}).count(),0);
+        const choices=page.getByRole('group',{name:'Fixture stages'});
+        const choiceGeometry=await choices.getByRole('button').evaluateAll(nodes=>nodes.map(el=>({height:el.getBoundingClientRect().height,width:el.getBoundingClientRect().width})));
+        for(const item of choiceGeometry){assert.equal(item.height,44);assert.ok(item.width>=44);}
+        await activate(choices.getByRole('button',{name:'Ready',exact:true}));
+        assert.equal(await choices.getByRole('button',{name:'Ready',exact:true}).getAttribute('aria-pressed'),'true');
+        assert.equal(await page.getByTestId('selected-stage').textContent(),'ready');
+        await activate(page.getByRole('link',{name:'View Orders',exact:true}));assert.equal(new URL(page.url()).hash,'#tile-target');
+        const tiles=await page.locator('.ui-action-tile').evaluateAll(nodes=>nodes.map(el=>el.getBoundingClientRect().height));
+        assert.deepEqual(tiles,[112,112]);
         results.push({width,height,touch,coarse,geometry,focus,loading:{before,after,shortBefore,shortAfter,retryBefore,retryPending},scenarios:['A01','A02','A03'],status:'passed'});
         writeFileSync(path.join(output,'geometry.json'),JSON.stringify(results,null,2)+'\n');
         console.log(`${width}x${height} ${touch?'touch':'fine'}: geometry, loading, links, focus, form, retry/reload passed`);

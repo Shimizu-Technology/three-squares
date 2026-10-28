@@ -1,3 +1,4 @@
+import { uiModules, expandUi } from './helpers/uiModules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -11,7 +12,7 @@ const dialog = moduleUrl('export default function Dialog() {}');
 async function compile(source, imports) {
   const code = ts.transpileModule(source, { compilerOptions: {
     jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022,
-  } }).outputText.replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(imports[name] || import.meta.resolve(name))}`);
+  } }).outputText.replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(imports[name] || uiModules[name] || import.meta.resolve(name))}`);
   return import(moduleUrl(code));
 }
 const utils = new URL('../src/components/admin/orders/orderUtils.ts', import.meta.url).href;
@@ -29,8 +30,8 @@ const cashSource = `import {useId,useRef,useState} from 'react';
   ${pos.slice(pos.indexOf('function CashModal'), pos.indexOf('// ─── Main POS Page'))}
   export { CashModal, VariantPickerModal };`;
 const { CashModal, VariantPickerModal } = await compile(cashSource, { react: hooks, modal: dialog });
-const nodes = node => !node || typeof node !== 'object' ? [] : [node,
-  ...[node.props?.children, node.props?.footer].flat(Infinity).flatMap(nodes)];
+const nodes = value => { const node = expandUi(value); return !node || typeof node !== 'object' ? [] : [node,
+  ...[node.props?.children, node.props?.footer, node.props?.actions].flat(Infinity).flatMap(nodes)]; }
 const text = node => typeof node === 'string' ? node : node && typeof node === 'object'
   ? [node.props?.children].flat(Infinity).map(text).join('') : '';
 function render(Component, props) {
