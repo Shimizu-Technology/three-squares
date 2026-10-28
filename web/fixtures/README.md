@@ -46,3 +46,13 @@ has a 96px minimum and native vertical resize. Select uses a shared chevron and
 CSS appearance while retaining its native picker and keyboard behavior. Screenshot
 capture is followed by pointer/height checks. Real saved admin/customer journeys
 remain separate QA; these development fixtures do not provide authentication.
+
+## Admin editor controls
+
+`ui-admin.html` uses the real Switch, CheckField, FileButton, Disclosure, ActionMenu and Pagination. With the isolated demo running, use:
+
+```sh
+node scripts/measure-ui-admin.mjs http://localhost:5173 /tmp/three-squares-ui-admin
+```
+
+The runner checks all four foundation viewports, fine/touch input and Chromium/WebKit. It verifies target dimensions, keyboard disclosure/command dismissal and focus return, native file selection, switch/checkbox state and pagination with 10,000 pages. WebKit uses Option-Tab for all-control keyboard navigation. Saved catalog, menu and settings journeys still require the isolated application and database.

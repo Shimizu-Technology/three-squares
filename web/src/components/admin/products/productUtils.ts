@@ -1,3 +1,4 @@
+import type { StatusTone } from '../../ui/StatusBadge';
 export interface Product {
   id: number;
   name: string;
@@ -95,20 +96,20 @@ export const getStockDisplay = (product: Product): StockDisplay => {
 export const getVariantStatus = (
   variant: ProductVariant,
   inventoryLevel: string,
-): { label: string; className: string } => {
+): { label: string; className: string; tone: StatusTone } => {
   // HAF-41 fix: Check stock first for variant-level inventory.
   // Newly created variants may have actually_available=false even with stock.
   if (inventoryLevel === 'variant') {
     if (variant.stock_quantity > 0) {
-      return { label: 'Available', className: 'bg-green-100 text-green-800' };
+      return { label: 'Available', tone: 'success', className: 'bg-green-100 text-green-800' };
     }
-    return { label: 'Out of Stock', className: 'bg-red-100 text-red-800' };
+    return { label: 'Out of Stock', tone: 'danger', className: 'bg-red-100 text-red-800' };
   }
 
   // For non-variant inventory levels, use the available flags
   const isAvailable = variant.actually_available ?? variant.available ?? true;
   if (!isAvailable) {
-    return { label: 'Disabled', className: 'bg-gray-100 text-gray-800' };
+    return { label: 'Disabled', tone: 'inactive', className: 'bg-gray-100 text-gray-800' };
   }
-  return { label: 'Available', className: 'bg-green-100 text-green-800' };
+  return { label: 'Available', tone: 'success', className: 'bg-green-100 text-green-800' };
 };

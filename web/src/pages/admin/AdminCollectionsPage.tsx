@@ -1,3 +1,4 @@
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
 import { Field } from '../../components/ui/Field';
 import { Disclosure } from '../../components/ui/Disclosure';
 import { CheckField } from '../../components/ui/CheckField';
@@ -122,11 +123,10 @@ export default function AdminCollectionsPage() {
   const byId = new Map(products.map(product => [product.id, product]));
 
   return <div className="space-y-6">
-    <header className="flex flex-wrap items-start justify-between gap-4">
-      <div><h1 className="text-2xl font-bold text-gray-900">Menus &amp; specials</h1><p className="mt-1 text-gray-700">Manage menu items and their Guam schedules together.</p></div>
-      <div className="flex flex-wrap gap-2"><Button type="button" onClick={() => void fetchCollections()} disabled={loading || busy} variant="secondary">Refresh menus</Button>
-        <Button type="button" disabled={busy} onClick={event => void openEditor(null, 'schedule', event.currentTarget)} variant="primary">Add menu</Button></div>
-    </header>
+    <AdminPageHeader title="Menus & specials" subtitle="Manage menu items and their Guam schedules together." actions={<>
+      <Button type="button" onClick={() => void fetchCollections()} disabled={loading || busy} variant="secondary">Refresh menus</Button>
+      <Button type="button" disabled={busy} onClick={event => void openEditor(null, 'schedule', event.currentTarget)} variant="primary">Add menu</Button>
+    </>} />
     <AdminRequestState resource="Menus" loading={loading} error={loadError} hasData={hasLoaded} onRetry={fetchCollections} />
     {opening && <p role="status" className="text-gray-700">Loading saved menu and item choices…</p>}
     {openError && <div role="alert" className="space-y-2 rounded-lg border border-red-300 bg-red-50 p-4 text-red-900"><p>{openError.message}</p><Button type="button" onClick={() => void openEditor(openError.collection, openError.section)} variant="secondary">Retry opening menu</Button></div>}

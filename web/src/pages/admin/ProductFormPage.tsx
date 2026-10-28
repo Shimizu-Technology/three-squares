@@ -923,47 +923,12 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
 
         </fieldset>
 
-        {/* Form Actions - Sticky Footer */}
-        <div className="sticky bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-5 mt-6">
-          <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 px-4 sm:px-6 py-3 sm:py-4">
-            {/* Archive Button - Full width on mobile, left side on desktop */}
-            {isEditMode && (
-              <Button variant="destructive"
-                type="button"
-                onClick={() => setShowDeleteModal(true)}
-                disabled={saving || deleting}
-              >
-                <Archive className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                <span className="text-sm sm:text-base">{isArchived ? 'Unarchive' : 'Archive'}</span>
-              </Button>
-            )}
-
-            {/* Right side buttons - Stack on mobile, row on desktop */}
-            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 sm:ml-auto w-full sm:w-auto">
-              <Button variant="secondary" className="w-full"
-                type="button"
-                onClick={returnToProducts}
-                disabled={saving || deleting}
-              >
-                <X className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                <span className="text-sm sm:text-base">Cancel</span>
-              </Button>
-              <Button variant="primary" className="w-full"
-                type="submit"
-                disabled={saving || deleting || !draftReady || !!draftOffer}
-              >
-                {saving ? (
-                  <>
-                    <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white mr-2"></div>
-                    <span className="text-sm sm:text-base">Saving...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                    <span className="text-sm sm:text-base">{isEditMode ? 'Update Product' : 'Create Product'}</span>
-                  </>
-                )}
-              </Button>
+        <div className="sticky bottom-0 z-5 mt-6 border-t border-gray-200 bg-white p-4 shadow-lg">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            {isEditMode && <Button variant="destructive" icon={<Archive />} onClick={() => setShowDeleteModal(true)} disabled={saving || deleting}>{isArchived ? 'Unarchive' : 'Archive'}</Button>}
+            <div className="flex w-full flex-col gap-3 sm:ml-auto sm:w-auto sm:flex-row">
+              <Button variant="secondary" icon={<X />} className="w-full sm:w-auto" onClick={returnToProducts} disabled={saving || deleting}>Cancel</Button>
+              <Button variant="primary" icon={<Save />} className="w-full sm:w-auto" type="submit" loading={saving} disabled={deleting || !draftReady || !!draftOffer}>{isEditMode ? 'Update Product' : 'Create Product'}</Button>
             </div>
           </div>
         </div>
@@ -986,12 +951,12 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
             >
               Cancel
             </Button>
-            <Button variant="destructive"
+            <Button icon={<Archive />} variant="destructive"
               type="button"
               onClick={handleDelete}
               disabled={deleting}
             >
-              <Archive className="w-4 h-4 mr-2" />
+
               {deleting ? 'Archiving...' : 'Archive Product'}
             </Button>
           </div>

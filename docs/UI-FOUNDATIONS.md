@@ -123,3 +123,15 @@ Use named `Field`, `Input`, `Select` and `Textarea` exports from their respectiv
 Input and single-choice Select are exactly44px border-box high,1px neutral border,8px radius,12px horizontal padding and14/20 type; coarse pointers use16/24 type. Field labels sit above controls with4px gaps. Textarea is multiline: default3 rows, minimum96px,12px padding and native vertical resize. It does not force multiline content into a44px box. Help/error type is14/20. Controls have the shared2px focus outline/2px offset and one disabled opacity rule. Keep field `className` layout-only; the existing AST gate rejects geometry/color overrides, inline styles and spread props at adoption sites. Checkboxes, switches, file pickers and multi-select lists keep separate semantic recipes.
 
 Current Device name/location plus Refresh/Save adopt these recipes first. Other forms migrate in the remaining admin/customer slices. The dev-only `fixtures/ui-fields.html` provides label/help/error, native submission, disabled and geometry acceptance; it is excluded from the normal production entry.
+
+## Admin editors (P5b)
+
+Catalog and menu editors, product list actions/filters/pagination, CSV entry points and Settings/Homepage fields use the shared controls. Existing main-form drafts, independent variant/image/offering saves and immediate-save versus explicit-save settings behavior remain with their callers.
+
+- `CheckField` keeps a native checkbox/radio inside a visible label with a 44px minimum hit region and a 20px indicator. `Switch` is a named native button with switch semantics, a 72×44px target and a navy checked state. It does not own saving.
+- `FileButton` keeps the native keyboard-focusable file input and picker in a 44px label action. Callers own selection, upload, required status and recovery; visible selected-file feedback belongs alongside the action.
+- `Disclosure` retains native details/summary behavior with a 44px minimum summary target. Controlled open state, DOM refs and validation recovery remain available.
+- `ActionMenu` is a native disclosure of ordinary command buttons. It closes on a command, Escape or an outside pointer action; commands return focus to the summary before opening a subsequent dialog. It uses normal tab order rather than claiming ARIA menu semantics. Desktop Safari may require Option-Tab for all-control navigation.
+- `Pagination` and the existing `AdminPagination` export share md targets, current-page semantics and a bounded set of numbered actions, even for large page counts. The controls wrap on narrow screens.
+
+The existing AdminPageHeader and AdminFilterBar are adopted for these routes; the remaining operational routes and shell gutter contract migrate in P5c. The dev-only `fixtures/ui-admin.html` extends geometry and native interaction acceptance.

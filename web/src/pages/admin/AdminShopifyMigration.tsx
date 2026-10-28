@@ -1,6 +1,8 @@
+import { StatusBadge, type StatusTone } from '../../components/ui/StatusBadge';
+import AdminPageHeader from '../../components/admin/AdminPageHeader';
+import { FileButton } from '../../components/ui/FileButton';
 import { Button } from '../../components/ui/Button';
 import axios from 'axios';
-import { Link } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { Upload, FileText, AlertCircle, CheckCircle, Clock, XCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '@clerk/clerk-react';
@@ -392,28 +394,22 @@ export default function AdminShopifyMigration() {
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const badges: Record<string, string> = {
-      pending: 'bg-gray-100 text-gray-800',
-      processing: 'bg-blue-100 text-blue-800',
-      completed: 'bg-green-100 text-green-800',
-      failed: 'bg-red-100 text-red-800'
+  const getImportTone = (status: string) => {
+    const badges: Record<string, StatusTone> = {
+      pending: 'neutral',
+      processing: 'info',
+      completed: 'success',
+      failed: 'danger'
     };
     return badges[status] || badges.pending;
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Shopify migration</h1>
-          <p className="mt-2 text-gray-600">
-            Migrate an existing Shopify catalog, including its variants, images and import history.
-          </p>
-        </div>
+    <div>
+      <div className="space-y-6">
+        <AdminPageHeader title="Shopify migration" subtitle="Migrate an existing Shopify catalog, including its variants, images and import history." />
 
-        <Link to="/admin/import" className="mb-6 inline-flex min-h-11 items-center font-medium text-tsPrimary underline">Back to Menu CSV</Link>
+        <Button to="/admin/import" variant="link">Back to Menu CSV</Button>
 
         {/* Upload Form */}
         <div className="bg-white rounded-lg shadow p-6 mb-8">
@@ -425,9 +421,7 @@ export default function AdminShopifyMigration() {
           <form onSubmit={handleSubmit}>
             {/* Products File */}
             <div className="mb-6">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Products CSV <span className="text-red-600">*</span>
-              </label>
+              <p className="mb-2 text-sm font-semibold text-gray-700">Products CSV (required)</p>
               <div
                 className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer transition ${
                   isDragging ? 'border-tsPrimary bg-red-50' : 'border-gray-300 hover:border-tsPrimary'
@@ -435,7 +429,6 @@ export default function AdminShopifyMigration() {
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
                 onDrop={(e) => handleDrop(e, 'products')}
-                onClick={() => document.getElementById('products-file')?.click()}
               >
                 <FileText className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                 {productsFile ? (
@@ -445,17 +438,11 @@ export default function AdminShopifyMigration() {
                   </div>
                 ) : (
                   <div>
-                    <p className="text-gray-700">Drop your products CSV here, or click to browse</p>
+                    <p className="text-gray-700">Drop your products CSV here, or choose a file</p>
                     <p className="text-sm text-gray-500 mt-1">Shopify product export format</p>
                   </div>
                 )}
-                <input
-                  id="products-file"
-                  type="file"
-                  accept=".csv"
-                  onChange={handleProductsFileChange}
-                  className="hidden"
-                />
+                <FileButton id="products-file" accept=".csv" onChange={handleProductsFileChange} disabled={isUploading}>Choose Products CSV</FileButton>
               </div>
             </div>
 
@@ -525,7 +512,7 @@ export default function AdminShopifyMigration() {
             </div>
 
             {/* Submit Button */}
-            <Button variant="secondary" className="w-full"
+            <Button variant="primary" className="w-full"
               type="submit"
               disabled={!productsFile || isUploading}
             >
@@ -619,9 +606,7 @@ export default function AdminShopifyMigration() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           {getStatusIcon(imp.status)}
-                          <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(imp.status)}`}>
-                            {imp.status}
-                          </span>
+                          <StatusBadge tone={getImportTone(imp.status)}>{imp.status}</StatusBadge>
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -692,9 +677,7 @@ export default function AdminShopifyMigration() {
                     <p className="text-sm font-medium text-gray-500">Status</p>
                     <div className="flex items-center mt-1">
                       {getStatusIcon(selectedImport.status)}
-                      <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full ${getStatusBadge(selectedImport.status)}`}>
-                        {selectedImport.status}
-                      </span>
+                      <StatusBadge tone={getImportTone(selectedImport.status)}>{selectedImport.status}</StatusBadge>
                     </div>
                   </div>
 

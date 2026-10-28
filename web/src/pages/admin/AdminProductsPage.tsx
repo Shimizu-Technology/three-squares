@@ -1,3 +1,5 @@
+import { Field } from '../../components/ui/Field';
+import { Select } from '../../components/ui/Select';
 import { Button } from '../../components/ui/Button';
 import { IconButton } from '../../components/ui/IconButton';
 import AdminPageHeader from '../../components/admin/AdminPageHeader';
@@ -298,16 +300,16 @@ export default function AdminProductsPage() {
       {query.batch && <section role="status" className="mb-4 rounded-xl border border-gray-300 bg-white p-4 [overflow-wrap:anywhere]">
         <p className="font-semibold text-gray-900">{batchReceipt ? `Reviewing ${batchReceipt.filename}` : 'This batch receipt is unavailable in this tab'}</p>
         <p className="mt-1 text-sm text-gray-700">{batchReceipt ? `${batchReceipt.result.created.length} products from this import. Batch results are stored for this account in this tab.` : 'It may be from another tab or account, or browser storage was cleared. Use Needs pickup locations to find unfinished drafts.'}</p>
-        <button type="button" className="btn-secondary mt-3 min-h-11" onClick={() => changeQuery({ batch: undefined, page: 1 })}>Clear batch filter</button>
+        <Button variant="secondary" type="button" onClick={() => changeQuery({ batch: undefined, page: 1 })}>Clear batch filter</Button>
       </section>}
 
       {/* Filters */}
       {access.can('availability.manage') && availabilityLocations.length > 0 && <section className="mb-4 rounded-xl border border-gray-300 bg-white p-4">
-        <label className="block text-sm font-semibold text-gray-800">Pickup availability location
-          <select aria-label="Pickup availability location" value={availabilityLocationId || ''} disabled={access.user?.operational_scope === 'specific'} onChange={event => setAvailabilityLocationId(Number(event.target.value))} className="mt-2 min-h-11 w-full rounded-lg border border-gray-300 bg-white px-3 text-base sm:max-w-sm">
+        <Field label="Pickup availability location" className="max-w-sm">
+          <Select aria-label="Pickup availability location" value={availabilityLocationId || ''} disabled={access.user?.operational_scope === 'specific'} onChange={event => setAvailabilityLocationId(Number(event.target.value))}>
             {availabilityLocations.map(location => <option key={location.id} value={location.id}>{location.name}</option>)}
-          </select>
-        </label>
+          </Select>
+        </Field>
         <p className="mt-2 text-sm text-gray-600">Mark a meal sold out or restore it at this counter.</p>
       </section>}
 
@@ -325,7 +327,7 @@ export default function AdminProductsPage() {
       <AdminRequestState resource="Products" loading={loading} error={loadError} hasData={hasLoaded} onRetry={fetchProducts} />
       {detailTarget && (loadingDetails || detailError) && <div className="space-y-2">
         <AdminRequestState resource={`Details for ${detailTarget.name}`} loading={loadingDetails} error={detailError} hasData={false} onRetry={() => fetchProductDetails(detailTarget)} />
-        <button type="button" onClick={closeProductDetails} className="btn-secondary min-h-[44px]">Dismiss product details</button>
+        <Button variant="secondary" type="button" onClick={closeProductDetails}>Dismiss product details</Button>
       </div>}
 
       {/* Content */}

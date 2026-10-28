@@ -1112,76 +1112,6 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/pages/admin/AdminImportPage.tsx|AdminImportPage|button-like-link|d03ea66ad54b748ce860|1",
-      "file": "src/pages/admin/AdminImportPage.tsx",
-      "component": "AdminImportPage",
-      "line": 42,
-      "column": 7,
-      "hash": "d03ea66ad54b748ce860",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminImportPage.tsx|MenuCsvImport|button-like-link|697d7e18158a20ea6f69|1",
-      "file": "src/pages/admin/AdminImportPage.tsx",
-      "component": "MenuCsvImport",
-      "line": 143,
-      "column": 7,
-      "hash": "697d7e18158a20ea6f69",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminImportPage.tsx|MenuCsvImport|button-like-link|764c03ccb5a128892e4a|1",
-      "file": "src/pages/admin/AdminImportPage.tsx",
-      "component": "MenuCsvImport",
-      "line": 155,
-      "column": 23,
-      "hash": "764c03ccb5a128892e4a",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminImportPage.tsx|MenuCsvImport|button-like-link|9e86e0c6ae7fb6387c9d|1",
-      "file": "src/pages/admin/AdminImportPage.tsx",
-      "component": "MenuCsvImport",
-      "line": 167,
-      "column": 22,
-      "hash": "9e86e0c6ae7fb6387c9d",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminImportPage.tsx|MenuImportResults|button-like-link|586f5ceda440bfd1d0f5|1",
-      "file": "src/pages/admin/AdminImportPage.tsx",
-      "component": "MenuImportResults",
-      "line": 184,
-      "column": 7,
-      "hash": "586f5ceda440bfd1d0f5",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminImportPage.tsx|MenuImportResults|button-like-link|d251255f877cb6c2852e|1",
-      "file": "src/pages/admin/AdminImportPage.tsx",
-      "component": "MenuImportResults",
-      "line": 185,
-      "column": 30,
-      "hash": "d251255f877cb6c2852e",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminImportPage.tsx|MenuImportResults|button-like-link|df5f12e92457e6aeb9c8|1",
-      "file": "src/pages/admin/AdminImportPage.tsx",
-      "component": "MenuImportResults",
-      "line": 195,
-      "column": 11,
-      "hash": "df5f12e92457e6aeb9c8",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
       "key": "src/pages/admin/AdminInventoryPage.tsx|AdminInventoryPage|raw-button|0f17e9ff7432f1f16267|1",
       "file": "src/pages/admin/AdminInventoryPage.tsx",
       "component": "AdminInventoryPage",
@@ -1510,36 +1440,6 @@
       "hash": "4faeda4defd8524c8aba",
       "kind": "raw-button",
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminProductsPage.tsx|AdminProductsPage|raw-button|ba27a377ea5be947a71e|1",
-      "file": "src/pages/admin/AdminProductsPage.tsx",
-      "component": "AdminProductsPage",
-      "line": 301,
-      "column": 9,
-      "hash": "ba27a377ea5be947a71e",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminProductsPage.tsx|AdminProductsPage|raw-button|101a20778ebd2783410f|1",
-      "file": "src/pages/admin/AdminProductsPage.tsx",
-      "component": "AdminProductsPage",
-      "line": 328,
-      "column": 9,
-      "hash": "101a20778ebd2783410f",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminShopifyMigration.tsx|AdminShopifyMigration|button-like-link|7d26f4e2b763737cd267|1",
-      "file": "src/pages/admin/AdminShopifyMigration.tsx",
-      "component": "AdminShopifyMigration",
-      "line": 416,
-      "column": 9,
-      "hash": "7d26f4e2b763737cd267",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
     },
     {
       "key": "src/pages/admin/AdminUsersPage.tsx|renderAccessEditor|raw-button|3a189f6f8fcc28c53787|1",

@@ -245,20 +245,20 @@ export default function ImageUpload({ productId, images, onImagesChange }: Image
 
                 {/* Action Buttons - Same for all images */}
                 <div className="flex flex-col gap-2">
-                  <Button variant="secondary"
+                  <Button icon={<Star fill={image.primary ? 'currentColor' : 'none'} />} variant="secondary"
                     onClick={() => setPrimaryImage(image.id)}
                     disabled={image.primary}
                     title={image.primary ? 'Already primary' : 'Set as primary'}
                   >
-                    <Star className="w-3 h-3" fill={image.primary ? 'currentColor' : 'none'} />
+
                     {image.primary ? 'Primary' : 'Set Primary'}
                   </Button>
 
-                  <Button variant="destructive" className="w-full"
+                  <Button icon={<X />} variant="destructive" className="w-full"
                     onClick={() => deleteImage(image.id)}
                     title="Delete image"
                   >
-                    <X className="w-3 h-3" />
+
                     Delete
                   </Button>
                 </div>

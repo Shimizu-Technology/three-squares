@@ -1,3 +1,4 @@
+import { StatusBadge } from '../../ui/StatusBadge';
 import { Button } from '../../ui/Button';
 import { IconButton } from '../../ui/IconButton';
 import { useState, type RefObject } from 'react';
@@ -27,8 +28,8 @@ export default function ProductDetailModal({ product, loading, onClose, onEdit, 
       returnFocusRef={returnFocusRef}
       footer={!loading && (
         <div className="flex gap-3">
-          <Button variant="secondary" className="flex-1" type="button" onClick={() => onEdit(product)}>
-            <Edit className="w-5 h-5 mr-2" /> Edit Product
+          <Button icon={<Edit />} variant="primary" className="flex-1" type="button" onClick={() => onEdit(product)}>
+             Edit Product
           </Button>
           <Button variant="secondary" type="button" onClick={onClose}>Close</Button>
         </div>
@@ -120,7 +121,7 @@ export default function ProductDetailModal({ product, loading, onClose, onEdit, 
                           {product.archived ? 'Archived' : product.published ? 'Published' : 'Draft'}
                         </span>
                         {product.featured && (
-                          <span className="ml-2 px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">Featured</span>
+                          <StatusBadge tone="info">Featured</StatusBadge>
                         )}
                       </dd>
                     </div>
@@ -149,17 +150,17 @@ export default function ProductDetailModal({ product, loading, onClose, onEdit, 
                       <dt className="text-gray-600">Inventory Tracking:</dt>
                       <dd className="flex items-center gap-2">
                         {product.inventory_level === 'none' && (
-                          <span className="text-sm px-2 py-1 bg-gray-100 text-gray-700 rounded">Not tracked</span>
+                          <StatusBadge tone="neutral">Not tracked</StatusBadge>
                         )}
                         {product.inventory_level === 'product' && (
                           <>
-                            <span className="text-sm px-2 py-1 bg-blue-100 text-blue-700 rounded font-medium">Product Level</span>
+                            <StatusBadge tone="info">Product Level</StatusBadge>
                             <span className="text-sm text-gray-600">({product.product_stock_quantity || 0} total)</span>
                           </>
                         )}
                         {product.inventory_level === 'variant' && (
                           <>
-                            <span className="text-sm px-2 py-1 bg-purple-100 text-purple-700 rounded font-medium">Variant Level</span>
+                            <StatusBadge tone="info">Variant Level</StatusBadge>
                             <span className="text-sm text-gray-600">({product.total_variant_stock || 0} total across variants)</span>
                           </>
                         )}
@@ -185,7 +186,7 @@ export default function ProductDetailModal({ product, loading, onClose, onEdit, 
                   <h3 className="text-lg font-semibold text-gray-900 mb-2">Collections</h3>
                   <div className="flex flex-wrap gap-2">
                     {product.collections.map((c) => (
-                      <span key={c.id} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">{c.name}</span>
+                      <StatusBadge key={c.id}>{c.name}</StatusBadge>
                     ))}
                   </div>
                 </div>
@@ -222,7 +223,7 @@ export default function ProductDetailModal({ product, loading, onClose, onEdit, 
                                   }`}>
                                     {variant.stock_quantity}
                                     {variant.stock_quantity === 0 && (
-                                      <span className="ml-1 text-xs px-1.5 py-0.5 bg-red-100 text-red-800 rounded">Out</span>
+                                      <StatusBadge tone="danger">Out</StatusBadge>
                                     )}
                                   </span>
                                 ) : (
@@ -230,9 +231,7 @@ export default function ProductDetailModal({ product, loading, onClose, onEdit, 
                                 )}
                               </td>
                               <td className="px-4 py-2 whitespace-nowrap text-sm">
-                                <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${status.className}`}>
-                                  {status.label}
-                                </span>
+                                <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
                               </td>
                             </tr>
                           );
