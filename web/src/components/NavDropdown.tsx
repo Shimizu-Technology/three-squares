@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { NavigationLink } from './ui/NavigationLink';
 import { collectionsApi, type Collection } from '../services/api';
 import { useCartStore } from '../store/cartStore';
 import useAppConfig from '../hooks/useAppConfig';
@@ -112,13 +112,9 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
       onMouseLeave={handleMouseLeave}
     >
       {/* Trigger - Click navigates to /products, hover shows dropdown */}
-      <Link
+      <NavigationLink
         to="/products"
-        className={`flex items-center text-[15px] font-medium transition py-2 ${
-          darkMode 
-            ? 'text-white hover:text-tsGold' 
-            : 'text-warm-700 hover:text-tsPrimary nav-link-hover'
-        }`}
+        surface={darkMode ? 'dark' : 'default'} className="w-full"
         onClick={handleItemClick}
       >
         Shop
@@ -130,18 +126,18 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
         >
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
-      </Link>
+      </NavigationLink>
 
       {/* Dynamic dropdown with real collections */}
       {isOpen && (
         <div className="absolute top-full left-0 mt-2 bg-white rounded-xl shadow-xl border border-warm-200 z-50 animate-slide-down overflow-hidden w-56">
-          <div className="py-2">
+          <div className="py-2 px-4">
             {/* Dynamic collections */}
             {collections.map((col) => (
-              <Link
+              <NavigationLink
                 key={col.id}
                 to={`/collections/${col.slug}`}
-                className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
+                surface={darkMode ? 'dark' : 'default'} className="w-full"
                 onClick={handleItemClick}
               >
                 <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -149,7 +145,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
                 </svg>
                 {col.name}
                 <span className="ml-auto text-xs text-warm-400">{col.product_count}</span>
-              </Link>
+              </NavigationLink>
             ))}
 
             {collections.length > 0 && <div className="border-t border-warm-100 my-1" />}
@@ -160,63 +156,63 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
                   Browse by menu
                 </p>
                 {showThreeSquares && (
-                  <Link
+                  <NavigationLink
                     to="/shop/three-squares"
-                    className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
+                    surface={darkMode ? 'dark' : 'default'} className="w-full"
                     onClick={(event) => handleStorefrontClick(event, 'three_squares', 'Three Squares')}
                   >
                     Three Squares
-                  </Link>
+                  </NavigationLink>
                 )}
                 {showLatteStone && (
-                  <Link
+                  <NavigationLink
                     to="/shop/latte-stone-cookies"
-                    className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
+                    surface={darkMode ? 'dark' : 'default'} className="w-full"
                     onClick={(event) => handleStorefrontClick(event, 'latte_stone', 'Latte Stone Cookies')}
                   >
                     Latte Stone Cookies
-                  </Link>
+                  </NavigationLink>
                 )}
                 {showCatering && (
-                  <Link
+                  <NavigationLink
                     to="/shop/catering"
-                    className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
+                    surface={darkMode ? 'dark' : 'default'} className="w-full"
                     onClick={(event) => handleStorefrontClick(event, 'catering', 'Catering')}
                   >
                     Catering
-                  </Link>
+                  </NavigationLink>
                 )}
               </>
             )}
 
             <div className="border-t border-warm-100 my-1" />
 
-            <Link
+            <NavigationLink
               to="/products"
-              className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
+              surface={darkMode ? 'dark' : 'default'} className="w-full"
               onClick={handleItemClick}
             >
               <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
               All Products
-            </Link>
-            <Link
+            </NavigationLink>
+            <NavigationLink
               to="/collections"
-              className="flex items-center gap-3 px-5 py-3 text-warm-700 hover:bg-tsSurface hover:text-tsPrimary transition font-medium"
+              surface={darkMode ? 'dark' : 'default'} className="w-full"
               onClick={handleItemClick}
             >
               <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
               Browse Collections
-            </Link>
+            </NavigationLink>
 
             <div className="border-t border-warm-100 my-1" />
 
-            <Link
+            <NavigationLink
               to="/products?sale=true"
-              className="flex items-center gap-3 px-5 py-3 text-tsPrimary hover:bg-red-50 transition font-semibold"
+              surface={darkMode ? 'dark' : 'default'} className="w-full"
               onClick={handleItemClick}
             >
               <svg className="w-5 h-5 text-tsPrimary" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -224,7 +220,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
               </svg>
               Sale Items
-            </Link>
+            </NavigationLink>
           </div>
         </div>
       )}

@@ -1,3 +1,4 @@
+import { Button } from '../components/ui/Button';
 import { useState, useEffect } from 'react';
 import { SignInButton } from '@clerk/clerk-react';
 import { Link } from 'react-router-dom';
@@ -122,10 +123,10 @@ export default function OrderHistoryPage() {
             <p className="text-warm-600 mb-6">
               Please sign in to view your order history.
             </p>
-            <SignInButton mode="modal"><button className="min-h-11 rounded-lg bg-tsPrimary px-5 py-3 text-white font-semibold">Sign in for order history</button></SignInButton>
+            <SignInButton mode="modal"><Button variant="primary">Sign in for order history</Button></SignInButton>
             <div className="mt-6 text-left"><h2 className="font-semibold">Guest orders saved on this device</h2><p className="mt-2 text-sm text-warm-600">These private links work on this browser until access expires. Keep your order number for support.</p>
-            <div className="mt-3 flex flex-col gap-2">{savedGuestOrderIds().map(id => <Link key={id} className="min-h-11 underline p-2" to={`/orders/${id}`}>View saved order #{id}</Link>)}</div>
-            <Link className="mt-4 inline-block min-h-11 underline" to="/checkout">Check an unfinished payment</Link></div>
+            <div className="mt-3 flex flex-col gap-2">{savedGuestOrderIds().map(id => <Button key={id} variant="link" to={`/orders/${id}`}>View saved order #{id}</Button>)}</div>
+            <Button variant="link" className="mt-4" to="/checkout">Check an unfinished payment</Button></div>
           </div>
         </div>
       </div>
@@ -172,12 +173,12 @@ export default function OrderHistoryPage() {
         {error && (
           <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
             <p className="text-red-700">{error}</p>
-            <button
+            <Button
               onClick={() => fetchOrders()}
-              className="mt-2 text-red-600 underline hover:text-red-800"
+              variant="secondary" className="mt-2"
             >
               Try again
-            </button>
+            </Button>
           </div>
         )}
 
@@ -191,12 +192,12 @@ export default function OrderHistoryPage() {
                 ? `You don't have any ${statusFilter} orders.`
                 : "You haven't placed any orders yet. Start shopping!"}
             </p>
-            <Link
+            <Button
               to="/products"
-              className="inline-flex items-center px-6 py-3 bg-tsPrimary text-white font-medium rounded-lg hover:bg-primary-dark transition"
+              variant="primary"
             >
               Browse Products
-            </Link>
+            </Button>
           </div>
         )}
 
@@ -266,19 +267,19 @@ export default function OrderHistoryPage() {
 
                   {/* Actions */}
                   <div className="mt-4 flex flex-wrap gap-3">
-                    <Link
+                    <Button
                       to={`/orders/${order.id}`}
-                      className="inline-flex items-center px-4 py-2 bg-warm-100 text-warm-700 text-sm font-medium rounded-lg hover:bg-warm-200 transition"
+                      variant="secondary"
                     >
                       View Details
-                    </Link>
+                    </Button>
                     {order.can_track && (
-                      <Link
+                      <Button
                         to={`/orders/${order.id}#tracking`}
-                        className="inline-flex items-center px-4 py-2 bg-tsPrimary text-white text-sm font-medium rounded-lg hover:bg-primary-dark transition"
+                        variant="primary"
                       >
                         Track Order
-                      </Link>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -290,23 +291,23 @@ export default function OrderHistoryPage() {
         {/* Pagination */}
         {pagination && pagination.total_pages > 1 && (
           <div className="mt-8 flex justify-center gap-2">
-            <button
+            <Button
               onClick={() => fetchOrders(pagination.current_page - 1)}
               disabled={pagination.current_page === 1}
-              className="px-4 py-2 bg-white border border-warm-300 rounded-lg text-sm font-medium text-warm-700 hover:bg-warm-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              variant="secondary"
             >
               Previous
-            </button>
+            </Button>
             <span className="px-4 py-2 text-sm text-warm-600">
               Page {pagination.current_page} of {pagination.total_pages}
             </span>
-            <button
+            <Button
               onClick={() => fetchOrders(pagination.current_page + 1)}
               disabled={pagination.current_page === pagination.total_pages}
-              className="px-4 py-2 bg-white border border-warm-300 rounded-lg text-sm font-medium text-warm-700 hover:bg-warm-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              variant="secondary"
             >
               Next
-            </button>
+            </Button>
           </div>
         )}
 

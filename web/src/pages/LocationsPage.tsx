@@ -1,5 +1,6 @@
-import { Link } from 'react-router-dom';
-import { MapPin, Clock, Phone, MessageCircle, ChevronRight } from 'lucide-react';
+import { Button } from '../components/ui/Button';
+import { StatusBadge } from '../components/ui/StatusBadge';
+import { MapPin, Clock, Phone, MessageCircle, ChevronRight, ClipboardList } from 'lucide-react';
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 
@@ -88,22 +89,8 @@ export default function LocationsPage() {
           
           <FadeIn delay={0.2}>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link
-                to="/catering?inquiry=true"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-warm-600 text-white rounded-xl font-medium text-lg hover:bg-warm-700 transition-all duration-200 hover:-translate-y-0.5"
-              >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
-                Request a Quote
-              </Link>
-              <a
-                href="tel:+16716462652"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-warm-700 border-2 border-warm-600 rounded-xl font-medium text-lg hover:bg-warm-50 transition-all duration-200 hover:-translate-y-0.5"
-              >
-                <Phone className="w-5 h-5" />
-                Call (671) 646-2652
-              </a>
+              <Button to="/catering?inquiry=true" size="lg" icon={<ClipboardList />}>Request a Quote</Button>
+              <Button href="tel:+16716462652" variant="secondary" size="lg" icon={<Phone />}>Call (671) 646-2652</Button>
             </div>
           </FadeIn>
         </div>
@@ -129,9 +116,7 @@ function LocationCard({ location }: LocationCardProps) {
           className="w-full h-full object-cover"
         />
         {location.featured && (
-          <div className="absolute top-4 left-4 px-3 py-1 bg-tsPrimary text-white text-sm font-medium rounded-full">
-            Main Location
-          </div>
+          <StatusBadge tone="info" className="absolute top-4 left-4">Main Location</StatusBadge>
         )}
       </div>
 
@@ -198,9 +183,7 @@ function LocationCard({ location }: LocationCardProps) {
             </div>
           </div>
         )}
-        <Link to={`/menu/${location.slug}`} aria-label={`View ${location.name} menu`} className="mt-5 inline-flex items-center justify-center gap-2 bg-tsPrimary text-white rounded-xl px-5 py-3 font-semibold hover:bg-primary-dark transition-colors">
-          View Menu <ChevronRight className="w-4 h-4" />
-        </Link>
+        <Button to={`/menu/${location.slug}`} aria-label={`View ${location.name} menu`} className="mt-6" icon={<ChevronRight />}>View Menu</Button>
       </div>
 
 

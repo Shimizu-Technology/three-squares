@@ -1,3 +1,5 @@
+import { Button } from '../components/ui/Button';
+import { ArrowLeft, Printer } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@clerk/clerk-react';
@@ -129,12 +131,12 @@ export default function OrderConfirmationPage() {
           <div className="mb-4"><svg className="w-16 h-16 mx-auto text-warm-400" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M15.182 16.318A4.486 4.486 0 0012.016 15a4.486 4.486 0 00-3.198 1.318M21 12a9 9 0 11-18 0 9 9 0 0118 0zM9.75 9.75c0 .414-.168.75-.375.75S9 10.164 9 9.75 9.168 9 9.375 9s.375.336.375.75zm-.375 0h.008v.015h-.008V9.75zm5.625 0c0 .414-.168.75-.375.75s-.375-.336-.375-.75.168-.75.375-.75.375.336.375.75zm-.375 0h.008v.015h-.008V9.75z" /></svg></div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Order Not Found</h1>
           <p className="text-gray-600 mb-6">{error || 'Unable to load order details'}</p>
-          <button
+          <Button
             onClick={() => navigate('/products')}
-            className="bg-tsPrimary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary-dark transition"
+            variant="secondary"
           >
             Continue Shopping
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -440,24 +442,8 @@ export default function OrderConfirmationPage() {
 
         {/* Actions - Hidden when printing */}
         <div className="flex flex-col sm:flex-row gap-4 print:hidden">
-          <button
-            onClick={() => navigate('/products')}
-            className="flex-1 btn-primary py-4 flex items-center justify-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
-            </svg>
-            Continue Shopping
-          </button>
-          <button
-            onClick={() => window.print()}
-            className="flex-1 btn-secondary py-4 flex items-center justify-center gap-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-            </svg>
-            Print Order
-          </button>
+          <Button to="/products" size="lg" className="flex-1" icon={<ArrowLeft />}>Continue shopping</Button>
+          <Button onClick={() => window.print()} variant="secondary" size="lg" className="flex-1" icon={<Printer />}>Print Order</Button>
         </div>
 
         {/* Help Text - Hidden when printing */}

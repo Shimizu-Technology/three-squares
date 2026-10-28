@@ -1,3 +1,4 @@
+import { Button } from '../components/ui/Button';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { UtensilsCrossed, MapPin, Phone, Clock, ChevronRight } from 'lucide-react';
@@ -183,21 +184,13 @@ export default function HomePage() {
               <div
                 className="flex flex-col sm:flex-row gap-4 justify-center"
               >
-                <Link
-                  to={heroContent.button_link || "/products"}
-                  className="group btn-primary text-lg px-10 py-4 inline-flex items-center justify-center gap-2"
-                >
+                <Button to={heroContent.button_link || "/products"} size="lg" surface="dark" icon={<ChevronRight />}>
                   {heroContent.button_text || "View Our Menu"}
-                  <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
+                </Button>
                 {secondaryButtonText && secondaryButtonLink && (
-                  <Link
-                    to={secondaryButtonLink}
-                    className="border-2 border-white/50 text-white hover:bg-white/15 rounded-xl text-lg px-8 py-4 inline-flex items-center justify-center transition-all duration-200 hover:-translate-y-0.5 font-medium"
-                    style={{ textShadow: '0 1px 4px rgba(0,0,0,0.6)' }}
-                  >
+                  <Button to={secondaryButtonLink} variant="secondary" size="lg" surface="dark">
                     {secondaryButtonText}
-                  </Link>
+                  </Button>
                 )}
               </div>
             </>
@@ -329,13 +322,12 @@ export default function HomePage() {
                   Three Squares is part of B&amp;G Pacific LLC. Planning a gathering?
                   Send an inquiry with your event details so the team can discuss a quote.
                 </p>
-                <Link
+                <Button
                   to="/about"
-                  className="group inline-flex items-center gap-2 text-warm-900 font-semibold hover:text-tsPrimary transition-colors"
+                  variant="link" icon={<ChevronRight />}
                 >
                   Learn More About Us
-                  <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Link>
+                </Button>
               </div>
             </FadeIn>
           </div>
@@ -409,13 +401,12 @@ export default function HomePage() {
 
           <FadeIn delay={0.3}>
             <div className="text-center mt-10">
-              <Link
+              <Button
                 to="/locations"
-                className="inline-flex items-center gap-2 text-tsPrimary font-semibold hover:text-primary-dark transition-colors"
+                variant="link" icon={<ChevronRight />}
               >
                 View All Location Details
-                <ChevronRight className="w-4 h-4" />
-              </Link>
+              </Button>
             </div>
           </FadeIn>
         </div>

@@ -2,126 +2,6 @@
   "version": 1,
   "entries": [
     {
-      "key": "src/App.tsx|AppContent|button-like-link|6f6d8bb1949cbf2f63aa|1",
-      "file": "src/App.tsx",
-      "component": "AppContent",
-      "line": 277,
-      "column": 17,
-      "hash": "6f6d8bb1949cbf2f63aa",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/App.tsx|AppContent|button-like-link|7638c4f81bfd298a532b|1",
-      "file": "src/App.tsx",
-      "component": "AppContent",
-      "line": 284,
-      "column": 17,
-      "hash": "7638c4f81bfd298a532b",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/App.tsx|AppContent|button-like-link|d285bb57702f3c6a5ecb|1",
-      "file": "src/App.tsx",
-      "component": "AppContent",
-      "line": 291,
-      "column": 17,
-      "hash": "d285bb57702f3c6a5ecb",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/App.tsx|AppContent|raw-button|b81f04f5f6db973225e7|1",
-      "file": "src/App.tsx",
-      "component": "AppContent",
-      "line": 330,
-      "column": 17,
-      "hash": "b81f04f5f6db973225e7",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/App.tsx|AppContent|raw-button|060f830bd4945d390934|1",
-      "file": "src/App.tsx",
-      "component": "AppContent",
-      "line": 349,
-      "column": 23,
-      "hash": "060f830bd4945d390934",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/App.tsx|AppContent|raw-button|79c92cd3d789a840bdea|1",
-      "file": "src/App.tsx",
-      "component": "AppContent",
-      "line": 361,
-      "column": 17,
-      "hash": "79c92cd3d789a840bdea",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/App.tsx|AppContent|button-like-link|44a7f41f87b009f2944e|1",
-      "file": "src/App.tsx",
-      "component": "AppContent",
-      "line": 430,
-      "column": 17,
-      "hash": "44a7f41f87b009f2944e",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/App.tsx|AppContent|button-like-link|842bebe7ad656eb06672|1",
-      "file": "src/App.tsx",
-      "component": "AppContent",
-      "line": 440,
-      "column": 17,
-      "hash": "842bebe7ad656eb06672",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/App.tsx|AppContent|button-like-link|070c1e74e3422449049f|1",
-      "file": "src/App.tsx",
-      "component": "AppContent",
-      "line": 451,
-      "column": 17,
-      "hash": "070c1e74e3422449049f",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/App.tsx|AppContent|raw-button|9a1906812fb37d41c43f|1",
-      "file": "src/App.tsx",
-      "component": "AppContent",
-      "line": 466,
-      "column": 23,
-      "hash": "9a1906812fb37d41c43f",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/App.tsx|AppContent|button-like-link|318af748755a422db3b3|1",
-      "file": "src/App.tsx",
-      "component": "AppContent",
-      "line": 573,
-      "column": 19,
-      "hash": "318af748755a422db3b3",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/App.tsx|AppContent|button-like-link|3b7abddf706024ffb7d9|1",
-      "file": "src/App.tsx",
-      "component": "AppContent",
-      "line": 584,
-      "column": 19,
-      "hash": "3b7abddf706024ffb7d9",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
       "key": "src/components/admin/AdminModal.tsx|AdminModal|raw-button|26b2383ec946f16367d8|1",
       "file": "src/components/admin/AdminModal.tsx",
       "component": "AdminModal",
@@ -792,26 +672,6 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/components/CustomerAvailability.tsx|CustomerConnection|raw-button|7701b9827348bbb9dc15|1",
-      "file": "src/components/CustomerAvailability.tsx",
-      "component": "CustomerConnection",
-      "line": 13,
-      "column": 7,
-      "hash": "7701b9827348bbb9dc15",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/CustomerAvailability.tsx|CustomerConnection|raw-button|d81357dc236edbfb2b34|1",
-      "file": "src/components/CustomerAvailability.tsx",
-      "component": "CustomerConnection",
-      "line": 19,
-      "column": 7,
-      "hash": "d81357dc236edbfb2b34",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/components/FeaturedProducts.tsx|FeaturedProducts|button-like-link|8d7b37793a5f4eeb6149|1",
       "file": "src/components/FeaturedProducts.tsx",
       "component": "FeaturedProducts",
@@ -910,156 +770,6 @@
       "hash": "7ab76a605a86fc1cd39d",
       "kind": "raw-button",
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/MobileNavDropdown.tsx|MobileNavDropdown|raw-button|78c21ffd4e4d38c86944|1",
-      "file": "src/components/MobileNavDropdown.tsx",
-      "component": "MobileNavDropdown",
-      "line": 81,
-      "column": 7,
-      "hash": "78c21ffd4e4d38c86944",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/MobileNavDropdown.tsx|MobileNavDropdown|button-like-link|b745c9bae8ff7dd169bd|1",
-      "file": "src/components/MobileNavDropdown.tsx",
-      "component": "MobileNavDropdown",
-      "line": 106,
-      "column": 13,
-      "hash": "b745c9bae8ff7dd169bd",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/components/MobileNavDropdown.tsx|MobileNavDropdown|button-like-link|ac625286a55ef4d909ca|1",
-      "file": "src/components/MobileNavDropdown.tsx",
-      "component": "MobileNavDropdown",
-      "line": 127,
-      "column": 19,
-      "hash": "ac625286a55ef4d909ca",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/components/MobileNavDropdown.tsx|MobileNavDropdown|button-like-link|7d5d774a079d3f436911|1",
-      "file": "src/components/MobileNavDropdown.tsx",
-      "component": "MobileNavDropdown",
-      "line": 140,
-      "column": 19,
-      "hash": "7d5d774a079d3f436911",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/components/MobileNavDropdown.tsx|MobileNavDropdown|button-like-link|471b3edbb109cafe5ecc|1",
-      "file": "src/components/MobileNavDropdown.tsx",
-      "component": "MobileNavDropdown",
-      "line": 153,
-      "column": 19,
-      "hash": "471b3edbb109cafe5ecc",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/components/MobileNavDropdown.tsx|MobileNavDropdown|button-like-link|6f035d89e7c38308513e|1",
-      "file": "src/components/MobileNavDropdown.tsx",
-      "component": "MobileNavDropdown",
-      "line": 173,
-      "column": 17,
-      "hash": "6f035d89e7c38308513e",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/components/MobileNavDropdown.tsx|MobileNavDropdown|button-like-link|18b66d672b8e171894b0|1",
-      "file": "src/components/MobileNavDropdown.tsx",
-      "component": "MobileNavDropdown",
-      "line": 196,
-      "column": 15,
-      "hash": "18b66d672b8e171894b0",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/components/NavDropdown.tsx|NavDropdown|button-like-link|2840c6c46c7ed234bce1|1",
-      "file": "src/components/NavDropdown.tsx",
-      "component": "NavDropdown",
-      "line": 115,
-      "column": 7,
-      "hash": "2840c6c46c7ed234bce1",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/components/NavDropdown.tsx|NavDropdown|button-like-link|e50bfdffaa70c3158b20|1",
-      "file": "src/components/NavDropdown.tsx",
-      "component": "NavDropdown",
-      "line": 141,
-      "column": 15,
-      "hash": "e50bfdffaa70c3158b20",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/components/NavDropdown.tsx|NavDropdown|button-like-link|6044d705557690ca193d|1",
-      "file": "src/components/NavDropdown.tsx",
-      "component": "NavDropdown",
-      "line": 163,
-      "column": 19,
-      "hash": "6044d705557690ca193d",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/components/NavDropdown.tsx|NavDropdown|button-like-link|681e9519a6382037e029|1",
-      "file": "src/components/NavDropdown.tsx",
-      "component": "NavDropdown",
-      "line": 172,
-      "column": 19,
-      "hash": "681e9519a6382037e029",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/components/NavDropdown.tsx|NavDropdown|button-like-link|40ebf7d398ade3cc4bde|1",
-      "file": "src/components/NavDropdown.tsx",
-      "component": "NavDropdown",
-      "line": 181,
-      "column": 19,
-      "hash": "40ebf7d398ade3cc4bde",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/components/NavDropdown.tsx|NavDropdown|button-like-link|2b81ea17f3c29974e555|1",
-      "file": "src/components/NavDropdown.tsx",
-      "component": "NavDropdown",
-      "line": 194,
-      "column": 13,
-      "hash": "2b81ea17f3c29974e555",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/components/NavDropdown.tsx|NavDropdown|button-like-link|6a73794c61cebc5f121a|1",
-      "file": "src/components/NavDropdown.tsx",
-      "component": "NavDropdown",
-      "line": 204,
-      "column": 13,
-      "hash": "6a73794c61cebc5f121a",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/components/NavDropdown.tsx|NavDropdown|button-like-link|9c91765939f8be0d80cb|1",
-      "file": "src/components/NavDropdown.tsx",
-      "component": "NavDropdown",
-      "line": 217,
-      "column": 13,
-      "hash": "9c91765939f8be0d80cb",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
     },
     {
       "key": "src/components/payment/ManualCardDialog.tsx|ManualCardDialog|button-like-link|9f738def7e53ac074156|1",
@@ -1362,30 +1072,10 @@
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
     },
     {
-      "key": "src/pages/AboutPage.tsx|AboutPage|button-like-link|0418bb755f7202d3ad0e|1",
-      "file": "src/pages/AboutPage.tsx",
-      "component": "AboutPage",
-      "line": 21,
-      "column": 13,
-      "hash": "0418bb755f7202d3ad0e",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/AboutPage.tsx|AboutPage|button-like-link|97f5d264c55821fc44d2|1",
-      "file": "src/pages/AboutPage.tsx",
-      "component": "AboutPage",
-      "line": 22,
-      "column": 13,
-      "hash": "97f5d264c55821fc44d2",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
       "key": "src/pages/AboutPage.tsx|AboutPage|button-like-link|de28fe3c886905c82be4|1",
       "file": "src/pages/AboutPage.tsx",
       "component": "AboutPage",
-      "line": 52,
+      "line": 53,
       "column": 11,
       "hash": "de28fe3c886905c82be4",
       "kind": "button-like-link",
@@ -1395,39 +1085,9 @@
       "key": "src/pages/AboutPage.tsx|AboutPage|button-like-link|7b6928da98e7c51c0e96|1",
       "file": "src/pages/AboutPage.tsx",
       "component": "AboutPage",
-      "line": 57,
+      "line": 58,
       "column": 11,
       "hash": "7b6928da98e7c51c0e96",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/AccountPage.tsx|AccountPage|raw-button|ac3a42179e8cd381e24c|1",
-      "file": "src/pages/AccountPage.tsx",
-      "component": "AccountPage",
-      "line": 108,
-      "column": 15,
-      "hash": "ac3a42179e8cd381e24c",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AccountPage.tsx|AccountPage|raw-button|aff717592acbf21d420c|1",
-      "file": "src/pages/AccountPage.tsx",
-      "component": "AccountPage",
-      "line": 205,
-      "column": 21,
-      "hash": "aff717592acbf21d420c",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AccountPage.tsx|AccountPage|button-like-link|c9549808129e6f4233f1|1",
-      "file": "src/pages/AccountPage.tsx",
-      "component": "AccountPage",
-      "line": 218,
-      "column": 21,
-      "hash": "c9549808129e6f4233f1",
       "kind": "button-like-link",
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
     },
@@ -1435,31 +1095,11 @@
       "key": "src/pages/AccountPage.tsx|AccountPage|button-like-link|8b1bdc88fd756219c9d3|1",
       "file": "src/pages/AccountPage.tsx",
       "component": "AccountPage",
-      "line": 230,
+      "line": 232,
       "column": 23,
       "hash": "8b1bdc88fd756219c9d3",
       "kind": "button-like-link",
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/AccountPage.tsx|AccountPage|raw-button|0d2face55a5855232cd6|1",
-      "file": "src/pages/AccountPage.tsx",
-      "component": "AccountPage",
-      "line": 273,
-      "column": 17,
-      "hash": "0d2face55a5855232cd6",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AccountPage.tsx|AccountPage|raw-button|f51e81756f806c3d8774|1",
-      "file": "src/pages/AccountPage.tsx",
-      "component": "AccountPage",
-      "line": 290,
-      "column": 13,
-      "hash": "f51e81756f806c3d8774",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
       "key": "src/pages/admin/AdminAnalyticsPage.tsx|AdminAnalyticsPage|raw-button|b03428423e1253453e7a|1",
@@ -2952,40 +2592,10 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/pages/CateringPage.tsx|CateringPage|raw-button|cd8d1f09df30b623d79b|1",
-      "file": "src/pages/CateringPage.tsx",
-      "component": "CateringPage",
-      "line": 119,
-      "column": 13,
-      "hash": "cd8d1f09df30b623d79b",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/CateringPage.tsx|CateringPage|button-like-link|28d334b5c0285305d0a7|1",
-      "file": "src/pages/CateringPage.tsx",
-      "component": "CateringPage",
-      "line": 120,
-      "column": 13,
-      "hash": "28d334b5c0285305d0a7",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/CateringPage.tsx|CateringPage|raw-button|427c40087ba180ea21fa|1",
-      "file": "src/pages/CateringPage.tsx",
-      "component": "CateringPage",
-      "line": 139,
-      "column": 13,
-      "hash": "427c40087ba180ea21fa",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/pages/CateringPage.tsx|CateringPage|raw-button|7335ee531a32ed48af4d|1",
       "file": "src/pages/CateringPage.tsx",
       "component": "CateringPage",
-      "line": 158,
+      "line": 160,
       "column": 19,
       "hash": "7335ee531a32ed48af4d",
       "kind": "raw-button",
@@ -2995,7 +2605,7 @@
       "key": "src/pages/CateringPage.tsx|CateringPage|raw-button|76cd6012a459510daee9|1",
       "file": "src/pages/CateringPage.tsx",
       "component": "CateringPage",
-      "line": 172,
+      "line": 174,
       "column": 21,
       "hash": "76cd6012a459510daee9",
       "kind": "raw-button",
@@ -3005,41 +2615,11 @@
       "key": "src/pages/CateringPage.tsx|CateringPage|raw-button|186d21639ae2df3b5cca|1",
       "file": "src/pages/CateringPage.tsx",
       "component": "CateringPage",
-      "line": 377,
+      "line": 379,
       "column": 23,
       "hash": "186d21639ae2df3b5cca",
       "kind": "raw-button",
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/CateringPage.tsx|CateringPage|raw-button|7c09c408779a6aa018ed|1",
-      "file": "src/pages/CateringPage.tsx",
-      "component": "CateringPage",
-      "line": 398,
-      "column": 11,
-      "hash": "7c09c408779a6aa018ed",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/CateringPage.tsx|CateringPage|raw-button|7a65534a2690f6e108c6|1",
-      "file": "src/pages/CateringPage.tsx",
-      "component": "CateringPage",
-      "line": 421,
-      "column": 15,
-      "hash": "7a65534a2690f6e108c6",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/CateringPage.tsx|CateringPage|button-like-link|631d9cb8e0dfa8d5ac75|1",
-      "file": "src/pages/CateringPage.tsx",
-      "component": "CateringPage",
-      "line": 430,
-      "column": 15,
-      "hash": "631d9cb8e0dfa8d5ac75",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
     },
     {
       "key": "src/pages/CheckoutPage.tsx|CheckoutForm|raw-button|ed8398ef278dea7d6376|1",
@@ -3382,50 +2962,10 @@
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
     },
     {
-      "key": "src/pages/HomePage.tsx|HomePage|button-like-link|32aaf169dddba319ec52|1",
-      "file": "src/pages/HomePage.tsx",
-      "component": "HomePage",
-      "line": 186,
-      "column": 17,
-      "hash": "32aaf169dddba319ec52",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/HomePage.tsx|HomePage|button-like-link|3e706b11359c3a5b92d8|1",
-      "file": "src/pages/HomePage.tsx",
-      "component": "HomePage",
-      "line": 194,
-      "column": 19,
-      "hash": "3e706b11359c3a5b92d8",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/HomePage.tsx|HomePage|button-like-link|6f490e4ebd10d61157ab|1",
-      "file": "src/pages/HomePage.tsx",
-      "component": "HomePage",
-      "line": 332,
-      "column": 17,
-      "hash": "6f490e4ebd10d61157ab",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/HomePage.tsx|HomePage|button-like-link|2238e7d373d4ae09bf93|1",
-      "file": "src/pages/HomePage.tsx",
-      "component": "HomePage",
-      "line": 412,
-      "column": 15,
-      "hash": "2238e7d373d4ae09bf93",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
       "key": "src/pages/HomePage.tsx|CategoryCard|button-like-link|6d64a704b283aa838a11|1",
       "file": "src/pages/HomePage.tsx",
       "component": "CategoryCard",
-      "line": 445,
+      "line": 436,
       "column": 5,
       "hash": "6d64a704b283aa838a11",
       "kind": "button-like-link",
@@ -3462,30 +3002,10 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/pages/LocationsPage.tsx|LocationsPage|button-like-link|13fda99ca6c0cf2cb048|1",
-      "file": "src/pages/LocationsPage.tsx",
-      "component": "LocationsPage",
-      "line": 91,
-      "column": 15,
-      "hash": "13fda99ca6c0cf2cb048",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/LocationsPage.tsx|LocationsPage|button-like-link|c7445613c35933db0a41|1",
-      "file": "src/pages/LocationsPage.tsx",
-      "component": "LocationsPage",
-      "line": 100,
-      "column": 15,
-      "hash": "c7445613c35933db0a41",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
       "key": "src/pages/LocationsPage.tsx|LocationCard|button-like-link|6c5b3e38b1445bd58431|1",
       "file": "src/pages/LocationsPage.tsx",
       "component": "LocationCard",
-      "line": 147,
+      "line": 132,
       "column": 13,
       "hash": "6c5b3e38b1445bd58431",
       "kind": "button-like-link",
@@ -3495,19 +3015,9 @@
       "key": "src/pages/LocationsPage.tsx|LocationCard|button-like-link|e466fdc57c3c2464b558|1",
       "file": "src/pages/LocationsPage.tsx",
       "component": "LocationCard",
-      "line": 188,
+      "line": 173,
       "column": 17,
       "hash": "e466fdc57c3c2464b558",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/LocationsPage.tsx|LocationCard|button-like-link|8018a060da12c82b06c4|1",
-      "file": "src/pages/LocationsPage.tsx",
-      "component": "LocationCard",
-      "line": 201,
-      "column": 9,
-      "hash": "8018a060da12c82b06c4",
       "kind": "button-like-link",
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
     },
@@ -3542,144 +3052,24 @@
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
     },
     {
-      "key": "src/pages/OrderConfirmationPage.tsx|OrderConfirmationPage|raw-button|296f6d2512b57650913b|1",
-      "file": "src/pages/OrderConfirmationPage.tsx",
-      "component": "OrderConfirmationPage",
-      "line": 132,
-      "column": 11,
-      "hash": "296f6d2512b57650913b",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/pages/OrderConfirmationPage.tsx|OrderConfirmationPage|button-like-link|bad807f45e1bf5cb375f|1",
       "file": "src/pages/OrderConfirmationPage.tsx",
       "component": "OrderConfirmationPage",
-      "line": 385,
+      "line": 387,
       "column": 21,
       "hash": "bad807f45e1bf5cb375f",
       "kind": "button-like-link",
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
     },
     {
-      "key": "src/pages/OrderConfirmationPage.tsx|OrderConfirmationPage|raw-button|b5d87675bdc557d39586|1",
-      "file": "src/pages/OrderConfirmationPage.tsx",
-      "component": "OrderConfirmationPage",
-      "line": 443,
-      "column": 11,
-      "hash": "b5d87675bdc557d39586",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/OrderConfirmationPage.tsx|OrderConfirmationPage|raw-button|09af8a3a7020c8d4e6f2|1",
-      "file": "src/pages/OrderConfirmationPage.tsx",
-      "component": "OrderConfirmationPage",
-      "line": 452,
-      "column": 11,
-      "hash": "09af8a3a7020c8d4e6f2",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/pages/OrderConfirmationPage.tsx|OrderConfirmationPage|button-like-link|677e07fda4f28692f36b|1",
       "file": "src/pages/OrderConfirmationPage.tsx",
       "component": "OrderConfirmationPage",
-      "line": 469,
+      "line": 455,
       "column": 13,
       "hash": "677e07fda4f28692f36b",
       "kind": "button-like-link",
       "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/OrderHistoryPage.tsx|OrderHistoryPage|raw-button|c173b9fbc8e57deff199|1",
-      "file": "src/pages/OrderHistoryPage.tsx",
-      "component": "OrderHistoryPage",
-      "line": 125,
-      "column": 40,
-      "hash": "c173b9fbc8e57deff199",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/OrderHistoryPage.tsx|OrderHistoryPage|button-like-link|349c6bb5fa9e0c500fe7|1",
-      "file": "src/pages/OrderHistoryPage.tsx",
-      "component": "OrderHistoryPage",
-      "line": 127,
-      "column": 87,
-      "hash": "349c6bb5fa9e0c500fe7",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/OrderHistoryPage.tsx|OrderHistoryPage|button-like-link|76e15b2c01fc0079717d|1",
-      "file": "src/pages/OrderHistoryPage.tsx",
-      "component": "OrderHistoryPage",
-      "line": 128,
-      "column": 13,
-      "hash": "76e15b2c01fc0079717d",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/OrderHistoryPage.tsx|OrderHistoryPage|raw-button|e839bfaae2b2612e73ee|1",
-      "file": "src/pages/OrderHistoryPage.tsx",
-      "component": "OrderHistoryPage",
-      "line": 175,
-      "column": 13,
-      "hash": "e839bfaae2b2612e73ee",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/OrderHistoryPage.tsx|OrderHistoryPage|button-like-link|4c4c404f6993810ef623|1",
-      "file": "src/pages/OrderHistoryPage.tsx",
-      "component": "OrderHistoryPage",
-      "line": 194,
-      "column": 13,
-      "hash": "4c4c404f6993810ef623",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/OrderHistoryPage.tsx|OrderHistoryPage|button-like-link|a9dc4203ef0e79510335|1",
-      "file": "src/pages/OrderHistoryPage.tsx",
-      "component": "OrderHistoryPage",
-      "line": 269,
-      "column": 21,
-      "hash": "a9dc4203ef0e79510335",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/OrderHistoryPage.tsx|OrderHistoryPage|button-like-link|9561831717d1a331c5a8|1",
-      "file": "src/pages/OrderHistoryPage.tsx",
-      "component": "OrderHistoryPage",
-      "line": 276,
-      "column": 23,
-      "hash": "9561831717d1a331c5a8",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/OrderHistoryPage.tsx|OrderHistoryPage|raw-button|7b63c8a0d230121dbb5e|1",
-      "file": "src/pages/OrderHistoryPage.tsx",
-      "component": "OrderHistoryPage",
-      "line": 293,
-      "column": 13,
-      "hash": "7b63c8a0d230121dbb5e",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/OrderHistoryPage.tsx|OrderHistoryPage|raw-button|8cd3e51c56e192616181|1",
-      "file": "src/pages/OrderHistoryPage.tsx",
-      "component": "OrderHistoryPage",
-      "line": 303,
-      "column": 13,
-      "hash": "8cd3e51c56e192616181",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
       "key": "src/pages/ProductDetailPage.tsx|renderColorSelector|raw-button|40cb5e813cf13601f443|1",
