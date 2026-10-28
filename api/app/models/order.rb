@@ -73,7 +73,7 @@ class Order < ApplicationRecord
   scope :active, -> { where.not(status: "cancelled") }
 
   # Callbacks
-  before_validation :generate_order_number, if: -> { order_number.blank? }
+  before_validation :generate_order_number, if: :needs_generated_order_number?
   # NOTE: Inventory restoration on cancellation is handled by
   # admin/orders_controller#update (which passes current_user for audit trail).
   # Do NOT add an after_update callback here — it would double-restore.
@@ -316,16 +316,25 @@ class Order < ApplicationRecord
     date_str = Time.current.strftime("%Y%m%d")
     prefix = "TSQ-#{type_prefix}-#{date_str}"
 
-    # Find the last order number with this prefix for today
-    last_order = Order.where("order_number LIKE ?", "#{prefix}-%").order(:order_number).last
-
-    if last_order
-      # Extract the sequence number and increment
-      sequence = last_order.order_number.split("-").last.to_i + 1
-    else
-      sequence = 1
+    # save/save! wrap validation and INSERT in one transaction. This lock also
+    # survives until an enclosing checkout/POS transaction commits. The two-int
+    # namespace is separate from the payment owner/key bigint advisory locks.
+    self.class.with_connection do |connection|
+      connection.execute("SELECT pg_advisory_xact_lock(5526353, hashtext(#{connection.quote("order_number:#{prefix}")}))")
+      # Read AFTER acquiring the lock, bypassing any earlier validation's cache.
+      # Numeric MAX keeps 10000 ahead of 9999; ignore malformed legacy suffixes.
+      last_sequence = self.class.uncached do
+        self.class.where("order_number ~ ?", "^#{prefix}-[0-9]+$")
+          .maximum(Arel.sql("split_part(order_number, '-', 4)::numeric"))
+      end
+      sequence = last_sequence.to_i + 1
+      self.order_number = @generated_order_number = "#{prefix}-#{sequence.to_s.rjust(4, '0')}"
     end
+  end
 
-    self.order_number = "#{prefix}-#{sequence.to_s.rjust(4, '0')}"
+  def needs_generated_order_number?
+    # valid? alone does not hold a transaction until save. Reassign its candidate
+    # under the save lock, but preserve supplied numbers and persisted orders.
+    new_record? && (order_number.blank? || order_number == @generated_order_number)
   end
 end
