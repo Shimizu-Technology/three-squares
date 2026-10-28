@@ -1,3 +1,4 @@
+import { IconButton } from '../components/ui/IconButton';
 import { Button } from '../components/ui/Button';
 import { Notice } from '../components/ui/Notice';
 import { Field } from '../components/ui/Field';
@@ -387,19 +388,16 @@ export default function ProductDetailPage() {
           const variantInStock = variant ? variant.actually_available !== false : isAvailable;
 
           return (
-            <button
+            <IconButton
               key={value}
               onClick={() => handleOptionSelect(optionKey, value)}
               disabled={!isAvailable}
+              aria-label={value}
+              aria-pressed={isSelected}
               title={value + (!variantInStock ? ' (Out of Stock)' : '')}
-              className={`relative w-10 h-10 rounded-full border-2 transition-all ${
-                isSelected
-                  ? 'border-tsPrimary ring-2 ring-tsPrimary/30 scale-110'
-                  : isAvailable && variantInStock
-                    ? 'border-warm-300 hover:border-tsPrimary hover:scale-105'
-                    : 'border-warm-200 opacity-40 cursor-not-allowed'
-              }`}
+              variant={isSelected ? 'primary' : 'secondary'}
             >
+              <span className="relative block w-6 h-6 shrink-0">
               {cssColor ? (
                 <span
                   className="absolute inset-1 rounded-full"
@@ -420,7 +418,8 @@ export default function ProductDetailPage() {
                   <span className="block w-full h-0.5 bg-warm-400 rotate-45" />
                 </span>
               )}
-            </button>
+              </span>
+            </IconButton>
           );
         })}
       </div>
@@ -452,36 +451,30 @@ export default function ProductDetailPage() {
               : null;
 
           return (
-            <button
+            <Button
               key={value}
               onClick={() => handleOptionSelect(optionKey, value)}
               disabled={!isAvailable}
-              className={`px-4 py-2.5 rounded-lg border-2 transition-all ${
-                isSelected
-                  ? 'border-tsPrimary bg-red-50 text-tsPrimary font-semibold'
-                  : isAvailable && variantInStock
-                    ? 'border-warm-300 hover:border-tsPrimary text-warm-700'
-                    : isAvailable && !variantInStock
-                      ? 'border-warm-200 bg-warm-50 text-warm-400 cursor-not-allowed'
-                      : 'border-warm-200 bg-warm-50 text-warm-300 cursor-not-allowed'
-              }`}
-            >
+              variant={isSelected ? 'primary' : 'secondary'} aria-pressed={isSelected} size="lg"
+            ><span className="flex flex-col">
               <span className="text-sm font-medium">{value}</span>
+              <span className="flex justify-center gap-2">
               {priceDiff !== null && priceDiff !== 0 && (
-                <span className={`block text-xs ${priceDiff > 0 ? 'text-warm-500' : 'text-green-600'}`}>
+                <span className="text-xs">
                   {priceDiff > 0 ? '+' : '−'}
                   {formatPrice(Math.abs(priceDiff))}
                 </span>
               )}
               {!variantInStock && isAvailable && (
-                <span className="block text-xs text-warm-400">Out of Stock</span>
+                <span className="text-xs">Out of Stock</span>
               )}
               {variantInStock && showStockWarning && (
-                <span className="block text-xs text-orange-600">
+                <span className="text-xs">
                   Only {variant!.stock_quantity} left
                 </span>
               )}
-            </button>
+              </span>
+            </span></Button>
           );
         })}
       </div>
@@ -533,21 +526,19 @@ export default function ProductDetailPage() {
               {product.images.length > 1 && (
                 <div className="grid grid-cols-4 gap-3">
                   {product.images.map((image, index) => (
-                    <button
+                    <IconButton
                       key={image.id}
                       onClick={() => setSelectedImageIndex(index)}
-                      className={`bg-white rounded-lg overflow-hidden border-2 transition-all hover:scale-105 shadow-sm ${
-                        selectedImageIndex === index ? 'border-tsPrimary ring-2 ring-tsPrimary/20' : 'border-warm-200 hover:border-warm-300'
-                      }`}
-                      style={{ aspectRatio: '1/1' }}
+                      variant={selectedImageIndex === index ? 'primary' : 'secondary'} aria-pressed={selectedImageIndex === index} size="lg"
+                      aria-label={`View image ${index + 1} of ${product.name}`}
                     >
                       <OptimizedImage
                         src={image.url}
                         alt={image.alt_text}
                         context="thumb"
-                        className="w-full h-full object-cover bg-white"
+                        className="w-8 h-8 object-cover shrink-0"
                       />
-                    </button>
+                    </IconButton>
                   ))}
                 </div>
               )}
@@ -560,13 +551,13 @@ export default function ProductDetailPage() {
                 <div className="mb-4">
                   <div className="flex flex-wrap gap-2">
                     {product.collections.map((collection) => (
-                      <Link
+                      <Button
                         key={collection.id}
                         to={`/collections/${collection.slug}`}
-                        className="inline-flex items-center text-xs font-semibold bg-tsSurface text-warm-700 px-3 py-1 rounded-full hover:bg-tsGold/30 transition"
+                        variant="secondary"
                       >
                         {collection.name}
-                      </Link>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -609,17 +600,17 @@ export default function ProductDetailPage() {
                 
                 {/* Size Guide Button */}
                 {sizeChartUrl && (
-                  <button
+                  <Button
                     ref={sizeGuideTriggerRef}
                     type="button"
                     onClick={() => setShowSizeGuide(true)}
-                    className="inline-flex items-center px-4 py-2 border-2 border-tsPrimary text-tsPrimary hover:bg-tsPrimary hover:text-white font-semibold rounded-lg transition-colors"
+                    variant="primary" size="md"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                     View Size Guide
-                  </button>
+                  </Button>
                 )}
               </div>
 
@@ -670,26 +661,20 @@ export default function ProductDetailPage() {
                                                  variant.stock_quantity <= 5;
                           
                           return (
-                            <button
+                            <Button
                               key={variant.id}
                               onClick={() => handleVariantChange(variant)}
                               disabled={!variantAvailable}
-                              className={`px-4 py-3 rounded-lg border-2 transition-all ${
-                                selectedVariant?.id === variant.id
-                                  ? 'border-tsPrimary bg-red-50 text-tsPrimary'
-                                  : variantAvailable
-                                  ? 'border-warm-300 hover:border-tsPrimary'
-                                  : 'border-warm-200 bg-warm-50 text-warm-400 cursor-not-allowed'
-                              }`}
-                            >
+                              variant={selectedVariant?.id === variant.id ? 'primary' : 'secondary'} aria-pressed={selectedVariant?.id === variant.id} size="lg"
+                            ><span className="flex flex-col">
                               <div className="text-sm font-medium">{variant.display_name}</div>
                               {!variantAvailable && (
                                 <div className="text-xs">Out of Stock</div>
                               )}
                               {variantAvailable && showStockWarning && (
-                                <div className="text-xs text-orange-600">Only {variant.stock_quantity} left</div>
+                                <div className="text-xs">Only {variant.stock_quantity} left</div>
                               )}
-                            </button>
+                            </span></Button>
                           );
                         })}
                       </div>
@@ -806,16 +791,16 @@ export default function ProductDetailPage() {
               {/* Header */}
               <div className="bg-white border-b px-6 py-4 flex items-center justify-between z-10 shrink-0">
                 <h3 id="size-guide-title" className="text-xl font-bold text-warm-900">Size Guide</h3>
-                <button
+                <IconButton
                   type="button"
                   onClick={() => setShowSizeGuide(false)}
                   aria-label="Close size guide"
-                  className="w-11 h-11 flex items-center justify-center text-warm-400 hover:text-warm-600 transition-colors"
+                  variant="secondary"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                </button>
+                </IconButton>
               </div>
               
               {/* Image Content */}

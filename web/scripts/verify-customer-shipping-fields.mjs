@@ -4,13 +4,16 @@ import{mkdirSync,writeFileSync}from'node:fs';import{execFileSync}from'node:child
 const db=process.env.CUSTOMER_DEMO_DB,base=process.env.CUSTOMER_BASE_URL??'http://localhost:5691',session=process.env.DEV_LIFECYCLE_SESSION;
 if(!db||!/^tsq_uniform_c_.*demo$/.test(db)||!['localhost','127.0.0.1'].includes(new URL(base).hostname))throw Error('Owned local demo required');
 const output=path.resolve(process.env.UI_EVIDENCE_DIR??'../tmp/shipping-fields');mkdirSync(output,{recursive:true});const results=[];
-const sql=q=>execFileSync('psql',['-X','-A','-t','-d',db,'-c',q],{encoding:'utf8'}).trim();
+const pgPort=process.env.DEMO_PG_PORT??'5432';
+if(!/^\d+$/.test(pgPort)||Number(pgPort)<1||Number(pgPort)>65535)throw Error('Valid local demo PostgreSQL port required');
+const psqlEnv={...process.env};for(const key of ['PGHOST','PGHOSTADDR','PGPORT','PGSERVICE','PGSERVICEFILE'])delete psqlEnv[key];
+const sql=q=>execFileSync('psql',['-X','-h','127.0.0.1','-p',pgPort,'-A','-t','-d',db,'-c',q],{encoding:'utf8',env:psqlEnv}).trim();
 const original=sql("SELECT allow_shipping FROM products WHERE slug='french-toast-only'");assert.ok(['t','f'].includes(original));
 if(session)execFileSync('dev-lifecycle',['claim','--session',session,'process',String(process.pid),'--reason','Shipping fields browser descendants']);
 try{
  sql("UPDATE products SET allow_shipping=true WHERE slug='french-toast-only'");
  for(const[engine,type]of[['chromium',chromium],['webkit',webkit]]){const browser=await type.launch();try{
-  for(const[width,height]of[[768,1024],[1024,768],[1440,900],[390,844]])for(const touch of[false,true]){const c=await browser.newContext({viewport:{width,height},hasTouch:touch}),p=await c.newPage(),label=`${engine}-${width}-${touch?'touch':'fine'}`;try{
+  for(const[width,height]of[[768,1024],[1024,768],[1440,900],[390,844],...(engine==='webkit'?[[375,812]]:[])])for(const touch of[false,true]){const c=await browser.newContext({viewport:{width,height},hasTouch:touch}),p=await c.newPage(),label=`${engine}-${width}-${touch?'touch':'fine'}`;try{
    await p.goto(`${base}/products/french-toast-only`);await p.getByRole('button',{name:/Three Squares Main/}).click();await p.getByRole('button',{name:'Add to Cart',exact:true}).click();await p.getByRole('button',{name:'Secure Checkout',exact:true}).click();const ship=p.getByRole('button',{name:'Ship to Address',exact:true});await ship.click();await expect(ship).toHaveAttribute('aria-pressed','true');
    const scope=p.getByRole('region',{name:'Shipping details'});await scope.locator('#street1').waitFor();const geometry=await scope.locator('.ui-input,.ui-select').evaluateAll(els=>els.map(el=>({id:el.id,label:el.labels?.[0]?.textContent,height:el.getBoundingClientRect().height,font:getComputedStyle(el).fontSize,tag:el.tagName})));
    assert.equal(geometry.length,6);for(const field of geometry){assert.ok(field.id&&field.label);assert.equal(field.height,44);assert.equal(field.font,touch?'16px':'14px');}assert.equal(geometry.find(x=>x.id==='country').tag,'SELECT');

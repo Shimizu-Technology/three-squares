@@ -1,3 +1,5 @@
+import { IconButton } from './ui/IconButton';
+import { Button } from './ui/Button';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { MapPin, Clock, Phone, AlertTriangle, X } from 'lucide-react';
 import { locationsApi } from '../services/api';
@@ -199,13 +201,13 @@ export default function LocationPicker() {
             {/* Header */}
             <div className="px-6 pt-6 pb-4 text-center relative">
               {selectedLocation && (
-                <button
+                <span className="absolute top-4 right-4"><IconButton
                   onClick={() => setShowPicker(false)}
-                  className="absolute top-4 right-4 p-2 text-warm-400 hover:text-warm-600 transition rounded-lg"
-                  aria-label="Close"
+
+                  aria-label="Close" variant="ghost"
                 >
                   <X className="w-5 h-5" />
-                </button>
+                </IconButton></span>
               )}
               <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-warm-100 mb-3">
                 <MapPin className="w-6 h-6 text-tsPrimary" />
@@ -219,16 +221,12 @@ export default function LocationPicker() {
             {/* Location cards */}
             <div className="px-6 pb-6 space-y-3">
               {locations.map((loc) => (
-                <button
-                  key={loc.id}
-                  disabled={switching}
-                  onClick={() => handleLocationSelect(loc)}
-                  className={`w-full text-left rounded-xl p-4 border-2 transition-all ${
-                    selectedLocation?.id === loc.id
-                      ? 'border-tsPrimary bg-blue-50/50 shadow-sm'
-                      : 'border-warm-200 bg-white hover:border-tsPrimary/50 hover:shadow-sm'
-                  }`}
-                >
+                <article key={loc.id} className="rounded-xl border border-warm-200 p-4">
+                  <Button disabled={switching} onClick={() => handleLocationSelect(loc)}
+                    aria-pressed={selectedLocation?.id === loc.id}
+                    variant={selectedLocation?.id === loc.id ? 'primary' : 'secondary'} className="mb-3 w-full">
+                    {loc.name}
+                  </Button>
                   <h3 className="font-semibold text-warm-900 mb-1.5">{loc.name}</h3>
                   {loc.address && (
                     <p className="text-sm text-warm-600 flex items-start gap-1.5 mb-1">
@@ -244,7 +242,7 @@ export default function LocationPicker() {
                   )}
                   <p className="text-sm text-warm-600 flex items-start gap-1.5 mt-1"><Clock className="w-3.5 h-3.5 shrink-0 mt-0.5" />Today: {loc.hours_json?.[today] || 'Check current hours'}{loc.accepting_orders_now === false ? ' · Not taking pickup orders now' : ''}</p>
                   {loc.slug === 'three-squares-donki' && <p className="mt-1 text-sm text-warm-600">For help, contact the Main team or WhatsApp.</p>}
-                </button>
+                </article>
               ))}
             </div>
           </div>
@@ -264,21 +262,21 @@ export default function LocationPicker() {
               Items may not be available at the new location.
             </p>
             <div className="flex gap-3">
-              <button
+              <Button
                 onClick={cancelSwitch}
                 disabled={switching}
                 autoFocus
-                className="flex-1 px-4 py-2.5 border border-warm-300 rounded-lg text-warm-700 font-medium hover:bg-warm-50 transition"
+                className="flex-1" variant="secondary"
               >
                 Keep Current
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={confirmSwitch}
-                disabled={switching}
-                className="flex-1 px-4 py-2.5 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition"
+                loading={switching}
+                className="flex-1" variant="destructive"
               >
-                {switching ? 'Switching…' : 'Switch & Clear'}
-              </button>
+                Switch & Clear
+              </Button>
             </div>
           </div>
         </div>

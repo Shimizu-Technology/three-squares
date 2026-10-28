@@ -1,3 +1,4 @@
+import { IconButton } from './ui/IconButton';
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import useAppConfig from '../hooks/useAppConfig';
@@ -29,19 +30,19 @@ export default function AnnouncementBanner() {
   return (
     <div>
       <div
-        className="relative flex items-center justify-center px-4 pr-10 py-2 shadow-sm sm:px-10"
+        className="relative min-h-11 flex items-center justify-center px-4 pr-16 py-2 shadow-sm sm:px-10"
         style={{ backgroundColor: ANNOUNCEMENT_STYLE_COLORS[config?.announcement_style ?? 'gold'] ?? ANNOUNCEMENT_STYLE_COLORS.gold }}
       >
         <p className="text-white text-sm font-medium text-center leading-snug">
           {config?.announcement_text}
         </p>
-        <button
+        <span className="absolute right-3 top-1/2 -translate-y-1/2"><IconButton
           onClick={handleDismiss}
-          className="absolute right-3 top-1/2 -translate-y-1/2 text-white/80 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50 focus-visible:ring-offset-1 rounded-sm transition-colors"
-          aria-label="Dismiss announcement"
+
+          aria-label="Dismiss announcement" variant="ghost" surface="dark"
         >
           <X size={16} />
-        </button>
+        </IconButton></span>
       </div>
     </div>
   );

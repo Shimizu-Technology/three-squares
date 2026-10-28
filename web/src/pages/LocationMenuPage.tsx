@@ -1,3 +1,4 @@
+import { Button } from '../components/ui/Button';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
@@ -68,15 +69,15 @@ export default function LocationMenuPage() {
   </section>;
   if (!location) return <section className="max-w-xl mx-auto px-6 py-20 text-center space-y-4">
     <h1 className="text-2xl font-bold">Menu unavailable</h1><p role="alert">{error}</p>
-    <button className="bg-tsPrimary text-white rounded-lg px-5 py-3" onClick={() => setRetry((value) => value + 1)}>Try again</button>
+    <Button onClick={() => setRetry((value) => value + 1)} variant="primary">Try again</Button>
   </section>;
   if (selectedLocation?.id !== location.id) return <section className="max-w-xl mx-auto px-6 py-20 space-y-5">
     <h1 className="text-2xl font-bold">Switch pickup location?</h1>
     <p>This link opens the menu for <strong>{location.name}</strong>. Your cart contains items{selectedLocation ? ` for ${selectedLocation.name}` : ''}. Switching clears those items.</p>
     {error && <p role="alert" className="text-red-700">{error}</p>}
     <div className="flex flex-col sm:flex-row gap-3">
-      <button disabled={switching} className="border rounded-lg px-5 py-3" onClick={() => navigate(selectedLocation ? `/menu/${encodeURIComponent(selectedLocation.slug)}` : '/products')}>Keep current cart</button>
-      <button disabled={switching} className="bg-tsPrimary text-white rounded-lg px-5 py-3 disabled:opacity-50" onClick={() => void switchLocation()}>{switching ? 'Switching…' : 'Switch & Clear'}</button>
+      <Button disabled={switching} onClick={() => navigate(selectedLocation ? `/menu/${encodeURIComponent(selectedLocation.slug)}` : '/products')} variant="secondary">Keep current cart</Button>
+      <Button loading={switching} onClick={() => void switchLocation()} variant="destructive">Switch & Clear</Button>
     </div>
   </section>;
   return <ProductsPage pickupLocation={location} />;

@@ -1,3 +1,4 @@
+import { Button } from '../components/ui/Button';
 import FadeIn from '../components/animations/FadeIn';
 import { StaggerContainer, StaggerItem } from '../components/animations/StaggerContainer';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -190,15 +191,15 @@ export default function ShippingInfoPage() {
             <p className="mb-6 max-w-xl mx-auto text-warm-600">
               Our team is here to help with any shipping concerns.
             </p>
-            <a
+            <Button
               href="/contact"
-              className="group inline-flex items-center gap-2 bg-warm-900 text-white px-6 py-3 rounded-lg font-medium hover:bg-warm-800 transition"
+              variant="primary"
             >
               Contact Us
               <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
               </svg>
-            </a>
+            </Button>
           </div>
         </FadeIn>
       </div>

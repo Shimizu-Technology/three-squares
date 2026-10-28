@@ -1,8 +1,9 @@
+import { Input } from '../components/ui/Input';
+import { Button } from '../components/ui/Button';
 import CollectionScheduleNotice from '../components/CollectionScheduleNotice';
 import useCollectionBoundary from '../hooks/useCollectionBoundary';
 import axios from 'axios';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Link } from 'react-router-dom';
 import { collectionsApi } from '../services/api';
 import type { Collection as ApiCollection } from '../services/api';
 import { CollectionCardSkeleton, PageHeaderSkeleton } from '../components/Skeleton';
@@ -127,18 +128,18 @@ export default function CollectionsPage() {
               {error ? 'Please try again, or browse the available meals.' : 'Check back soon for our latest menus and specials.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button
+              <Button
                 onClick={fetchCollections}
-                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition"
+                variant="secondary"
               >
                 Refresh
-              </button>
-              <Link
+              </Button>
+              <Button
                 to="/products"
-                className="px-6 py-3 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition inline-block"
+                variant="primary"
               >
                 Browse All Products
-              </Link>
+              </Button>
             </div>
           </div>
         </div>
@@ -213,35 +214,23 @@ export default function CollectionsPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <form onSubmit={handleSearch} className="flex gap-2">
             <div className="flex-1 relative">
-              <input
+              <Input
                 type="text"
                 value={searchInput}
                 onChange={(e) => setSearchInput(e.target.value)}
                 placeholder="Search collections..."
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent transition"
+                aria-label="Search collections"
+                className="w-full"
               />
-              <svg
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-warm-400"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
             </div>
             {searchQuery && (
-              <button
+              <Button
                 type="button"
                 onClick={handleClearSearch}
-                className="px-6 py-2 bg-warm-200 text-warm-700 rounded-lg hover:bg-warm-300 transition"
+                variant="secondary"
               >
                 Clear
-              </button>
+              </Button>
             )}
           </form>
           {searchQuery && (
@@ -266,12 +255,12 @@ export default function CollectionsPage() {
               {searchQuery ? `No collections found for "${searchQuery}"` : 'No collections found'}
             </p>
             {searchQuery && (
-              <button
+              <Button
                 onClick={handleClearSearch}
-                className="px-6 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition"
+                variant="primary"
               >
                 Clear Search
-              </button>
+              </Button>
             )}
           </div>
         ) : (
@@ -327,14 +316,14 @@ export default function CollectionsPage() {
             {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex justify-center items-center gap-1 sm:gap-2 flex-wrap">
-                <button
+                <Button
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  variant="secondary"
                 >
                   <span className="hidden sm:inline">Previous</span>
                   <span className="sm:hidden">Prev</span>
-                </button>
+                </Button>
                 
                 <div className="flex gap-1 sm:gap-2">
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
@@ -350,28 +339,24 @@ export default function CollectionsPage() {
                     }
                     
                     return (
-                      <button
-                        key={pageNum}
+                      <Button
+                        key={pageNum} aria-label={`Page ${pageNum}`} aria-current={currentPage === pageNum ? 'page' : undefined}
                         onClick={() => handlePageChange(pageNum)}
-                        className={`px-3 sm:px-4 py-2 text-sm sm:text-base rounded-lg ${
-                          currentPage === pageNum
-                            ? 'bg-tsPrimary text-white'
-                            : 'border border-gray-300 hover:bg-gray-50'
-                        }`}
+                        variant={currentPage === pageNum ? 'primary' : 'secondary'}
                       >
                         {pageNum}
-                      </button>
+                      </Button>
                     );
                   })}
                 </div>
 
-                <button
+                <Button
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="px-3 sm:px-4 py-2 text-sm sm:text-base border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+                  variant="secondary"
                 >
                   Next
-                </button>
+                </Button>
               </div>
             )}
           </>

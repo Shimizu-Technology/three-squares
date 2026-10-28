@@ -1,6 +1,9 @@
+import { Select } from '../components/ui/Select';
+import { Input } from '../components/ui/Input';
+import { Button } from '../components/ui/Button';
 import axios from 'axios';
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { collectionsApi } from '../services/api';
 import type { Collection as ApiCollection, Product } from '../services/api';
 import CollectionScheduleNotice from '../components/CollectionScheduleNotice';
@@ -129,13 +132,13 @@ export default function CollectionDetailPage() {
       <div className="min-h-screen bg-warm-50 flex items-center justify-center">
         <div className="text-center">
           <p role="alert" className="text-red-600 mb-4">{error || 'This menu is unavailable or has ended.'}</p>
-          <button onClick={() => void fetchCollectionData()} className="btn-secondary mb-4 mr-3">Try again</button>
-          <Link
+          <Button onClick={() => void fetchCollectionData()} className="mb-4 mr-3" variant="secondary">Try again</Button>
+          <Button
             to="/collections"
-            className="px-6 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition inline-block"
+            variant="primary"
           >
             Back to Collections
-          </Link>
+          </Button>
         </div>
       </div>
     );
@@ -184,40 +187,40 @@ export default function CollectionDetailPage() {
           <div className="flex flex-col md:flex-row gap-4">
             {/* Search */}
             <form onSubmit={handleSearch} className="flex-1">
-              <input
+              <Input
                 type="text"
                 aria-label="Search this menu" placeholder="Search products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2.5 bg-white border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent transition"
+                className="w-full"
               />
             </form>
 
             {/* Product Type Filter — derived from actual products */}
             {productTypes.length > 1 && (
-              <select aria-label="Product type"
+              <Select aria-label="Product type"
                 value={productType}
                 onChange={(e) => {
                   setProductType(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="px-4 py-2 bg-white border border-warm-200 rounded-lg focus:ring-2 focus:ring-tsPrimary focus:border-transparent transition"
+                className="w-full"
               >
                 <option value="">All Types</option>
                 {productTypes.map((type) => (
                   <option key={type} value={type}>{type}</option>
                 ))}
-              </select>
+              </Select>
             )}
 
             {/* Clear Filters */}
             {(searchQuery || productType) && (
-              <button
+              <Button
                 onClick={handleClearFilters}
-                className="px-6 py-2 bg-warm-200 text-warm-700 rounded-lg hover:bg-warm-300 transition"
+                variant="secondary"
               >
                 Clear Filters
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -232,16 +235,16 @@ export default function CollectionDetailPage() {
             <ProductGridSkeleton count={8} />
           </div>
         ) : collection.available === false ? (
-          <div className="text-center py-12"><p className="text-gray-700 mb-6">These specials are no longer available to order.</p><Link to="/products" className="btn-primary">Browse available meals</Link></div>
+          <div className="text-center py-12"><p className="text-gray-700 mb-6">These specials are no longer available to order.</p><Button to="/products">Browse available meals</Button></div>
         ) : products.length === 0 ? (
           <div className="text-center py-12">
             <p className="text-gray-600 mb-4">No products found in this collection.</p>
-            <button
+            <Button
               onClick={handleClearFilters}
-              className="px-6 py-2 bg-tsPrimary text-white rounded-lg hover:bg-primary-dark transition"
+              variant="primary"
             >
               Clear Filters
-            </button>
+            </Button>
           </div>
         ) : (
           <>
@@ -254,24 +257,24 @@ export default function CollectionDetailPage() {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <div className="flex justify-center items-center gap-2">
-                <button
+              <div className="flex flex-wrap justify-center items-center gap-2">
+                <Button
                   onClick={() => setCurrentPage(currentPage - 1)}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
+                  variant="secondary"
                 >
                   Previous
-                </button>
+                </Button>
                 <span className="px-4 py-2 text-gray-700">
                   Page {currentPage} of {totalPages}
                 </span>
-                <button
+                <Button
                   onClick={() => setCurrentPage(currentPage + 1)}
                   disabled={currentPage === totalPages}
-                  className="px-4 py-2 bg-white border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50 transition"
+                  variant="secondary"
                 >
                   Next
-                </button>
+                </Button>
               </div>
             )}
           </>
