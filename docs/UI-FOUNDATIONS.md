@@ -88,6 +88,8 @@ import { IconButton } from '../components/ui/IconButton';
 <IconButton aria-label="Refresh menu" onClick={refresh}><RefreshCw /></IconButton>
 ```
 
+Use `surface="dark"` on a dark brand surface: secondary stays transparent with a white outline/text, ghost/link use white text, and keyboard focus uses white. Size, padding, primary fill, disabled/loading behavior and semantics are unchanged. This is a shared recipe; do not add local inverse color classes.
+
 Button defaults to a native `type="button"`. Supply `type="submit"` for form submission; use `href` for an anchor or `to` for a router Link. Icons use the `icon` prop. IconButton requires `aria-label`, defaults to ghost, and accepts the same variants/sizes/link props. Loading overlays its spinner in a reserved overlay slot while retaining the original label/icon in layout and the accessible name; dimensions never change. Disabled/loading native buttons cannot activate. Disabled/loading links have no href, remain named links, and leave the tab order. The label must stay unchanged while loading; put detailed progress beside the control.
 
 `className` is for static layout utilities only (width, margins, alignment, layout gaps). Do not override color, padding, radius, font, height, border, movement or opacity, including via inline styles. Extend a shared recipe with tests when a new requirement is needed. New recipes live in the components layer; legacy unlayered `.btn-*` and broad admin/public focus/active styles exclude `data-ui-control`. This preserves unmigrated behavior without overriding shared recipes. Never combine legacy classes with shared controls.

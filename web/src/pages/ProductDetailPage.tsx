@@ -1,4 +1,5 @@
 import { Button } from '../components/ui/Button';
+import { QuantityStepper } from '../components/ui/QuantityStepper';
 import { ShoppingCart } from 'lucide-react';
 import CatalogPrice from '../components/CatalogPrice';
 import { useLocationStore } from '../store/locationStore';
@@ -669,38 +670,10 @@ export default function ProductDetailPage() {
               {/* Quantity Selector */}
               {isVariantAvailable && selectedVariant && (
                 <div className="mb-6">
-                  <label htmlFor="dish-quantity" className="block text-sm font-semibold text-warm-900 mb-3">
-                    Quantity:
-                  </label>
+                  <p className="text-sm font-semibold text-warm-900 mb-3">Quantity:</p>
                   <div className="flex items-center gap-4">
-                    <button
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      aria-label={`Decrease quantity of ${product.name}`}
-                      className="w-11 h-11 flex items-center justify-center border-2 border-warm-300 rounded-lg hover:border-tsPrimary transition"
-                      disabled={quantity <= 1}
-                    >
-                      −
-                    </button>
-                    <input
-                      id="dish-quantity"
-                      type="number"
-                      value={quantity}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value) || 1;
-                        setQuantity(Math.min(Math.max(1, val), maxQuantity));
-                      }}
-                      className="w-16 h-11 text-center text-lg font-semibold border-2 border-warm-300 rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      min={1}
-                      max={maxQuantity}
-                    />
-                    <button
-                      onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
-                      aria-label={`Increase quantity of ${product.name}`}
-                      className="w-11 h-11 flex items-center justify-center border-2 border-warm-300 rounded-lg hover:border-tsPrimary transition"
-                      disabled={quantity >= maxQuantity}
-                    >
-                      +
-                    </button>
+                    <QuantityStepper value={quantity} onChange={setQuantity} max={maxQuantity}
+                      pending={isAdding} itemLabel={product.name} />
                     {product.inventory_level !== 'none' && maxQuantity > 0 && (
                       <span className="text-sm text-warm-600">
                         {maxQuantity} available

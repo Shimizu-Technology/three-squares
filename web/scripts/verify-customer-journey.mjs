@@ -72,6 +72,13 @@ try {
           const add = page.getByRole("button", { name: "Add to Cart", exact: true });
           await expect(add).toBeEnabled();
           assert.equal((await rect(add)).height, 52);
+          const productQuantity = page.getByRole("group", { name: "Quantity of Cheeseburger", exact: true });
+          await square(productQuantity.getByRole("button", { name: "Increase quantity of Cheeseburger", exact: true }));
+          await square(productQuantity.getByRole("button", { name: "Decrease quantity of Cheeseburger", exact: true }));
+          await productQuantity.getByRole("button", { name: "Increase quantity of Cheeseburger", exact: true }).tap();
+          await expect(productQuantity.getByLabel("Current quantity of Cheeseburger", { exact: true })).toHaveText("2");
+          await productQuantity.getByRole("button", { name: "Decrease quantity of Cheeseburger", exact: true }).tap();
+          await expect(productQuantity.getByLabel("Current quantity of Cheeseburger", { exact: true })).toHaveText("1");
           await add.tap();
           const drawer = page.getByRole("dialog", { name: "Shopping Cart" });
           await expect(drawer).toBeVisible();
@@ -80,8 +87,20 @@ try {
             close = drawer.getByRole("button", { name: "Close cart", exact: true });
           for (const target of [increase, decrease, close]) await square(target);
           await expect(increase).toBeEnabled();
+          const cartQuantity = drawer.getByRole("group", { name: "Quantity of Cheeseburger", exact: true });
+          const quantityBefore = await rect(cartQuantity);
+          await page.route("**/api/v1/cart/items/*", async route => {
+            if (["PATCH", "PUT"].includes(route.request().method())) await new Promise(resolve => setTimeout(resolve, 500));
+            await route.continue();
+          });
           await increase.tap();
+          await expect(cartQuantity).toHaveAttribute("aria-busy", "true");
+          await expect(increase).toBeDisabled();
+          await expect(decrease).toBeDisabled();
+          const quantityPending = await rect(cartQuantity);
+          assert.ok(Math.abs(quantityBefore.width - quantityPending.width) <= 1);
           await expect(drawer.getByText("$25.90", { exact: true }).first()).toBeVisible();
+          await page.unroute("**/api/v1/cart/items/*");
           await expect(decrease).toBeEnabled();
           await decrease.tap();
           await expect(drawer.getByText("$12.95", { exact: true }).first()).toBeVisible();

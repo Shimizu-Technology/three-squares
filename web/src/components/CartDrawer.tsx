@@ -8,7 +8,8 @@ import type { CartItem } from '../types/cart';
 import Dialog from './ui/Dialog';
 import { Button } from './ui/Button';
 import { IconButton } from './ui/IconButton';
-import { ArrowLeft, LockKeyhole, Trash2, Minus, Plus, X } from 'lucide-react';
+import { QuantityStepper } from './ui/QuantityStepper';
+import { ArrowLeft, LockKeyhole, Trash2, X } from 'lucide-react';
 import PlaceholderImage from './ui/PlaceholderImage';
 import OptimizedImage from './ui/OptimizedImage';
 
@@ -85,7 +86,7 @@ export default function CartDrawer() {
                 <p className="text-white/80 text-sm" aria-live="polite">{cart?.item_count || 0} {(cart?.item_count || 0) === 1 ? 'item' : 'items'}</p>
               </div>
             </div>
-            <IconButton onClick={closeCart} variant="secondary" aria-label="Close cart"><X /></IconButton>
+            <IconButton onClick={closeCart} surface="dark" aria-label="Close cart"><X /></IconButton>
           </div>
         </div>
 
@@ -188,23 +189,13 @@ export default function CartDrawer() {
                   {/* Bottom Row: Quantity Controls + Remove */}
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-warm-100">
                     {/* Quantity Controls */}
-                    <div role="group" aria-label={`Quantity of ${item.product.name}`} className="flex items-center gap-1">
-                      <IconButton
-                        aria-label={`Decrease quantity of ${item.product.name}`}
-                        onClick={() => handleQuantityChange(item.id, item.quantity - 1)}
-                        disabled={item.quantity <= 1 || isLoading}
-                        variant="secondary"
-                      ><Minus /></IconButton>
-                      <output aria-label={`Quantity of ${item.product.name}`} className="w-10 text-center text-sm font-semibold text-warm-900 tabular-nums" aria-live="polite">
-                        {item.quantity}
-                      </output>
-                      <IconButton
-                        aria-label={`Increase quantity of ${item.product.name}`}
-                        onClick={() => handleQuantityChange(item.id, item.quantity + 1)}
-                        disabled={isLoading || (item.product.inventory_level !== 'none' && item.quantity >= item.availability.available_quantity)}
-                        variant="secondary"
-                      ><Plus /></IconButton>
-                    </div>
+                    <QuantityStepper
+                      value={item.quantity}
+                      onChange={(next) => { void handleQuantityChange(item.id, next); }}
+                      max={item.product.inventory_level === 'none' ? undefined : item.availability.available_quantity}
+                      pending={isLoading}
+                      itemLabel={item.product.name}
+                    />
                     <Button
                       aria-label={`Remove ${item.product.name} from cart`}
                       onClick={() => handleRemoveItem(item.id)}

@@ -68,3 +68,13 @@ Both runners restrict URLs to localhost, claim their browser process tree when g
 a lifecycle session, and close contexts/browsers in `finally`. They do not certify
 physical iPad/phone Safari, live payments, email/SMS delivery or real keyboard/gesture
 behavior. Stop the owned demo and clean its isolated fixtures after QA.
+
+The customer pages also consume the shared `ui/QuantityStepper` from the POS slice.
+`verify-customer-quantity.mjs` uses the same URL/evidence/lifecycle variables plus
+`CUSTOMER_DEMO_DB=tsq_uniform_c_demo`. Run it sequentially after checkout journeys:
+it temporarily sets only the owned demo meal's inventory to two, checks the product
+and cart maximums through UI and saved cart API output at all four sizes in both
+browsers, removes the test line, and restores the inventory fixture in `finally`.
+The ordinary journey runner also verifies both product-page targets, absolute cart
+quantities, disabled pending controls, and unchanged stepper width during a delayed
+cart save. Removal remains a separate command; the stepper never reduces below one.

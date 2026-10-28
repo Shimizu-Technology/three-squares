@@ -86,3 +86,16 @@ test('retry recovery retains its label and delegates pending state to Button', a
     assert.equal(html.includes('disabled=""'),loading);
   }
 });
+
+
+test('dark-surface controls preserve roles and geometry without leaking recipe props to the DOM', () => {
+  for (const variant of ['primary', 'secondary', 'ghost', 'link']) {
+    const html = render(Button, { surface: 'dark', size: 'lg', variant, children: 'Hero action' });
+    assert.match(html, /ui-button--on-dark/);
+    assert.match(html, /ui-button--lg/);
+    assert.doesNotMatch(html, /surface=/);
+    assert.match(html, /Hero action/);
+  }
+  assert.match(css, /\.ui-button--on-dark\.ui-button--secondary \{ background: transparent; border-color: rgb\(255 255 255 \/ 50%\); color: white/);
+  assert.match(css, /\.ui-button--on-dark:focus-visible \{ outline-color: white/);
+});
