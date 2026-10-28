@@ -7,6 +7,8 @@ export type ButtonSize = 'sm' | 'md' | 'lg';
 type CommonProps = {
   variant?: ButtonVariant;
   size?: ButtonSize;
+  /** Contrast treatment for controls placed on a dark brand surface. */
+  surface?: 'default' | 'dark';
   loading?: boolean;
   disabled?: boolean;
   icon?: ReactNode;
@@ -32,11 +34,11 @@ function withoutActivationHandlers<Props extends object>(props: Props): Props {
 }
 
 /** Shared geometry and semantics for actions; specialized widgets have their own primitives. */
-export function Button({ variant = 'primary', size = 'md', loading = false, disabled = false,
+export function Button({ variant = 'primary', size = 'md', surface = 'default', loading = false, disabled = false,
   icon, children, className = '', ...props }: ButtonProps) {
   const blocked = disabled || loading;
   const shared = {
-    className: `ui-button ui-button--${variant} ui-button--${size} ${className}`.trim(),
+    className: `ui-button ui-button--${variant} ui-button--${size}${surface === 'dark' ? ' ui-button--on-dark' : ''} ${className}`.trim(),
     'data-ui-control': 'button',
     'data-loading': loading || undefined,
     'aria-busy': loading || undefined,

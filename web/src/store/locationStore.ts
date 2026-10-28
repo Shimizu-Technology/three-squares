@@ -16,12 +16,15 @@ interface LocationStore {
   selectedLocation: LocationInfo | null;
   locations: LocationInfo[];
   showPicker: boolean;
+  requestedLocation: LocationInfo | null;
 
   // Actions
   setSelectedLocation: (location: LocationInfo | null) => void;
   setLocations: (locations: LocationInfo[]) => void;
   clearLocation: () => void;
   setShowPicker: (show: boolean) => void;
+  /** Send a public shortcut through the picker's cart-check/confirmation policy. */
+  requestLocation: (location: LocationInfo | null) => void;
 }
 
 export const useLocationStore = create<LocationStore>()(
@@ -30,11 +33,13 @@ export const useLocationStore = create<LocationStore>()(
       selectedLocation: null,
       locations: [],
       showPicker: false,
+      requestedLocation: null,
 
       setSelectedLocation: (location) => set({ selectedLocation: location, showPicker: false }),
       setLocations: (locations) => set({ locations }),
       clearLocation: () => set({ selectedLocation: null }),
       setShowPicker: (show) => set({ showPicker: show }),
+      requestLocation: (location) => set({ requestedLocation: location }),
     }),
     {
       name: 'tsq-location',

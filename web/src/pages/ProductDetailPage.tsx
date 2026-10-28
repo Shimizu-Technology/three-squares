@@ -1,3 +1,9 @@
+import { Button } from '../components/ui/Button';
+import { Notice } from '../components/ui/Notice';
+import { Field } from '../components/ui/Field';
+import { Input } from '../components/ui/Input';
+import { QuantityStepper } from '../components/ui/QuantityStepper';
+import { ShoppingCart } from 'lucide-react';
 import CatalogPrice from '../components/CatalogPrice';
 import { useLocationStore } from '../store/locationStore';
 import { useRef, useState, useEffect, useMemo } from 'react';
@@ -44,12 +50,16 @@ const getColorCSS = (colorName: string): string | null => {
 
 // ── Component ───────────────────────────────────────────────────────────────
 export default function ProductDetailPage() {
-  const locationId = useLocationStore((state) => state.selectedLocation?.id);
+  const selectedLocation = useLocationStore((state) => state.selectedLocation);
+  const locationId = selectedLocation?.id;
+  const requestLocation = useLocationStore((state) => state.requestLocation);
   const { slug } = useParams<{ slug: string }>();
   const [product, setProduct] = useState<ProductFull | null>(null);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [isEnteringQuantity, setIsEnteringQuantity] = useState(false);
+  const quantityEntryTriggerRef = useRef<HTMLButtonElement>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
@@ -60,7 +70,7 @@ export default function ProductDetailPage() {
   const sizeGuideContentRef = useRef<HTMLDivElement | null>(null);
   const sizeGuideTriggerRef = useRef<HTMLButtonElement | null>(null);
   
-  const { addItem, cart, openCart } = useCartStore();
+  const { addItem, cart, openCart, isLoading: isCartLoading } = useCartStore();
   
   // Extract size chart image URL from product description
   const getSizeChartUrl = (): string | null => {
@@ -271,6 +281,8 @@ export default function ProductDetailPage() {
   }
 
   const pricing = selectedVariant?.pricing || product.pricing;
+  const isNotOffered = product.pricing?.purchasable === false && product.pricing.reason === 'Not offered at this location';
+  const offeredLocations = (product.offered_locations || []).filter(location => location.id !== locationId);
   const displayImages = product.images.length > 0 ? product.images : [{ id: 0, url: '', alt_text: product.name, position: 0, primary: true }];
   const cartItems = cart?.items || [];
   
@@ -310,7 +322,7 @@ export default function ProductDetailPage() {
   
   // For products WITH variants: require selectedVariant
   // For products WITHOUT variants (product-level inventory): no variant needed
-  const canAddToCart = pricing?.purchasable && (hasVariants
+  const canAddToCart = !isNotOffered && pricing?.purchasable && (hasVariants
     ? (isProductAvailable && isVariantAvailable && selectedVariant && quantity > 0 && quantity <= maxQuantity && !cartCompatibility.hasConflict)
     : (isProductAvailable && quantity > 0 && quantity <= maxQuantity && !cartCompatibility.hasConflict));
   
@@ -562,10 +574,31 @@ export default function ProductDetailPage() {
 
               {/* Name & Price */}
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-warm-900 mb-3">{product.name}</h1>
-              <div className="flex items-baseline gap-3 mb-6">
-                <div className="text-2xl"><CatalogPrice pricing={pricing} productType={product.product_type} /></div>
-                {!pricing?.purchasable && <Link to="/catering" className="mt-3 inline-flex min-h-11 items-center text-tsPrimary underline">Ask about this dish</Link>}
-              </div>
+              {isNotOffered ? (
+                <Notice tone="attention" role="status" className="mb-6">
+                  <p className="font-semibold">Not available at {selectedLocation?.name || 'this location'}</p>
+                  {offeredLocations.length > 0 ? (
+                    <>
+                      <p className="mt-2">On the menu at:</p>
+                      <ul className="mt-2 space-y-3">
+                        {offeredLocations.map(location => (
+                          <li key={location.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                            <span>{location.name}</span>
+                            <Button onClick={() => requestLocation(useLocationStore.getState().locations.find(item => item.id === location.id) || location)} loading={isCartLoading} className="self-start shrink-0">
+                              Order from {location.name.replace(/^Three Squares\s*(?:@\s*)?/, '') || location.name}
+                            </Button>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : <p className="mt-2">No locations currently offer this item.</p>}
+                </Notice>
+              ) : (
+                <div className="flex flex-wrap items-baseline gap-3 mb-6">
+                  <div className="text-2xl"><CatalogPrice pricing={pricing} productType={product.product_type} /></div>
+                  {!pricing?.purchasable && <Button to="/catering" variant="link">Ask about this dish</Button>}
+                </div>
+              )}
 
               {/* Description */}
               <div className="mb-8">
@@ -591,7 +624,7 @@ export default function ProductDetailPage() {
               </div>
 
               {/* ── Variant / Option Selectors ────────────────────────── */}
-              {showVariantSelectors &&
+              {!isNotOffered && showVariantSelectors &&
                 (hasFlexibleOptions ? (
                   /* Grouped option selectors (Size, Color, Material, etc.) */
                   <div className="mb-8 space-y-5">
@@ -665,40 +698,19 @@ export default function ProductDetailPage() {
                 ))}
 
               {/* Quantity Selector */}
-              {isVariantAvailable && selectedVariant && (
+              {!isNotOffered && isVariantAvailable && selectedVariant && (
                 <div className="mb-6">
-                  <label htmlFor="dish-quantity" className="block text-sm font-semibold text-warm-900 mb-3">
-                    Quantity:
-                  </label>
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                      aria-label={`Decrease quantity of ${product.name}`}
-                      className="w-11 h-11 flex items-center justify-center border-2 border-warm-300 rounded-lg hover:border-tsPrimary transition"
-                      disabled={quantity <= 1}
-                    >
-                      −
-                    </button>
-                    <input
-                      id="dish-quantity"
-                      type="number"
-                      value={quantity}
-                      onChange={(e) => {
-                        const val = parseInt(e.target.value) || 1;
-                        setQuantity(Math.min(Math.max(1, val), maxQuantity));
-                      }}
-                      className="w-16 h-11 text-center text-lg font-semibold border-2 border-warm-300 rounded-lg [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                      min={1}
-                      max={maxQuantity}
-                    />
-                    <button
-                      onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
-                      aria-label={`Increase quantity of ${product.name}`}
-                      className="w-11 h-11 flex items-center justify-center border-2 border-warm-300 rounded-lg hover:border-tsPrimary transition"
-                      disabled={quantity >= maxQuantity}
-                    >
-                      +
-                    </button>
+                  <p className="text-sm font-semibold text-warm-900 mb-3">Quantity:</p>
+                  <div className="flex flex-wrap items-center gap-4">
+                    {isEnteringQuantity ? (
+                      <div className="w-40"><Field label="Enter quantity">
+                        <Input type="number" autoFocus min={1} max={maxQuantity} step={1} value={quantity}
+                          disabled={isAdding} onChange={event => setQuantity(Math.min(Math.max(1, parseInt(event.target.value, 10) || 1), maxQuantity))}
+                          onKeyDown={event => { if (event.key === 'Enter' || event.key === 'Escape') { setIsEnteringQuantity(false); quantityEntryTriggerRef.current?.focus(); } }} />
+                      </Field></div>
+                    ) : <QuantityStepper value={quantity} onChange={setQuantity} max={maxQuantity}
+                      pending={isAdding} itemLabel={product.name} />}
+                    <Button ref={quantityEntryTriggerRef} variant="link" disabled={isAdding} onClick={() => setIsEnteringQuantity(value => !value)}>{isEnteringQuantity ? 'Done' : 'Enter quantity'}</Button>
                     {product.inventory_level !== 'none' && maxQuantity > 0 && (
                       <span className="text-sm text-warm-600">
                         {maxQuantity} available
@@ -709,53 +721,23 @@ export default function ProductDetailPage() {
               )}
 
               {/* Add to Cart Button */}
+              {!isNotOffered && (
               <div className="mt-auto pt-6">
-                <button
+                <Button
                   onClick={handleAddToCart}
-                  className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 ${
-                    canAddToCart && !isAdding
-                      ? 'btn-primary shadow-lg hover:shadow-xl'
-                      : 'bg-warm-200 text-warm-400 cursor-not-allowed'
-                  }`}
-                  disabled={!canAddToCart || isAdding}
+                  size="lg" className="w-full" icon={<ShoppingCart />}
+                  disabled={!canAddToCart} loading={isAdding}
                 >
-                  {isAdding ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Adding to Cart...
-                    </>
-                  ) : !pricing?.purchasable ? (
-                    'Price confirmed by request'
-                  ) : !isProductAvailable || (hasVariants && selectedVariant && !selectedVariant.in_stock) ? (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      Out of Stock
-                    </>
-                  ) : cartCompatibility.hasConflict ? (
-                    cartCompatibility.reason === 'pickup_location' ? 'Pickup Location Conflict' : 'Incompatible with Current Cart'
-                  ) : hasVariants && !selectedVariant ? (
-                    'Select an Option'
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                      Add to Cart
-                    </>
-                  )}
-                </button>
+                  {!pricing?.purchasable ? 'Price by request'
+                    : !isProductAvailable || (hasVariants && selectedVariant && !selectedVariant.in_stock) ? 'Out of stock'
+                    : cartCompatibility.hasConflict ? 'Review cart'
+                    : hasVariants && !selectedVariant ? 'Select an option'
+                    : 'Add to Cart'}
+                </Button>
                 {cartCompatibilityMessage && (
                   <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                     <p>{cartCompatibilityMessage}</p>
-                    <button
-                      type="button"
-                      className="mt-1 font-semibold text-amber-900 underline underline-offset-2 hover:text-amber-700"
-                      onClick={openCart}
-                    >
-                      Review cart
-                    </button>
+                    <Button variant="link" className="mt-1" onClick={openCart}>Review cart</Button>
                   </div>
                 )}
 
@@ -784,6 +766,8 @@ export default function ProductDetailPage() {
                   )}
                 </div>
               </div>
+
+              )}
 
               {/* Product Details */}
               <div className="mt-8 pt-6 border-t border-warm-100">

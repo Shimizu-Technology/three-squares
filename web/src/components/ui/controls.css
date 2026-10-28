@@ -79,6 +79,24 @@
   .ui-tone--inactive { color: #475569; background: #F1F5F9; border-color: #CBD5E1; }
 }
 
+/* Dark surfaces keep secondary actions outlined and keyboard focus visible. */
+@layer components {
+  .ts-dialog[data-keyboard-navigation] :is(button, a, input, select, textarea, summary, [tabindex]):focus {
+    outline: 2px solid var(--ui-focus-color, var(--color-tsPrimary));
+    outline-offset: 2px;
+  }
+  .ui-button--on-dark { --ui-focus-color: white; }
+  .ui-button--on-dark.ui-button--secondary { background: transparent; border-color: rgb(255 255 255 / 50%); color: white; }
+  .ui-button--on-dark.ui-button--ghost, .ui-button--on-dark.ui-button--link { color: white; }
+  .ui-button--on-dark:focus-visible { outline-color: white; }
+  .ui-button--on-dark.ui-button--secondary:active:not([aria-disabled="true"]), .ui-button--on-dark.ui-button--ghost:active:not([aria-disabled="true"]) { background: rgb(255 255 255 / 15%); }
+  .ui-button--on-dark.ui-button--link:active:not([aria-disabled="true"]) { color: white; }
+  @media (hover: hover) and (pointer: fine) {
+    .ui-button--on-dark.ui-button--secondary:hover:not([aria-disabled="true"]), .ui-button--on-dark.ui-button--ghost:hover:not([aria-disabled="true"]) { background: rgb(255 255 255 / 15%); }
+    .ui-button--on-dark.ui-button--link:hover:not([aria-disabled="true"]) { color: white; }
+  }
+}
+
 @layer components {
   .ui-choice-group { display: flex; flex-wrap: wrap; gap: 8px; }
   .ui-choice { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; height: 44px; min-width: 44px; padding: 0 16px; border: 1px solid #D1D5DB; border-radius: 8px; background: white; color: #1F2937; font: 600 14px/20px var(--font-sans); white-space: nowrap; cursor: pointer; touch-action: manipulation; }
