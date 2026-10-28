@@ -8,6 +8,7 @@ import { ArrowLeft, Save, X, Archive, AlertTriangle, History } from 'lucide-reac
 import ImageUpload from '../../components/ImageUpload';
 import VariantManager from '../../components/VariantManager';
 import AdminModal from '../../components/admin/AdminModal';
+import LocationOfferingEditor from '../../components/admin/LocationOfferingEditor';
 import { readProductDraft, writeProductDraft, discardProductDraft, discardSubmittedProductDraft } from '../../components/admin/products/productDraft';
 import type { ProductDraft, ProductFormData } from '../../components/admin/products/productDraft';
 import { safeProductReturnTo, readProductListReturn } from '../../components/admin/products/productQueryState';
@@ -356,7 +357,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
       toast.error('Select at least one fulfillment type (pickup or shipping).');
       return;
     }
-    if (formData.allow_pickup && formData.location_ids.length === 0) {
+    if (!isEditMode && formData.allow_pickup && formData.location_ids.length === 0) {
       toast.error('Select at least one pickup location.');
       return;
     }
@@ -371,6 +372,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
       setSaving(true);
       
       const productPayload: Partial<ProductFormData> = { ...formData };
+      if (isEditMode) delete productPayload.location_ids; // Existing menus save through the separate offering editor.
       if (!canManageStock) {
         delete productPayload.inventory_level;
         delete productPayload.product_stock_quantity;
@@ -701,6 +703,8 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
           </div>
         </div>
 
+        {id && <LocationOfferingEditor key={id} productId={id} productName={formData.name} />}
+
         {/* Fulfillment & Pickup Locations */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Pickup locations &amp; shipping</h2>
@@ -723,7 +727,7 @@ function ProductFormEditor({ id, userId }: { id: string | undefined; userId: str
               </label>
             </div>
 
-            {formData.allow_pickup && (
+            {formData.allow_pickup && !isEditMode && (
               <div className="pt-2">
                 <p className="text-sm font-medium text-gray-700 mb-2">Pickup Locations</p>
                 {allLocations.length === 0 ? (

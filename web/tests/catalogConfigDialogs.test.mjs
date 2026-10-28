@@ -55,6 +55,7 @@ const Products = await load('../src/pages/admin/AdminProductsPage.tsx', {
 const ProductForm = await load('../src/pages/admin/ProductFormPage.tsx', {
   'react-router-dom': dataModule(`export const useParams = () => ({ id: '42' }); export const useNavigate = () => ${context}.navigate; export const useLocation = () => ${context}.location;`),
   '../../components/admin/StaffAccess.tsx': dataModule('export const useStaffAccess = () => ({ can: () => true, user: { operational_scope: "all", authorized_locations: [] } });'),
+  '../../components/admin/LocationOfferingEditor': dataModule('export default function LocationOfferingEditor() { return null; }'),
   '../../components/ImageUpload': dataModule('export default function ImageUpload() {}'),
   '../../components/VariantManager': dataModule('export default function VariantManager() {}'),
   '../../components/admin/AdminModal': mockModal,

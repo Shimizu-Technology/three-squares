@@ -18,7 +18,7 @@ RSpec.describe StaffAccessPolicy do
       locations.read locations.update locations.qr catalog.manage catalog.import stock.read seasonal.manage catering.manage]
   end
   let(:global_manager_names) do
-    manager_names + %w[stock.manage homepage.manage payments.terminals.manage payments.reconcile]
+    manager_names + %w[stock.manage homepage.manage payments.terminals.manage payments.reconcile catalog.offerings.manage]
   end
   let(:owner_names) do
     global_manager_names + %w[users.manage settings.manage ordering.manage payment_settings.manage locations.manage
@@ -92,7 +92,7 @@ RSpec.describe StaffAccessPolicy do
   end
 
   it "reserves shared-stock writes, merchandising and terminal provisioning for all-location managers" do
-    %w[stock.manage homepage.manage payments.terminals.manage payments.reconcile].each do |name|
+    %w[stock.manage homepage.manage payments.terminals.manage payments.reconcile catalog.offerings.manage].each do |name|
       expect(policy("manager").allowed?(name)).to be(true)
       expect(policy("manager", location: main).allowed?(name)).to be(false)
       expect(policy("staff", location: main).allowed?(name)).to be(false)
