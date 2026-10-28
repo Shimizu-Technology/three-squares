@@ -43,6 +43,7 @@ DEV_LIFECYCLE_SESSION=<your-session-id> \
 node scripts/run-with-project-node.mjs node scripts/measure-customer-cards.mjs
 
 CUSTOMER_BASE_URL=http://localhost:5691 CUSTOMER_API_URL=http://localhost:3601 \
+CUSTOMER_DEMO_DB=tsq_uniform_c_demo \
 UI_EVIDENCE_DIR=/absolute/private/evidence DEV_LIFECYCLE_SESSION=<your-session-id> \
 node scripts/run-with-project-node.mjs node scripts/verify-customer-journey.mjs
 ```
@@ -72,7 +73,7 @@ behavior. Stop the owned demo and clean its isolated fixtures after QA.
 The customer pages also consume the shared `ui/QuantityStepper` from the POS slice.
 `verify-customer-quantity.mjs` uses the same URL/evidence/lifecycle variables plus
 `CUSTOMER_DEMO_DB=tsq_uniform_c_demo`. Run it sequentially after checkout journeys:
-it temporarily sets only the owned demo meal's inventory to two, checks the product
+it temporarily sets only the owned demo meal to product stock two and variant stock three, checks the product
 and cart maximums through UI and saved cart API output at all four sizes in both
 browsers, removes the test line, and restores the inventory fixture in `finally`.
 The ordinary journey runner also verifies both product-page targets, absolute cart
@@ -97,3 +98,5 @@ capture is followed by pointer/height checks. Real saved admin/customer journeys
 remain separate QA; these development fixtures do not provide authentication.
 
 Customer journey checks require `CUSTOMER_DEMO_DB=tsq_uniform_c_*demo` and `DEV_LIFECYCLE_SESSION`, and verify the live launcher ledger and API listener before creating simulated orders. Customer runners include WebKit at 375×812. Compact prices retain the fixed 24px row: long values use ellipsis within the card, keeping full server text accessible and on the detail page. A product quantity shortcut uses shared Field/Input for direct bulk entry without changing QuantityStepper.
+
+The isolated collection fixture checks the shared shell and 4:3 media only; it does not claim schedule, description, or action-row alignment coverage. Those rows remain the existing collection content.

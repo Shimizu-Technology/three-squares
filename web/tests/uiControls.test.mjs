@@ -96,6 +96,10 @@ test('dark-surface controls preserve roles and geometry without leaking recipe p
     assert.doesNotMatch(html, /surface=/);
     assert.match(html, /Hero action/);
   }
+  for (const destination of [{href:'/menu'}, {to:'/menu'}]) {
+    const html = render(Button, {...destination, surface:'dark', children:'Browse menu'});
+    assert.match(html, /ui-button--on-dark/); assert.match(html, /href="\/menu"/); assert.doesNotMatch(html, /surface=/);
+  }
   assert.match(css, /\.ui-button--on-dark\.ui-button--secondary \{ background: transparent; border-color: rgb\(255 255 255 \/ 50%\); color: white/);
   assert.match(css, /\.ui-button--on-dark:focus-visible \{ outline-color: white/);
 });

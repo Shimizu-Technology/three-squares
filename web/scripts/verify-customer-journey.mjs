@@ -108,7 +108,11 @@ try {
           // A modified click opens a new product context without closing this cart.
           const itemLink = drawer.getByRole('link', {name:'Cheeseburger',exact:true});
           for (const modifier of ['ctrlKey','metaKey','shiftKey','altKey']) {
-            await itemLink.evaluate((el, modifier) => el.dispatchEvent(new MouseEvent('click', {bubbles:true,cancelable:true,button:0,[modifier]:true})), modifier);
+            await itemLink.evaluate((el, modifier) => {
+              // Preserve React's handler result while suppressing untrusted synthetic default navigation.
+              document.addEventListener('click', event => event.preventDefault(), {once:true});
+              el.dispatchEvent(new MouseEvent('click', {bubbles:true,cancelable:true,button:0,[modifier]:true}));
+            }, modifier);
             await expect(drawer).toBeVisible();
           }
           const increase = drawer.getByRole("button", { name: "Increase quantity of Cheeseburger", exact: true }),
@@ -188,6 +192,10 @@ try {
           assert.equal(order.payment_status, "paid");
           assert.equal(order.payment_environment, "simulated");
           assert.equal(order.total_cents, 1295);
+          assert.equal(order.order_items.length, 1);
+          assert.equal(order.order_items[0].product_name, 'Cheeseburger');
+          assert.equal(order.order_items[0].quantity, 1);
+          assert.equal(order.order_items[0].total_price_cents, 1295);
           assert.equal(order.customer_name, "Fictional Customer");
           await page.reload();
           await expect(page.getByRole("heading", { name: "Order Confirmed!", exact: true })).toBeVisible();

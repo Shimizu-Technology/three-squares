@@ -109,6 +109,7 @@ try {
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
             await page.screenshot({
               path: path.join(output, `cards-${engine}-${width}-${touch ? "touch" : "fine"}.png`),
+              fullPage: true,
             });
             results.push({ engine, width, height, touch, geometry, collections, status: "passed" });
             writeFileSync(path.join(output, "card-geometry.json"), JSON.stringify(results, null, 2) + "\n");
