@@ -604,28 +604,37 @@ function CheckoutForm() {
               <Button
                 type="button"
                 onClick={async () => {
-try {
-const token = isSignedIn ? await getToken() : null;
-const state = await checkoutApi.confirm(pendingPayment.id, token, pendingPayment.capability);
-if (!(await finishCheckout(state))) {
-setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
-setSavedClientConfig(checkoutClientConfiguration(state));
-setCanRetryCollection((state.payment_state === 'collecting' && !!state.collection_config.client_secret) || !!hostedPageUrl(state));
-setError(`Payment status: ${state.payment_state}. Order ${state.order.order_number} remains saved.`);
-}
-} catch { setError('We could not check payment status. Your order remains saved.'); }
-}}
+                    try {
+                        const token = isSignedIn ? await getToken() : null;
+                        const state = await checkoutApi.confirm(pendingPayment.id, token, pendingPayment.capability);
+                        if (!(await finishCheckout(state))) {
+                            setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
+                            setSavedClientConfig(checkoutClientConfiguration(state));
+                            setCanRetryCollection((state.payment_state === 'collecting' && !!state.collection_config.client_secret) || !!hostedPageUrl(state));
+                            setError(`Payment status: ${state.payment_state}. Order ${state.order.order_number} remains saved.`);
+                        }
+                    }
+                    catch {
+                        setError('We could not check payment status. Your order remains saved.');
+                    }
+                }}
                 variant="secondary"
                 className="mt-3 mr-3"
               >Check payment status</Button>
               {import.meta.env.DEV && savedClientConfig?.payment_environment === 'simulated' && <Button
                                                                                                   type="button"
                                                                                                   onClick={async () => {
-try {
-const state = await checkoutApi.advanceSimulation(pendingPayment.id, isSignedIn ? await getToken() : null, pendingPayment.capability);
-if (!(await finishCheckout(state))) { setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state)); setError(`Simulation payment status: ${state.payment_state}`); }
-} catch { setError('Simulation time could not advance. Your payment remains saved.'); }
-}}
+                    try {
+                        const state = await checkoutApi.advanceSimulation(pendingPayment.id, isSignedIn ? await getToken() : null, pendingPayment.capability);
+                        if (!(await finishCheckout(state))) {
+                            setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
+                            setError(`Simulation payment status: ${state.payment_state}`);
+                        }
+                    }
+                    catch {
+                        setError('Simulation time could not advance. Your payment remains saved.');
+                    }
+                }}
                                                                                                   variant="secondary"
                                                                                                   aria-label="Advance simulated time by 61 seconds"
                                                                                                   className="mt-3 mr-3"
@@ -635,25 +644,43 @@ if (!(await finishCheckout(state))) { setResolvedWithoutPayment(['failed', 'canc
                                                                                  type="button"
                                                                                  disabled={loading || !paymentReady || !savedAmountReviewed}
                                                                                  onClick={async () => {
-if (submitting.current) return;
-submitting.current = true;
-setLoading(true);
-try {
-const token = isSignedIn ? await getToken() : null;
-const state = await checkoutApi.show(pendingPayment.id, token, pendingPayment.capability);
-if (state.collection_config.available === false) { setSavedClientConfig(checkoutClientConfiguration(state)); setCanRetryCollection(false); throw new Error(state.collection_config.reason || 'This saved order now requires a catering inquiry'); }
-const hostedUrl = hostedPageUrl(state);
-if (hostedUrl) { window.location.assign(hostedUrl); return; }
-if (!state.collection_config.client_secret || state.payment_state !== 'collecting') throw new Error('Payment status changed. Check the saved order.');
-setSavedClientConfig(checkoutClientConfiguration(state));
-if (!paymentForm.current) throw new Error('Card collection is not ready. Check the saved order.');
-const result = await paymentForm.current.confirm(state.collection_config.client_secret, state.collection_config.payment_identity_id, { name, email, phone });
-if (result.error) setError(result.error.message || 'Card payment could not complete.');
-const confirmed = await checkoutApi.confirm(state.id, token, pendingPayment.capability);
-if (!(await finishCheckout(confirmed))) setPendingPayment(pendingCheckout());
-} catch (error) { setError(error instanceof Error ? error.message : 'Payment status is being checked.'); }
-finally { submitting.current = false; setLoading(false); }
-}}
+                    if (submitting.current)
+                        return;
+                    submitting.current = true;
+                    setLoading(true);
+                    try {
+                        const token = isSignedIn ? await getToken() : null;
+                        const state = await checkoutApi.show(pendingPayment.id, token, pendingPayment.capability);
+                        if (state.collection_config.available === false) {
+                            setSavedClientConfig(checkoutClientConfiguration(state));
+                            setCanRetryCollection(false);
+                            throw new Error(state.collection_config.reason || 'This saved order now requires a catering inquiry');
+                        }
+                        const hostedUrl = hostedPageUrl(state);
+                        if (hostedUrl) {
+                            window.location.assign(hostedUrl);
+                            return;
+                        }
+                        if (!state.collection_config.client_secret || state.payment_state !== 'collecting')
+                            throw new Error('Payment status changed. Check the saved order.');
+                        setSavedClientConfig(checkoutClientConfiguration(state));
+                        if (!paymentForm.current)
+                            throw new Error('Card collection is not ready. Check the saved order.');
+                        const result = await paymentForm.current.confirm(state.collection_config.client_secret, state.collection_config.payment_identity_id, { name, email, phone });
+                        if (result.error)
+                            setError(result.error.message || 'Card payment could not complete.');
+                        const confirmed = await checkoutApi.confirm(state.id, token, pendingPayment.capability);
+                        if (!(await finishCheckout(confirmed)))
+                            setPendingPayment(pendingCheckout());
+                    }
+                    catch (error) {
+                        setError(error instanceof Error ? error.message : 'Payment status is being checked.');
+                    }
+                    finally {
+                        submitting.current = false;
+                        setLoading(false);
+                    }
+                }}
                                                                                  variant="secondary"
                                                                                  aria-label="Retry card payment for this saved order"
                                                                                  className="mt-3 mr-3"
@@ -662,16 +689,19 @@ finally { submitting.current = false; setLoading(false); }
                                             type="button"
                                             disabled={loading}
                                             onClick={async () => {
-try {
-const token = isSignedIn ? await getToken() : null;
-const state = await checkoutApi.cancel(pendingPayment.id, token, pendingPayment.capability);
-if (!(await finishCheckout(state))) {
-setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
-setCanRetryCollection(false);
-setError(`Payment status: ${state.payment_state}. Your order remains saved.`);
-}
-} catch { setError('Cancellation is not confirmed. Check the saved payment before starting another.'); }
-}}
+                    try {
+                        const token = isSignedIn ? await getToken() : null;
+                        const state = await checkoutApi.cancel(pendingPayment.id, token, pendingPayment.capability);
+                        if (!(await finishCheckout(state))) {
+                            setResolvedWithoutPayment(['failed', 'cancelled', 'compensated'].includes(state.payment_state));
+                            setCanRetryCollection(false);
+                            setError(`Payment status: ${state.payment_state}. Your order remains saved.`);
+                        }
+                    }
+                    catch {
+                        setError('Cancellation is not confirmed. Check the saved payment before starting another.');
+                    }
+                }}
                                             variant="secondary"
                                             className="mt-3 mr-3"
                                           >Cancel saved payment</Button>}

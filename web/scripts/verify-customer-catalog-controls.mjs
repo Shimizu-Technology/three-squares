@@ -11,6 +11,8 @@ mkdirSync(output, { recursive: true });
 const session = process.env.DEV_LIFECYCLE_SESSION, results = [];
 if (session) execFileSync('dev-lifecycle', ['claim', '--session', session, 'process', String(process.pid), '--reason', 'Customer catalog read-only browser descendants']);
 async function geometry(page) {
+  // Vite injects the app stylesheet after DOM readiness on a cold navigation.
+  await page.waitForFunction(() => getComputedStyle(document.documentElement).getPropertyValue('--color-tsNavy').trim() === '#15263D');
   const data = await page.locator('.ui-button:visible').evaluateAll(els => els.map(el => {
     const r = el.getBoundingClientRect();
     return { name: el.getAttribute('aria-label') || el.textContent.trim(), width: r.width, height: r.height };
@@ -29,13 +31,14 @@ try {
         if(process.env.CUSTOMER_QA_WIDTH && Number(process.env.CUSTOMER_QA_WIDTH) !== width) continue;
         const context = await browser.newContext({ viewport: { width, height }, hasTouch: true, reducedMotion: 'reduce', serviceWorkers: 'block' });
         const page = await context.newPage(), label = `${engine}-${width}`;
+        const navigate = url => page.goto(url, {waitUntil:'domcontentloaded'});
         try {
           // This runner never writes: only local catalog reads are allowed.
           await context.route('**/*', route => {
             const request = route.request(), url = new URL(request.url());
             return url.pathname.startsWith('/api/') && (url.origin !== new URL(api).origin || request.method() !== 'GET') ? route.abort() : route.continue();
           });
-          await page.goto(`${base}/products`);
+          await navigate(`${base}/products`);
           await page.getByRole('button', { name: 'Three Squares Main', exact: true }).click();
           const search = page.locator('#menu-search');
           await search.fill('fictional-no-matching-dish');
@@ -51,7 +54,7 @@ try {
           await expect(page.getByRole('status', { name: 'Loading menu', exact: true })).not.toBeVisible();
           const menu = await geometry(page);
           await page.screenshot({ path: path.join(output, `menu-controls-${label}.png`), fullPage: true });
-          await page.goto(`${base}/collections`);
+          await navigate(`${base}/collections`);
           const collectionSearch = page.getByRole('textbox', { name: 'Search collections', exact: true });
           await collectionSearch.fill('fictional-no-collection'); await collectionSearch.press('Enter');
           await expect(page.getByText('No collections found for "fictional-no-collection"', { exact: true })).toBeVisible();
@@ -72,12 +75,12 @@ try {
             if (data.products.length) { data.meta.total = 36; data.meta.per_page = 12; }
             await route.fulfill({ status: 200, json: data });
           });
-          await page.goto(`${base}/collections/${collectionSlug}`);
+          await navigate(`${base}/collections/${collectionSlug}`);
           await expect(page.getByText('These specials are no longer available to order.', { exact: true })).toBeVisible();
           const browse = page.getByRole('link', { name: 'Browse available meals', exact: true });
           assert.equal(await browse.evaluate(el => !!el.closest('button')), false);
           await browse.click(); await expect(page).toHaveURL(/\/products$/);
-          unavailable = false; await page.goto(`${base}/collections/${collectionSlug}`);
+          unavailable = false; await navigate(`${base}/collections/${collectionSlug}`);
           const next = page.getByRole('button', { name: 'Next', exact: true });
           await next.click(); await expect(page.getByText('Page 2 of 3', { exact: true })).toBeVisible();
           await page.getByRole('button', { name: 'Previous', exact: true }).click();
@@ -100,7 +103,7 @@ try {
               pricing: { ...product.pricing, purchasable: true, unit_price_cents: 1295 + index * 100 } }));
             await route.fulfill({ response, json: product });
           });
-          await page.goto(`${base}/products/cheeseburger`);
+          await navigate(`${base}/products/cheeseburger`);
           const blue = page.getByRole('button', { name: 'Blue', exact: true });
           await blue.click(); await expect(blue).toHaveAttribute('aria-pressed', 'true');
           assert.equal((await blue.boundingBox()).height, 44);
@@ -114,13 +117,13 @@ try {
           const close = page.getByRole('button', { name: 'Close size guide', exact: true });
           assert.equal((await close.boundingBox()).height, 44); await close.click(); await expect(guide).toBeFocused();
           await geometry(page); await page.screenshot({ path: path.join(output, `product-options-${label}.png`), fullPage: true });
-          flexible = false; await page.reload();
+          flexible = false; await page.reload({waitUntil:'domcontentloaded'});
           const legacy = page.getByRole('button', { name: /Fictional Blue/ });
           await legacy.click(); await expect(legacy).toHaveAttribute('aria-pressed', 'true');
           assert.equal((await legacy.boundingBox()).height, 52);
           await page.unroute('**/api/v1/products/cheeseburger*');
           for (const route of ['about', 'contact', 'returns', 'shipping', 'fictional-missing-page']) {
-            await page.goto(`${base}/${route}`); await geometry(page);
+            await navigate(`${base}/${route}`); await geometry(page);
             await page.screenshot({ path: path.join(output, `${route}-${label}.png`), fullPage: true });
           }
           results.push({ engine, width, height, touch: true, menu, collections, status: 'passed' });
