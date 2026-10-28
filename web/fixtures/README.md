@@ -29,3 +29,42 @@ after the phase. No real authentication/provider is needed by this fixture.
 Extend this runner and fixture for later slices. Add real screen-specific
 assertions and saved-outcome journey QA where applicable; this component fixture
 does not certify POS payments, stock, customer checkout, or physical Safari.
+
+## Customer cards and pickup journey
+
+`customer-cards.html` imports the actual customer card, pricing and image components.
+Its fictional specimens cover long titles, inquiry eligibility, failed/missing photos,
+sale/variable prices and complimentary sides. With your isolated demo running:
+
+```sh
+CUSTOMER_FIXTURE_URL=http://localhost:5691/fixtures/customer-cards.html \
+UI_EVIDENCE_DIR=/absolute/private/evidence \
+DEV_LIFECYCLE_SESSION=<your-session-id> \
+node scripts/run-with-project-node.mjs node scripts/measure-customer-cards.mjs
+
+CUSTOMER_BASE_URL=http://localhost:5691 CUSTOMER_API_URL=http://localhost:3601 \
+UI_EVIDENCE_DIR=/absolute/private/evidence DEV_LIFECYCLE_SESSION=<your-session-id> \
+node scripts/run-with-project-node.mjs node scripts/verify-customer-journey.mjs
+```
+
+The geometry runner checks all four viewports with fine/touch contexts in Chromium
+and WebKit, including square product media, 4:3 collection media, reserved title and
+price slots, row alignment within 1px, and whole-card links without nested controls.
+The journey runner uses the restaurant demo catalog, selects Main through the UI,
+searches for a meal, edits/removes/re-adds it, verifies drawer focus and persisted cart,
+then submits an **approved simulated** checkout using fictional contact details and
+verifies the saved paid order via its guest capability. It also opens inquiry-only
+details, catering inquiry entry and collections. Run only against a dedicated demo
+with email/SMS and real processor transports disabled; it creates retained orders.
+
+The separate `verify-customer-availability.mjs` also requires
+`CUSTOMER_DEMO_DB=tsq_uniform_c_demo` (or another owned Track C demo DB). It changes
+only that DB's pause fixture, restores the original pause/message in `finally`, and
+verifies pause rejection, retained cart/menu during lost config connectivity, manual
+retry, and first-load connection recovery. Run it **sequentially** after ordering
+journeys so its pause fixture cannot interfere with another case.
+
+Both runners restrict URLs to localhost, claim their browser process tree when given
+a lifecycle session, and close contexts/browsers in `finally`. They do not certify
+physical iPad/phone Safari, live payments, email/SMS delivery or real keyboard/gesture
+behavior. Stop the owned demo and clean its isolated fixtures after QA.

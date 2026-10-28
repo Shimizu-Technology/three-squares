@@ -1,3 +1,5 @@
+import { Button } from '../components/ui/Button';
+import { ShoppingCart } from 'lucide-react';
 import CatalogPrice from '../components/CatalogPrice';
 import { useLocationStore } from '../store/locationStore';
 import { useRef, useState, useEffect, useMemo } from 'react';
@@ -710,42 +712,17 @@ export default function ProductDetailPage() {
 
               {/* Add to Cart Button */}
               <div className="mt-auto pt-6">
-                <button
+                <Button
                   onClick={handleAddToCart}
-                  className={`w-full py-4 rounded-xl font-bold text-lg transition-all duration-300 flex items-center justify-center gap-3 ${
-                    canAddToCart && !isAdding
-                      ? 'btn-primary shadow-lg hover:shadow-xl'
-                      : 'bg-warm-200 text-warm-400 cursor-not-allowed'
-                  }`}
-                  disabled={!canAddToCart || isAdding}
+                  size="lg" className="w-full" icon={<ShoppingCart />}
+                  disabled={!canAddToCart} loading={isAdding}
                 >
-                  {isAdding ? (
-                    <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Adding to Cart...
-                    </>
-                  ) : !pricing?.purchasable ? (
-                    'Price confirmed by request'
-                  ) : !isProductAvailable || (hasVariants && selectedVariant && !selectedVariant.in_stock) ? (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                      Out of Stock
-                    </>
-                  ) : cartCompatibility.hasConflict ? (
-                    cartCompatibility.reason === 'pickup_location' ? 'Pickup Location Conflict' : 'Incompatible with Current Cart'
-                  ) : hasVariants && !selectedVariant ? (
-                    'Select an Option'
-                  ) : (
-                    <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-                      </svg>
-                      Add to Cart
-                    </>
-                  )}
-                </button>
+                  {!pricing?.purchasable ? 'Price by request'
+                    : !isProductAvailable || (hasVariants && selectedVariant && !selectedVariant.in_stock) ? 'Out of stock'
+                    : cartCompatibility.hasConflict ? 'Review cart'
+                    : hasVariants && !selectedVariant ? 'Select an option'
+                    : 'Add to Cart'}
+                </Button>
                 {cartCompatibilityMessage && (
                   <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                     <p>{cartCompatibilityMessage}</p>

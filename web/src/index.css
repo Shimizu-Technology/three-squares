@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./components/ui/controls.css";
+@import "./components/ui/customer-cards.css";
 
 /* Keep utility layout classes from revealing a closed native dialog. */
 .ts-dialog:not([open]) { display: none; }
