@@ -9,12 +9,12 @@ function compile(file) {
   urls.set(file.href,url); return url;
 }
 export const uiModules = {};
-for (const name of ['Button','IconButton','StatusBadge','Field','Input','Select','Textarea','Switch','CheckField','FileButton','Disclosure','ActionMenu','Pagination']) {
+for (const name of ['ChoiceGroup','ActionTile','Button','IconButton','StatusBadge','Field','Input','Select','Textarea','Switch','CheckField','FileButton','Disclosure','ActionMenu','Pagination']) {
   const url=compile(new URL(`../../src/components/ui/${name}.tsx`,import.meta.url));
   for(const prefix of ['./ui/','../ui/','../../ui/','../components/ui/','../../components/ui/']) uiModules[prefix+name]=url;
 }
 uiModules['../components/admin/AdminPageHeader']=uiModules['../../components/admin/AdminPageHeader']=compile(new URL('../../src/components/admin/AdminPageHeader.tsx',import.meta.url));
-const expand = new Set(['Button','IconButton','Input','Select','Textarea','Switch','CheckField','FileButton','Disclosure','Pagination','AdminPageHeader']);
+const expand = new Set(['ChoiceGroup','ActionTile','Button','IconButton','Input','Select','Textarea','Switch','CheckField','FileButton','Disclosure','Pagination','AdminPageHeader']);
 export function expandUi(node) {
   while(node && typeof node.type==='function' && expand.has(node.type.name)) node=node.type(node.props);
   return node;

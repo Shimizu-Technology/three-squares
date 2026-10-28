@@ -6,6 +6,7 @@ import { Select } from '../components/ui/Select';
 import { Input } from '../components/ui/Input';
 import { Field } from '../components/ui/Field';
 import { Switch } from '../components/ui/Switch';
+import { ChoiceGroup } from '../components/ui/ChoiceGroup';
 import { Button } from '../components/ui/Button';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@clerk/clerk-react';
@@ -539,16 +540,8 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
 
         {/* Tabs */}
         <div className="border-b border-gray-200 mb-6">
-          <nav className="flex space-x-8">
-            {TABS.filter(tab => !homepageOnly || tab.id === 'homepage').map((tab) => (
-              <Button variant="secondary"
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-              >
-                {tab.label}
-              </Button>
-            ))}
-          </nav>
+          <ChoiceGroup label="Settings sections" value={activeTab} onChange={handleTabChange}
+            choices={TABS.filter(tab => !homepageOnly || tab.id === 'homepage').map(tab => ({value:tab.id,label:tab.label}))} />
         </div>
 
         {activeTab === 'general' && <OnlineOrderingSection />}
@@ -558,7 +551,7 @@ export default function AdminSettingsPage({ homepageOnly = false }: { homepageOn
         {activeTab === 'general' && !loading && !settings && (
           <div role="alert" className="py-8">
             <p className="text-red-600 mb-4">Failed to load settings</p>
-            <Button variant="primary" onClick={fetchSettings}>Retry</Button>
+            <Button onClick={fetchSettings} variant="primary">Retry</Button>
           </div>
         )}
         {/* Tab Content */}
@@ -650,7 +643,7 @@ function GeneralSettingsTab({
   const saveFeedback = (field: ImmediateField, label: string) => (
     <div className="mt-1 text-sm text-gray-700">
       <p role="status">{fieldSaveStates[field] === 'saving' ? `${label}: Saving…` : fieldSaveStates[field] === 'saved' ? `${label}: Saved` : fieldSaveStates[field] === 'checking' ? `${label}: Save not confirmed. Checking saved value…` : fieldSaveStates[field] === 'checked' ? `${label}: Save was not confirmed. Current saved value loaded; review before changing it again.` : fieldSaveStates[field] === 'uncertain' ? `${label}: Save outcome unknown. Check the saved value before changing it again.` : 'Saves immediately.'}</p>
-      {fieldSaveStates[field] === 'uncertain' && <Button variant="secondary" type="button" disabled={saving} onClick={() => onCheckSavedField(field)}>Check saved {label}</Button>}
+      {fieldSaveStates[field] === 'uncertain' && <Button type="button" disabled={saving} onClick={() => onCheckSavedField(field)} variant="ghost">Check saved {label}</Button>}
     </div>
   );
   const missingOriginFields = getMissingOriginFields(settings.shipping_origin_address);
@@ -828,7 +821,7 @@ function GeneralSettingsTab({
         <h2 id="catering-ordering-title" className="text-lg font-semibold text-gray-900">Catering online ordering</h2>
         <p className="mt-2 text-sm text-gray-700">Off by default. Customers can browse catering items and submit an inquiry. Enable only when the menu is ready for direct online orders. This does not add minimum quantities, lead times or capacity rules.</p>
         <CheckField type="checkbox" role="switch" checked={settings.enable_catering_online_ordering === true} disabled={saving || fieldUnavailable('enable_catering_online_ordering')} onChange={() => onToggleStorefront('enable_catering_online_ordering')}>
-
+          
           <span>Allow catering online orders</span>
         </CheckField>
         <p role="status" className="mt-2 text-sm text-gray-700">{fieldSaveStates.enable_catering_online_ordering === 'checking' || fieldSaveStates.enable_catering_online_ordering === 'uncertain' ? 'Saved ordering status is unconfirmed.' : settings.enable_catering_online_ordering ? 'Online orders enabled. Saves immediately.' : 'Inquiry only. Saves immediately.'}</p>
@@ -903,17 +896,19 @@ function GeneralSettingsTab({
                     {placeholderUploading ? 'Uploading...' : 'Upload Custom Placeholder'}
                   </FileButton>
                 {!isDefaultPlaceholder && (
-                  <Button variant="secondary"
+                  <Button
                     type="button"
                     onClick={() => onUpdatePlaceholderImage(DEFAULT_PLACEHOLDER_IMAGE)}
                     disabled={saving || placeholderUploading}
+                    variant="secondary"
                   >
                     Reset to default logo
                   </Button>
                 )}
-                <Button variant="secondary"
+                <Button
                   type="button"
-                  onClick={onTogglePlaceholderUrlInput}
+                  aria-expanded={showPlaceholderUrlInput} onClick={onTogglePlaceholderUrlInput}
+                  variant="ghost"
                 >
                   {showPlaceholderUrlInput ? 'Hide custom URL' : 'Use a custom URL instead'}
                 </Button>
@@ -1053,19 +1048,21 @@ function GeneralSettingsTab({
               You have unsaved changes.
             </div>
             <div className="flex items-center gap-3">
-              <Button variant="secondary"
+              <Button
                 type="button"
                 onClick={onDiscardSiteSettings}
                 disabled={saving || immediateSaving}
+                variant="secondary"
               >
                 Discard
               </Button>
-              <Button variant="primary"
+              <Button
                 type="button"
                 onClick={onSaveSiteSettings}
-                disabled={saving || immediateSaving}
+                loading={saving} disabled={immediateSaving}
+                variant="primary"
               >
-                {saving ? 'Saving...' : 'Save changes'}
+                Save changes
               </Button>
             </div>
           </div>
@@ -1215,13 +1212,15 @@ function HomepageSettingsTab({
 
                     {/* Actions */}
                     <div className="flex items-center gap-2 self-start">
-                      <Button variant="secondary"
+                      <Button
                         onClick={() => onToggleSectionActive(section)}
+                        variant="secondary"
                       >
                         {section.active ? 'Hide' : 'Show'}
                       </Button>
-                      <Button variant="primary"
+                      <Button
                         onClick={() => onSetEditingSection(section)}
+                        variant="secondary"
                       >
                         Edit
                       </Button>
@@ -1241,14 +1240,14 @@ function HomepageSettingsTab({
           <p className="font-medium text-blue-900">Preview your homepage</p>
           <p className="text-sm text-blue-700">See how your changes look on the live site</p>
         </div>
-        <a
+        <Button
           href="/"
           target="_blank"
           rel="noopener noreferrer"
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          variant="secondary"
         >
           View Homepage
-        </a>
+        </Button>
       </div>
     </div>
   );
@@ -1536,16 +1535,18 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                     {imageUploading ? 'Uploading...' : 'Upload New Image'}
                   </FileButton>
                 {!isDefaultBackground && defaultBackgroundUrl && (
-                  <Button variant="secondary"
+                  <Button
                     type="button"
                     onClick={() => setFormData((prev) => ({ ...prev, background_image_url: defaultBackgroundUrl }))}
+                    variant="secondary"
                   >
                     Reset to default image
                   </Button>
                 )}
-                <Button variant="secondary"
+                <Button
                   type="button"
-                  onClick={() => setShowBackgroundUrlInput((prev) => !prev)}
+                  aria-expanded={showBackgroundUrlInput} onClick={() => setShowBackgroundUrlInput((prev) => !prev)}
+                  variant="ghost"
                 >
                   {showBackgroundUrlInput ? 'Hide custom URL' : 'Use a custom URL instead'}
                 </Button>
@@ -1583,16 +1584,18 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                     {imageUploading ? 'Uploading...' : 'Upload New Image'}
                   </FileButton>
                 {!isDefaultImage && defaultImageUrl && (
-                  <Button variant="secondary"
+                  <Button
                     type="button"
                     onClick={() => setFormData((prev) => ({ ...prev, image_url: defaultImageUrl }))}
+                    variant="secondary"
                   >
                     Reset to default image
                   </Button>
                 )}
-                <Button variant="secondary"
+                <Button
                   type="button"
-                  onClick={() => setShowImageUrlInput((prev) => !prev)}
+                  aria-expanded={showImageUrlInput} onClick={() => setShowImageUrlInput((prev) => !prev)}
+                  variant="ghost"
                 >
                   {showImageUrlInput ? 'Hide custom URL' : 'Use a custom URL instead'}
                 </Button>
@@ -1634,7 +1637,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
               <option value="custom">Custom URL</option>
             </Select></Field>
             {!isDefaultLink && defaultButtonLink && (
-              <Button variant="secondary" className="mt-2"
+              <Button
                 type="button"
                 onClick={() => {
                   setFormData((prev) => ({ ...prev, button_link: defaultButtonLink }));
@@ -1649,6 +1652,7 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
                     setLinkType('custom');
                   }
                 }}
+                variant="secondary" className="mt-2"
               >
                 Reset to default link
               </Button>
@@ -1717,15 +1721,17 @@ function SectionForm({ section, collections, onSave, onCancel, saving }: Section
 
         {/* Actions */}
         <div className="flex gap-3 pt-4 border-t border-gray-200">
-          <Button variant="primary"
+          <Button
             type="submit"
-            disabled={saving}
+            loading={saving}
+            variant="primary"
           >
-            {saving ? 'Saving...' : section ? 'Save Changes' : 'Create Section'}
+            {section ? 'Save Changes' : 'Create Section'}
           </Button>
-          <Button variant="secondary"
+          <Button
             type="button"
             onClick={onCancel}
+            variant="secondary"
           >
             Cancel
           </Button>

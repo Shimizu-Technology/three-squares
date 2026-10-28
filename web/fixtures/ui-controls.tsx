@@ -1,3 +1,5 @@
+import { ChoiceGroup } from '../src/components/ui/ChoiceGroup';
+import { ActionTile } from '../src/components/ui/ActionTile';
 import { useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -15,6 +17,7 @@ export function FailingContent({ fail }: { fail: boolean }) {
   return <p>Recovery fixture loaded</p>;
 }
 export function Fixture() {
+  const [choice, setChoice] = useState('new');
   const [loading, setLoading] = useState(false), [retried, setRetried] = useState(false), [fail, setFail] = useState(false);
   return <main className="admin-scope public-site p-4 sm:p-6 space-y-6">
     <h1 className="text-2xl">Shared controls</h1>
@@ -54,6 +57,15 @@ export function Fixture() {
     <form onSubmit={event => {event.preventDefault(); (event.currentTarget.querySelector('output')!).textContent='Form submitted';}} className="flex flex-wrap items-center gap-3">
       <Button type="submit">Submit fixture</Button><output aria-live="polite"/>
     </form>
+    <section aria-label="Admin navigation recipes" className="space-y-4">
+      <ChoiceGroup label="Fixture stages" value={choice} onChange={setChoice} choices={[{value:'new',label:'New paid'},{value:'ready',label:'Ready'}]} />
+      <output data-testid="selected-stage">{choice}</output>
+      <div className="grid grid-cols-2 gap-4">
+        <ActionTile to="#tile-target" icon={<RefreshCw />}>View Orders</ActionTile>
+        <ActionTile to="#tile-target" icon={<RefreshCw />}>Menus &amp; specials</ActionTile>
+      </div>
+    </section>
+    <div id="tile-target">Tile target</div>
     <div id="anchor-target">Anchor target</div><div id="router-target">Router target</div><div id="icon-target">Icon target</div>
   </main>;
 }

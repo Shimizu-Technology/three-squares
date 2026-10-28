@@ -80,6 +80,20 @@
 }
 
 @layer components {
+  .ui-choice-group { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ui-choice { box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; height: 44px; min-width: 44px; padding: 0 16px; border: 1px solid #D1D5DB; border-radius: 8px; background: white; color: #1F2937; font: 600 14px/20px var(--font-sans); white-space: nowrap; cursor: pointer; touch-action: manipulation; }
+  .ui-choice[aria-pressed="true"] { background: var(--color-tsPrimary); border-color: var(--color-tsPrimary); color: white; }
+  .ui-choice:focus-visible, .ui-action-tile:focus-visible { outline: 2px solid var(--color-tsPrimary); outline-offset: 2px; }
+  .ui-choice:disabled { opacity: .5; cursor: not-allowed; }
+  .ui-action-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; min-height: 112px; padding: 16px; border: 1px solid #D1D5DB; border-radius: 12px; background: white; color: #374151; text-align: center; font: 600 14px/20px var(--font-sans); text-decoration: none; }
+  .ui-action-tile__icon { display: flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 8px; background: var(--color-tsSurface); color: var(--color-tsPrimary); }
+  .ui-action-tile__icon > svg { width: 20px; height: 20px; }
+  @media (hover: hover) and (pointer: fine) {
+    .ui-choice:hover:not(:disabled):not([aria-pressed="true"]), .ui-action-tile:hover { border-color: var(--color-tsPrimary); background: #F3F4F6; }
+  }
+}
+
+@layer components {
   .ui-field { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .ui-field__label { color: #374151; font: 600 14px/20px var(--font-sans); }
   .ui-field__help, .ui-field__error { margin: 0; font: 400 14px/20px var(--font-sans); }

@@ -43,7 +43,7 @@ const Dashboard = await load('../src/pages/admin/AdminDashboardPage.tsx');
 const Settings = await load('../src/pages/AdminSettingsPage.tsx');
 const PaymentsPanel = await load('../src/components/payment/PaymentStatusPanel.tsx');
 const Products = await load('../src/components/admin/products/ProductsTable.tsx');
-const nodes = raw => { const node = expandUi(raw); return !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(nodes)]; };
+const nodes = raw => { const node = expandUi(raw); return !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children, node.props?.actions].flat(Infinity).flatMap(nodes)]; };
 const text = node => typeof node === 'string' || typeof node === 'number' ? String(node) : node && typeof node !== 'boolean' ? [node.props?.children].flat(Infinity).map(text).join('') : '';
 const deferred = () => { let resolve, reject; const promise = new Promise((yes, no) => { resolve = yes; reject = no; }); return { promise, resolve, reject }; };
 const initialSettings = {

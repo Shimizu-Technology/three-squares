@@ -1,3 +1,4 @@
+import { uiModules, expandUi, uiText } from './helpers/uiModules.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -21,9 +22,9 @@ const modules = {
 };
 const compiled = ts.transpileModule(readFileSync(new URL('../src/pages/admin/AdminProductsPage.tsx', import.meta.url), 'utf8'), {
   compilerOptions: { jsx: ts.JsxEmit.ReactJSX, module: ts.ModuleKind.ESNext, target: ts.ScriptTarget.ES2022 },
-}).outputText.replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(modules[name] || import.meta.resolve(name))}`);
+}).outputText.replace(/from ["']([^"']+)["']/g, (_, name) => `from ${JSON.stringify(modules[name] || uiModules[name] || import.meta.resolve(name))}`);
 const { default: Page } = await import(dataModule(compiled));
-const elements = node => !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(elements)];
+const elements = value => { const node = expandUi(value); return !node || typeof node !== 'object' ? [] : [node, ...[node.props?.children].flat(Infinity).flatMap(elements)]; }
 const products = Array.from({ length: 80 }, (_, index) => ({
   id: index + 1, slug: `adobo-${index}`, name: `Adobo ${index}`, published: true, archived: false,
   product_type: 'local', base_price_cents: index * 100, inventory_level: 'none', created_at: new Date(index * 100000).toISOString(),
@@ -53,7 +54,7 @@ function harness(search = '?q=Adobo&published=true&type=local&sort=price&dir=des
     useLayoutEffect(callback, deps) { h.effect(layoutEffects, callback, deps); },
     async flush() { for (let i = 0; i < 7; i++) { globalThis.__productListContext = h; cursor = 0; tree = Page(); for (const effect of [...layoutEffects.splice(0), ...effects.splice(0)]) effect(); await Promise.resolve(); } },
     component(name) { return elements(tree).find(node => node.type?.name === name)?.props; },
-    button(name) { return elements(tree).find(node => node.type === 'button' && [node.props.children].flat(Infinity).some(value => typeof value === 'string' && value.trim() === name)); },
+    button(name) { return elements(tree).find(node => node.type === 'button' && uiText(node).trim() === name); },
     unmount() { state.forEach(value => value?.cleanup?.()); },
     scroll(y) { window.scrollY = y; events.get('scroll')?.(); },
   };

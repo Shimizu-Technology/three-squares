@@ -172,156 +172,6 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/components/admin/OnlineOrderingSection.tsx|OwnerOrderingSection|raw-button|99c4045b44cc29d182ca|1",
-      "file": "src/components/admin/OnlineOrderingSection.tsx",
-      "component": "OwnerOrderingSection",
-      "line": 81,
-      "column": 7,
-      "hash": "99c4045b44cc29d182ca",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/OnlineOrderingSection.tsx|OwnerOrderingSection|raw-button|d544e19d23510cc3b26c|1",
-      "file": "src/components/admin/OnlineOrderingSection.tsx",
-      "component": "OwnerOrderingSection",
-      "line": 82,
-      "column": 7,
-      "hash": "d544e19d23510cc3b26c",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/OnlineOrderingSection.tsx|OwnerOrderingSection|raw-button|f7d9b28ab6dfed73eef4|1",
-      "file": "src/components/admin/OnlineOrderingSection.tsx",
-      "component": "OwnerOrderingSection",
-      "line": 83,
-      "column": 7,
-      "hash": "f7d9b28ab6dfed73eef4",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/OnlineOrderingSection.tsx|OwnerOrderingSection|raw-button|8d3fbc741746405dbe97|1",
-      "file": "src/components/admin/OnlineOrderingSection.tsx",
-      "component": "OwnerOrderingSection",
-      "line": 97,
-      "column": 9,
-      "hash": "8d3fbc741746405dbe97",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/OnlineOrderingSection.tsx|OwnerOrderingSection|raw-button|ad343faa94e983128b9c|1",
-      "file": "src/components/admin/OnlineOrderingSection.tsx",
-      "component": "OwnerOrderingSection",
-      "line": 98,
-      "column": 9,
-      "hash": "ad343faa94e983128b9c",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrderDetailModal.tsx|OrderDetailModal|raw-button|f794dd6892794bf6189e|1",
-      "file": "src/components/admin/orders/OrderDetailModal.tsx",
-      "component": "OrderDetailModal",
-      "line": 121,
-      "column": 11,
-      "hash": "f794dd6892794bf6189e",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrderDetailModal.tsx|OrderDetailModal|raw-button|2b1d430c239018c032c0|1",
-      "file": "src/components/admin/orders/OrderDetailModal.tsx",
-      "component": "OrderDetailModal",
-      "line": 140,
-      "column": 19,
-      "hash": "2b1d430c239018c032c0",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrderDetailModal.tsx|OrderDetailModal|raw-button|433e8c80f93b3f1d6a2d|1",
-      "file": "src/components/admin/orders/OrderDetailModal.tsx",
-      "component": "OrderDetailModal",
-      "line": 150,
-      "column": 19,
-      "hash": "433e8c80f93b3f1d6a2d",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrderDetailModal.tsx|OrderDetailModal|raw-button|7eadb721f89de2474453|1",
-      "file": "src/components/admin/orders/OrderDetailModal.tsx",
-      "component": "OrderDetailModal",
-      "line": 202,
-      "column": 19,
-      "hash": "7eadb721f89de2474453",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrderDetailModal.tsx|OrderDetailModal|raw-button|5c616851e1c9d4c80a82|1",
-      "file": "src/components/admin/orders/OrderDetailModal.tsx",
-      "component": "OrderDetailModal",
-      "line": 210,
-      "column": 19,
-      "hash": "5c616851e1c9d4c80a82",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrderDetailModal.tsx|OrderDetailModal|raw-button|61a79ae245d92800239c|1",
-      "file": "src/components/admin/orders/OrderDetailModal.tsx",
-      "component": "OrderDetailModal",
-      "line": 374,
-      "column": 141,
-      "hash": "61a79ae245d92800239c",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrderDetailModal.tsx|OrderDetailModal|raw-button|1cf2e3cdda04ede97431|1",
-      "file": "src/components/admin/orders/OrderDetailModal.tsx",
-      "component": "OrderDetailModal",
-      "line": 395,
-      "column": 15,
-      "hash": "1cf2e3cdda04ede97431",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrderDetailModal.tsx|OrderDetailModal|raw-button|69f4b8a45850e8891e3b|1",
-      "file": "src/components/admin/orders/OrderDetailModal.tsx",
-      "component": "OrderDetailModal",
-      "line": 403,
-      "column": 13,
-      "hash": "69f4b8a45850e8891e3b",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrderDetailModal.tsx|OrderDetailModal|raw-button|3ee32588b90dd035c3ab|1",
-      "file": "src/components/admin/orders/OrderDetailModal.tsx",
-      "component": "OrderDetailModal",
-      "line": 410,
-      "column": 27,
-      "hash": "3ee32588b90dd035c3ab",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrderDetailModal.tsx|OrderDetailModal|raw-button|6192912c07e43bb80a7e|1",
-      "file": "src/components/admin/orders/OrderDetailModal.tsx",
-      "component": "OrderDetailModal",
-      "line": 421,
-      "column": 15,
-      "hash": "6192912c07e43bb80a7e",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/components/admin/orders/OrderFilters.tsx|OrderFilters|raw-button|9ea92460d75bbc617a8f|1",
       "file": "src/components/admin/orders/OrderFilters.tsx",
       "component": "OrderFilters",
@@ -342,106 +192,6 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/components/admin/orders/OrdersTable.tsx|OrdersTable|raw-button|7aee85f344318463602d|1",
-      "file": "src/components/admin/orders/OrdersTable.tsx",
-      "component": "OrdersTable",
-      "line": 85,
-      "column": 25,
-      "hash": "7aee85f344318463602d",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrdersTable.tsx|OrdersTable|raw-button|b7e9f500b7ddbd1b89c3|1",
-      "file": "src/components/admin/orders/OrdersTable.tsx",
-      "component": "OrdersTable",
-      "line": 96,
-      "column": 23,
-      "hash": "b7e9f500b7ddbd1b89c3",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrdersTable.tsx|OrdersTable|raw-button|b817ab8cda793d003df1|1",
-      "file": "src/components/admin/orders/OrdersTable.tsx",
-      "component": "OrdersTable",
-      "line": 153,
-      "column": 19,
-      "hash": "b817ab8cda793d003df1",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrdersTable.tsx|OrdersTable|raw-button|5ffdbf2b2dfa632e1cab|1",
-      "file": "src/components/admin/orders/OrdersTable.tsx",
-      "component": "OrdersTable",
-      "line": 161,
-      "column": 17,
-      "hash": "5ffdbf2b2dfa632e1cab",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrdersTable.tsx|OrdersTable|raw-button|3b8e0eda0c4e08c3d2ea|1",
-      "file": "src/components/admin/orders/OrdersTable.tsx",
-      "component": "OrdersTable",
-      "line": 181,
-      "column": 11,
-      "hash": "3b8e0eda0c4e08c3d2ea",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/OrdersTable.tsx|OrdersTable|raw-button|0efab63bf925f6909169|1",
-      "file": "src/components/admin/orders/OrdersTable.tsx",
-      "component": "OrdersTable",
-      "line": 191,
-      "column": 11,
-      "hash": "0efab63bf925f6909169",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/PickupPackingList.tsx|PickupPackingList|raw-button|5b73869885ae69cede40|1",
-      "file": "src/components/admin/orders/PickupPackingList.tsx",
-      "component": "PickupPackingList",
-      "line": 29,
-      "column": 24,
-      "hash": "5b73869885ae69cede40",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/PickupPackingList.tsx|PickupPackingList|raw-button|6daa14d3d02c92e04083|1",
-      "file": "src/components/admin/orders/PickupPackingList.tsx",
-      "component": "PickupPackingList",
-      "line": 30,
-      "column": 13,
-      "hash": "6daa14d3d02c92e04083",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/PickupPackingList.tsx|PickupPackingList|raw-button|4827b52dfaa6b036afe6|1",
-      "file": "src/components/admin/orders/PickupPackingList.tsx",
-      "component": "PickupPackingList",
-      "line": 53,
-      "column": 7,
-      "hash": "4827b52dfaa6b036afe6",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/PickupPackingList.tsx|PickupPackingList|raw-button|84cc89653398377fc016|1",
-      "file": "src/components/admin/orders/PickupPackingList.tsx",
-      "component": "PickupPackingList",
-      "line": 55,
-      "column": 7,
-      "hash": "84cc89653398377fc016",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/components/admin/orders/RefundModal.tsx|RefundModal|raw-button|c2390c7a4db150abc644|1",
       "file": "src/components/admin/orders/RefundModal.tsx",
       "component": "RefundModal",
@@ -458,66 +208,6 @@
       "line": 157,
       "column": 11,
       "hash": "70701c51d5e95ed33521",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/ShipOrderModal.tsx|ShipOrderModal|raw-button|ce8b9bf28ced60225e74|1",
-      "file": "src/components/admin/orders/ShipOrderModal.tsx",
-      "component": "ShipOrderModal",
-      "line": 34,
-      "column": 11,
-      "hash": "ce8b9bf28ced60225e74",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/ShipOrderModal.tsx|ShipOrderModal|raw-button|6f4bc5585846f9237f9c|1",
-      "file": "src/components/admin/orders/ShipOrderModal.tsx",
-      "component": "ShipOrderModal",
-      "line": 42,
-      "column": 11,
-      "hash": "6f4bc5585846f9237f9c",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/ShippingPackingList.tsx|ShippingPackingList|raw-button|5b73869885ae69cede40|1",
-      "file": "src/components/admin/orders/ShippingPackingList.tsx",
-      "component": "ShippingPackingList",
-      "line": 27,
-      "column": 24,
-      "hash": "5b73869885ae69cede40",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/ShippingPackingList.tsx|ShippingPackingList|raw-button|6daa14d3d02c92e04083|1",
-      "file": "src/components/admin/orders/ShippingPackingList.tsx",
-      "component": "ShippingPackingList",
-      "line": 28,
-      "column": 13,
-      "hash": "6daa14d3d02c92e04083",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/ShippingPackingList.tsx|ShippingPackingList|raw-button|54c4e4591e93c174e261|1",
-      "file": "src/components/admin/orders/ShippingPackingList.tsx",
-      "component": "ShippingPackingList",
-      "line": 53,
-      "column": 7,
-      "hash": "54c4e4591e93c174e261",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/components/admin/orders/ShippingPackingList.tsx|ShippingPackingList|raw-button|5998742eaa2174599768|1",
-      "file": "src/components/admin/orders/ShippingPackingList.tsx",
-      "component": "ShippingPackingList",
-      "line": 55,
-      "column": 7,
-      "hash": "5998742eaa2174599768",
       "kind": "raw-button",
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
@@ -1365,67 +1055,17 @@
       "key": "src/pages/admin/AdminDashboardPage.tsx|AdminDashboardPage|raw-button|e3a68db821a5c03c495f|1",
       "file": "src/pages/admin/AdminDashboardPage.tsx",
       "component": "AdminDashboardPage",
-      "line": 113,
+      "line": 114,
       "column": 9,
       "hash": "e3a68db821a5c03c495f",
       "kind": "raw-button",
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/pages/admin/AdminDashboardPage.tsx|AdminDashboardPage|button-like-link|0568de7db44a33864902|1",
-      "file": "src/pages/admin/AdminDashboardPage.tsx",
-      "component": "AdminDashboardPage",
-      "line": 160,
-      "column": 9,
-      "hash": "0568de7db44a33864902",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminDashboardPage.tsx|AdminDashboardPage|button-like-link|3cec06822163a897af9b|1",
-      "file": "src/pages/admin/AdminDashboardPage.tsx",
-      "component": "AdminDashboardPage",
-      "line": 166,
-      "column": 9,
-      "hash": "3cec06822163a897af9b",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminDashboardPage.tsx|AdminDashboardPage|button-like-link|d82d66df48a10e0c1893|1",
-      "file": "src/pages/admin/AdminDashboardPage.tsx",
-      "component": "AdminDashboardPage",
-      "line": 172,
-      "column": 9,
-      "hash": "d82d66df48a10e0c1893",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminDashboardPage.tsx|AdminDashboardPage|button-like-link|579df3fba590a1b25b6d|1",
-      "file": "src/pages/admin/AdminDashboardPage.tsx",
-      "component": "AdminDashboardPage",
-      "line": 178,
-      "column": 9,
-      "hash": "579df3fba590a1b25b6d",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminDashboardPage.tsx|AdminDashboardPage|button-like-link|768046fc2e81440bc42f|1",
-      "file": "src/pages/admin/AdminDashboardPage.tsx",
-      "component": "AdminDashboardPage",
-      "line": 184,
-      "column": 9,
-      "hash": "768046fc2e81440bc42f",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
-    },
-    {
       "key": "src/pages/admin/AdminDashboardPage.tsx|AdminDashboardPage|button-like-link|a876ecb82fba98c5cd9e|1",
       "file": "src/pages/admin/AdminDashboardPage.tsx",
       "component": "AdminDashboardPage",
-      "line": 210,
+      "line": 185,
       "column": 15,
       "hash": "a876ecb82fba98c5cd9e",
       "kind": "button-like-link",
@@ -1608,66 +1248,6 @@
       "line": 511,
       "column": 11,
       "hash": "2eb80114bdc923db2d24",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminOrdersPage.tsx|AdminOrdersPageContent|raw-button|4df7855190ef383afe97|1",
-      "file": "src/pages/admin/AdminOrdersPage.tsx",
-      "component": "AdminOrdersPageContent",
-      "line": 522,
-      "column": 41,
-      "hash": "4df7855190ef383afe97",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminOrdersPage.tsx|AdminOrdersPageContent|raw-button|c389fc0de625cd5c19b0|1",
-      "file": "src/pages/admin/AdminOrdersPage.tsx",
-      "component": "AdminOrdersPageContent",
-      "line": 533,
-      "column": 9,
-      "hash": "c389fc0de625cd5c19b0",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminOrdersPage.tsx|AdminOrdersPageContent|raw-button|510a22006071636dcba1|1",
-      "file": "src/pages/admin/AdminOrdersPage.tsx",
-      "component": "AdminOrdersPageContent",
-      "line": 538,
-      "column": 9,
-      "hash": "510a22006071636dcba1",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminOrdersPage.tsx|AdminOrdersPageContent|raw-button|aebc17dafd508f87a5f3|1",
-      "file": "src/pages/admin/AdminOrdersPage.tsx",
-      "component": "AdminOrdersPageContent",
-      "line": 543,
-      "column": 11,
-      "hash": "aebc17dafd508f87a5f3",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminOrdersPage.tsx|AdminOrdersPageContent|raw-button|cbf3f88939b8f3da92a7|1",
-      "file": "src/pages/admin/AdminOrdersPage.tsx",
-      "component": "AdminOrdersPageContent",
-      "line": 545,
-      "column": 9,
-      "hash": "cbf3f88939b8f3da92a7",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminOrdersPage.tsx|AdminOrdersPageContent|raw-button|b0f21900f8dca04915ec|1",
-      "file": "src/pages/admin/AdminOrdersPage.tsx",
-      "component": "AdminOrdersPageContent",
-      "line": 554,
-      "column": 15,
-      "hash": "b0f21900f8dca04915ec",
       "kind": "raw-button",
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
@@ -1932,40 +1512,10 @@
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
     },
     {
-      "key": "src/pages/admin/AdminProductsPage.tsx|AdminProductsPage|raw-button|e328789918202245120b|1",
-      "file": "src/pages/admin/AdminProductsPage.tsx",
-      "component": "AdminProductsPage",
-      "line": 294,
-      "column": 11,
-      "hash": "e328789918202245120b",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminProductsPage.tsx|AdminProductsPage|raw-button|ff74cbed762bf45b8577|1",
-      "file": "src/pages/admin/AdminProductsPage.tsx",
-      "component": "AdminProductsPage",
-      "line": 295,
-      "column": 11,
-      "hash": "ff74cbed762bf45b8577",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/admin/AdminProductsPage.tsx|AdminProductsPage|raw-button|1a8d40623e7a560029cd|1",
-      "file": "src/pages/admin/AdminProductsPage.tsx",
-      "component": "AdminProductsPage",
-      "line": 298,
-      "column": 11,
-      "hash": "1a8d40623e7a560029cd",
-      "kind": "raw-button",
-      "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
       "key": "src/pages/admin/AdminProductsPage.tsx|AdminProductsPage|raw-button|ba27a377ea5be947a71e|1",
       "file": "src/pages/admin/AdminProductsPage.tsx",
       "component": "AdminProductsPage",
-      "line": 310,
+      "line": 301,
       "column": 9,
       "hash": "ba27a377ea5be947a71e",
       "kind": "raw-button",
@@ -1975,7 +1525,7 @@
       "key": "src/pages/admin/AdminProductsPage.tsx|AdminProductsPage|raw-button|101a20778ebd2783410f|1",
       "file": "src/pages/admin/AdminProductsPage.tsx",
       "component": "AdminProductsPage",
-      "line": 337,
+      "line": 328,
       "column": 9,
       "hash": "101a20778ebd2783410f",
       "kind": "raw-button",
@@ -2150,16 +1700,6 @@
       "hash": "23104dc6d458553a15d4",
       "kind": "raw-button",
       "reason": "Legacy native action; migrate to Button/IconButton or a reviewed specialized primitive"
-    },
-    {
-      "key": "src/pages/AdminSettingsPage.tsx|HomepageSettingsTab|button-like-link|4b55fa7a0ea472102fa7|1",
-      "file": "src/pages/AdminSettingsPage.tsx",
-      "component": "HomepageSettingsTab",
-      "line": 1244,
-      "column": 9,
-      "hash": "4b55fa7a0ea472102fa7",
-      "kind": "button-like-link",
-      "reason": "Legacy action link recipe; migrate to Button href/to or a reviewed navigation primitive"
     },
     {
       "key": "src/pages/CateringPage.tsx|CateringPage|raw-button|cd8d1f09df30b623d79b|1",
