@@ -137,7 +137,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
               <NavigationLink
                 key={col.id}
                 to={`/collections/${col.slug}`}
-                surface={darkMode ? 'dark' : 'default'} className="w-full"
+                className="w-full"
                 onClick={handleItemClick}
               >
                 <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
@@ -158,7 +158,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
                 {showThreeSquares && (
                   <NavigationLink
                     to="/shop/three-squares"
-                    surface={darkMode ? 'dark' : 'default'} className="w-full"
+                    className="w-full"
                     onClick={(event) => handleStorefrontClick(event, 'three_squares', 'Three Squares')}
                   >
                     Three Squares
@@ -167,7 +167,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
                 {showLatteStone && (
                   <NavigationLink
                     to="/shop/latte-stone-cookies"
-                    surface={darkMode ? 'dark' : 'default'} className="w-full"
+                    className="w-full"
                     onClick={(event) => handleStorefrontClick(event, 'latte_stone', 'Latte Stone Cookies')}
                   >
                     Latte Stone Cookies
@@ -176,7 +176,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
                 {showCatering && (
                   <NavigationLink
                     to="/shop/catering"
-                    surface={darkMode ? 'dark' : 'default'} className="w-full"
+                    className="w-full"
                     onClick={(event) => handleStorefrontClick(event, 'catering', 'Catering')}
                   >
                     Catering
@@ -189,7 +189,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
 
             <NavigationLink
               to="/products"
-              surface={darkMode ? 'dark' : 'default'} className="w-full"
+              className="w-full"
               onClick={handleItemClick}
             >
               <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -199,7 +199,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
             </NavigationLink>
             <NavigationLink
               to="/collections"
-              surface={darkMode ? 'dark' : 'default'} className="w-full"
+              className="w-full"
               onClick={handleItemClick}
             >
               <svg className="w-5 h-5 text-warm-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -212,7 +212,7 @@ export default function NavDropdown({ onItemClick, darkMode = false }: NavDropdo
 
             <NavigationLink
               to="/products?sale=true"
-              surface={darkMode ? 'dark' : 'default'} className="w-full"
+              className="w-full"
               onClick={handleItemClick}
             >
               <svg className="w-5 h-5 text-tsPrimary" fill="none" stroke="currentColor" strokeWidth={1.5} viewBox="0 0 24 24">
