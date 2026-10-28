@@ -1,4 +1,5 @@
-import { SlidersHorizontal, Trash2, ChevronDown } from 'lucide-react';
+import { Disclosure } from '../ui/Disclosure';
+import { SlidersHorizontal, Trash2 } from 'lucide-react';
 import type { CartItem } from '../admin/posCart';
 import { IconButton } from '../ui/IconButton';
 import { QuantityStepper } from '../ui/QuantityStepper';
@@ -8,10 +9,9 @@ export function CartLine({ item, selected, max, increaseDisabled, onChange, onSe
   onChange: (next: number) => void; onSelect: () => void; onRemove: () => void}) {
   return <article aria-label={`Cart item: ${item.product.name}`} className="pos-cart-line" data-selected={selected || undefined}>
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
-      <details className="min-w-0">
-        <summary className="flex min-h-11 cursor-pointer items-start gap-1 text-sm font-semibold text-slate-900"><ChevronDown aria-hidden="true" className="mt-1 h-3 w-3 shrink-0" /><span className="min-w-0 line-clamp-2">{item.product.name}</span></summary>
+      <div className="min-w-0"><Disclosure title={<><span className="min-w-0 line-clamp-2">{item.product.name}</span></>}>
         <p className="text-sm">{item.product.name}</p>
-      </details>
+      </Disclosure></div>
       <span className="text-sm font-semibold tabular-nums text-tsNavy">${((item.variant.price_cents * item.quantity) / 100).toFixed(2)}</span>
     </div>
     {item.variant.name !== 'Default' && <p className="text-xs text-slate-600">{item.variant.name}</p>}

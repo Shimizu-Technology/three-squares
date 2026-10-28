@@ -1,4 +1,4 @@
-import {useRef,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {createRoot} from 'react-dom/client';
 import type {Reader} from '@stripe/terminal-js';
 import {Button} from '../src/components/ui/Button';
@@ -9,6 +9,7 @@ import '../src/index.css';
 import '../src/components/pos/pos.css';
 export function Fixture(){
   const [value,setValue]=useState(9),[pending,setPending]=useState(false),[open,setOpen]=useState(false),[busy,setBusy]=useState(false);
+  useEffect(()=>{const finish=()=>setBusy(false);window.addEventListener('fixture-reader-finished',finish);return()=>window.removeEventListener('fixture-reader-finished',finish);},[]);
   const opener=useRef<HTMLButtonElement>(null);
   return <main className="space-y-4 p-4"><h1 className="text-2xl">POS geometry fixture</h1>
     <div data-testid="tile-fixture" className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,160px),1fr))] gap-3">
@@ -20,7 +21,7 @@ export function Fixture(){
     <QuantityStepper value={value} onChange={setValue} min={1} max={20} pending={pending} itemLabel="Fixture meal"/>
     <QuantityStepper value={value} onChange={setValue} size="lg" itemLabel="Large fixture meal"/>
     <Button variant="secondary" onClick={()=>setPending(!pending)}>Toggle pending quantity</Button>
-    <Button variant="secondary" onClick={()=>{setBusy(true);setOpen(true);setTimeout(()=>setBusy(false),750)}}>Choose busy fixture reader</Button>
+    <Button variant="secondary" onClick={()=>{setBusy(true);setOpen(true)}}>Choose busy fixture reader</Button>
     <Button variant="secondary" ref={opener} onClick={()=>setOpen(true)}>Choose fixture reader</Button>
     {open&&<ReaderPickerDialog readers={[{id:'reader-fixture',label:'Fixture reader',serial_number:'QA',device_type:'simulated'} as unknown as Reader]} connected={null} busy={busy} error={null} returnFocusRef={opener}
       onClose={()=>setOpen(false)} onConnect={()=>setOpen(false)} onDiscover={()=>{}} onDisconnect={()=>{}}/>}

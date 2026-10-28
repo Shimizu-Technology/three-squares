@@ -43,7 +43,7 @@ focus. Real provider discovery is unchanged.
 
 Run `npm run test:unit`, `npm run test:ci-tools`, `npm run lint:ci`, and
 `npm run build` from `web`, plus the API/security gate. Every migration ratchets
-its retired raw controls using `npm run ui:ratchet`.
+zero violations using `npm run ui:check`. The migration baseline is retired.
 
 With an isolated local demo running, use:
 

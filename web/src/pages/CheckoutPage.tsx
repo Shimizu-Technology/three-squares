@@ -1,3 +1,4 @@
+import { CheckField } from '../components/ui/CheckField';
 import { Field } from '../components/ui/Field';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
@@ -639,7 +640,7 @@ function CheckoutForm() {
                                                                                                   aria-label="Advance simulated time by 61 seconds"
                                                                                                   className="mt-3 mr-3"
                                                                                                 >Advance simulated time</Button>}
-              {canRetryCollection && savedClientConfig?.available !== false && <label className="mt-3 flex min-h-11 items-center gap-3"><input type="checkbox" checked={savedAmountReviewed} onChange={event => setSavedAmountReviewed(event.target.checked)} />I have reviewed the saved order total{pendingPayment.amountCents !== undefined ? ` of $${(pendingPayment.amountCents / 100).toFixed(2)}` : ''}.</label>}
+              {canRetryCollection && savedClientConfig?.available !== false && <div className="mt-3"><CheckField checked={savedAmountReviewed} onChange={event => setSavedAmountReviewed(event.target.checked)}>I have reviewed the saved order total{pendingPayment.amountCents !== undefined ? ` of $${(pendingPayment.amountCents / 100).toFixed(2)}` : ''}.</CheckField></div>}
               {canRetryCollection && savedClientConfig?.available !== false && <Button
                                                                                  type="button"
                                                                                  disabled={loading || !paymentReady || !savedAmountReviewed}
@@ -1070,7 +1071,7 @@ creationKey.current = crypto.randomUUID(); capability.current = checkoutCapabili
                                                                                                         onClick={() => void fetchCart({ fulfillment_type: deliveryMethod, location_id: deliveryMethod === 'pickup' ? pickupLocationId : null })}
                                                                                                         variant="link"
                                                                                                       >Refresh price</Button></div>}
-              <label className="mb-4 flex min-h-11 items-start gap-3 py-2 text-sm text-warm-900"><input type="checkbox" className="mt-1 h-5 w-5 shrink-0" checked={reviewed} onChange={event => setReviewed(event.target.checked)} /><span>I have reviewed my items, {deliveryMethod === 'pickup' ? `pickup at ${storedLocation?.name || 'the selected location'}` : 'shipping address'}, and total of {formatPrice(totalCents)}.</span></label>
+              <div className="mb-4"><CheckField checked={reviewed} onChange={event => setReviewed(event.target.checked)}>I have reviewed my items, {deliveryMethod === 'pickup' ? `pickup at ${storedLocation?.name || 'the selected location'}` : 'shipping address'}, and total of {formatPrice(totalCents)}.</CheckField></div>
               {orderingBlocked && !pendingPayment && <p role="status" className="mb-3 text-sm text-warm-700">{orderingMessage}</p>}
               {/* Submit Button */}
               <Button

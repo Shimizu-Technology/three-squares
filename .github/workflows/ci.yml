@@ -84,3 +84,15 @@ jobs:
         run: npm run lint:ci
       - name: Typecheck and build
         run: npm run build
+      - name: Install geometry browsers
+        run: npx --no-install playwright install --with-deps chromium webkit
+      - name: Check shared UI geometry
+        run: npm run ui:geometry
+      - name: Retain geometry evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-geometry
+          path: tmp/ui-geometry/
+          if-no-files-found: ignore
+          retention-days: 7

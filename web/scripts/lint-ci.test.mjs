@@ -13,7 +13,6 @@ async function runFixture(file, content) {
   const cwd = await mkdtemp(path.join(os.tmpdir(), 'tsq-lint-gate-'));
   try {
     await symlink(path.join(webRoot, 'eslint.config.js'), path.join(cwd, 'eslint.config.js'));
-    await writeFile(path.join(cwd, 'ui-controls-baseline.json'), JSON.stringify({ version: 1, entries: [] }));
     await mkdir(path.dirname(path.join(cwd, file)), { recursive: true });
     await writeFile(path.join(cwd, file), content);
     return spawnSync(process.execPath, [runner], { cwd, encoding: 'utf8' });
@@ -44,12 +43,12 @@ test('rejects additional errors for an existing baseline key', async () => {
 test('CI rejects new raw controls even when ESLint is otherwise clean', async () => {
   const result = await runFixture('src/NewControl.tsx', 'export function NewControl() { return <button className="px-4">Save</button>; }');
   assert.equal(result.status, 1, result.stdout + result.stderr);
-  assert.match(result.stderr, /src\/NewControl.tsx:1:.*Legacy native action/);
-  assert.match(result.stdout, /UI controls: 1 legacy sites; 1 new/);
+  assert.match(result.stderr, /src\/NewControl.tsx:1:.*Native control outside an approved components\/ui/);
+  assert.match(result.stdout, /UI controls: 1 violations; zero required/);
 });
 
 test('CI rejects a new button-like anchor', async () => {
   const result = await runFixture('src/NewControl.tsx', 'export function NewControl() { return <a href="/next" className="rounded px-4 bg-white">Next</a>; }');
   assert.equal(result.status, 1, result.stdout + result.stderr);
-  assert.match(result.stderr, /Legacy action link recipe/);
+  assert.match(result.stderr, /Action link recipe outside components\/ui/);
 });

@@ -3,7 +3,7 @@
 The root `.github/workflows/ci.yml` runs on pull requests and pushes to main.
 
 - API: Ruby from `api/.ruby-version`, PostgreSQL 16, `bin/rails db:prepare`, a separate fresh migration replay compared with `schema.rb`, all RSpec examples, and Brakeman. No live provider credentials are required. Test databases disable demo seeds; specs own their factory data.
-- Web: Node from the root `.node-version` (also mirrored in `.nvmrc`), `npm ci`, CI-tool and application unit tests, ESLint regression checks, and `npm run build` (TypeScript plus Vite). Scripts select the project Node through nodenv when available and reject unsupported versions. Playwright is deferred until its fixtures are stable.
+- Web: Node from the root `.node-version` (also mirrored in `.nvmrc`), `npm ci`, CI-tool and application unit tests, ESLint regression checks, and `npm run build` (TypeScript plus Vite). Scripts select the project Node through nodenv when available and reject unsupported versions. The strict UI-control gate permits no legacy baseline entries. Lockfile-selected Chromium/WebKit run the six deterministic component fixture suites through `npm run ui:geometry`; artifacts are retained for seven days, including on failure. The command has a three-minute execution budget, excludes API/auth/provider traffic and uses browser fallback fonts. Database-backed journeys and physical iPad acceptance remain separate.
 
 Start each command block from the repository root. Use an isolated database, never a shared development/test database:
 
@@ -21,6 +21,8 @@ npm run test:ci-tools
 npm run test:unit
 npm run lint:ci
 npm run build
+npx --no-install playwright install --with-deps chromium webkit
+npm run ui:geometry
 ```
 
 ## Inherited debt

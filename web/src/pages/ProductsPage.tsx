@@ -1,3 +1,4 @@
+import { Disclosure } from '../components/ui/Disclosure';
 import { IconButton } from '../components/ui/IconButton';
 import { Select } from '../components/ui/Select';
 import { Input } from '../components/ui/Input';
@@ -244,7 +245,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
             </p>
           </div>
         </div>
-        
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 text-center">
           <div className="max-w-md mx-auto">
             <div className="mb-6"><svg className="w-16 h-16 mx-auto text-tsPrimary" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 006-6v-1.5m-6 7.5a6 6 0 01-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 01-3-3V4.5a3 3 0 116 0v8.25a3 3 0 01-3 3z" /></svg></div>
@@ -313,12 +314,11 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
 
           </div>
 
-          <details className="mt-3 rounded-lg border border-warm-200 bg-white">
-            <summary className="min-h-11 px-4 py-3 cursor-pointer text-sm font-semibold text-warm-800">
+          <div className="mt-3 rounded-lg border border-warm-200 bg-white px-4"><Disclosure title={<>
               Filters and sort{activeFilterCount > 0 ? ` (${activeFilterCount})` : ''}
-            </summary>
+            </>}>
             {/* Filters */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 p-4 pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 pb-4">
               {/* Business Line Filter */}
               <div>
                 <label htmlFor="menu-filter-business" className="block text-xs font-semibold text-warm-500 uppercase tracking-wider mb-1.5">Menu</label>
@@ -408,7 +408,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
               </div>
             </div>
 
-          </details>
+          </Disclosure></div>
 
           {/* Active Filters Display */}
           {(search || collection || productType || sort || activeBusinessLine) && (
@@ -545,7 +545,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                   </svg>
                   <span className="hidden sm:inline">Previous</span>
                 </Button>
-                
+
                 <div className="contents">
                   {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                     let pageNum;
@@ -558,7 +558,7 @@ export default function ProductsPage({ pickupLocation }: { pickupLocation?: Loca
                     } else {
                       pageNum = page - 2 + i;
                     }
-                    
+
                     return (
                       <IconButton
                         key={pageNum}

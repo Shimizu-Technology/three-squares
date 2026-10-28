@@ -1,3 +1,5 @@
+import { Disclosure } from '../../ui/Disclosure';
+import { Select } from '../../ui/Select';
 import { Button } from '../../ui/Button';
 import { useEffect, useState } from 'react';
 import api from '../../../services/api';
@@ -42,12 +44,12 @@ export default function SimulatedTerminalPanel({ locationId, attemptId, terminal
     } finally { setBusy(false); }
   }
   const terminal = terminals.find(row => String(row.id) === selected);
-  return <details open={expanded} onToggle={event => setExpanded(event.currentTarget.open)} className="mt-4 w-full min-w-0 rounded-xl border border-amber-400 bg-amber-50 p-3 text-amber-950 [overflow-wrap:anywhere]">
-    <summary className="min-h-11 font-bold cursor-pointer">Simulated payments — no money moves</summary>
-    <label className="block">Simulated reader<select value={selected} disabled={!!attemptId || busy} onChange={event => onSelect(event.target.value ? Number(event.target.value) : null)} className="block w-full bg-white border rounded p-2 min-h-11 text-base">{terminals.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}</select></label>
+  return <div className="mt-4 w-full min-w-0 rounded-xl border border-amber-400 bg-amber-50 p-3 text-amber-950 [overflow-wrap:anywhere]">
+    <Disclosure open={expanded} onToggle={event => setExpanded(event.currentTarget.open)} title="Simulated payments — no money moves">
+    <label className="block">Simulated reader<Select className="mt-1" value={selected} disabled={!!attemptId || busy} onChange={event => onSelect(event.target.value ? Number(event.target.value) : null)} >{terminals.map(row => <option key={row.id} value={row.id}>{row.label}</option>)}</Select></label>
     <p className="my-2" role="status">{terminal?.status.replaceAll('_', ' ') || 'No reader configured'}{terminal?.order_number ? ` · ${terminal.order_number}` : ''}</p>
     {!attemptId && <p className="mb-2 text-sm">Add items and press Card to save an order, then take payment here.</p>}
     <div className="grid grid-cols-1 min-[360px]:grid-cols-2 gap-2">{[['take','Take payment'],['tap','Tap card'],['approve','Approve'],['decline','Decline'],['wrong_pin','Wrong PIN'],['disconnect','Disconnect'],['reconnect','Reconnect'],['lose_response','Lose response']].filter(([value]) => can(value === 'take' ? 'payments.collect' : 'payments.simulate')).map(([value,label]) => <Button variant="secondary" key={value} disabled={busy || !selected || (value !== 'reconnect' && (!attemptId || (value !== 'take' && terminal?.attempt_id !== attemptId) || (['tap', 'approve', 'decline', 'wrong_pin', 'lose_response'].includes(value) && (!terminal?.collection_ready || !['waiting_for_card', 'card_inserted'].includes(terminal?.status || '')))))} onClick={() => void act(value)}>{label}</Button>)}</div>
     {error && <p role="alert" className="mt-3 text-sm break-words">{error}</p>}
-  </details>;
+  </Disclosure></div>;
 }

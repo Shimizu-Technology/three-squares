@@ -1,4 +1,22 @@
-# Shared-control geometry and recovery fixture
+# Shared UI geometry
+
+From `web`, install dependencies and the lockfile-selected browsers, then run:
+
+```sh
+npm ci
+npx --no-install playwright install --with-deps chromium webkit
+DEV_LIFECYCLE_SESSION=<local-session-id> npm run ui:geometry
+```
+
+CI runs the same command without the Mac lifecycle helper. It starts one loopback-only Vite server on an available port with project config and `.env` loading disabled. No Rails, database, Clerk, payment provider or real messages are involved. The surviving parent owns Chromium and WebKit before starting any suite; suites connect to those servers instead of spawning detached browsers during their own startup. Each suite has a separate artifact directory under `tmp/ui-geometry/run-*`; set `UI_GEOMETRY_OUTPUT` to a private evidence parent locally. The final `summary.json` records each exit status and elapsed time. Any failure fails the command; there are no retries. The command has a three-minute execution budget. The server and owned suite/browser process groups close on success, failure, timeout or SIGINT/SIGTERM. Local runs claim/release the root runner when a lifecycle session is supplied.
+
+Six suites import real components: ui-controls, ui-admin, pos-controls, customer-cards, ui-fields and ui-operations. The required 768×1024, 1024×768, 1440×900 and 390×844 fine/touch matrices are preserved. Chromium measures controls/POS; the other four suites also run WebKit. There is a supplemental WebKit reader-dialog case and customer 375×812 case. Native menus, focus/return, nested dialogs, loading dimensions, field labels, form submission, image fallback, card slots and target sizes are asserted. A fixture-only completion signal keeps the POS busy-dialog test independent of machine speed.
+
+External requests are blocked. Fixture HTML deliberately omits CDN font links and uses the configured browser sans-serif fallback; production DM Sans/Satoshi loading is unchanged. These are geometry/behavior assertions, not cross-OS screenshot comparisons or a certification of production fonts. Saved journeys, payments, customer checkout and physical Safari/PWA acceptance require the separate isolated-demo checks below and [the operator checklist](../../docs/IPAD-ACCEPTANCE.md). Every physical checklist result starts Not run.
+
+## Individual suites and saved journeys
+
+The individual runners can still target an already running isolated demo as shown below. Use only your own DB/ports, never shared or production data. Close claimed runtimes and tabs after each QA phase.
 
 Start an isolated demo using `docs/DEMO.md` (own DB and ports), then open
 `http://localhost:5391/fixtures/ui-controls.html`. This dev-only HTML entry imports

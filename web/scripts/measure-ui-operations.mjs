@@ -1,12 +1,14 @@
+import { launchGeometryBrowser } from './geometry-browser.mjs';
+import { prepareGeometryContext } from './geometry-context.mjs';
 import {chromium,webkit} from 'playwright';
 import assert from 'node:assert/strict';
 import {mkdirSync,writeFileSync} from 'node:fs';
 const origin=process.argv[2]||'http://localhost:5173',output=process.argv[3]||'tmp/ui-operations';
 mkdirSync(output,{recursive:true});const records=[];
 for(const [engine,factory] of Object.entries({chromium,webkit})){
- const browser=await factory.launch();try{
+ const browser=await launchGeometryBrowser(factory, );try{
  for(const [width,height] of [[768,1024],[1024,768],[1440,900],[390,844]])for(const touch of [false,true]){
- const context=await browser.newContext({viewport:{width,height},hasTouch:touch}),page=await context.newPage();
+ const context=await browser.newContext({viewport:{width,height},hasTouch:touch});await prepareGeometryContext(context, origin);const page=await context.newPage();
  try{await page.goto(origin+'/fixtures/ui-operations.html');await page.getByRole('heading',{name:'Operational acceptance'}).waitFor();
  const header=await page.locator('[data-admin-page-header]').boundingBox();assert.equal(header.x,width<640?16:24);
  const brand=page.getByRole('link',{name:'Fictional admin brand',exact:true});const before=await brand.evaluate(e=>({background:getComputedStyle(e).backgroundColor,color:getComputedStyle(e).color}));await brand.hover();assert.deepEqual(await brand.evaluate(e=>({background:getComputedStyle(e).backgroundColor,color:getComputedStyle(e).color})),before);
