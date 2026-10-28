@@ -179,7 +179,7 @@ export default function ProductsTable({
               </div>
             </div>
             {renderAvailability && <div className="mb-3">{renderAvailability(product)}</div>}
-            <div className="flex gap-2">
+            <div className="flex justify-end gap-2">
               <IconButton variant="secondary" aria-label={`View ${product.name}`} onClick={() => onView(product)}><Eye /></IconButton>
               <IconButton variant="secondary" aria-label={`Edit ${product.name}`} onClick={() => onEdit(product)}><Edit /></IconButton>
               {rowActions(product)}
