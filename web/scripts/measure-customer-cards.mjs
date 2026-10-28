@@ -1,3 +1,4 @@
+import { expect, expectHash } from './geometry-assertions.mjs';
 import { launchGeometryBrowser } from './geometry-browser.mjs';
 import { prepareGeometryContext } from './geometry-context.mjs';
 import { chromium, webkit } from "@playwright/test";
@@ -120,10 +121,13 @@ try {
               assert.equal(new URL(await card.getAttribute('href'), page.url()).hash, '#home-category-destination');
               assert.equal(await card.locator('[data-photo-state="unavailable"]').count(), 1);
             }
-            await homeCards.first().focus(); await page.keyboard.press('Enter');
-            assert.equal(new URL(page.url()).hash, '#home-category-destination');
+            await homeCards.first().focus(); await expect(homeCards.first()).toBeFocused(); await page.keyboard.press('Enter');
+            await expectHash(page, '#home-category-destination');
+            // Reset the destination so pointer activation cannot pass on the keyboard result.
+            await page.evaluate(() => { location.hash = ''; });
+            await expectHash(page, '');
             if (touch) await homeCards.last().tap(); else await homeCards.last().click();
-            assert.equal(new URL(page.url()).hash, '#home-category-destination');
+            await expectHash(page, '#home-category-destination');
             assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
             await page.screenshot({
               path: path.join(output, `cards-${engine}-${width}-${touch ? "touch" : "fine"}.png`),
