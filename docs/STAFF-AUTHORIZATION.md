@@ -31,6 +31,7 @@ A capability check admits the action category; pair it with scoped record lookup
 | `devices.self`, `devices.manage` | Own-device controls versus scoped management of others |
 | `availability.manage` | Local product sold-out/restore, separate from catalog and shared stock |
 | `catalog.manage`, `catalog.import`, `seasonal.manage` | Shared catalog/menu/collection operations |
+| `catalog.offerings.manage` | Owner/all-locations manager menu membership; separate from daily sold-out flags |
 | `stock.read`, `stock.manage` | Shared history versus writes; writes require all-locations manager/owner |
 | `catering.manage` | Global manager/owner inquiry inbox |
 | `locations.read`, `locations.update`, `locations.qr` | Scoped location operations; manager update permits hours/active only |
@@ -57,3 +58,5 @@ Role writes/deletions must use model callbacks. A transaction advisory lock prot
 
 Payment configuration status (`GET /api/v1/admin/site_settings/payment_status`) is read-only and requires owner capability `payment_settings.manage`. It uses the selected provider, enabled effective location/channel profiles, immutable identities and server gates; it never sends provider requests or returns credentials. Both manager scopes remain denied by the existing settings policy. Legacy `payment_test_mode` remains readable for operational compatibility, but both settings update endpoints ignore it; only deployment preparation may reconcile that field. Profile/provider assignment stays in the existing operator/API workflow.
 `GET/PUT /api/v1/admin/online_ordering` maps to owner-only `ordering.manage`. It controls the explicit public ordering pause and optional message; changes retain actor, state, message and time. It grants no payment capture or recovery authority.
+
+Location menu membership uses a separate capability and endpoint; see [Location offerings](LOCATION-OFFERINGS.md). Daily restore rejects non-carried products and never changes membership.

@@ -10,7 +10,7 @@ The cart header uses an explicit `bg-tsPrimary`/white pair (12.41:1). Its close 
 
 ## Migration status
 
-This is the contract for new work. Button, IconButton, QuantityStepper, StatusBadge and Notice are implemented in `web/src/components/ui`; the two recovery controls use Button. POS tiles/cart/toolbar and reader controls use the shared recipes; see [POS uniformity](POS-UNIFORMITY.md). Other admin and customer controls, headers/toolbars, form rows and workflow label mappings are **not yet migrated**. Visible admin groups follow in P3, location offering semantics in P4, remaining admin/labels in P5 and customer surfaces in P6. Device acceptance closes in P7. A documented recipe below is not a claim that its consumers already conform.
+This is the contract for new work. Button, IconButton, QuantityStepper, StatusBadge and Notice are implemented in `web/src/components/ui`; the two recovery controls use Button. POS tiles/cart/toolbar and reader controls use the shared recipes; see [POS uniformity](POS-UNIFORMITY.md). Other admin and customer controls, headers/toolbars, form rows and workflow label mappings are **not yet migrated**. Location offering semantics are implemented in P4; see [Location offerings](LOCATION-OFFERINGS.md). Visible admin groups follow in P3, remaining admin/labels in P5 and customer surfaces in P6. Device acceptance closes in P7. A documented recipe below is not a claim that its consumers already conform.
 
 ## Button and IconButton
 
@@ -31,7 +31,7 @@ Allow **at most one filled primary per task region**. For POS, Card may be prima
 ## Card and row primitives
 
 - **POSProductTile:** sale mode is a **128px-high text-first tile**, 12px padding, 12px radius, 1px border. Reserve a two-line 14/20 title (40px), 14/20 price row (20px) and 24px state slot, with 4px internal gaps. Empty state space stays reserved. In-cart and sold-out states cannot increase height. Entire tile adds/selects the product; retain variant selection and stock-capacity checks. No photo is needed for the operational sale tile.
-- **Availability mode:** a separate explicit Manage availability screen/mode, using a uniform **176px** offered-item card when a 44px availability control is included. Tile/state/action slots are reserved within the card; no button floats beneath it. Normal sale mode can omit ambiguous/unavailable `available=false` entries temporarily, with restoration reachable in management; only the semantic slice can correctly classify them as not-offered vs sold-out. Not-offered is absent from sale mode after that slice.
+- **Availability mode:** a separate explicit Manage availability screen/mode, using a uniform **176px** offered-item card when a 44px availability control is included. Tile/state/action slots are reserved within the card; no button floats beneath it. Offered sold-out products retain a disabled sale tile and a management Restore action. Not-offered products are absent from both POS modes; daily restore never changes membership.
 - **CustomerProductCard:** retain **1:1 media**, stable fallback, 12px shell radius, 8px media inset and a flex-column body. Title occupies exactly two lines (14/20 with 40px reserved on phone, 16/24 with 48px reserved desktop). Use a fixed 24px price/eligibility row at the bottom. Show a concise non-purchasable label there; put full reasons on the product page. If actions are present, pin a 44px action region below it. Whole-card links must not contain nested buttons. Card rows have equal height; title, price and action baselines align within1px.
 - **MenuManagementCard:** title/status, optional description with a defined two-line slot, schedule/meta, then bottom action region. Use one Manage primary; schedule/preview/delete become secondary/overflow according to frequency. Preserve every capability.
 - **CartLine / QuantityStepper:** explicit title/options/amount/quantity slots; 44px +/- targets with aligned numerical text. Long names may use two lines and open the full item context, but cannot push the same-row amount or quantity controls offscreen. Do not make an entire cart row and its nested controls ambiguous competing buttons.
@@ -101,3 +101,19 @@ Use StatusBadge `tone="attention|info|success|neutral|danger|inactive"`; it carr
 Run `npm run ui:check` after changes and `npm run ui:ratchet` to remove retired entries and refresh locations. Ratcheting **refuses added debt**; there is no update command that blesses new sites. The initial baseline cannot be reinitialized over an existing file. Review any manual baseline change as an exception. Approved specialized implementations are exact file/component pairs in `specializedControls` in the checker: POSProductTile. QuantityStepper lives in `components/ui` and needs no specialized exemption. Add Tabs, Disclosure, navigation and other specialized primitives only with semantics, geometry tests and a specific reason; a whole page is never exempt.
 
 Run `npm run test:ci-tools` for enforcement tests and `npm run test:unit` for component props/recipe tests. The standalone `fixtures/ui-controls.html` development page uses the actual primitives, recovery components and retained legacy specimens; it is not a production app route. With the isolated demo running, execute the geometry fixture as documented in `web/fixtures/README.md`. Extend it in every migration slice; screenshots do not replace assertions or saved journey checks.
+
+## Shared form fields (P5a)
+
+Use named `Field`, `Input`, `Select` and `Textarea` exports from their respective files in `components/ui`. Field wraps exactly one control and associates a visible label with its existing ID or a generated unique ID. Help and error slots add their IDs to existing `aria-describedby` references; errors set `aria-invalid`. The caller retains values, handlers, refs, validation and request state. Static errors are not automatically live regions. Native required semantics remain on the control, with a visible required marker in the label.
+
+```tsx
+<Field label="Device name" help="Use a name staff recognize." error={nameError}>
+  <Input value={name} onChange={event => setName(event.target.value)} required />
+</Field>
+<Field label="Location"><Select value={location} onChange={changeLocation}>{options}</Select></Field>
+<Field label="Notes"><Textarea value={notes} onChange={changeNotes} /></Field>
+```
+
+Input and single-choice Select are exactly44px border-box high,1px neutral border,8px radius,12px horizontal padding and14/20 type; coarse pointers use16/24 type. Field labels sit above controls with4px gaps. Textarea is multiline: default3 rows, minimum96px,12px padding and native vertical resize. It does not force multiline content into a44px box. Help/error type is14/20. Controls have the shared2px focus outline/2px offset and one disabled opacity rule. Keep field `className` layout-only; the existing AST gate rejects geometry/color overrides, inline styles and spread props at adoption sites. Checkboxes, switches, file pickers and multi-select lists keep separate semantic recipes.
+
+Current Device name/location plus Refresh/Save adopt these recipes first. Other forms migrate in the remaining admin/customer slices. The dev-only `fixtures/ui-fields.html` provides label/help/error, native submission, disabled and geometry acceptance; it is excluded from the normal production entry.

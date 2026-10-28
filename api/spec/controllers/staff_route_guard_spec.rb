@@ -61,7 +61,7 @@ RSpec.describe "Staff route guard inventory", type: :controller do
     staff = %w[orders.read orders.counts orders.status pos.sell payments.collect availability.manage devices.self]
     manager = staff + %w[orders.manage orders.notify orders.export payments.refund analytics.read devices.manage
       locations.read locations.update locations.qr catalog.manage catalog.import stock.read seasonal.manage catering.manage]
-    global_manager = manager + %w[stock.manage homepage.manage payments.terminals.manage payments.reconcile]
+    global_manager = manager + %w[stock.manage homepage.manage payments.terminals.manage payments.reconcile catalog.offerings.manage]
     actors = {
       owner: [ create(:user, :owner, assigned_location: location), :all ],
       global_manager: [ create(:user, :manager), global_manager ],

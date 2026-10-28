@@ -78,3 +78,20 @@ browsers, removes the test line, and restores the inventory fixture in `finally`
 The ordinary journey runner also verifies both product-page targets, absolute cart
 quantities, disabled pending controls, and unchanged stepper width during a delayed
 cart save. Removal remains a separate command; the stepper never reduces below one.
+
+For shared fields, open `fixtures/ui-fields.html` on the same isolated demo and run:
+
+```sh
+UI_FIXTURE_URL=http://localhost:5593/fixtures/ui-fields.html \
+UI_EVIDENCE_DIR=/absolute/private/evidence \
+DEV_LIFECYCLE_SESSION=<your-session-id> \
+node scripts/run-with-project-node.mjs node scripts/measure-ui-fields.mjs
+```
+
+This runner checks all four sizes with fine/touch Chromium and WebKit: 44px
+single-line fields, 16px touch type, 4px label gap, explicit labels, help/error
+association, native form values, disabled controls and keyboard focus. Textarea
+has a 96px minimum and native vertical resize. Select uses a shared chevron and
+CSS appearance while retaining its native picker and keyboard behavior. Screenshot
+capture is followed by pointer/height checks. Real saved admin/customer journeys
+remain separate QA; these development fixtures do not provide authentication.

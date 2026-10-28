@@ -10,12 +10,10 @@ The native category selector keeps the current choice visible and keyboard
 accessible. Availability administration is a separate **Manage availability**
 mode. Its cards are 176px with one 44px action; returning to sale retains filters.
 
-**Temporary until P4:** `available=false` still conflates not-carried products
-and temporarily sold-out products. Sale mode hides those ambiguous entries;
-Manage availability keeps their restoration reachable. This is not a membership
-migration. Separate offered-at-location semantics remain a launch requirement.
-Physical stock exhaustion can still show an unavailable sale tile with reserved
-state space.
+[Location offerings](LOCATION-OFFERINGS.md) separates menu membership from daily
+availability. Offered sold-out products keep their disabled 128px sale tiles and
+remain restorable in Manage availability. Non-carried items are absent from both
+modes. Physical stock exhaustion also uses the reserved state slot.
 
 Cash is secondary and Card primary, both lg 52px with 16/24px type. The Card label
 stays short; simulation status appears outside it. The cash dialog uses the same
@@ -62,3 +60,5 @@ contexts, and reader-dialog keyboard/dismissal/return behavior in Chromium and
 WebKit. Live Main cash and simulated reader journeys require separate browser
 execution and saved-outcome checks. The fixture does not certify real readers,
 printer output, physical iPad Safari, or production readiness.
+
+P4 replaces the temporary `available=false` hiding rule with explicit [location offerings](LOCATION-OFFERINGS.md). Offered sold-out tiles retain their sale-grid position; non-carried items are excluded in both modes. POS remembers an authorized location per user and otherwise chooses Main/the active location with the richest offered menu. At 1024px the category joins the location/search toolbar row; the completed-sale order reference occupies its own line.

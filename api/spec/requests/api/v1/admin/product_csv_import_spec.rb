@@ -206,7 +206,12 @@ RSpec.describe "Product CSV import", type: :request do
     expect(data.fetch("errors").sole).to include("row" => 4)
     expect(data.fetch("errors").sole).not_to have_key("product_id")
     expect(inactive.product_locations.available).to be_empty
-    patch "/api/v1/admin/products/#{inactive.id}", params: { product: { location_ids: [ main_location.id ] } }, as: :json
+    allow_any_instance_of(Api::V1::Admin::ProductOfferingsController).to receive(:current_user).and_return(admin)
+    patch "/api/v1/admin/products/#{inactive.id}/offerings", params: { offering: { location_id: main_location.id, offered: true } }, as: :json
+    expect(response).to have_http_status(:ok)
+    patch "/api/v1/admin/products/#{inactive.id}/availability", params: { availability: { location_id: main_location.id, available: true } }, as: :json
+    expect(response).to have_http_status(:ok)
+    get "/api/v1/admin/products/#{inactive.id}"
     expect(response).to have_http_status(:ok)
     expect(response.parsed_body.fetch("data")).to include("needs_pickup_locations" => false, "published" => false, "location_ids" => [ main_location.id ])
   end

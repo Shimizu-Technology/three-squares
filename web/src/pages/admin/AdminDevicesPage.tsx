@@ -1,3 +1,7 @@
+import { Field } from '../../components/ui/Field';
+import { Input } from '../../components/ui/Input';
+import { Select } from '../../components/ui/Select';
+import { Button } from '../../components/ui/Button';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '@clerk/clerk-react';
 import { Bell, BellOff, MonitorSmartphone, RefreshCcw, Save } from 'lucide-react';
@@ -229,15 +233,14 @@ export default function AdminDevicesPage() {
               for that location.
             </p>
           </div>
-          <button
+          <Button
             type="button"
             onClick={() => void fetchData()}
             disabled={loading || savingCurrent || savingDeviceId !== null || pushBusy}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            variant="secondary" icon={<RefreshCcw />}
           >
-            <RefreshCcw className="h-4 w-4" />
             Refresh
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -253,26 +256,22 @@ export default function AdminDevicesPage() {
 
           {currentError && <p role="alert" className="mt-4 text-sm text-red-700">{currentError}</p>}
           <div className="mt-6 grid gap-4 md:grid-cols-2">
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-gray-700">Device Name</span>
-              <input
+            <Field label="Device Name">
+              <Input
                 type="text"
                 value={deviceForm.name}
                 maxLength={120}
                 disabled={loading || savingCurrent}
                 onChange={(event) => { currentDraftDirty.current = true; setDeviceForm((prev) => ({ ...prev, name: event.target.value })); }}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-tsPrimary focus:outline-none focus:ring-2 focus:ring-tsPrimary/20"
                 placeholder="Kitchen iPad"
               />
-            </label>
+            </Field>
 
-            <label className="block">
-              <span className="mb-2 block text-sm font-medium text-gray-700">Order alert location</span>
-              <select
+            <Field label="Order alert location" help={locationLocked ? 'Location is assigned by your account. Ask a manager to change it.' : undefined}>
+              <Select
                 disabled={locationLocked || loading || savingCurrent}
                 value={deviceForm.location_id}
                 onChange={(event) => { currentDraftDirty.current = true; setDeviceForm((prev) => ({ ...prev, location_id: event.target.value })); }}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-tsPrimary focus:outline-none focus:ring-2 focus:ring-tsPrimary/20"
               >
                 {access.user?.operational_scope === 'all' && <option value="">Unassigned — no order alerts</option>}
                 {sortedLocations.map((location) => (
@@ -280,11 +279,10 @@ export default function AdminDevicesPage() {
                     {location.name}
                   </option>
                 ))}
-              </select>
-            </label>
+              </Select>
+            </Field>
           </div>
 
-          {locationLocked && <p className="mt-3 text-sm text-gray-600">Location is assigned by your account. Ask a manager to change it.</p>}
           <div className="mt-6 flex flex-wrap items-center gap-3 break-all text-sm text-gray-500">
             <span>UUID: {currentDevice?.device_uuid || 'Unregistered'}</span>
             <span>Last seen: {formatLastSeen(currentDevice?.last_seen_at)}</span>
@@ -292,15 +290,14 @@ export default function AdminDevicesPage() {
           </div>
 
           <div className="mt-6">
-            <button
+            <Button
               type="button"
               onClick={() => void saveCurrentDevice()}
               disabled={loading || savingCurrent || savingDeviceId !== null || pushBusy || !validCurrentLocation || deviceForm.name.trim() === ''}
-              className="inline-flex items-center gap-2 rounded-lg bg-tsPrimary px-4 py-2 text-sm font-semibold text-white hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+              loading={savingCurrent} icon={<Save />}
             >
-              <Save className="h-4 w-4" />
-              {savingCurrent ? 'Saving...' : 'Save Device'}
-            </button>
+              Save Device
+            </Button>
           </div>
         </section>
 
