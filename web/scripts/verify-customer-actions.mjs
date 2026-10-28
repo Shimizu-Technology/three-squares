@@ -36,6 +36,7 @@ try {
      for(const item of locations){assert.equal(item.tag,'ARTICLE');assert.ok(Math.abs(item.mediaWidth/item.mediaHeight-4/3)<0.01);}
      if(width>=1024)assert.ok(Math.abs(locations[0].actionBottom-locations[1].actionBottom)<=1,JSON.stringify(locations));
      for(const el of await page.locator('a[data-ui-navigation]:visible, a.ui-button:visible').all()){const g=await geometry(el);assert.ok(g.height>=44&&g.width>=44,JSON.stringify(g));assert.equal(g.tag,'A');}
+     await page.evaluate(()=>scrollTo(0,0));
      await page.screenshot({path:path.join(output,`locations-${label}.png`),fullPage:true});
      const nav=page.locator('nav.public-nav');await page.evaluate(()=>scrollTo(0,0));
      if(width<1024){

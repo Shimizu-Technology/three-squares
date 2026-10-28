@@ -146,7 +146,7 @@ function LocationCard({ location }: LocationCardProps) {
         {/* Hours */}
         <div className="flex items-start gap-3 mb-4">
           <Clock className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" />
-          <div className="space-y-1">
+          <div className="flex flex-col items-start gap-1">
             {location.hours.map((schedule, idx) => (
               <p key={idx} className="text-warm-700">
                 <span className="font-medium">{schedule.days}:</span>{' '}
@@ -163,7 +163,7 @@ function LocationCard({ location }: LocationCardProps) {
         {(location.phone || location.whatsapp) && (
           <div className="flex items-start gap-3 pt-4 border-t border-warm-100">
             <Phone className="w-5 h-5 text-tsPrimary shrink-0 mt-0.5" />
-            <div className="space-y-1">
+            <div className="flex flex-col items-start gap-1">
               {location.phone && (
                 <NavigationLink
                   href={`tel:+1${location.phone.replace(/\D/g, '')}`}
