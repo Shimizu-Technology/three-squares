@@ -87,7 +87,10 @@ jobs:
       - name: Typecheck and build
         run: npm run build
       - name: Install geometry browsers
-        run: npx --no-install playwright install --with-deps chromium webkit
+        run: |
+          # Bound stalled mirror connections instead of consuming the whole job.
+          printf 'Acquire::Retries "2";\nAcquire::http::Timeout "20";\nAcquire::https::Timeout "20";\nAcquire::ForceIPv4 "true";\nAcquire::Languages "none";\n' | sudo tee /etc/apt/apt.conf.d/80-browser-install >/dev/null
+          npx --no-install playwright install --with-deps chromium webkit
       - name: Check shared UI geometry
         run: npm run ui:geometry
       - name: Retain geometry evidence
