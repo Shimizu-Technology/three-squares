@@ -15,7 +15,8 @@ concurrency:
 jobs:
   api:
     name: API
-    runs-on: ubuntu-latest
+    # Ruby 3.3.4 and the pinned Playwright browsers support this runner.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
       run:
@@ -61,7 +62,8 @@ jobs:
 
   web:
     name: Web
-    runs-on: ubuntu-latest
+    # Ruby 3.3.4 and the pinned Playwright browsers support this runner.
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     defaults:
       run:
